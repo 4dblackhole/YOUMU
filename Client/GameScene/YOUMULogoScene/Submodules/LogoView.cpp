@@ -7,7 +7,7 @@ using namespace logo_ui;
 
 LogoView::LogoView(ScreenVisual2DManager &screenVisuals,
                    TextCatalog &texts, OptionSettings &options) noexcept
-    : screenVisuals_(screenVisuals), texts_(texts), options_(texts, options)
+    : screenVisuals_(screenVisuals), texts_(texts), options_(texts, options, &screenVisuals)
 {
 }
 

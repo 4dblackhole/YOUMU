@@ -47,6 +47,19 @@ MusicalTimeline::MusicalTimeline(const PatternDocument &pattern, RhythmDuration 
         measureSpans_.push_back(BuildMeasureSpan(static_cast<std::int64_t>(i)));
 }
 
+std::pair<double, double> MusicalTimeline::BpmRange() const noexcept
+{
+    double minimum = activeTimePoints_.back().bpm, maximum = minimum;
+    for (std::size_t i = 0; i + 1 < activeTimePoints_.size(); ++i)
+    {
+        const auto &point = activeTimePoints_[i];
+        if (activeTimePoints_[i + 1].timeBeforeMicroseconds <= point.timeAfterMicroseconds) continue;
+        minimum = std::min(minimum, point.bpm);
+        maximum = std::max(maximum, point.bpm);
+    }
+    return {minimum, maximum};
+}
+
 RhythmTime MusicalTimeline::Compile(const MusicalPosition position) const
 {
     return CompileAbsolute(PositionToWholeNotes(position));

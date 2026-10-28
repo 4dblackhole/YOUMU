@@ -11,6 +11,7 @@ class SongPreviewController final
         std::shared_ptr<AudioClip> clip;
         AudioPlaybackId playbackId{InvalidAudioPlaybackId};
         std::optional<std::size_t> catalogIndex;
+        std::optional<std::uint64_t> durationMicroseconds;
         float volume{};
         float targetVolume{};
     };
@@ -32,6 +33,7 @@ class SongPreviewController final
     void StartSongPreview(const SongSelectionState &selection, const std::size_t catalogIndex);
     void UpdatePreviewAudio(const double deltaSeconds);
     void StopPreviewAudio() noexcept;
+    [[nodiscard]] std::optional<std::uint64_t> DurationFor(std::size_t catalogIndex) const;
     void StopPreviewSlot(PreviewSlot &slot) noexcept;
 
   private:

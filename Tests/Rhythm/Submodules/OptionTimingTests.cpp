@@ -15,7 +15,7 @@ namespace tests
         auto &session = *loaded.session;
         Require(!session.InputMapping().contains('F') && !session.InputMapping().contains('V') &&
                     !session.InputMapping().contains(0) && session.InputMapping().at('S') == 1 &&
-                    session.InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 'A'},
+                    session.InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 'A', 0, 0},
                 "Session input and presentation share the resolved primary/auxiliary keys.");
         Require(
             !HasEvent(session.ProcessInput('F', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
@@ -28,6 +28,12 @@ namespace tests
         auto result = session.TakeResult(PlayEndReason::Interrupted, RhythmTime{125'000});
         Require(result->Summary().inputMapping.at('S') == 1 && result->Summary().inputs.front().physicalKey == 'S',
                 "Input trace records actual physical keys and their mapping.");
+        options.inputKeys["LeftDon"] = {'S', 0, 0, 'A'};
+        auto sparse = TaikoMode(options).CreateSession(pattern);
+        Require(sparse.Succeeded() && !sparse.session->InputMapping().contains(0) &&
+                    sparse.session->InputMapping().at('A') == 1 &&
+                    sparse.session->InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 0, 0, 'A'},
+                "Sparse auxiliary slots persist while their assigned keys remain playable.");
         options.inputKeys["LeftDon"] = {'K', 'A'};
         Require(!TaikoMode(options).CreateSession(pattern).Succeeded(),
                 "Conflicting bindings must fail before play.");

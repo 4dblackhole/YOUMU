@@ -17,6 +17,7 @@ ModeInputLayout TaikoMode::InputLayout() const
         for (const auto key : source.secondaryKeys)
             if (key)
                 binding.keys.push_back(key);
+        binding.keys.resize(4, 0);
         layout.bindings.push_back(std::move(binding));
     }
     return layout;

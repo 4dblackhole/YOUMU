@@ -96,6 +96,10 @@ void MusicSelectView::CreateSongInformationPanel()
     selectedDetailsLabel_ =
         &AddLabel(information, layout::SelectedDetails, std::wstring(text.emptyDetails), 9.0F,
                   MutedBlue, "SelectedDetails", TextAlignment::Center);
+    for (std::size_t i = 0; i < extraDetailsLabels_.size(); ++i)
+        extraDetailsLabels_[i] = &AddLabel(information,
+            {16.0F, 112.0F + 24.0F * static_cast<float>(i), 299.43F, 22.0F},
+            L"", 15.0F, DeepBlue, "ExtraDetails" + std::to_string(i));
 }
 
 void MusicSelectView::SetBackgroundPreview(const std::filesystem::path &path)

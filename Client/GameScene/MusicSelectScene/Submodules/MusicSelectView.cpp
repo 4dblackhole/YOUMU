@@ -110,6 +110,7 @@ void MusicSelectView::Shutdown() noexcept
     modeSelector_ = nullptr;
     modeSelectorId_ = 0;
     selectedDetailsLabel_ = nullptr;
+    extraDetailsLabels_ = {};
     selectedCreatorLabel_ = nullptr;
     selectedPatternLabel_ = nullptr;
     selectedArtistLabel_ = nullptr;

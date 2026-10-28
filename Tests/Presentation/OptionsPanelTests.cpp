@@ -408,6 +408,23 @@ namespace
         panel.HandleKey(VK_DELETE, router);
         panel.HandleKey(VK_RETURN, router);
         Check(settings.Values().globalOffsetMs == -5 && panel.OwnsKeyboard(), "Invalid draft preserves saved offset.");
+        click("Options.Taiko.OpenKeys");
+        canvas.Update(0);
+        {
+            const auto bounds = FindNode(canvas.Root(), "Options.Key.Taiko.LeftDon.0").BoundsInCanvas();
+            PointerInput pointer{};
+            pointer.available = true;
+            pointer.position = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
+            pointer.leftButtonDown = pointer.leftButtonPressed = true;
+            router.Process(canvas, pointer);
+            Check(router.HoveredNode() == FindNode(canvas.Root(), "Options.Key.Taiko.LeftDon.0").Id(),
+                  "Visible key panel receives pointer input above the options panel.");
+            pointer.leftButtonDown = pointer.leftButtonPressed = false;
+            pointer.leftButtonReleased = true;
+            router.Process(canvas, pointer);
+            static_cast<void>(canvas.TakeActions());
+            router.Reset(canvas);
+        }
         click("Options.Key.Taiko.LeftDon.0");
         panel.HandleKey('K', router);
         Check(panel.OwnsKeyboard() && !settings.Values().modeKeys.contains("Taiko"),
@@ -420,7 +437,14 @@ namespace
         click("Options.Key.Taiko.LeftDon.1");
         panel.HandleKey('A', router);
         Check(settings.Values().modeKeys.at("Taiko").at("LeftDon")[1] == 'A', "Auxiliary key saved independently.");
+        click("Options.Key.Taiko.LeftDon.3");
+        panel.HandleKey('G', router);
+        Check(settings.Values().modeKeys.at("Taiko").at("LeftDon")[3] == 'G', "Third auxiliary slot saved.");
+        click("Options.Key.Taiko.LeftDon.3.Clear");
+        Check(settings.Values().modeKeys.at("Taiko").at("LeftDon")[3] == 0, "Auxiliary slot can be cleared independently.");
         click("Options.Key.Taiko.RightDon.0");
+        panel.HandleKey(VK_ESCAPE, router);
+        panel.HandleKey(VK_ESCAPE, router);
         panel.HandleKey(VK_ESCAPE, router);
         panel.Update(.2);
         Check(!panel.IsVisible() && !panel.OwnsKeyboard() &&

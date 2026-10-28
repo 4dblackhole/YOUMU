@@ -4,6 +4,8 @@
 
 - Penpot 파일: `3be9e5e1-190f-8090-8008-7468d9cc1bc8` (My Rhythm Game).
 - `Music Select · Sky`: 페이지 `3be9e5e1-190f-8090-8008-7468d9cc1bc9`.
+- 곡 상세 JudgeLevel/BPM 범위/길이: 보드 `e6833909-d4a4-8067-8008-dc78ac88d495`.
+- Taiko 키 설정: 보드 `e6833909-d4a4-8067-8008-dc77adeae44a`.
 - `Gameplay · Sky`: 페이지 `618d0170-ff55-8025-8008-80646ceaa9d9`.
 - 같은 페이지의 일시정지 시안: 보드 `b0134a97-87eb-801a-8008-cca341851088`
   (`인게임 일시정지 · Pause Controls · 1920×1080`). 720×336px 중앙 메뉴,

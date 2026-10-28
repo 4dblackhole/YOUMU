@@ -7,13 +7,14 @@
 #include "Texts/TextCatalog.h"
 
 #include <optional>
+#include <array>
 #include <vector>
 
 class OptionsPanel final
 {
   public:
-    OptionsPanel(TextCatalog &texts, OptionSettings &options) noexcept
-        : texts_(texts), options_(options) {}
+    OptionsPanel(TextCatalog &texts, OptionSettings &options, ScreenVisual2DManager *visuals = nullptr) noexcept
+        : texts_(texts), options_(options), visuals_(visuals) {}
 
     void Initialize(Visual2DCanvas &canvas, AudioSystem &audio,
                     IWindowControl *window = nullptr);
@@ -38,6 +39,7 @@ class OptionsPanel final
     void SelectResolution(std::size_t index);
     void CreateKeyControls();
     void RefreshKeyControls();
+    void RefreshKeyImages();
     void CaptureKey(std::uint16_t key);
     void CreateOffsetControls();
     void CreateSongsControls();
@@ -72,6 +74,7 @@ class OptionsPanel final
         std::string mode, binding, displayName;
         std::size_t slot{};
         Visual2DNode *label{}, *button{};
+        Visual2DNode *clear{};
     };
     std::vector<ModeInputLayout> inputLayouts_;
     std::vector<KeyRow> keyRows_;
@@ -87,6 +90,7 @@ class OptionsPanel final
 
     TextCatalog &texts_;
     OptionSettings &options_;
+    ScreenVisual2DManager *visuals_{};
     AudioSystem *audio_{};
     Visual2DCanvas *canvas_{};
     enum class Status
@@ -100,6 +104,10 @@ class OptionsPanel final
     Status status_{};
     std::string statusDetail_;
     Visual2DNode *panel_{};
+    Visual2DNode *keyPanel_{}, *openKeyPanel_{}, *closeKeyPanel_{}, *keyPanelStatus_{};
+    Visual2DNode *keyPanelImage_{};
+    Visual2DNode *keyPanelTitle_{};
+    std::array<Visual2DNode *, 4> keyFaceImages_{};
     Visual2DNode *title_{};
     Visual2DNode *languageLabel_{};
     Visual2DNode *skinLabel_{};

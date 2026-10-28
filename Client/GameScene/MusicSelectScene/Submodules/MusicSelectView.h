@@ -5,6 +5,7 @@
 #include "SongSelectPurpose.h"
 #include "Texts/TextCatalog.h"
 #include <filesystem>
+#include <array>
 #include <vector>
 #include <future>
 #include "Records/PlayRecordStore.h"
@@ -24,7 +25,7 @@ class MusicSelectView final
                     SongSelectPurpose purpose, TextCatalog &texts,
                     OptionSettings &options, std::filesystem::path recordDatabase = {})
         : selection_(state), purpose_(purpose), screenVisuals_(visuals), texts_(texts),
-          settings_(options), options_(texts, options), recordDatabase_(std::move(recordDatabase))
+          settings_(options), options_(texts, options, &visuals), recordDatabase_(std::move(recordDatabase))
     {
     }
     void SetVisible(bool visible)
@@ -176,6 +177,7 @@ class MusicSelectView final
     Visual2DNode *selectedPatternLabel_{};
     Visual2DNode *selectedCreatorLabel_{};
     Visual2DNode *selectedDetailsLabel_{};
+    std::array<Visual2DNode *, 3> extraDetailsLabels_{};
     Visual2DNode *modeSelector_{};
     NodeId modeSelectorId_{};
     Visual2DNode *optionButton_{};

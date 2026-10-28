@@ -29,6 +29,7 @@ struct GameplayLaunchRequest
     double backgroundOffsetX{}, backgroundOffsetY{};
 
     PlayOptions playOptions;
+    std::wstring patternTitle;
 
     [[nodiscard]] bool IsValid() const noexcept
     {
@@ -43,6 +44,7 @@ struct GameplayLaunchRequest
         mode.clear();
         songTitle.clear();
         patternCreator.clear();
+        patternTitle.clear();
         globalOffsetMs = 0;
         playOptions = {};
         inputKeys.clear();

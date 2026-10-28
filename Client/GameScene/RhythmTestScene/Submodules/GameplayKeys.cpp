@@ -66,9 +66,9 @@ void GameplayPresenter::UpdateInputPresentation(const InputState &input, const d
         const auto auxiliary = std::span(keys).subspan(1);
         const bool primaryPressed = input.IsKeyDown(keys.front());
         const bool secondaryPressed =
-            std::ranges::any_of(auxiliary, [&input](auto key) { return input.IsKeyDown(key); });
+            std::ranges::any_of(auxiliary, [&input](auto key) { return key != 0 && input.IsKeyDown(key); });
         const bool pressedThisFrame =
-            std::ranges::any_of(keys, [&input](auto key) { return input.WasKeyPressed(key); });
+            std::ranges::any_of(keys, [&input](auto key) { return key != 0 && input.WasKeyPressed(key); });
         const Color &faceColor =
             primaryPressed ? InputKeyStrongColors[index]
                            : (secondaryPressed ? InputKeyWeakColors[index] : InputKeyBaseColors[index]);

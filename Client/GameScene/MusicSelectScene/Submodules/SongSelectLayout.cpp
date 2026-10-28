@@ -146,6 +146,10 @@ void MusicSelectView::UpdateSongInformationLayout()
     selectedDetailsLabel_->SetBounds(ScaleTopLeftBounds(
         {16.0F, layout::SelectedDetails.y, informationInnerWidth, layout::SelectedDetails.height},
         difficultyInformation_->NodeSize().height));
+    for (std::size_t i = 0; i < extraDetailsLabels_.size(); ++i)
+        extraDetailsLabels_[i]->SetBounds(ScaleTopLeftBounds(
+            {16.0F, 112.0F + 24.0F * static_cast<float>(i), informationInnerWidth, 22.0F},
+            difficultyInformation_->NodeSize().height));
 }
 
 void MusicSelectView::UpdateSongBrowserLayout()

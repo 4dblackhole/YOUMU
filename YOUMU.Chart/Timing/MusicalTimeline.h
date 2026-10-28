@@ -44,6 +44,7 @@ class MusicalTimeline final
     {
         return baseBpm_;
     }
+    [[nodiscard]] std::pair<double, double> BpmRange() const noexcept;
     [[nodiscard]] bool IsPositionActive(MusicalPosition position) const;
     [[nodiscard]] bool IsEffectActive(const EffectCommand &command) const;
     [[nodiscard]] MeasureTimeSpan MeasureSpan(std::int64_t measure) const;

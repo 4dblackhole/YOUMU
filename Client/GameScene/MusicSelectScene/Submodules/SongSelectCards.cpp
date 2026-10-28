@@ -193,6 +193,8 @@ void MusicSelectView::RefreshSelectionPresentation()
         RequireComponent<MarqueeTextComponent>(*selectedArtistLabel_);
     const auto &text = MusicSelect(texts_);
     const std::wstring launchError = LaunchErrorText(selection_, text);
+    for (auto *label : extraDetailsLabels_)
+        if (label) RequireComponent<TextVisualComponent>(*label).SetText(L"");
     if (selection_.visibleSongIndices_.empty())
     {
         SetBackgroundPreview({});
@@ -250,6 +252,26 @@ void MusicSelectView::RefreshSelectionPresentation()
     RequireComponent<TextVisualComponent>(*selectedDetailsLabel_)
         .SetText(std::vformat(text.detailsFormat,
                               std::make_wformat_args(bpm, noteCount, mode)));
+    const auto range = !selected.bpmRange ? L"—"
+        : selected.bpmRange->first == selected.bpmRange->second ? BpmText(selected.bpmRange->first)
+        : BpmText(selected.bpmRange->first) + L" – " + BpmText(selected.bpmRange->second);
+    std::wstring duration = L"—";
+    if (selection_.selectedDurationMicroseconds_)
+    {
+        const auto seconds = *selection_.selectedDurationMicroseconds_ / 1'000'000;
+        duration = std::format(L"{}:{:02}", seconds / 60, seconds % 60);
+    }
+    const std::array values{std::format(L"{}  {:.2f}", texts_.Get("MusicSelect.judgeLevelLabel"),
+                                        selected.pattern.judgementLevel.Value()),
+                            std::wstring(texts_.Get("MusicSelect.bpmRangeLabel")) + L"  " + range,
+                            std::wstring(texts_.Get("MusicSelect.durationLabel")) + L"  " + duration};
+    for (std::size_t i = 0; i < values.size(); ++i)
+        if (extraDetailsLabels_[i])
+        {
+            auto &label = RequireComponent<TextVisualComponent>(*extraDetailsLabels_[i]);
+            label.SetText(values[i]);
+            texts_.ApplyFont(label);
+        }
 }
 
 void MusicSelectView::RefreshSearchPresentation()

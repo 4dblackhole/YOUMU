@@ -458,17 +458,22 @@ namespace
         class Rendering final : public Visual2DRenderSystem
         {
           public:
-            Rendering(Visual2DRenderSystem &inner, bool &shown)
-                : inner_(inner), shown_(shown), resumesBefore_(musicResumes) {}
+            Rendering(Visual2DRenderSystem &inner, bool &shown, bool &intro)
+                : inner_(inner), shown_(shown), intro_(intro), resumesBefore_(musicResumes) {}
             ImageHandle LoadImage(const std::filesystem::path &path) override { return inner_.LoadImage(path); }
             bool PrepareImages(std::span<const std::filesystem::path> paths, std::string &error) override
             { return inner_.PrepareImages(paths, error); }
             Size GetImageSize(ImageHandle image) const noexcept override { return inner_.GetImageSize(image); }
             void SubmitScreen(const Visual2DCanvas &canvas, const RenderContext &ctx, Point origin, std::uint32_t z) override
             {
-                Check(std::chrono::steady_clock::now() >= samplesReadyAt && musicResumes > resumesBefore_,
-                      "The first playable screen must wait for cold samples and the scheduled music start.");
-                shown_ = true;
+                if (Find(canvas.Root(), "Loading.Song"))
+                    intro_ = Find(canvas.Root(), "Loading.Pattern") != nullptr;
+                if (Find(canvas.Root(), "Hud.Accuracy"))
+                {
+                    Check(std::chrono::steady_clock::now() >= samplesReadyAt && musicResumes > resumesBefore_,
+                          "The first playable screen must wait for cold samples and the scheduled music start.");
+                    shown_ = true;
+                }
                 inner_.SubmitScreen(canvas, ctx, origin, z);
             }
             void SubmitPlane(const Visual2DCanvas &canvas, const RenderContext &ctx, const DirectX::XMFLOAT4X4 &world,
@@ -481,6 +486,7 @@ namespace
           private:
             Visual2DRenderSystem &inner_;
             bool &shown_;
+            bool &intro_;
             std::size_t resumesBefore_{};
         };
       public:
@@ -495,7 +501,7 @@ namespace
         }
         void Initialize(const EngineServices &services) override
         {
-            rendering_ = std::make_unique<Rendering>(services.visual2DRendering, shown_);
+            rendering_ = std::make_unique<Rendering>(services.visual2DRendering, shown_, intro_);
             visuals_.Initialize(*rendering_, {1280, 720});
             auto store = std::make_shared<GameplayLaunchStore>();
             PlaySessionOptions options;
@@ -528,6 +534,7 @@ namespace
             scene_->Update({ctx.deltaSeconds, ctx.totalSeconds, ctx.updateIndex, input_, ctx.audio, ctx.performance}, scenes_);
             if (sent_)
             {
+                Check(intro_, "The loading introduction is visible before gameplay.");
                 Check(sampleStarts == before + 2, "The first visible-frame Don and Kat must both request a sample.");
                 if (accelerated_)
                     Check(!stretchRequests.empty() && stretchRequests.back()==1.5 && musicStarts.back().pitch==1.0F &&
@@ -551,7 +558,7 @@ namespace
       private:
         bool &verified_;
         bool accelerated_{};
-        bool shown_{}, sent_{};
+        bool shown_{}, sent_{}, intro_{};
         InputState input_;
         ScreenVisual2DManager visuals_;
         AudioPlaybackManager playback_;

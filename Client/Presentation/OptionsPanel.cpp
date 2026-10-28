@@ -23,7 +23,8 @@ void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio,
     for (const auto &layout : inputLayouts_)
     {
         contentHeight_ += 52.0F;
-        for (const auto &binding : layout.bindings)
+        if (layout.modeId == "Taiko") contentHeight_ += 84.0F;
+        else for (const auto &binding : layout.bindings)
             contentHeight_ += 84.0F * static_cast<float>(binding.keys.size());
     }
     auto &leftAnchor = canvas.AnchorNode(Anchor::MiddleLeft);
@@ -151,6 +152,9 @@ void OptionsPanel::Shutdown() noexcept
     languageLabel_ = nullptr;
     title_ = nullptr;
     panel_ = nullptr;
+    keyPanel_ = openKeyPanel_ = closeKeyPanel_ = keyPanelStatus_ = nullptr;
+    keyPanelImage_ = keyPanelTitle_ = nullptr;
+    keyFaceImages_ = {};
     panelId_ = {};
     languageComboId_ = {};
     skinComboId_ = {};
@@ -175,6 +179,7 @@ void OptionsPanel::Toggle()
         return;
     }
     targetOpen_ = !targetOpen_;
+    if (keyPanel_) keyPanel_->SetVisible(false);
     CancelKeyboardEdit();
     if (targetOpen_)
     {
@@ -228,6 +233,13 @@ bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inpu
         }
         return false;
     }
+    if (keyPanel_ && keyPanel_->IsVisible())
+    {
+        if (captureRow_) CancelKeyboardEdit();
+        else keyPanel_->SetVisible(false);
+        inputRouter.Reset(*canvas_);
+        return true;
+    }
     CancelKeyboardEdit();
     // Closing is idempotent: another ESC during the slide must not reopen it.
     targetOpen_ = false;
@@ -255,6 +267,8 @@ bool OptionsPanel::ProcessInput(const InputState &input,
         if (consumed)
             return true;
     }
+    if (keyPanel_ && keyPanel_->IsVisible())
+        return !canvasPointer || !keyPanel_->BoundsInCanvas().Contains(*canvasPointer);
     if (!IsVisible() || panel_ == nullptr || !canvasPointer.has_value() ||
         !panel_->BoundsInCanvas().Contains(*canvasPointer))
     {
@@ -527,6 +541,12 @@ void OptionsPanel::RefreshStatus()
     auto &label = RequireComponent<TextVisualComponent>(*statusLabel_);
     label.SetText(value);
     texts_.ApplyFont(label);
+    if (keyPanelStatus_)
+    {
+        auto &keyStatus = RequireComponent<TextVisualComponent>(*keyPanelStatus_);
+        keyStatus.SetText(value);
+        texts_.ApplyFont(keyStatus);
+    }
     statusLabel_->SetVisible(!value.empty());
 }
 

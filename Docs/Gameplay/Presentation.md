@@ -22,6 +22,8 @@ Result로는 값 데이터만 이동합니다. 통계/그래프와 소유권은 
 
 플레이 화면의 기준 시안과 런타임 PNG 자산 원본은 Penpot의
 [Gameplay · Sky](https://design.penpot.app/#/workspace?team-id=3be9e5e1-190f-8090-8008-7464803e8b40&file-id=3be9e5e1-190f-8090-8008-7468d9cc1bc8&page-id=618d0170-ff55-8025-8008-80646ceaa9d9)에 있습니다.
+세션·이미지·오디오를 준비하는 동안 별도 Canvas에 곡명과 패턴명, 준비된 곡 배경을 표시합니다.
+실제 플레이 Canvas는 자원 준비 후 Gameplay 상태에서 표시합니다.
 기존 곡 선택 화면의 Sky 색상과 타이포그래피를 유지하면서 짙은 밤하늘색 Lane,
 ScrollGear 프레임, 마디선, 입력 키, 키빔, 롱노트 tick과 롤/큰 롤/Balloon/DengDeng 남은
 횟수 표시를 한 화면 계층으로 구성합니다.

@@ -157,10 +157,12 @@ Scene마다 필요한 색상군과 alpha 차이는 이름으로 구분하여 기
 [RulesetBindingsSection](https://github.com/ppy/osu/blob/master/osu.Game/Overlays/Settings/Sections/Input/RulesetBindingsSection.cs)과
 [VariantBindingsSubsection](https://github.com/ppy/osu/blob/master/osu.Game/Overlays/Settings/Sections/Input/VariantBindingsSubsection.cs)입니다.
 모드/variant 단위의 섹션을 만들고 모드가 제공한 입력과 기본 binding으로 행을 구성합니다.
-현재 Taiko 기본 4키(D/F/J/K)와 보조 4키(C/V/N/M)를 모드별 행으로 표시합니다.
-행의 버튼을 클릭하고 새 키를 누르면 저장합니다. 동일 모드의 다른 기본/보조 키와
+Taiko 키 설정 버튼은 Gameplay 입력 패널 이미지와 네 열의 키 설정 패널을 엽니다.
+각 열의 첫 칸은 메인 키, 나머지 세 칸은 각각 비울 수 있는 보조 키입니다.
+초기 메인 키는 D/F/J/K, 첫 보조 키는 C/V/N/M입니다. 키 칸을 선택하고 새 키를
+누르면 저장하며 보조 키의 × 버튼은 해당 칸을 비웁니다. 같은 모드의 다른 키와
 중복할 수 없으며 기존 게임 제어 ESC/Space/R/F7은 예약합니다. ESC는 키 지정 대기를
-취소하고 패널을 닫습니다. 사용자 입력은 단일 Win32 Virtual-Key이며 키 조합/마우스 binding은
+취소하거나 키 설정 패널을 닫습니다. 사용자 입력은 단일 Win32 Virtual-Key이며 키 조합/마우스 binding은
 이번 범위에 없습니다. DLL 로더 자체는 아직 구현하지 않았습니다.
 
 `IPlayGameMode::InputLayout`은 stable mode/binding ID, 표시 이름, semantic action,
@@ -228,6 +230,7 @@ DriverName=
 - `Display/Width,Height`: 게임 화면 픽셀 크기. 누락 시 1280×720.
 - `Keys.<mode ID>`: binding ID별 십진 Virtual-Key 목록. 첫 값은 기본 키, 이후는 보조 키입니다.
   목록을 저장하지 않은 입력은 모드의 기본값을 사용하며 변경한 행만 기록합니다.
+  Taiko의 빈 보조 칸은 0으로 저장하며 기존 두 키 설정은 나머지 칸을 비운 채 읽습니다.
   현재 설치되지 않은 모드의 유효한 키 설정도 저장/읽기에서 보존합니다.
   설치된 모드의 알 수 없는 binding/개수·키 충돌·예약 키는 오류입니다.
   위 예시는 기본 Taiko 값이며 실제 최초 파일에는 Keys 섹션을 만들지 않습니다.

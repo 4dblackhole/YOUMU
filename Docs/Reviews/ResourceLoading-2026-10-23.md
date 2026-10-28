@@ -12,7 +12,7 @@ RhythmTimer와 Raw Input timestamp, 음악의 QPC/DSP 시작 여유는 유지합
 | 소유자 | 역할 |
 | --- | --- |
 | `SongCatalogLoader` | KeepAlive Scene의 단일 목록 worker. 최신 루트만 게시하고 경로와 데이터만 worker에 전달 |
-| `SongCatalog::MetadataIndex` | 변경한 원본을 전체 파싱·검증하고 목록용 메타데이터, 노트 수와 진단만 보관. 기본 `SongCatalog::Load`는 전체 문서 API 유지 |
+| `SongCatalog::MetadataIndex` | 변경한 원본을 전체 파싱·검증하고 목록용 메타데이터, 노트 수, 유효 BPM 범위와 진단을 보관. 기본 `SongCatalog::Load`는 전체 문서 API 유지 |
 | `SongCatalogIndex.cpp` | 버전·루트·체크섬을 검증하는 재생성 가능한 디스크 캐시. 오류/쓰기 불가 시 원본 로딩 계속 |
 | `PlaySessionLoader` | 선택 패턴/YME 읽기·검증·세션 구성. 작업이 끝난 future만 Poll로 이동 |
 | `MusicSelectScene` | GO의 세션 로딩을 worker에 요청. 선택 변경·루트 변경·Scene 이탈 시 이전 진입 결과를 폐기. 성공한 세션만 store에 인계 |

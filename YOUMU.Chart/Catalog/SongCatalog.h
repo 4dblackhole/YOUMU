@@ -17,6 +17,7 @@ struct SongCatalogPattern
     std::optional<std::filesystem::path> effectPath;
     PatternDocument pattern;
     std::optional<std::size_t> noteCount;
+    std::optional<std::pair<double, double>> bpmRange;
 };
 
 struct SongCatalogEntry
@@ -65,6 +66,7 @@ public:
         std::uintmax_t size{};
         std::shared_ptr<const ParseResult<Document>> parsed;
         std::size_t noteCount{};
+        std::optional<std::pair<double, double>> bpmRange;
     };
     mutable std::map<std::filesystem::path, CachedDocument<MusicDocument>> musicCache_;
     mutable std::map<std::filesystem::path, CachedDocument<PatternDocument>> patternCache_;

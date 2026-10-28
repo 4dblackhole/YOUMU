@@ -5,6 +5,16 @@ namespace
     constexpr double PreviewFadeSeconds = 0.2;
 }
 
+std::optional<std::uint64_t> SongPreviewController::DurationFor(std::size_t catalogIndex) const
+{
+    for (const auto &slot : previewSlots_)
+    {
+        if (slot.clip && slot.catalogIndex == catalogIndex && slot.durationMicroseconds)
+            return slot.durationMicroseconds;
+    }
+    return {};
+}
+
 void SongPreviewController::SyncPreviewToFocusedSong(const SongSelectionState &selection,
                                                      bool active)
 {
@@ -36,6 +46,8 @@ void SongPreviewController::SyncPreviewToFocusedSong(const SongSelectionState &s
         pendingPreviewSlot_.reset();
         if (pending.catalogIndex == catalogIndex && state == AudioClipLoadState::Ready)
         {
+            std::uint64_t duration{};
+            if (pending.clip->GetDurationMicroseconds(duration, error)) pending.durationMicroseconds = duration;
             PlayPendingPreview(slot);
             return;
         }

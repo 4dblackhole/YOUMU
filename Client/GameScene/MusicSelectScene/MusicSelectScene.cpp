@@ -69,6 +69,14 @@ void MusicSelectScene::Update(const UpdateContext &context, SceneManager &scenes
     preview_->UpdatePreviewAudio(context.deltaSeconds);
     const auto command = view_->Update(context.input, context.deltaSeconds);
     preview_->SyncPreviewToFocusedSong(*selection_, active_);
+    std::optional<std::uint64_t> duration;
+    if (selection_->focusedSongPosition_ < selection_->visibleSongIndices_.size())
+        duration = preview_->DurationFor(selection_->visibleSongIndices_[selection_->focusedSongPosition_]);
+    if (duration != selection_->selectedDurationMicroseconds_)
+    {
+        selection_->selectedDurationMicroseconds_ = duration;
+        view_->RefreshSelectionPresentation();
+    }
     if (command == SongSelectCommand::Back)
     {
         if (!scenes.ChangeScene(LogoSceneId))
@@ -186,6 +194,7 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
         song.audioPath,      pattern.pattern.mode,
         SongTitle(song),     pattern.pattern.makers.empty() ? L"" : DecodeDisplayText(pattern.pattern.makers.front())};
     request.globalOffsetMs = options_.Values().globalOffsetMs;
+    request.patternTitle = PatternName(pattern);
     request.playOptions = selection_->playOptions_;
     request.songsRoot = catalogRoot_;
     if (!pattern.pattern.backgroundFile.empty())

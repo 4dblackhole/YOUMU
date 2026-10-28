@@ -15,7 +15,8 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
           request ? request->Snapshot() : throw std::invalid_argument("Gameplay requires a launch store."), playback,
           debug, request ? request->TakeValidatedSession() : nullptr)),
       view_(std::make_unique<GameplayPresenter>(visuals, texts)),
-      pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts))
+      pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts)),
+      visuals_(visuals), texts_(texts), launch_(request->Snapshot())
 {
     const auto launch = request->Snapshot();
     view_->ConfigureBackground(launch.backgroundPath, launch.backgroundOffsetX, launch.backgroundOffsetY);
@@ -24,7 +25,47 @@ RhythmTestScene::~RhythmTestScene() = default;
 void RhythmTestScene::Initialize(const EngineServices &services)
 {
     services_.emplace(services);
+    loadingCanvas_ = visuals_.CreateOwnedCanvas({{1280, 720}, CanvasScaleMode::FixedHeight});
+    auto *canvas = loadingCanvas_.Get();
+    if (!canvas) throw std::runtime_error("Failed to create loading canvas.");
+    auto &root = canvas->AnchorNode(Anchor::Center);
+    const auto logical = canvas->LogicalSize();
+    loadingBackground_ = &CreatePanel(root, {-logical.width * .5F, -logical.height * .5F,
+                                              logical.width, logical.height}, "Loading.Background");
+    loadingBackground_->GetComponent<SpriteVisualComponent>()->SetTint({.94F, .97F, 1, 1});
+    auto &plate = CreatePanel(root, {-550, -70, 1100, 155}, "Loading.TitlePlate");
+    plate.GetComponent<SpriteVisualComponent>()->SetTint({.97F, .99F, 1, .94F});
+    auto &title = CreateLabel(root, {-520, 0, 1040, 65}, launch_.songTitle, "Loading.Song");
+    auto &pattern = CreateLabel(root, {-520, -55, 1040, 45},
+                                launch_.patternTitle.empty() ? launch_.patternPath.stem().wstring() : launch_.patternTitle,
+                                "Loading.Pattern");
+    for (auto *node : {&title, &pattern})
+    {
+        auto &text = *node->GetComponent<TextVisualComponent>();
+        texts_.ApplyFont(text);
+        text.SetHorizontalAlignment(TextAlignment::Center);
+        text.SetTextColor({.16F, .32F, .46F, 1});
+    }
+    title.GetComponent<TextVisualComponent>()->SetFontSize(40);
+    pattern.GetComponent<TextVisualComponent>()->SetFontSize(26);
     static_cast<void>(PreparePresentation());
+}
+void RhythmTestScene::PrepareLoadingBackground()
+{
+    if (loadingBackgroundReady_ || launch_.backgroundPath.empty() || !services_) return;
+    std::string error;
+    const std::array paths{launch_.backgroundPath};
+    const bool ready = services_->visual2DRendering.PrepareImages(paths, error);
+    if (!error.empty()) { loadingBackgroundReady_ = true; return; }
+    if (!ready) return;
+    try
+    {
+        auto &sprite = *loadingBackground_->GetComponent<SpriteVisualComponent>();
+        sprite.SetTint({1, 1, 1, 1});
+        sprite.SetImage(visuals_.RegisterImage(launch_.backgroundPath));
+    }
+    catch (const std::exception &) {}
+    loadingBackgroundReady_ = true;
 }
 bool RhythmTestScene::PreparePresentation()
 {
@@ -48,13 +89,16 @@ bool RhythmTestScene::PreparePresentation()
 void RhythmTestScene::BeginScene()
 {
     view_->SetVisible(presentationReady_ && controller_->CurrentState() != PlayState::Loading);
+    static_cast<void>(loadingCanvas_.SetVisible(true));
 }
 void RhythmTestScene::EndScene() noexcept
 {
     view_->SetVisible(false);
+    static_cast<void>(loadingCanvas_.SetVisible(false));
 }
 void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
 {
+    PrepareLoadingBackground();
     if (!presentationReady_ && (context.totalSeconds < nextPreparationPoll_ || !PreparePresentation()))
     {
         if (context.totalSeconds >= nextPreparationPoll_)
@@ -66,6 +110,7 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
     }
     controller_->Update(context);
     view_->SetVisible(controller_->CurrentState() != PlayState::Loading);
+    static_cast<void>(loadingCanvas_.SetVisible(controller_->CurrentState() == PlayState::Loading));
     UpdatePauseMenu(context, scenes);
     if (controller_->CurrentState() == PlayState::Gameplay)
         view_->AdvanceEffects(context.deltaSeconds);
@@ -129,11 +174,20 @@ void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
         services_->windowHeight = height;
     }
     view_->OnResize(width, height);
+    if (loadingBackground_ && loadingCanvas_.Get())
+    {
+        const auto logical = loadingCanvas_.Get()->LogicalSize();
+        loadingBackground_->SetBounds({-logical.width * .5F, -logical.height * .5F,
+                                       logical.width, logical.height});
+    }
     pauseMenu_->OnResize(width, height);
 }
 void RhythmTestScene::Shutdown() noexcept
 {
     pauseMenu_->Shutdown();
+    loadingBackground_ = nullptr;
+    loadingCanvas_.Reset();
+    loadingBackgroundReady_ = false;
     view_->Shutdown(); // Release session observers before the session.
     controller_->Shutdown();
     services_.reset();

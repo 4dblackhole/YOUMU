@@ -114,7 +114,9 @@ namespace
             for (const auto &[id, keys] : bindings)
             {
                 if (!IsIdentifier(id) || keys.empty() ||
-                    std::ranges::any_of(keys, [](auto key) { return key < 8 || key > 254; }))
+                    std::ranges::any_of(keys, [&mode](auto key) {
+                        return (key != 0 || mode != "Taiko") && (key < 8 || key > 254);
+                    }))
                     throw std::runtime_error("Invalid mode input keys.");
             }
         }

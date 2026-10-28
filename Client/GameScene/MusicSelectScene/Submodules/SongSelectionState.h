@@ -27,6 +27,7 @@ class SongSelectionState final
     std::string selectedMode_{"Taiko"};
     SongCatalogLoadResult catalog_;
     bool catalogLoading_{};
+    std::optional<std::uint64_t> selectedDurationMicroseconds_;
     std::vector<std::size_t> visibleSongIndices_;
     std::size_t focusedSongPosition_{};
     std::size_t selectedPatternIndex_{};

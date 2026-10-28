@@ -134,18 +134,21 @@ namespace tests
         WriteTextFile(root / "valid.mp3", "audio-placeholder");
         WriteTextFile(effect, "Version: 1\n");
         std::string source = "Version: 1\nMusic metadata: valid.ymm\nEffect file: valid.yme\n"
-            "Pattern Name: Valid\nMode: Taiko\nBase BPM: 120\nJudgeLevel: 40.37\n[Pattern]\n0/1,1,0\n";
+            "Pattern Name: Valid\nMode: Taiko\nBase BPM: 120\nJudgeLevel: 40.37\n[Time Signature]\n1/4,#bpm 250\n1/4,#bpm 180\n[Pattern]\n0/1,1,0\n";
         WriteTextFile(pattern, source);
         const auto load = [&] { return SongCatalog::MetadataIndex(cache).Load(root); };
         const auto first = load();
         Require(first.Succeeded() && first.PatternCount() == 1 &&
             first.songs.front().patterns.front().pattern.notes.empty() &&
             first.songs.front().patterns.front().noteCount == 1 &&
+            first.songs.front().patterns.front().bpmRange == std::pair{120.0, 180.0} &&
             first.songs.front().patterns.front().pattern.judgementLevel == JudgeLevel{40.37},
             "The metadata index must preserve list metadata and counts without retaining note bodies.");
         Require(std::filesystem::file_size(cache) > 24, "The index must be persisted outside source songs.");
         const auto savedAt = std::filesystem::last_write_time(cache);
-        Require(load().PatternCount() == 1 && std::filesystem::last_write_time(cache) == savedAt,
+        const auto restored = load();
+        Require(restored.PatternCount() == 1 && restored.songs.front().patterns.front().bpmRange == std::pair{120.0, 180.0} &&
+                std::filesystem::last_write_time(cache) == savedAt,
             "A new catalog instance must reuse the disk index without rewriting it.");
         const auto readVersion = [&](std::streamoff offset)
         {

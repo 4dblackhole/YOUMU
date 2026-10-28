@@ -1,6 +1,7 @@
 #include "Catalog/SongCatalog.h"
 
 #include "Parsing/ChartParser.h"
+#include "Timing/MusicalTimeline.h"
 
 #include <algorithm>
 #include <cctype>
@@ -97,9 +98,13 @@ namespace
         {
             auto parsed = parse(path);
             std::size_t noteCount{};
+            std::optional<std::pair<double, double>> bpmRange;
             if constexpr (requires { parsed.document.notes; })
             {
                 noteCount = parsed.document.notes.size();
+                if (parsed.Succeeded())
+                    try { bpmRange = MusicalTimeline(parsed.document).BpmRange(); }
+                    catch (const std::exception &) {}
                 if (metadataOnly)
                 {
                     decltype(parsed.document.notes){}.swap(parsed.document.notes);
@@ -110,7 +115,7 @@ namespace
             if constexpr (requires { parsed.document.commands; })
                 if (metadataOnly) parsed.document = {};
             return typename Cache::mapped_type{modified, size,
-                std::make_shared<const Parsed>(std::move(parsed)), noteCount};
+                std::make_shared<const Parsed>(std::move(parsed)), noteCount, bpmRange};
         };
         std::error_code error;
         const auto modified = file.last_write_time(error);
@@ -320,12 +325,14 @@ SongCatalogLoadResult SongCatalog::Load(
         const auto &path = file.path();
         std::shared_ptr<const ParseResult<PatternDocument>> parsed;
         std::size_t noteCount{};
+        std::optional<std::pair<double, double>> bpmRange;
         try
         {
             const auto cached = ParseChangedFile(patternCache_, file,
                 [&parser](const auto &file) { return parser.ParsePatternFile(file); }, cacheDirty_, metadataOnly_);
             parsed = cached.parsed;
             noteCount = cached.noteCount;
+            bpmRange = cached.bpmRange;
         }
         catch (const std::exception& exception)
         {
@@ -417,6 +424,7 @@ SongCatalogLoadResult SongCatalog::Load(
         }
         pattern.pattern = parsed->document;
         pattern.noteCount = noteCount;
+        pattern.bpmRange = bpmRange;
         result.songs[target->second].patterns.push_back(
             std::move(pattern));
     }

@@ -70,13 +70,14 @@ namespace song_select
         constexpr Rect PreviewEmpty{54.0F, 224.0F, 300.0F, 20.0F};
         constexpr Rect SelectedSong{404.0F, 38.0F, 331.43F, 38.0F};
         constexpr Rect SelectedArtist{404.0F, 80.0F, 331.43F, 24.0F};
-        constexpr Rect DifficultyInformation{404.0F, 136.0F, 331.43F, 126.0F};
+        constexpr Rect DifficultyInformation{404.0F, 136.0F, 331.43F, 196.0F};
         constexpr Rect DifficultyHeading{16.0F, 14.0F, 145.0F, 16.0F};
         constexpr Rect CreatorHeading{169.71F, 14.0F, 145.0F, 16.0F};
         constexpr Rect SelectedDifficulty{16.0F, 32.0F, 145.0F, 28.0F};
         constexpr Rect SelectedCreator{169.71F, 32.0F, 145.0F, 28.0F};
         constexpr Rect InformationDivider{16.0F, 70.0F, 299.43F, 1.0F};
         constexpr Rect SelectedDetails{16.0F, 86.0F, 299.43F, 22.0F};
+        constexpr Rect ExtraDetails{16.0F, 112.0F, 299.43F, 72.0F};
 
         constexpr Rect BrowserPanel{1359.71F, 20.0F, 506.29F, 926.0F};
         constexpr Rect SearchField{14.0F, 22.0F, 478.29F, 54.0F};

@@ -222,6 +222,7 @@ namespace
         TextRenderSystem textRendering;
         AudioSystem audio;
         TextCatalog texts;
+        texts.SetLanguage(Language::English);
         OptionSettings options("build/background-test-unused.ini");
         SongSelectionState selection;
         SongCatalogEntry song;
@@ -232,11 +233,22 @@ namespace
             pattern.pattern.backgroundFile = file;
             song.patterns.push_back(std::move(pattern));
         }
+        song.patterns.front().pattern.judgementLevel = JudgeLevel{40.37};
+        song.patterns.front().bpmRange = std::pair{120.0, 180.0};
+        selection.selectedDurationMicroseconds_ = 125'000'000;
         selection.catalog_.songs.push_back(std::move(song));
         MusicSelectView view(visuals, selection, SongSelectPurpose::Gameplay, texts, options);
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas) throw std::runtime_error("Background Canvas missing.");
+        const auto detail = [&](const char *name) -> std::wstring_view {
+            const auto *node = Find(canvas->Root(), name);
+            if (!node || !node->GetComponent<TextVisualComponent>()) throw std::runtime_error("Missing detail label.");
+            return node->GetComponent<TextVisualComponent>()->Text();
+        };
+        Check(detail("ExtraDetails0") == L"JudgeLevel  40.37" &&
+              detail("ExtraDetails1") == L"BPM range  120 – 180" &&
+              detail("ExtraDetails2") == L"Length  2:05", "Selected pattern details use real data.");
         auto *image = Find(canvas->Root(), "PreviewImage");
         auto *empty = Find(canvas->Root(), "PreviewEmpty");
         auto *title = Find(canvas->Root(), "PreviewTitle");

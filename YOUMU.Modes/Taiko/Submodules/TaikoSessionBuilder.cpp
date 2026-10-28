@@ -187,7 +187,7 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     std::map<PhysicalKey, NoteAction> inputMapping;
     for (const auto &binding : inputLayout.bindings)
         for (const auto key : binding.keys)
-            inputMapping.emplace(key, binding.action);
+            if (key != 0) inputMapping.emplace(key, binding.action);
     session->SetInputLayout(std::move(inputLayout));
     session->SetInputMapping(inputMapping);
     collector->SetInputMapping(std::move(inputMapping));
