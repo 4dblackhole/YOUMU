@@ -42,4 +42,5 @@ class RuleBasedNote final : public INote
     std::unique_ptr<INoteRule> rule_;
     std::shared_ptr<const INoteSoundPolicy> soundPolicy_;
     NoteAccuracy accuracy_;
+    bool poorOnTimingTarget_{};
 };

@@ -68,8 +68,9 @@ namespace tests
                     std::abs(*taiko->varianceMillisecondsSquared - 200.0 / 9) < 1e-9,
                 "Population variance must exclude automatic misses and free roll hits.");
         Require(taiko->groups[0].total == 2 && taiko->groups[1].total == 1 && taiko->groups[2].total == 1 &&
+                    taiko->notes[0].accuracy.Units() == 0 &&
                     taiko->notes[2].accuracy.Units() == 33'333'333 && taiko->notes[3].accuracy.Units() == 0,
-                "Groups retain equal logical-note weights and truncated partial roll accuracy.");
+                "A POOR normal note scores zero; groups retain partial roll accuracy and note weights.");
         const auto &inputs = taiko->summary.inputs;
         Require(inputs.size() == 8 && inputs[0].time.count() == -1'000'000 && inputs[3].time == inputs[4].time &&
                     inputs[3].edge == InputEdge::Pressed && inputs[4].edge == InputEdge::Released &&

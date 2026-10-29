@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Note/Submodules/INoteRule.h"
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
@@ -13,7 +14,8 @@ class HoldInputRule final : public INoteRule
     }
     HoldInputRule(NoteAction requiredAction, RhythmTime endTime,
                   std::vector<RhythmTime> tickTimes,
-                  JudgementGrade startMaximumGrade = JudgementGrade::Good);
+                  JudgementGrade startMaximumGrade = JudgementGrade::Good,
+                  std::optional<NoteAction> rejectedAction = std::nullopt);
 
     void Reset() noexcept override;
     [[nodiscard]] NoteState State() const noexcept override;
@@ -40,7 +42,11 @@ class HoldInputRule final : public INoteRule
     std::size_t nextTickIndex_{};
     bool started_{};
     bool held_{};
+    std::optional<NoteAction> rejectedAction_;
+    bool rejectedHeld_{};
     std::unordered_set<PhysicalKey> heldPhysicalKeys_;
+    std::unordered_set<PhysicalKey> rejectedPhysicalKeys_;
+    void ApplyHeldInput(const RhythmInputEvent &input);
     void AdvanceTicks(const NoteRuleContext &context, RhythmTime time,
                       NoteProcessResult &output);
 };

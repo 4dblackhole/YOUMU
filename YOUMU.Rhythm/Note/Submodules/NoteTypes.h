@@ -46,6 +46,7 @@ enum class NoteEventType : std::uint8_t
     TickMissed,
     Completed,
     Missed,
+    TickRejected,
 };
 
 struct NoteEvent

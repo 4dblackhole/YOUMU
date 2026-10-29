@@ -93,7 +93,8 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
             {
                 tickTimes.erase(tickTimes.begin());
             }
-            rule = std::make_unique<HoldInputRule>(ActionValue(*buzzAction), end, tickTimes);
+            rule = std::make_unique<HoldInputRule>(ActionValue(*buzzAction), end, tickTimes,
+                JudgementGrade::Good, ActionValue(*buzzAction == TaikoAction::Don ? TaikoAction::Kat : TaikoAction::Don));
             const std::string buzzSound = NoteSound(head, *buzzAction);
             auto buzzPolicy = std::make_shared<MappedNoteSoundPolicy>();
             buzzPolicy->Bind(

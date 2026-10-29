@@ -2,6 +2,8 @@
 #include "App/AssetPaths.h"
 #include "Audio/GameplayAudioRouter.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplayPresenter.h"
+#include "GameScene/RhythmTestScene/Submodules/GameplaySupport.h"
+#include "GameScene/ResultScene/Submodules/ResultViewFactory.h"
 #include "PhantomCore.h"
 #include <algorithm>
 #include <chrono>
@@ -30,8 +32,8 @@ namespace
     class ReplayGame final : public IGameClient
     {
       public:
-        ReplayGame(bool &verified, std::size_t &frames, bool effects, std::string songFilter)
-            : presenter_(visuals_, texts_), audio_(playback_), verified_(verified), frames_(frames), effects_(effects), songFilter_(std::move(songFilter))
+        ReplayGame(bool &verified, std::size_t &frames, bool effects, std::string songFilter, bool fullResult)
+            : presenter_(visuals_, texts_), audio_(playback_), verified_(verified), frames_(frames), effects_(effects), songFilter_(std::move(songFilter)), fullResult_(fullResult)
         {
         }
 
@@ -39,7 +41,8 @@ namespace
         {
             EngineConfig config;
             config.windowTitle = L"All-notes gameplay regression";
-            config.showWindow = false;
+            config.showWindow = fullResult_;
+            if (fullResult_) { config.windowWidth = 1920; config.windowHeight = 1080; }
             config.renderRateOverrideHz = 60;
             config.audio.allowNoSoundFallback = false;
             return config;
@@ -47,6 +50,7 @@ namespace
 
         void Initialize(const EngineServices &services) override
         {
+            services_.emplace(services);
             visuals_.Initialize(services.visual2DRendering,
                                 {static_cast<float>(services.windowWidth),
                                  static_cast<float>(services.windowHeight)});
@@ -60,6 +64,10 @@ namespace
                     song = &entry;
             if (!song)
                 throw std::runtime_error("Actual engine replay requires the selected catalog song.");
+            if (!song->music.names.empty()) resultContext_.songTitle = Utf8ToWide(song->music.names.front(), L"");
+            if (!song->music.artists.empty()) resultContext_.songArtist = Utf8ToWide(song->music.artists.front(), L"");
+            if (!song->patterns.empty() && !song->patterns.front().pattern.makers.empty())
+                resultContext_.patternCreator = Utf8ToWide(song->patterns.front().pattern.makers.front(), L"");
             auto loaded = TaikoMode{}.LoadSession(!songFilter_.empty() ? song->patterns.front().patternPath : root / (effects_
                 ? "Patterns/angeldream/YME Effects Verification/angeldream [effects test].ymp"
                 : "Patterns/angeldream/All Notes Verification/angeldream [all notes test].ymp"));
@@ -119,6 +127,11 @@ namespace
         bool Update(const UpdateContext &context) override
         {
             visuals_.Update(context.deltaSeconds);
+            if (resultView_)
+            {
+                static_cast<void>(resultView_->Update(context.input));
+                return context.totalSeconds - resultStartedSeconds_ < 60;
+            }
             const auto time = timer_.Now(context.audio.CaptureClockSnapshot().performanceCounterTicks);
             const auto result = replay_->Advance(*session_, time);
             presenter_.AdvanceEffects(context.deltaSeconds);
@@ -139,8 +152,8 @@ namespace
             audio_.Update();
             playback_.Update();
             Require(audio_.LastError().empty(), "Real hit/tick/pop playback must have no audio error.");
-            Require(context.totalSeconds < 40, "Actual gameplay replay must finish within 40 seconds.");
-            if (!songFilter_.empty() && time >= RhythmTime{4'000'000})
+            Require(context.totalSeconds < (fullResult_ ? 240 : 40), "Actual gameplay replay timed out.");
+            if (!fullResult_ && !songFilter_.empty() && time >= RhythmTime{4'000'000})
             {
                 Require(sawInput_ && sawPartialProgress_, "The selected song must render, judge and play its opening notes.");
                 verified_ = true;
@@ -151,6 +164,20 @@ namespace
                 replay_->Verify(*session_);
                 Require(sawPartialProgress_ && progress == 1,
                         "Real playback must advance the progress bar and finish at the last note/tail.");
+                if (fullResult_)
+                {
+                    result_ = session_->TakeResult(PlayEndReason::Completed, time);
+                    presenter_.Shutdown();
+                    audio_.Shutdown();
+                    resultView_ = CreateResultView(*result_, visuals_, texts_, resultContext_);
+                    resultView_->Initialize(*services_);
+                    resultView_->SetVisible(true);
+                    resultStartedSeconds_ = context.totalSeconds;
+                    verified_ = true;
+                    std::cout << "Full result ready: notes=" << result_->Summary().processedNotes
+                              << " accuracy=" << result_->Summary().accuracy.Percent() << std::endl;
+                    return true;
+                }
                 presenter_.UpdatePresentation(time + RhythmDuration{1'000'000});
                 Require(NoteRootCount(visuals_.FindCanvas(1)->Root()) == 0,
                         "Expired note subtrees must not accumulate during play.");
@@ -173,10 +200,14 @@ namespace
         void OnResize(std::uint32_t width, std::uint32_t height) override
         {
             visuals_.OnResize(width, height);
-            presenter_.OnResize(width, height);
+            if (resultView_) resultView_->OnResize(width, height);
+            else presenter_.OnResize(width, height);
         }
         void Shutdown() noexcept override
         {
+            if (resultView_) resultView_->Shutdown();
+            resultView_.reset();
+            result_.reset();
             presenter_.Shutdown();
             audio_.Shutdown();
             replay_.reset();
@@ -234,6 +265,12 @@ namespace
         bool sawPartialProgress_{};
         bool sawInput_{};
         std::string songFilter_;
+        bool fullResult_{};
+        std::optional<EngineServices> services_;
+        ResultViewContext resultContext_;
+        std::unique_ptr<IPlayResult> result_;
+        std::unique_ptr<IResultView> resultView_;
+        double resultStartedSeconds_{};
     };
 } // namespace
 
@@ -250,7 +287,8 @@ int main(int argc, char** argv)
 #else
         constexpr bool effects = false;
 #endif
-        const int exitCode = Run(std::make_unique<ReplayGame>(verified, frames, effects, argc > 1 ? argv[1] : ""));
+        const bool fullResult = argc > 2 && std::string_view(argv[2]) == "--full-result";
+        const int exitCode = Run(std::make_unique<ReplayGame>(verified, frames, effects, argc > 1 ? argv[1] : "", fullResult));
         Require(exitCode == 0 && verified && frames > 100,
                 "Actual engine must render and complete the entire gameplay replay.");
         std::cout << "D3D12/FMOD gameplay replay passed: " << frames << " rendered frames.\n";

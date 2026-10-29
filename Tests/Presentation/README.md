@@ -343,6 +343,11 @@ attack and compiled first-note time within 1 ms, then renders/judges/plays the o
 four chart seconds through D3D12 and a real audio output. This mode does not replace
 the default full-note replay, screenshot review, listening, or physical input calibration.
 
+Pass `-FullResult -SongFilter Omoiyoshino` to run that song to its end in real time with
+timestamped test inputs, a visible D3D12 window and real FMOD output. The production
+result view then displays the actual collected result for 60 seconds. This mode does
+not write a personal play record or add autoplay to the game executable.
+
 ## Client-owned osu! import validation
 
 Run `RunOsuImportValidationTests.ps1 -Configuration Debug` and Release from an x64

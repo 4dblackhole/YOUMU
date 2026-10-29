@@ -73,6 +73,11 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
         ++result_->acceptedTicks;
     else if (event.type == NoteEventType::TickMissed)
         ++result_->missedTicks;
+    else if (event.type == NoteEventType::TickRejected)
+    {
+        ++result_->missedTicks;
+        ++result_->poorCount;
+    }
     // HoldStarted and Completed carry head judgements too; ignoring them
     // here prevents a single Buzz press from producing duplicate samples.
 }

@@ -6,10 +6,13 @@
 
 HoldInputRule::HoldInputRule(const NoteAction requiredAction, const RhythmTime endTime,
                              std::vector<RhythmTime> tickTimes,
-                             const JudgementGrade startMaximumGrade)
+                             const JudgementGrade startMaximumGrade,
+                             const std::optional<NoteAction> rejectedAction)
     : requiredAction_(requiredAction), endTime_(endTime), tickTimes_(std::move(tickTimes)),
-      startMaximumGrade_(startMaximumGrade)
+      startMaximumGrade_(startMaximumGrade), rejectedAction_(rejectedAction)
 {
+    if (rejectedAction_ == requiredAction_)
+        throw std::invalid_argument("A hold cannot reject its required action.");
     std::ranges::sort(tickTimes_);
 }
 
@@ -19,7 +22,9 @@ void HoldInputRule::Reset() noexcept
     nextTickIndex_ = 0;
     started_ = false;
     held_ = false;
+    rejectedHeld_ = false;
     heldPhysicalKeys_.clear();
+    rejectedPhysicalKeys_.clear();
 }
 
 NoteState HoldInputRule::State() const noexcept
@@ -30,16 +35,29 @@ NoteState HoldInputRule::State() const noexcept
 bool HoldInputRule::CanAccept(const NoteRuleContext &, const RhythmInputEvent &input,
                               const JudgementResult &judgement) const noexcept
 {
-    if (IsTerminal(state_) || input.action != requiredAction_ || input.time > endTime_)
+    if (IsTerminal(state_) || input.time > endTime_)
     {
         return false;
     }
     if (!started_)
     {
-        return input.edge == InputEdge::Pressed &&
+        return input.action == requiredAction_ && input.edge == InputEdge::Pressed &&
                IsAtLeastAsAccurateAs(judgement.grade, startMaximumGrade_);
     }
-    return true;
+    return input.action == requiredAction_ || rejectedAction_ == input.action;
+}
+
+void HoldInputRule::ApplyHeldInput(const RhythmInputEvent &input)
+{
+    const bool rejected = rejectedAction_ == input.action;
+    if (!rejected && input.action != requiredAction_)
+        return;
+    auto &keys = rejected ? rejectedPhysicalKeys_ : heldPhysicalKeys_;
+    if (input.edge == InputEdge::Pressed)
+        keys.insert(input.physicalKey);
+    else
+        keys.erase(input.physicalKey);
+    (rejected ? rejectedHeld_ : held_) = input.actionHeldAfter.value_or(!keys.empty());
 }
 
 void HoldInputRule::ProcessInput(const NoteRuleContext &context, const RhythmInputEvent &input,
@@ -47,11 +65,14 @@ void HoldInputRule::ProcessInput(const NoteRuleContext &context, const RhythmInp
 {
     if (!IsTerminal(state_))
     {
-        // Preserve the held state before this timestamp. A press at a tick
-        // accepts it; a release at that timestamp does not.
+        // Earlier ticks use the previous colors. Exact-time ticks use the
+        // state after this edge, for both the required and rejected action.
         AdvanceTicks(context, input.time - RhythmDuration{1}, output);
     }
-    if (!CanAccept(context, input, judgement))
+    const bool accepted = CanAccept(context, input, judgement);
+    // Both colors affect future ticks, including a wrong color held before the head.
+    ApplyHeldInput(input);
+    if (!accepted)
     {
         output.events.push_back(MakeEvent(context, NoteEventType::InputRejected, state_, state_,
                                           judgement, input.time));
@@ -61,9 +82,7 @@ void HoldInputRule::ProcessInput(const NoteRuleContext &context, const RhythmInp
     const NoteState before = state_;
     if (input.edge == InputEdge::Pressed)
     {
-        heldPhysicalKeys_.insert(input.physicalKey);
-        held_ = input.actionHeldAfter.value_or(true);
-        state_ = NoteState::Holding;
+        state_ = held_ && !rejectedHeld_ ? NoteState::Holding : NoteState::Active;
         if (!started_)
         {
             started_ = true;
@@ -76,9 +95,7 @@ void HoldInputRule::ProcessInput(const NoteRuleContext &context, const RhythmInp
         return;
     }
 
-    heldPhysicalKeys_.erase(input.physicalKey);
-    held_ = input.actionHeldAfter.value_or(!heldPhysicalKeys_.empty());
-    state_ = held_ ? NoteState::Holding : NoteState::Active;
+    state_ = held_ && !rejectedHeld_ ? NoteState::Holding : NoteState::Active;
     output.events.push_back(
         MakeEvent(context, NoteEventType::HoldReleased, before, state_, judgement, input.time));
     AdvanceTicks(context, input.time, output);
@@ -91,10 +108,11 @@ void HoldInputRule::Update(const NoteRuleContext &context, const NoteUpdateConte
     {
         return;
     }
+    rejectedHeld_ = rejectedAction_ && update.IsHeld(*rejectedAction_);
     if (started_)
     {
         held_ = update.IsHeld(requiredAction_);
-        state_ = held_ ? NoteState::Holding : NoteState::Active;
+        state_ = held_ && !rejectedHeld_ ? NoteState::Holding : NoteState::Active;
     }
 
     AdvanceTicks(context, update.time, output);
@@ -133,9 +151,12 @@ void HoldInputRule::AdvanceTicks(const NoteRuleContext &context, const RhythmTim
     while (nextTickIndex_ < tickTimes_.size() && tickTimes_[nextTickIndex_] <= time)
     {
         const std::size_t index = nextTickIndex_++;
+        const bool rejected = started_ && rejectedHeld_;
+        const bool success = started_ && held_ && !rejected;
         output.events.push_back(
-            MakeEvent(context, held_ ? NoteEventType::TickAccepted : NoteEventType::TickMissed,
-                      state_, state_, {JudgementGrade::Unjudged, {}, held_ ? 1.0 : 0.0},
+            MakeEvent(context, rejected ? NoteEventType::TickRejected
+                                       : success ? NoteEventType::TickAccepted : NoteEventType::TickMissed,
+                      state_, state_, {JudgementGrade::Unjudged, {}, success ? 1.0 : 0.0},
                       tickTimes_[index], 0, index));
     }
 }

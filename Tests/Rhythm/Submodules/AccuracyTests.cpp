@@ -1,9 +1,130 @@
 #include "Note/Submodules/CountedHitInputRule.h"
 #include "Note/Submodules/HoldInputRule.h"
+#include "Taiko/Results/TaikoPlayResult.h"
 #include "TestSupport.h"
 
 namespace tests
 {
+    void TestPoorLargeNoteAccuracy()
+    {
+        for (const int type : {3, 4, 5})
+        {
+            PatternDocument pattern;
+            pattern.mode = "Taiko";
+            pattern.notes.push_back(PatternNote{.keyType = type});
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Large POOR fixture must load.");
+            auto &session = *loaded.session;
+            if (type == 5)
+            {
+                static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
+                static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{1}));
+                static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{2}));
+            }
+            else
+            {
+                static_cast<void>(session.ProcessInput(type == 3 ? 'D' : 'F', InputEdge::Pressed, RhythmTime{-1'000}));
+                static_cast<void>(session.ProcessInput(type == 3 ? 'F' : 'D', InputEdge::Pressed, {}));
+                static_cast<void>(session.ProcessInput(type == 3 ? 'J' : 'K', InputEdge::Pressed, RhythmTime{1}));
+            }
+            Require(session.AccuracyRate() == 0.0, "A POOR poisons the entire large or purple note.");
+            session.Reset();
+            static_cast<void>(session.ProcessInput(type == 4 ? 'D' : 'F', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput(type == 4 ? 'K' : type == 5 ? 'D' : 'J',
+                                                  InputEdge::Pressed, RhythmTime{1}));
+            Require(session.AccuracyRate() == 1.0, "Retry must clear the large-note POOR state.");
+        }
+
+    }
+
+    void TestBuzzTickColorFocus()
+    {
+        for (const bool kat : {false, true})
+        {
+            auto pattern = MakeLongPattern(TaikoNoteType::Buzz,
+                {kat ? "Action=Kat" : "Action=Don", "TickDivision=16"});
+            pattern.notes.back().position.fraction = Rational{9, 16};
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Buzz POOR fixture must load.");
+            auto &session = *loaded.session;
+            const PhysicalKey correct = kat ? 'D' : 'F', wrong = kat ? 'F' : 'D';
+            const std::array held{correct};
+            const std::array both{correct, wrong};
+            NoteProcessResult log;
+            log.Append(session.ProcessInput(correct, InputEdge::Pressed, {}));
+            const auto afterHead = session.ProcessInput(wrong, InputEdge::Pressed, RhythmTime{40'000});
+            Require(!HasEvent(afterHead, NoteEventType::InputRejected),
+                    "An already accepted Buzz head must not reject or regrade later inputs.");
+            log.Append(afterHead);
+            log.Append(session.ProcessInput(wrong, InputEdge::Released, RhythmTime{41'000}));
+            log.Append(session.Update(RhythmTime{375'000}, held));
+            log.Append(session.ProcessInput(wrong, InputEdge::Pressed, RhythmTime{500'000}));
+            log.Append(session.Update(RhythmTime{750'000}, both));
+            log.Append(session.ProcessInput(wrong, InputEdge::Released, RhythmTime{750'001}));
+            log.Append(session.Update(RhythmTime{1'125'000}, held));
+            Require(log.finalizedAccuracies.size() == 1 &&
+                        log.finalizedAccuracies.front().acceptedTicks == 6 &&
+                        log.finalizedAccuracies.front().target.ticks == 9 &&
+                        log.finalizedAccuracies.front().hitScoreRates.front() == 1.0 &&
+                        std::ranges::count(log.events, NoteEventType::TickRejected, &NoteEvent::type) == 3 &&
+                        session.AccuracyRate() == AccuracyScore::FromRate(0.5 + 0.5 * (6.0 / 9)).Rate(),
+                    "Wrong-color holds across ticks 4..6 must preserve MAX head and score six of nine ticks.");
+            session.RewindJudgements(RhythmTime{625'001});
+            static_cast<void>(session.ProcessInput(wrong, InputEdge::Released, RhythmTime{750'001}));
+            static_cast<void>(session.Update(RhythmTime{1'125'000}, held));
+            Require(session.AccuracyRate() == AccuracyScore::FromRate(0.5 + 0.5 * (6.0 / 9)).Rate(),
+                    "Rewind must reconstruct the wrong-color held state and per-tick POORs.");
+            auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{1'125'000});
+            const auto *taiko = dynamic_cast<const TaikoPlayResult *>(result.get());
+            Require(taiko && taiko->poorCount == 3 && taiko->missedTicks == 3 &&
+                        taiko->acceptedTicks == 6 && taiko->timingErrors.size() == 1,
+                    "Tick POOR counts must not invent additional head timing samples.");
+
+            auto headPoor = TaikoMode{}.CreateSession(pattern);
+            Require(headPoor.Succeeded(), "Buzz head POOR fixture must load.");
+            static_cast<void>(headPoor.session->ProcessInput(wrong, InputEdge::Pressed, RhythmTime{-1'000}));
+            static_cast<void>(headPoor.session->ProcessInput(wrong, InputEdge::Released, RhythmTime{-500}));
+            static_cast<void>(headPoor.session->ProcessInput(correct, InputEdge::Pressed, {}));
+            static_cast<void>(headPoor.session->Update(RhythmTime{1'125'000}, held));
+            Require(headPoor.session->AccuracyRate() == 0.5,
+                    "A POOR head scores zero while successful body ticks keep their half weight.");
+        }
+    }
+
+    void TestPoorSingleNoteAccuracy()
+    {
+        auto profile = std::make_shared<AccuracyRange>();
+        PlaySession session;
+        session.SetInputMapping({{'F', 1}, {'D', 2}});
+        auto &lane = session.Gear().CreateLane();
+        lane.AddNote(MakeTap(1, RhythmTime{0}, profile));
+        session.Gear().Finalize();
+
+        const auto rejected = session.ProcessInput('D', InputEdge::Pressed, RhythmTime{-10'000});
+        Require(HasEvent(rejected, NoteEventType::InputRejected) && rejected.finalizedAccuracies.empty(),
+                "A POOR must leave the note available for a subsequent correct input.");
+        const auto accepted = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
+        Require(HasEvent(accepted, NoteEventType::HitAccepted) &&
+                    accepted.finalizedAccuracies.size() == 1 &&
+                    accepted.finalizedAccuracies.front().Score().Units() == 0 &&
+                    session.AccuracyRate() == 0.0,
+                "A POOR followed by a MAX must finalize the logical note with zero accuracy.");
+
+        session.Reset();
+        static_cast<void>(session.ProcessInput('D', InputEdge::Released, RhythmTime{-10'000}));
+        static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{-100'000}));
+        const auto clean = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
+        Require(clean.finalizedAccuracies.size() == 1 && clean.finalizedAccuracies.front().Score().Rate() == 1.0,
+                "Reset, releases, and out-of-range inputs must not poison a clean note.");
+
+        session.Reset();
+        static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{-10'000}));
+        session.RewindJudgements(RhythmTime{-15'000});
+        const auto rewound = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
+        Require(rewound.finalizedAccuracies.size() == 1 && rewound.finalizedAccuracies.front().Score().Rate() == 1.0,
+                "Rewind must remove the POOR penalty when it removes the rejected input.");
+    }
+
     void TestTimingAccuracyAndSessionAggregation()
     {
         auto profile = std::make_shared<AccuracyRange>();
@@ -79,8 +200,8 @@ namespace tests
                             (katFirst ? "Taiko.Kat.Hit" : "Taiko.Don.Hit") &&
                         !HasEvent(repeat, NoteEventType::HitAccepted) &&
                         HasEvent(second, NoteEventType::Completed) &&
-                        loaded.session->AccuracyRate() == 1.0,
-                    "Purple must accept Don and Kat once each, in either order.");
+                        loaded.session->AccuracyRate() == 0.0,
+                    "Purple accepts either order but a rejected repeated color leaves zero final accuracy.");
         }
     }
 

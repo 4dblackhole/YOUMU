@@ -85,9 +85,10 @@ const AccuracyRange &RuleBasedNote::Profile() const noexcept
 
 JudgementResult RuleBasedNote::Preview(const RhythmInputEvent &input) const noexcept
 {
-    // Count-only interval rules own their start/end bounds. They have no
-    // head timing grade for Lane gating, POOR feedback or timing statistics.
-    if (accuracy_.target.kind == NoteAccuracyKind::HitCount)
+    // Count-only intervals and a hold's body have no head timing grade.
+    // Once accepted, the head must never gate or grade subsequent body input.
+    if (accuracy_.target.kind == NoteAccuracyKind::HitCount ||
+        (accuracy_.target.kind == NoteAccuracyKind::Hold && accuracy_.acceptedHits != 0))
         return {JudgementGrade::Unjudged, {}, 1.0};
     return profile_->Evaluate(timing_, input.time);
 }
@@ -103,6 +104,16 @@ NoteProcessResult RuleBasedNote::ProcessInput(const RhythmInputEvent &input)
     NoteProcessResult result;
     const JudgementResult judgement = Preview(input);
     rule_->ProcessInput(Context(), input, judgement, result);
+    if ((accuracy_.target.kind == NoteAccuracyKind::TimingHits ||
+         (accuracy_.target.kind == NoteAccuracyKind::Hold && accuracy_.acceptedHits == 0)) &&
+        input.edge == InputEdge::Pressed &&
+        std::ranges::any_of(result.events, [](const NoteEvent &event) {
+            return event.type == NoteEventType::InputRejected &&
+                   IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
+        }))
+    {
+        poorOnTimingTarget_ = true;
+    }
     for (NoteEvent &event : result.events)
     {
         if (event.type == NoteEventType::HitAccepted ||
@@ -141,6 +152,7 @@ void RuleBasedNote::Reset() noexcept
     accuracy_.acceptedHits = 0;
     accuracy_.acceptedTicks = 0;
     accuracy_.finalized = false;
+    poorOnTimingTarget_ = false;
 }
 
 void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
@@ -155,7 +167,7 @@ void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
         {
             if (event.hitIndex < accuracy_.hitScoreRates.size())
             {
-                accuracy_.hitScoreRates[event.hitIndex] = event.judgement.scoreRate;
+                accuracy_.hitScoreRates[event.hitIndex] = poorOnTimingTarget_ ? 0.0 : event.judgement.scoreRate;
             }
             ++accuracy_.acceptedHits;
         }
@@ -172,6 +184,8 @@ void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
         }
         else if (event.type == NoteEventType::Completed || event.type == NoteEventType::Missed)
         {
+            if (poorOnTimingTarget_)
+                std::ranges::fill(accuracy_.hitScoreRates, 0.0);
             accuracy_.finalized = true;
             result.finalizedAccuracies.push_back(accuracy_);
             break;

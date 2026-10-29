@@ -36,6 +36,9 @@ namespace tests
     void TestMeasureLineScrollEffects();
     void TestBalloonDengDengAndBuzzRules();
     void TestTimingAccuracyAndSessionAggregation();
+    void TestPoorSingleNoteAccuracy();
+    void TestPoorLargeNoteAccuracy();
+    void TestBuzzTickColorFocus();
     void TestPurpleNoteBothOrders();
     void TestCountedLongNoteAccuracyAndSyntax();
     void TestTickAndHoldAccuracy();

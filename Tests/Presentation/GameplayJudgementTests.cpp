@@ -179,6 +179,14 @@ namespace
         Check(!marker.IsVisible(), "Empty/out-of-range input must not show POOR or a marker.");
         view.Present(Event(NoteEventType::TickAccepted, JudgementGrade::Unjudged));
         CheckOverlay(root, "");
+        view.Present(Event(NoteEventType::TickRejected, JudgementGrade::Unjudged));
+        CheckOverlay(root, "POOR");
+        Check(!marker.IsVisible(), "A wrong-color tick must show POOR without a head timing marker.");
+        NoteProcessResult rejectedTick;
+        rejectedTick.events.push_back(Event(NoteEventType::TickRejected, JudgementGrade::Unjudged));
+        const auto rejectedColor = LaneKeyBeam::InputColor(rejectedTick);
+        Check(rejectedColor.red > .9F && rejectedColor.green < .3F,
+              "A wrong-color tick triggered by a press must use the POOR beam color.");
         view.Present(Event(NoteEventType::Missed, JudgementGrade::Miss, RhythmDuration{500'000}));
         CheckOverlay(root, "MISS");
         Check(!marker.IsVisible(), "Automatic MISS must not invent an input marker.");

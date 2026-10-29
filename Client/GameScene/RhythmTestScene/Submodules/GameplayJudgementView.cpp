@@ -206,7 +206,7 @@ void GameplayJudgementView::Present(const NoteEvent &event)
     const bool hasTiming = HasInputTiming(event);
     const bool poor = LaneKeyBeam::IsWrongInput(event);
     const bool miss = event.type == NoteEventType::Missed;
-    if (!hasTiming && !miss)
+    if (!hasTiming && !miss && !poor)
         return;
     const std::size_t index = poor   ? PoorImageIndex
                               : miss ? static_cast<std::size_t>(JudgementGrade::Miss)

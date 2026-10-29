@@ -13,6 +13,10 @@ void GameplayPresenter::PresentJudgementFeedback(const GameplayFeedback &feedbac
         for (const auto &event : feedback.result.events)
             if (event.type == NoteEventType::Missed)
                 selected = &event;
+    if (selected == nullptr)
+        for (const auto &event : feedback.result.events)
+            if (event.type == NoteEventType::TickRejected)
+                selected = &event;
     if (selected != nullptr)
         judgementView_.Present(*selected);
     for (const auto &event : feedback.result.events)
