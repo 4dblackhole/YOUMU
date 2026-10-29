@@ -43,6 +43,7 @@ Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Verificatio
 - Taiko의 [플레이 옵션과 영속 기록](Docs/Gameplay/PlayOptions.md)은 배속·스크롤·
   Mirror/Random·JudgeLevel·메트로놈·개별 음정 유지와 기록 조건식 조회를 지원합니다.
 - [ESC 메뉴](Docs/Gameplay/Pause.md)는 Resume/Rewind/Retry/Retire를 제공합니다.
+  노트는 입력 없이도 [GOOD 우선 포커스 규칙](Docs/Gameplay/Rules.md#lane과-배드말림-방지)으로 갱신합니다.
   [Debug 조작](Docs/Gameplay/Debugging.md)은 타이머 표시, Space 정지 중 입력과 1~4 시간 탐색입니다.
 - [에디터](Docs/ChartEditor.md)는 노트/타이밍/효과 편집, 선택·복사·붙여넣기,
   32단계 Undo/Redo, 고해상도 파형·비동기 스펙트로그램과 미리듣기를 제공합니다.

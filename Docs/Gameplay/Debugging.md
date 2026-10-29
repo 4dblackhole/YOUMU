@@ -41,6 +41,8 @@ Balloon, DengDeng, Don Buzz, Kat Buzz의 시작점을 2박 간격으로 배치�
 
 Debug 빌드에서는 실행 인자와 무관하게 좌측 상단에 현재 타이머의 정수 us와 소수점
 3자리 ms를 표시합니다. 음수 pre-roll과 정지·1ms 탐색도 같은 세션 시각을 사용합니다.
+시간만 탐색해도 [공통 포커스 규칙](Rules.md#lane과-배드말림-방지)에 따라 late Bad 앞 노트는
+뒤의 첫 Good 후보가 열릴 때 MISS로 확정합니다. 같은 시각의 반복 갱신은 MISS를 재발생시키지 않습니다.
 현재 포커스 노트의 ID,
 상태, timing/expire(us), 개별 정확도와 마지막 확정 노트의 상세를 표시합니다.
 큰 노트/보라 노트는 Hit1, Hit2, Final, Buzz는 시작 입력·유지 틱 비율·Final,

@@ -56,8 +56,13 @@ namespace tests
         Require(lane.CurrentIndex() == 0 && HasEvent(early, NoteEventType::InputRejected),
                 "Early Bad must keep focus on the first note.");
 
-        Require(!HasEvent(lane.Update(RhythmTime{60'000}), NoteEventType::Missed) && lane.CurrentIndex() == 0,
-                "Without input, a late-Bad focus must remain until its own window expires.");
+        const auto automatic = lane.Update(RhythmTime{60'000});
+        Require(HasEvent(automatic, NoteEventType::Missed) && lane.CurrentIndex() == 1 &&
+                    !HasEvent(automatic, NoteEventType::HitAccepted),
+                "Without input, a Good candidate must immediately retire the late-Bad focus.");
+        Require(!HasEvent(lane.Update(RhythmTime{60'000}), NoteEventType::Missed),
+                "The automatic focus transition must emit MISS only once.");
+        lane.Reset();
         const NoteProcessResult forwarded =
             lane.ProcessInput({RhythmTime{60'000}, 1, 'F', InputEdge::Pressed});
         Require(HasEvent(forwarded, NoteEventType::Missed) &&
@@ -65,18 +70,57 @@ namespace tests
                     lane.CurrentIndex() == 2,
                 "An input must preserve late-Bad protection: miss the old note and hit only the Good next note.");
 
-        lane.Reset();
-        const auto expiry = lane.CurrentNote()->ExpireTime();
-        Require(!HasEvent(lane.Update(expiry), NoteEventType::Missed) && lane.CurrentIndex() == 0,
-                "Time alone must not retire the focus until its closed judgement window is exceeded.");
-        Require(HasEvent(lane.Update(expiry + RhythmDuration{1}), NoteEventType::Missed) &&
-                    lane.CurrentIndex() == 1,
-                "The previous note must be missed when expiry moves focus to the next note.");
-        Require(!HasEvent(lane.Update(expiry + RhythmDuration{2}), NoteEventType::Missed),
+        Lane isolated;
+        isolated.AddNote(MakeTap(1, {}, profile));
+        isolated.Finalize();
+        const auto expiry = isolated.CurrentNote()->ExpireTime();
+        Require(!HasEvent(isolated.Update(expiry), NoteEventType::Missed) && isolated.CurrentIndex() == 0,
+                "Without a Good candidate, the current focus must keep its full closed window.");
+        Require(HasEvent(isolated.Update(expiry + RhythmDuration{1}), NoteEventType::Missed) &&
+                    isolated.CurrentNote() == nullptr,
+                "An isolated note must become MISS when its full window expires.");
+        Require(!HasEvent(isolated.Update(expiry + RhythmDuration{2}), NoteEventType::Missed),
                 "An already retired focus must not produce a repeated MISS.");
-        Require(HasEvent(lane.ProcessInput({RhythmTime{100'000}, 1, 'F', InputEdge::Pressed}),
-                         NoteEventType::HitAccepted) && lane.CurrentIndex() == 2,
-                "A new input must target the next focus after expiry.");
+
+        // Focus selection is time-based and must precede the key's colour check.
+        Lane colour;
+        colour.AddNote(MakeTap(1, {}, profile));
+        colour.AddNote(std::make_unique<RuleBasedNote>(2, RhythmTime{100'000}, profile,
+                                                      std::make_unique<TapInputRule>(2)));
+        colour.Finalize();
+        const auto wrongColour = colour.ProcessInput({RhythmTime{60'000}, 1, 'F', InputEdge::Pressed});
+        Require(HasEvent(wrongColour, NoteEventType::Missed) && colour.CurrentIndex() == 1 &&
+                    HasEvent(wrongColour, NoteEventType::InputRejected) &&
+                    !HasEvent(wrongColour, NoteEventType::HitAccepted),
+                "The Good next note must receive even a wrong-colour edge after automatic focusing.");
+
+        Lane dense;
+        for (const auto timing : {0, 5'000, 100'000})
+            dense.AddNote(MakeTap(static_cast<NoteId>(dense.Notes().size() + 1), RhythmTime{timing}, profile));
+        dense.Finalize();
+        const auto skipped = dense.Update(RhythmTime{89'000});
+        Require(dense.CurrentIndex() == 2 &&
+                    std::ranges::count(skipped.events, NoteEventType::Missed, &NoteEvent::type) == 2,
+                "RPG's first Good candidate must skip every intervening late-Bad note.");
+
+        Lane boundary;
+        boundary.AddNote(MakeTap(1, {}, profile));
+        boundary.AddNote(MakeTap(2, RhythmTime{120'000}, profile));
+        boundary.Finalize();
+        const auto opens = RhythmTime{120'000} - profile->HalfWindow(JudgementGrade::Good);
+        Require(!HasEvent(boundary.Update(opens - RhythmDuration{1}), NoteEventType::Missed),
+                "The focus must remain one microsecond before the next Good window opens.");
+        Require(HasEvent(boundary.Update(opens), NoteEventType::Missed) && boundary.CurrentIndex() == 1,
+                "The next note's exact Good boundary must trigger automatic focusing.");
+
+        auto extended = std::make_shared<AccuracyRange>("sync", JudgeLevel{50},
+            AccuracyRange::DefaultLevel50Bands(), RhythmDuration{10'000});
+        Lane mixed;
+        mixed.AddNote(MakeTap(1, {}, profile));
+        mixed.AddNote(MakeTap(2, RhythmTime{120'000}, extended));
+        mixed.Finalize();
+        Require(HasEvent(mixed.Update(RhythmTime{55'500}), NoteEventType::Missed) && mixed.CurrentIndex() == 1,
+                "Good candidate selection must include the candidate's own Syncopation extension.");
 
         for (const auto spacing : {0, 10'000, 50'000})
         {

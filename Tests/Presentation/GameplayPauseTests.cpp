@@ -676,6 +676,7 @@ namespace
                 Check(musicStarts.back().startPositionMicroseconds == 4'000'000,
                       "Rewind must seek music to the compiled measure start.");
                 CheckConfirmedRewindExample(ctx);
+                CheckAutomaticFocus(ctx);
                 CheckDebugTimeline(ctx);
                 CheckSharedLifecycle(ctx);
                 CheckTransientVoices(ctx);
@@ -764,6 +765,41 @@ namespace
         }
 
       private:
+        void CheckAutomaticFocus(const UpdateContext &ctx)
+        {
+            PatternDocument pattern;
+            pattern.mode = "Taiko";
+            pattern.notes.push_back({.position = {0, {}}, .keyType = 1});
+            pattern.notes.push_back({.position = {0, {1, 20}}, .keyType = 2});
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Check(loaded.Succeeded(), "Automatic focus fixture must load.");
+            GameplaySessionController controller({"probe.ymp", {}, "probe-music.mp3", "Taiko"}, playback_,
+                                                   false, std::move(loaded.session));
+            controller.InitializeSession();
+            controller.Start(*services_, RhythmTime{});
+            WaitForGameplay(controller, ctx);
+            InputState empty;
+            const auto started = std::chrono::steady_clock::now();
+            while (controller.Session().FinalizedNoteCount() == 0)
+            {
+                const auto elapsed = std::chrono::steady_clock::now() - started;
+                Check(elapsed < std::chrono::seconds{2}, "No-input automatic focus timed out.");
+                controller.Update({.001, ctx.totalSeconds + std::chrono::duration<double>(elapsed).count(),
+                                   ctx.updateIndex, empty, ctx.audio, {}});
+                std::this_thread::sleep_for(std::chrono::milliseconds{1});
+            }
+            const auto *focus = controller.Session().Gear().Lanes().front()->CurrentNote();
+            Check(controller.Session().FinalizedNoteCount() == 1 && focus &&
+                      focus->Timing() == RhythmTime{100'000} && focus->State() == NoteState::Pending &&
+                      std::ranges::any_of(controller.Feedback(), [](const auto &feedback) {
+                          return std::ranges::any_of(feedback.result.events, [](const auto &event) {
+                              return event.type == NoteEventType::Missed;
+                          });
+                      }),
+                  "The real controller must miss the late-Bad note and focus the Good next note without any key.");
+            controller.Shutdown();
+        }
+
         void CheckDebugTimeline(const UpdateContext &ctx)
         {
             for (const auto rate : {1.0, 1.5})

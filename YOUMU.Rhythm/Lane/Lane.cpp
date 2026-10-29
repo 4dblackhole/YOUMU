@@ -43,9 +43,12 @@ void Lane::Finalize()
         });
     latestExpireThrough_.clear();
     latestExpireThrough_.reserve(notes_.size());
+    maximumGoodHalfWindow_ = RhythmDuration::zero();
     for (const std::unique_ptr<INote>& note : notes_)
     {
         const RhythmTime expireTime = note->ExpireTime();
+        maximumGoodHalfWindow_ = std::max(maximumGoodHalfWindow_,
+                                         note->Profile().HalfWindow(JudgementGrade::Good));
         latestExpireThrough_.push_back(
             latestExpireThrough_.empty()
                 ? expireTime
@@ -74,19 +77,10 @@ NoteProcessResult Lane::ProcessInput(const RhythmInputEvent& input,
     }
 
     NoteProcessResult result;
-    AdvancePastTerminalNotes();
+    ResolveFocus(input.time,
+                 input.time == RhythmTime::min() ? input.time : input.time - RhythmDuration{1},
+                 heldBeforeInput, result);
     INote* current = CurrentNote();
-    // Only retire notes whose entire acceptance window precedes this
-    // timestamp. Long-note ticks use the state before the incoming edge;
-    // never advance with the render/frame time or the post-edge snapshot.
-    while (current && input.time > current->ExpireTime())
-    {
-        result.Append(current->Update({input.time - RhythmDuration{1}, heldBeforeInput}));
-        if (current->State() != NoteState::Completed && current->State() != NoteState::Missed)
-            result.Append(current->MarkMissed(input.time));
-        AdvancePastTerminalNotes();
-        current = CurrentNote();
-    }
     if (current == nullptr)
     {
         return result;
@@ -108,29 +102,6 @@ NoteProcessResult Lane::ProcessInput(const RhythmInputEvent& input,
         return result;
     }
 
-    // If the current note is already in late Bad while the next note can
-    // accept this same input within Good, retire the missed note first and
-    // apply the input to the next note in one deterministic transaction.
-    if (current->Accuracy().target.kind == NoteAccuracyKind::TimingHits &&
-        currentJudgement.grade == JudgementGrade::Bad &&
-        currentJudgement.signedError > RhythmDuration::zero() &&
-        currentIndex_ + 1 < notes_.size())
-    {
-        INote& next = *notes_[currentIndex_ + 1];
-        const JudgementResult nextJudgement = next.Preview(input);
-        if (IsAtLeastAsAccurateAs(
-                nextJudgement.grade,
-                JudgementGrade::Good) &&
-            next.CanAccept(input))
-        {
-            result.Append(current->MarkMissed(input.time));
-            ++currentIndex_;
-            result.Append(next.ProcessInput(input));
-            AdvancePastTerminalNotes();
-            return result;
-        }
-    }
-
     result.Append(current->ProcessInput(input));
     AdvancePastTerminalNotes();
     return result;
@@ -146,17 +117,57 @@ NoteProcessResult Lane::Update(
     }
 
     NoteProcessResult result;
+    ResolveFocus(time, time, heldActions, result);
+    return result;
+}
+
+std::size_t Lane::GoodFocusIndex(const RhythmTime time) const noexcept
+{
+    const INote *current = CurrentNote();
+    if (!current || current->Accuracy().target.kind != NoteAccuracyKind::TimingHits)
+        return currentIndex_;
+    const auto judgement = current->Profile().Evaluate(current->Timing(), time);
+    if (judgement.grade != JudgementGrade::Bad || judgement.signedError <= RhythmDuration::zero())
+        return currentIndex_;
+
+    const auto lower = time < RhythmTime::min() + maximumGoodHalfWindow_
+                           ? RhythmTime::min() : time - maximumGoodHalfWindow_;
+    const auto upper = time > RhythmTime::max() - maximumGoodHalfWindow_
+                           ? RhythmTime::max() : time + maximumGoodHalfWindow_;
+    const auto first = notes_.begin() + static_cast<std::ptrdiff_t>(currentIndex_ + 1);
+    const auto candidate = std::lower_bound(first, notes_.end(), lower,
+        [](const auto &note, RhythmTime boundary) { return note->Timing() < boundary; });
+    // A live long-note body keeps its existing focus policy through the tail.
+    for (auto note = first; note != candidate; ++note)
+        if ((*note)->Accuracy().target.kind != NoteAccuracyKind::TimingHits && time <= (*note)->ExpireTime())
+            return currentIndex_;
+    for (auto note = candidate; note != notes_.end() && (*note)->Timing() <= upper; ++note)
+    {
+        if ((*note)->Profile().IsWithin(JudgementGrade::Good, (*note)->Timing(), time))
+            return static_cast<std::size_t>(note - notes_.begin());
+        if ((*note)->Accuracy().target.kind != NoteAccuracyKind::TimingHits && time <= (*note)->ExpireTime())
+            break;
+    }
+    return currentIndex_;
+}
+
+void Lane::ResolveFocus(const RhythmTime time, const RhythmTime updateTime,
+                        const std::span<const NoteAction> heldActions, NoteProcessResult &result)
+{
     AdvancePastTerminalNotes();
     while (INote* current = CurrentNote())
     {
-        result.Append(current->Update({time, heldActions}));
+        // Inputs use the pre-edge time/state so an exact-time hold tick is
+        // still evaluated by the rule after the incoming key transition.
+        result.Append(current->Update({updateTime, heldActions}));
         if (current->State() == NoteState::Completed ||
             current->State() == NoteState::Missed)
         {
             ++currentIndex_;
             continue;
         }
-        if (time > current->ExpireTime())
+        const auto target = GoodFocusIndex(time);
+        if (time > current->ExpireTime() || target > currentIndex_)
         {
             result.Append(current->MarkMissed(time));
             ++currentIndex_;
@@ -164,7 +175,6 @@ NoteProcessResult Lane::Update(
         }
         break;
     }
-    return result;
 }
 
 bool Lane::Empty() const noexcept

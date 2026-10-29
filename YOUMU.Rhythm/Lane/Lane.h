@@ -32,6 +32,9 @@ class Lane final
     friend class ScrollGear;
 
     void AdvancePastTerminalNotes() noexcept;
+    [[nodiscard]] std::size_t GoodFocusIndex(RhythmTime time) const noexcept;
+    void ResolveFocus(RhythmTime time, RhythmTime updateTime,
+                      std::span<const NoteAction> heldActions, NoteProcessResult &result);
     [[nodiscard]] NoteEvent MakeEarlyBadEvent(const INote &note,
                                               const JudgementResult &judgement,
                                               RhythmTime time) const noexcept;
@@ -42,6 +45,7 @@ class Lane final
     // assuming that note expiry is ordered by head timing. Overlapping
     // long notes can otherwise hide an older, still-visible tail.
     std::vector<RhythmTime> latestExpireThrough_;
+    RhythmDuration maximumGoodHalfWindow_{};
     std::size_t currentIndex_{};
     bool finalized_{};
 };
