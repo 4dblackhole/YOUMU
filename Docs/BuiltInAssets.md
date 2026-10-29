@@ -280,3 +280,6 @@ Default Skin/Editor의 `MetronomeBeat.wav`와 `MetronomeAccent.wav`는 내장 �
 48kHz 모노 PCM16, 50ms의 짧은 감쇠 정현파(일반 1400Hz / 마디 첫 박자 2200Hz)이며 외부
 소스/라이선스 의존성이 없습니다. AssetPaths의 EditorSound로 선택 스킨의 같은 상대 경로를
 찾고 없으면 내장 기본본을 사용합니다. 에디터의 재생 cue 전용이며 FFT 분석에는 넣지 않습니다.
+
+Editor/SelectionTool.png는 선택 도구용 투명 PNG(128×128)입니다.
+흰색 커서와 분홍색/흰색 지우개를 한 아이콘에 배치했으며 프로젝트에서 직접 제작했습니다.

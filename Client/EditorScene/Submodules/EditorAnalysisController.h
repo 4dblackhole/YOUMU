@@ -12,6 +12,13 @@ struct AnalysisBatch
     std::string errors;
 };
 struct EditorAnalysisJob;
+struct EditorSpectrumJob;
+struct EditorSpectrumRequest
+{
+    std::size_t track{};
+    SpectrumRegion region;
+    auto operator<=>(const EditorSpectrumRequest &) const = default;
+};
 class EditorAnalysisController final
 {
   public:
@@ -31,6 +38,11 @@ class EditorAnalysisController final
     void Stop() noexcept;
     bool Update(const IEditorDocument &, const IEditorAudioSource &,
                 const GameplayLaunchRequest &, std::string &status);
+    void PrepareSpectrumTiles(std::span<const EditorSpectrumRequest> requests);
+    std::shared_ptr<const SpectrumTile> Spectrum(const EditorSpectrumRequest &) const;
+    bool PollSpectrum(std::string &status);
+    void StopSpectrum() noexcept;
+    bool SpectrumRunning() const noexcept;
     void CacheAudioMarkers(const IEditorDocument &, const IEditorAudioSource &);
     const AnalysisBatch &Data() const noexcept
     {
@@ -58,6 +70,10 @@ class EditorAnalysisController final
     }
 
   private:
+    std::map<EditorSpectrumRequest, std::shared_ptr<EditorSpectrumJob>> spectrumJobs_;
+    std::shared_ptr<const std::vector<AudioMarker>> spectrumMarkers_;
+    std::uint64_t spectrumAnalysisRevision_{}, spectrumMarkerRevision_{};
+    const IEditorDocument *spectrumDocument_{};
     bool analysisDirty{true};
     std::shared_ptr<EditorAnalysisJob> job_;
     std::shared_ptr<const AnalysisBatch> analysis_;

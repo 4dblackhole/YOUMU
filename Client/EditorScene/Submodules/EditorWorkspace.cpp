@@ -1,4 +1,5 @@
 #include "EditorWorkspace.h"
+#include "App/AssetPaths.h"
 #include "EditorTime.h"
 #include "EditorValueParsing.h"
 #include "Modes/EditorModeFactory.h"
@@ -15,7 +16,8 @@ void EditorWorkspace::Initialize()
 }
 void EditorWorkspace::UpdateAnalysis()
 {
-    if (analysis_.Update(Document(), *mode_, request_, status_))
+    const bool sourceChanged = analysis_.Update(Document(), *mode_, request_, status_);
+    if (analysis_.PollSpectrum(status_) || sourceChanged)
         RequestRebuild();
 }
 void EditorWorkspace::DocumentChanged()
@@ -262,4 +264,12 @@ void EditorWorkspace::Save()
 void EditorWorkspace::PlaceNote(MusicalPosition position)
 {
     mode_->PlaceNote(*this, position);
+}
+
+std::filesystem::path EditorWorkspace::MusicMetadataPath() const
+{
+    const auto &relative = Document().Pattern().musicMetadataFile;
+    if (relative.empty())
+        return {};
+    return ((request_.songsRoot.empty() ? UserSongs() : request_.songsRoot) / relative).lexically_normal();
 }

@@ -18,6 +18,22 @@ namespace
 {
     constexpr Color Don{1, .33F, .43F, 1}, Kat{.10F, .76F, .82F, 1}, Gold{.96F, .80F, .29F, 1};
 
+    Color RealtimeTickColor(const Rational &fraction)
+    {
+        // Reduced positions give the coarsest matching note value priority.
+        switch (fraction.Denominator())
+        {
+        case 1: case 2: case 4: return White;
+        case 8: return {1, .2F, .2F, 1};
+        case 16: return {.2F, .5F, 1, 1};
+        case 32: return {1, .9F, .1F, 1};
+        case 64: return {.65F, .65F, .65F, 1};
+        case 3: case 6: case 12: return {.15F, 1, .3F, 1};
+        case 24: return {.8F, .35F, 1, 1};
+        default: return {1, .55F, .1F, 1};
+        }
+    }
+
     float OverviewX(const MusicalTimeline &timeline, std::int64_t firstMeasure, std::int64_t measure,
                     RhythmTime time)
     {
@@ -51,20 +67,8 @@ void TaikoEditorMode::ScrollScore(IEditorContext &state, int direction)
 {
     if (state.Score().realtime)
     {
-        const auto &timeline = state.Document().Timeline();
-        const auto whole =
-            std::max(0.0L, timeline.WholeNotesAtTime(Microseconds(state.TimeMilliseconds())));
-        const auto division = static_cast<std::int64_t>(state.Score().division) * 4;
-        const auto gridValue = std::round(whole * division);
-        if (!std::isfinite(gridValue) || gridValue >= std::numeric_limits<std::int64_t>::max())
-            throw std::out_of_range("Realtime grid position exceeds the supported range.");
-        const auto grid = static_cast<std::int64_t>(gridValue);
-        const auto origin = timeline.PositionAtWholeNotes(Rational{std::max<std::int64_t>(0, grid), division});
-        const auto step = Rational{direction, division};
-        const auto target = timeline.PositionToWholeNotes(origin) + step;
-        const auto position =
-            target < Rational{} ? MusicalPosition{} : timeline.AddWholeNotes(origin, step);
-        state.Seek(timeline.Compile(position).count() / 1000.0);
+        state.Seek(StepEditorTimeline(state.Document().Timeline(), state.TimeMilliseconds(),
+                                      state.Score().division, direction).count() / 1000.0);
         return;
     }
     state.SetFirstMeasure(std::clamp<std::int64_t>(state.Score().firstMeasure + direction * MeasuresPerRow, 0,
@@ -209,6 +213,8 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
     const auto labels = TaikoEditor(catalog);
     const auto &timeline = state.Document().Timeline();
     const int subdivisionsPerWholeNote = state.Score().division * 4;
+    const float pixelScale = std::max(.001F, canvas.PixelScale());
+    const float measureWidth = 5.0F / pixelScale, tickWidth = 2.0F / pixelScale;
     // At Base BPM, a sixteenth note spans 85% of the normal head diameter.
     // Compiled note times preserve the actual spacing through BPM changes.
     canvas.Box(RealtimeLane, {.055F, .060F, .12F, 1});
@@ -264,7 +270,7 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
         const float barX = xAtTime(span.begin, 1);
         if (span.end > span.begin && barX >= RealtimeLane.x && barX <= RealtimeLane.x + RealtimeLane.width &&
             state.Document().EffectValueAt(EffectCommandType::MeasureLineVisible, span.sourceBegin) >= .5)
-            canvas.Box({barX, 361, 3, 202}, {.3F, .34F, .42F, 1});
+            canvas.Box({barX, 361, measureWidth, 202}, White);
         float lastDrawnX = -std::numeric_limits<float>::infinity();
         for (int i = 0; i < count; ++i)
         {
@@ -275,9 +281,9 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
             const float x = xAtTime(timeline.Compile(p), speed);
             if (x < RealtimeLane.x || x > RealtimeLane.x + RealtimeLane.width)
                 continue;
-            if (std::abs(x - lastDrawnX) >= 1)
+            if (std::abs(x - lastDrawnX) >= tickWidth)
             {
-                canvas.Box({x, 361, 1, 202}, {.3F, .34F, .42F, .45F});
+                canvas.Box({x, 361, tickWidth, 202}, RealtimeTickColor(p.fraction));
                 lastDrawnX = x;
             }
             realtimeGrid_.push_back({x, p});

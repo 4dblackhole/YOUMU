@@ -28,6 +28,7 @@ class EditorView final : public IEditorModeCanvas
     }
     void Shutdown() noexcept
     {
+        state_.Analysis().StopSpectrum();
         controls.clear();
         if (canvas.Get())
             sliderInput_.Reset(*canvas.Get());
@@ -65,6 +66,9 @@ class EditorView final : public IEditorModeCanvas
     void DrawTools();
     void UpdateSliders(const UpdateContext &context);
     EditorMenuInputResult UpdateMenu(const InputState &input);
+    void ExecuteMenuAction(EditorMenuAction action);
+    void OpenDocumentFolder(const std::filesystem::path &path);
+    void UpdateTimelineNavigation(const InputState &, bool keyboardAllowed, bool pointerAllowed);
     bool UpdateKeyboard(const InputState &);
     void UpdatePointer(const UpdateContext &);
     void SyncDivisionSlider() noexcept;
@@ -73,8 +77,8 @@ class EditorView final : public IEditorModeCanvas
     void DrawAudio();
     void UpdateAudioTiles(double begin, double minimumHz, double maximumHz, double longestSound);
     void PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t first, std::int64_t last, bool invalidate);
-    void UpdateWaveformColumns(double begin, double columnSeconds);
-    void DrawAudioWaveform(const std::vector<SpectrumFrame> &columns);
+    void UpdateWaveformColumns(double begin, std::size_t columns);
+    void DrawAudioWaveform(const std::vector<WaveformPeak> &columns);
     void DrawAudioTimeRuler(double begin);
     void DrawAudioAlignment(double begin);
     void DrawAudioControls();
@@ -86,6 +90,7 @@ class EditorView final : public IEditorModeCanvas
     void DrawTimeline();
     void SyncTimelineSlider();
     void Image(Rect, const std::filesystem::path &, Color) override;
+    float PixelScale() const noexcept override;
     void Box(Rect r, Color color, float radius = 0) override;
     void Text(Rect r, std::wstring text, float size = 20, Color color = editor_ui::Ink) override;
     void Button(Rect r, std::wstring text, std::function<void()> action, bool selected = false) override;
@@ -115,15 +120,15 @@ class EditorView final : public IEditorModeCanvas
     static constexpr Rect MusicSpectrum{205, 375, 1565, 212};
     static constexpr Rect HitSpectrum{205, 640, 1565, 212};
     std::vector<Control> controls;
-    using AudioColumnsKey = std::tuple<double, double, double, std::uint64_t>;
+    using AudioColumnsKey = std::tuple<double, double, double, std::uint64_t, std::size_t, std::size_t>;
     std::optional<AudioColumnsKey> audioColumnsKey_;
     const IEditorDocument *audioColumnsDocument_{};
     std::uint64_t audioColumnsDocumentRevision_{};
-    std::vector<SpectrumFrame> musicColumns_;
+    std::vector<WaveformPeak> musicColumns_;
     struct AudioTile
     {
         Visual2DNode *node{};
-        std::vector<SpectrumFrame> columns;
+        std::shared_ptr<const SpectrumTile> detail;
     };
     std::array<Visual2DNode *, 2> audioRoots_{};
     std::array<EditorVisual *, 2> audioOverlays_{};

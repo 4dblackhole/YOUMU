@@ -77,7 +77,7 @@ class TaikoEditorMode final : public IEditorMode
     std::vector<std::pair<Point, MusicalPosition>> overviewGrid_;
     std::vector<std::pair<float, MusicalPosition>> realtimeGrid_;
     std::optional<MusicalPosition> pending_;
-    int tool_{1}, popup_{-1};
+    int tool_{0}, popup_{-1};
     void ActivateGroup(IEditorContext &, std::size_t);
     std::array<int, 6> groupTools_{1, 3, 11, 12, 15, 17};
 };

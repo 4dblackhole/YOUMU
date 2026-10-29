@@ -41,8 +41,71 @@ namespace tests
                     analysis.frames[90].peak < .0001F,
                 "Injected silence must remain at the spectrum floor.");
 
+        Require(analysis.pcm && analysis.pcm->samples == samples && !analysis.pcm->waveform.empty(),
+                "Analysis must retain immutable original PCM and its waveform pyramid.");
+        for (const auto region : {std::pair{.301, .002}, std::pair{-.01, 1.02}, std::pair{1.1, .25}})
+        {
+            const auto peaks = BuildAudioWaveform(*analysis.pcm, region.first, region.second, 113);
+            for (std::size_t column = 0; column < peaks.size(); ++column)
+            {
+                const auto at = [&](std::size_t index) {
+                    return static_cast<std::size_t>(std::clamp(std::ceil((region.first + region.second *
+                        static_cast<double>(index) / peaks.size()) * rate), 0.0, static_cast<double>(rate)));
+                };
+                const auto first = at(column), last = at(column + 1);
+                float minimum = first < last ? samples[first * channels] : 0;
+                float maximum = minimum;
+                for (auto i = first * channels; i < last * channels; ++i)
+                {
+                    minimum = std::min(minimum, samples[i]);
+                    maximum = std::max(maximum, samples[i]);
+                }
+                Require(peaks[column].minimum == minimum && peaks[column].maximum == maximum,
+                        "Every waveform pixel must preserve exact PCM extrema at close and overview zooms.");
+            }
+        }
+        AudioPcm impulse;
+        impulse.channels = 1;
+        impulse.sampleRate = rate;
+        impulse.samples.resize(rate / 10);
+        impulse.samples[480] = 1;
+        impulse.samples[481] = -.75F;
+        const auto precise = BuildAudioWaveform(impulse, .009, .004, 192);
+        Require(std::ranges::count_if(precise, [](auto peak) { return peak.maximum == 1; }) == 1 &&
+                    std::ranges::count_if(precise, [](auto peak) { return peak.minimum == -.75F; }) == 1,
+                "Single-sample attacks must not be stretched into the old 10 ms frame width.");
+
+        const SpectrumRegion region{.2, .02, 128, 212, 20, 20'000};
+        SpectrumTile detail;
+        AccumulateAudioSpectrum(detail, *analysis.pcm, region, 0, {});
+        Require(detail.columns == 128 && detail.bands == 212 && detail.levels.size() == 128 * 212,
+                "Detailed STFT must follow the requested time and frequency pixel grid.");
+        const auto levels = std::span(detail.levels).subspan(64 * 212, 212);
+        const auto strongestDetail = std::ranges::max_element(levels);
+        const auto detailBand = std::distance(levels.begin(), strongestDetail);
+        const double detailFrequency = 20 * std::pow(1000.0, (detailBand + .5) / 212.0);
+        Require(std::abs(detailFrequency - 1000) < 60 && *strongestDetail > .88F,
+                "PCM detail must preserve the tone and opposite-phase stereo at finer band spacing.");
+        SpectrumTile shifted;
+        auto shiftedRegion = region;
+        shiftedRegion.begin += 1;
+        AccumulateAudioSpectrum(shifted, *analysis.pcm, shiftedRegion, 1, {});
+        Require(shifted.levels == detail.levels, "Expected hit offsets must share the exact music time grid.");
+        SpectrumTile overviewAttack;
+        AccumulateAudioSpectrum(overviewAttack, impulse, {0, .1, 1, 32, 20, 20'000}, 0, {});
+        Require(std::ranges::max(overviewAttack.levels) > .1F,
+                "A wide spectrum pixel must retain attacks away from its central FFT window.");
+        SpectrumTile aboveNyquist;
+        AccumulateAudioSpectrum(aboveNyquist, *analysis.pcm, {.2, .02, 16, 32, 24'000, 30'000}, 0, {});
+        Require(std::ranges::all_of(aboveNyquist.levels, [](auto value) { return value == 0; }),
+                "Frequencies above the source Nyquist limit must remain silent.");
+
         std::stop_source stop;
         stop.request_stop();
+        SpectrumTile cancelled;
+        AccumulateAudioSpectrum(cancelled, *analysis.pcm, region, 0, stop.get_token());
+        Require(std::ranges::all_of(cancelled.levels, [](auto value) { return value == 0; }),
+                "Cancelled detail work must not run FFTs or publish nonempty signal levels.");
         Require(AnalyzeAudio({}, stop.get_token(), reader).frames.empty() && reads == 1,
                 "An already-cancelled analysis must not invoke the PCM reader.");
     }

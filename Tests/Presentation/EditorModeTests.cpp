@@ -6,6 +6,7 @@
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorNoteInspector.h"
 #include "Taiko/TaikoMode.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <limits>
@@ -41,28 +42,35 @@ namespace
     {
       public:
         std::vector<Rect> rectangles;
+        std::vector<Color> rectangleColors;
+        std::vector<bool> selectedButtons;
+        float deviceScale{1};
+        float PixelScale() const noexcept override { return deviceScale; }
         std::vector<std::function<void()>> actions;
         std::vector<std::filesystem::path> images;
         std::vector<Rect> imageRectangles;
         std::vector<std::wstring> labels;
         std::vector<std::wstring> buttonLabels;
-        void Box(Rect r, Color, float) override
+        void Box(Rect r, Color color, float) override
         {
             rectangles.push_back(r);
+            rectangleColors.push_back(color);
         }
         void Text(Rect, std::wstring text, float, Color) override
         {
             labels.push_back(std::move(text));
         }
-        void Image(Rect rect, const std::filesystem::path &path, Color) override
+        void Image(Rect rect, const std::filesystem::path &path, Color color) override
         {
             rectangles.push_back(rect);
+            rectangleColors.push_back(color);
             images.push_back(path);
             imageRectangles.push_back(rect);
         }
-        void Button(Rect, std::wstring text, std::function<void()> action, bool) override
+        void Button(Rect, std::wstring text, std::function<void()> action, bool selected) override
         {
             actions.push_back(std::move(action));
+            selectedButtons.push_back(selected);
             buttonLabels.push_back(text);
             labels.push_back(std::move(text));
         }
@@ -335,6 +343,7 @@ namespace
         }
         EditorWorkspace state(CreateEditorMode("Taiko"),
                               std::make_unique<ChartEditor>(PatternDocument{}));
+        state.SelectTool(1);
         RecordingCanvas canvas;
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
         state.Mode().EditScore(state, {283.75F, 174}, false);
@@ -461,11 +470,56 @@ namespace
         RecordingCanvas realtime;
         state.Mode().DrawChart(realtime, state, TestCatalog(Language::English));
         Check(std::ranges::any_of(realtime.rectangles, [](const auto &rect)
-                                  { return std::abs(rect.x - 230) < .01F && rect.y == 361 && rect.width == 3; }),
+                                  { return std::abs(rect.x - 230) < .01F && rect.y == 361 && rect.width == 5; }),
               "Realtime must draw the clipped measure start at the judgement line.");
         state.Mode().EditScore(state, {230, 465}, false);
         Check(state.timingForm.measure == "2" && state.timingForm.fraction == "1/4" && state.TimeMilliseconds() == 1000,
               "Realtime and overview must select the same surviving beat at the clipped bar boundary.");
+    }
+
+    void TestInitialSelectionAndRealtimeGrid()
+    {
+        PatternDocument pattern;
+        pattern.baseBpm = 120;
+        EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
+        state.PlaceNote({0, {1, 4}});
+        Check(state.Document().Notes().empty() && !state.Mode().HasPendingPlacement() &&
+                  state.TimeMilliseconds() == 500,
+              "A new editor must select/seek without placing a note.");
+        RecordingCanvas tools;
+        state.Mode().DrawTools(tools, state, TestCatalog(Language::English));
+        Check(!tools.selectedButtons.empty() && tools.selectedButtons.front() &&
+                  std::ranges::any_of(tools.images, [](const auto &path) {
+                      return path.filename() == L"SelectionTool.png" && std::filesystem::is_regular_file(path);
+                  }), "Selection must start active and display the cursor/eraser icon.");
+        const std::array cases{
+            std::pair{1, Color{1, 1, 1, 1}}, std::pair{2, Color{1, .2F, .2F, 1}},
+            std::pair{4, Color{.2F, .5F, 1, 1}}, std::pair{8, Color{1, .9F, .1F, 1}},
+            std::pair{16, Color{.65F, .65F, .65F, 1}}, std::pair{3, Color{.15F, 1, .3F, 1}},
+            std::pair{6, Color{.8F, .35F, 1, 1}}, std::pair{5, Color{1, .55F, .1F, 1}}};
+        state.SetRealtime(true);
+        state.Seek(0);
+        for (const auto &[division, expected] : cases)
+        {
+            state.SetDivision(division);
+            RecordingCanvas grid;
+            grid.deviceScale = .5F;
+            state.Mode().DrawChart(grid, state, TestCatalog(Language::English));
+            const float tickX = 230 + 979.2F / static_cast<float>(division * 4);
+            bool foundTick = false, foundBar = false;
+            for (std::size_t i = 0; i < grid.rectangles.size(); ++i)
+            {
+                const auto &rect = grid.rectangles[i];
+                if (rect.y != 361 || rect.height != 202) continue;
+                foundBar |= std::abs(rect.x - 230) < .01F && rect.width * grid.deviceScale >= 5;
+                if (std::abs(rect.x - tickX) >= .01F || std::abs(rect.width * grid.deviceScale - 2) >= .01F) continue;
+                const auto &color = grid.rectangleColors[i];
+                foundTick = std::abs(color.red - expected.red) < .001F &&
+                            std::abs(color.green - expected.green) < .001F &&
+                            std::abs(color.blue - expected.blue) < .001F && color.alpha == 1;
+            }
+            Check(foundTick && foundBar, "Realtime grid must use the requested colors and device-pixel widths.");
+        }
     }
 
     void TestRealtimeZoomAndTransport()
@@ -475,6 +529,7 @@ namespace
             PatternDocument pattern;
             pattern.baseBpm = 120;
             EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
+            state.SelectTool(1);
             state.SetRealtime(true);
             state.SetRealtimeZoom(zoom);
             RecordingCanvas empty;
@@ -1021,6 +1076,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
                      TextCatalog &texts,
                      const std::function<const std::vector<DrawPacket> &()> &packets)
 {
+    TestInitialSelectionAndRealtimeGrid();
     TestVorbisAudioView(visuals, services, texts, packets);
     {
         TestTaikoToolGroups(texts);

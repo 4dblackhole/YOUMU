@@ -1,4 +1,5 @@
 #include "../../EditorSupport.h"
+#include "App/SkinSetSelection.h"
 #include "TaikoEditorMode.h"
 #include "TaikoEditorTool.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
@@ -55,6 +56,7 @@ void TaikoEditorMode::DrawTools(IEditorModeCanvas &canvas, IEditorContext &state
     canvas.Box({24, 76, 70, 918}, Paper, 18);
     canvas.Text({38, 86, 55, 25}, std::wstring(Editor(catalog).tools), 16);
     canvas.Button({35, 122, 48, 48}, L"", [&state] { state.SelectTool(0); }, tool_ == 0);
+    canvas.Image({42, 129, 34, 34}, SkinSetSelection::Instance().Resolve(L"Editor/SelectionTool.png"), White);
     canvas.Text({75, 125, 16, 18}, L"Q", 12);
     canvas.Text({27, 171, 67, 25}, std::wstring(text.toolGroups[0]), 13);
     for (std::size_t i = 0; i < groupTools_.size(); ++i)

@@ -14,6 +14,8 @@ class IEditorModeCanvas
 {
   public:
     virtual ~IEditorModeCanvas() = default;
+    // Device pixels per local drawing unit, including the editor's layout scale.
+    virtual float PixelScale() const noexcept { return 1; }
     virtual void Box(Rect, Color, float radius = 0) = 0;
     virtual void Text(Rect, std::wstring, float size = 20,
                       Color color = {.17F, .34F, .47F, 1}) = 0;

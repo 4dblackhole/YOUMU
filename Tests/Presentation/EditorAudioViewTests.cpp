@@ -13,6 +13,21 @@
 #include <iostream>
 #include <thread>
 
+struct InputStateTestAccess
+{
+    static void Wheel(InputState &input, float delta)
+    {
+        input.Reset();
+        input.AddMouseWheel(delta, 1);
+    }
+    static void Key(InputState &input, std::uint16_t key)
+    {
+        input.Reset();
+        input.SetKey(key, true, 1);
+    }
+    static void Reset(InputState &input) { input.Reset(); }
+};
+
 namespace
 {
 
@@ -248,6 +263,10 @@ int main(int argc, char** argv)
         }
         EditorWorkspace state({selected.patternPath, selected.effectPath, song.audioPath, selected.pattern.mode});
         state.Initialize();
+        Check(state.MusicMetadataPath() == song.metadataPath.lexically_normal() &&
+                  state.Document().SourcePath() == selected.patternPath &&
+                  (!selected.effectPath || state.Document().Effects().sourcePath == *selected.effectPath),
+              "Folder actions must resolve the currently edited YMM/YMP/YME paths.");
         state.UpdateAnalysis();
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{120};
         while (state.Analysis().Running() && std::chrono::steady_clock::now() < deadline)
@@ -313,7 +332,7 @@ int main(int argc, char** argv)
         MeshRenderSystem meshes;
         TextRenderSystem textRendering;
         AudioSystem audio;
-        TextCatalog texts;
+        TextCatalog texts(std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() / "Client/Texts/Languages");
         EditorView view(visuals, state, texts);
         view.Initialize({meshes, textRendering, renderer, audio, 1920, 1080});
         const auto hasText = [&](const std::wstring_view text)
@@ -373,6 +392,31 @@ int main(int argc, char** argv)
                                                                 { return old.rectangles == packet.rectangles; });
             });
         Check(reused >= 8, "Moving audio time must reuse both tracks' cached tile geometry.");
+        const auto waitDetails = [&] {
+            const auto until = std::chrono::steady_clock::now() + std::chrono::seconds{90};
+            while (state.Analysis().SpectrumRunning() && std::chrono::steady_clock::now() < until)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds{5});
+                state.UpdateAnalysis();
+            }
+            Check(!state.Analysis().SpectrumRunning(), "Visible spectrum analysis did not finish.");
+            view.Build();
+        };
+        waitDetails();
+        const std::size_t visibleColumns = 1565, detailBands = 212;
+        const double tileSeconds = state.audioWindow / visibleColumns * 128;
+        const double viewBegin = state.TimeMilliseconds() / 1000 - state.audioWindow * .25;
+        const auto tileIndex = static_cast<std::int64_t>(std::floor(viewBegin / tileSeconds));
+        const EditorSpectrumRequest detailRequest{0, {tileIndex * tileSeconds, tileSeconds,
+            128, detailBands, 20, state.Analysis().Data().sounds.at("Music").maximumFrequencyHz}};
+        const auto detail = state.Analysis().Spectrum(detailRequest);
+        Check(detail && detail->columns == 128 && detail->bands == detailBands &&
+                  detail->levels.size() == 128 * detailBands,
+              "The Client must display PCM spectrum tiles at physical pixel resolution.");
+        state.Seek(state.TimeMilliseconds() + 1);
+        view.Build();
+        Check(state.Analysis().Spectrum(detailRequest) == detail,
+              "A small seek must reuse the same completed PCM tile.");
         const auto oldWindow = state.audioWindow;
         state.audioWindow /= 2;
         view.Build();
@@ -387,6 +431,7 @@ int main(int argc, char** argv)
               "Changing audio zoom must invalidate the cached tile resolution.");
         state.audioWindow = oldWindow;
         view.Build();
+        waitDetails();
         TestAudioRangeSelection(*canvas, view, state, renderer, texts);
         auto *menuBar = FindNode(canvas->Root(), "Editor.MenuBar");
         if (menuBar == nullptr)
@@ -396,13 +441,34 @@ int main(int argc, char** argv)
         if (slider == nullptr)
             throw std::runtime_error("Audio timeline slider missing");
         Check(slider->IsVisible(), "Audio timeline slider hidden");
+        InputState input;
+        const auto navigationRevision = state.Document().Revision();
+        state.Seek(0);
+        state.SetDivision(4);
+        InputStateTestAccess::Wheel(input, -1);
+        Check(!view.Update({0, 0, 1, input, audio, {}}), "Audio wheel unexpectedly left the editor.");
+        const auto nextTime = state.Document().Timeline().Compile({0, {1, 16}}).count() / 1000.0;
+        Check(state.TimeMilliseconds() == nextTime, "Audio wheel must advance the selected beat grid.");
+        InputStateTestAccess::Wheel(input, 1);
+        static_cast<void>(view.Update({0, 0, 1, input, audio, {}}));
+        Check(state.TimeMilliseconds() == state.Document().Timeline().Compile({0, {}}).count() / 1000.0,
+              "Audio wheel must return to the chart's grid origin.");
+        InputStateTestAccess::Key(input, VK_F10);
+        static_cast<void>(view.Update({0, 0, 1, input, audio, {}}));
+        const auto menuTime = state.TimeMilliseconds();
+        InputStateTestAccess::Wheel(input, -1);
+        static_cast<void>(view.Update({0, 0, 1, input, audio, {}}));
+        Check(state.TimeMilliseconds() == menuTime, "An open menu must block wheel navigation below it.");
+        InputStateTestAccess::Key(input, VK_ESCAPE);
+        Check(!view.Update({0, 0, 1, input, audio, {}}), "Escape must dismiss the menu without leaving.");
+        InputStateTestAccess::Reset(input);
+        Check(state.Document().Revision() == navigationRevision, "Navigation must not edit the chart.");
         Visual2DInputRouter pointerRouter;
         PointerInput pointer{};
         pointer.available = true;
         pointer.position = {205 + 8 + (1645 - 16) * .5F - 960, 540 - 937};
         pointer.leftButtonDown = pointer.leftButtonPressed = true;
         pointerRouter.Process(*canvas, pointer);
-        InputState input;
         Check(!view.Update({0, 0, 1, input, audio, {}}), "Unexpected scene exit");
         Check(std::abs(state.TimeMilliseconds() - (begin + end) * .5) <= 1,
               "Slider action must seek the editor time to its track position.");
@@ -454,6 +520,7 @@ int main(int argc, char** argv)
         Check(state.TimelineRangeMilliseconds() == std::pair{begin, end}, "Resize changed time range");
         Check(menuBar->BoundsInCanvas().width == canvas->LogicalSize().width,
               "Editor view must resize the composed menu.");
+        waitDetails();
         TestAudioRangeSelection(*canvas, view, state, renderer, texts);
         state.SelectTab(EditorTab::Pattern);
         state.SetRealtime(true);

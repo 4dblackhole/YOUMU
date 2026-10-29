@@ -1,4 +1,6 @@
 #include "EditorView.h"
+#include "EditorTime.h"
+#include <shellapi.h>
 #include "Texts/GameIdentity.h"
 #include <algorithm>
 #include <format>
@@ -76,10 +78,21 @@ EditorMenuInputResult EditorView::UpdateMenu(const InputState &input)
     menu.rightPressed = input.WasMouseButtonPressed(MouseButton::Right);
     const bool alt = input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU);
     const bool control = input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
+    const bool shift = input.IsKeyDown(VK_LSHIFT) || input.IsKeyDown(VK_RSHIFT);
     menu.toggle = input.WasKeyPressed(VK_F10) || (alt && input.WasKeyPressed('F'));
-    menu.accept = input.WasKeyPressed(VK_RETURN) || (control && input.WasKeyPressed('S'));
+    menu.toggleEdit = alt && input.WasKeyPressed('E');
+    menu.accept = input.WasKeyPressed(VK_RETURN);
     menu.dismiss = input.WasKeyPressed(VK_ESCAPE);
-    menu.select = input.WasKeyPressed(VK_DOWN) || input.WasKeyPressed(VK_UP);
+    menu.selectStep = input.WasKeyPressed(VK_DOWN) ? 1 : input.WasKeyPressed(VK_UP) ? -1 : 0;
+    menu.switchStep = input.WasKeyPressed(VK_RIGHT) ? 1 : input.WasKeyPressed(VK_LEFT) ? -1 : 0;
+    if (control)
+    {
+        if (input.WasKeyPressed('S')) menu.shortcutAction = EditorMenuAction::Save;
+        else if (input.WasKeyPressed('Z')) menu.shortcutAction = shift ? EditorMenuAction::Redo : EditorMenuAction::Undo;
+        else if (input.WasKeyPressed('Y')) menu.shortcutAction = EditorMenuAction::Redo;
+        else if (input.WasKeyPressed('C')) menu.shortcutAction = EditorMenuAction::Copy;
+        else if (input.WasKeyPressed('V')) menu.shortcutAction = shift ? EditorMenuAction::PasteWithBlanks : EditorMenuAction::Paste;
+    }
     return menuBar_.Update(menu, state_.Document().Dirty());
 }
 
@@ -95,10 +108,11 @@ bool EditorView::Update(const UpdateContext &context)
     try
     {
         const auto menu = UpdateMenu(input);
-        if (menu.saveRequested)
-            state_.Save();
+        if (menu.action)
+            ExecuteMenuAction(*menu.action);
         if (!menu.consumeKeyboard)
             leave = UpdateKeyboard(input);
+        UpdateTimelineNavigation(input, !menu.consumeKeyboard, !menu.consumePointer);
         if (menu.consumePointer)
             sliderInput_.Reset(*canvas.Get());
         else
@@ -132,31 +146,10 @@ bool EditorView::UpdateKeyboard(const InputState &input)
             leave = true;
     }
     const bool controlDown = input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
-    const bool shiftDown = input.IsKeyDown(VK_LSHIFT) || input.IsKeyDown(VK_RSHIFT);
-    if (controlDown)
-    {
-        if (input.WasKeyPressed('Z'))
-        {
-            if (shiftDown)
-                state_.Redo();
-            else
-                state_.Undo();
-        }
-        if (input.WasKeyPressed('Y'))
-            state_.Redo();
-        if (input.WasKeyPressed('C'))
-            state_.CopySelection();
-        if (input.WasKeyPressed('V'))
-            state_.PasteSelection(shiftDown);
-    }
     if (input.WasKeyPressed(VK_DELETE))
         state_.DeleteSelection();
-    if (controlDown && input.WasKeyPressed('S'))
-        state_.Save();
     if (!controlDown && !input.IsKeyDown(VK_LMENU) && !input.IsKeyDown(VK_RMENU))
     {
-        if (input.WasKeyPressed(VK_SPACE))
-            state_.TogglePlayback();
         if (input.WasKeyPressed('Z'))
             state_.SeekFirstNote();
         if (input.WasKeyPressed('X'))
@@ -181,16 +174,6 @@ void EditorView::UpdatePointer(const UpdateContext &context)
     const auto &input = context.input;
     toggleSelection_ = input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
     rangeSelection_ = input.IsKeyDown(VK_LSHIFT) || input.IsKeyDown(VK_RSHIFT);
-    if (input.MouseWheelDelta() != 0)
-    {
-        const int delta = input.MouseWheelDelta() > 0 ? -1 : 1;
-        if (state_.Tab() == EditorTab::Pattern)
-            state_.Mode().ScrollScore(state_, delta);
-        else if (state_.Tab() != EditorTab::Audio)
-            state_.listOffset = static_cast<std::size_t>(
-                std::max<std::int64_t>(0, static_cast<std::int64_t>(state_.listOffset) + delta));
-        state_.RequestRebuild();
-    }
     const float scale = std::max(.001F, std::min(width / 1920.0F, height / 1080.0F));
     const Point point{(input.MousePositionX() - width * .5F) / scale + 960,
                          (input.MousePositionY() - height * .5F) / scale + 540};
@@ -226,4 +209,53 @@ void EditorView::UpdatePointer(const UpdateContext &context)
                 state_.Mode().EditScore(state_, point, false);
         }
     }
+}
+
+void EditorView::UpdateTimelineNavigation(const InputState &input, bool keyboardAllowed, bool pointerAllowed)
+{
+    const bool modified = input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL) ||
+                          input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU);
+    if (keyboardAllowed && !modified && input.WasKeyPressed(VK_SPACE))
+        state_.TogglePlayback();
+    if (!pointerAllowed || input.MouseWheelDelta() == 0)
+        return;
+    const int direction = input.MouseWheelDelta() > 0 ? -1 : 1;
+    if (state_.Tab() == EditorTab::Audio)
+        state_.Seek(StepEditorTimeline(state_.Document().Timeline(), state_.TimeMilliseconds(),
+                                      state_.Score().division, direction).count() / 1000.0);
+    else if (state_.Tab() == EditorTab::Pattern)
+        state_.Mode().ScrollScore(state_, direction);
+    else
+        state_.listOffset = static_cast<std::size_t>(
+            std::max<std::int64_t>(0, static_cast<std::int64_t>(state_.listOffset) + direction));
+    state_.RequestRebuild();
+}
+
+void EditorView::ExecuteMenuAction(EditorMenuAction action)
+{
+    switch (action)
+    {
+    case EditorMenuAction::Save: state_.Save(); break;
+    case EditorMenuAction::Undo: state_.Undo(); break;
+    case EditorMenuAction::Redo: state_.Redo(); break;
+    case EditorMenuAction::Copy: state_.CopySelection(); break;
+    case EditorMenuAction::Paste: state_.PasteSelection(false); break;
+    case EditorMenuAction::PasteWithBlanks: state_.PasteSelection(true); break;
+    case EditorMenuAction::OpenYmmFolder: OpenDocumentFolder(state_.MusicMetadataPath()); break;
+    case EditorMenuAction::OpenYmpFolder: OpenDocumentFolder(state_.Document().SourcePath()); break;
+    case EditorMenuAction::OpenYmeFolder: OpenDocumentFolder(state_.Document().Effects().sourcePath); break;
+    }
+}
+
+void EditorView::OpenDocumentFolder(const std::filesystem::path &path)
+{
+    if (path.empty())
+        throw std::runtime_error("The current document has no file location.");
+    const auto directory = std::filesystem::absolute(path).parent_path();
+    if (!std::filesystem::is_directory(directory))
+        throw std::runtime_error("The current document folder does not exist.");
+    const auto result = reinterpret_cast<INT_PTR>(
+        ShellExecuteW(GetActiveWindow(), L"open", directory.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+    if (result <= 32)
+        throw std::runtime_error("Could not open the document folder (ShellExecute error " + std::to_string(result) + ").");
 }
