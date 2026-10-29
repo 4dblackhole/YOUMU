@@ -6,8 +6,9 @@
 
 ## 시작과 빌드
 
-작업은 [AGENTS.md](AGENTS.md), [인수인계](Docs/SessionHandoff.md),
-[기능별 문서](Docs/README.md)에서 시작합니다. 필요한 코드·회귀 검사는
+작업은 [AGENTS.md](AGENTS.md), [설계 기준](Docs/Design.md),
+[관련 설계 결정](Docs/DesignDecisions.md)에서 시작합니다. 작업 위치는
+[인수인계](Docs/SessionHandoff.md), 상세 계약은 [기능별 문서](Docs/README.md), 필요한 코드·회귀 검사는
 [변경 영향 지도](Docs/ChangeImpactMap.md)에서 찾습니다.
 
 Visual Studio 2022/MSVC v143, Windows SDK, FMOD Studio API for Windows가 필요합니다.

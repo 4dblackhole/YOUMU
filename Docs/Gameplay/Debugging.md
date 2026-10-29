@@ -1,5 +1,8 @@
 # 플레이 디버그와 테스트
 
+설계 기준: [DEBUG-01](../DesignDecisions.md#debug-01-디버그-조작).
+포커스/판정은 [GAME-01~04](../DesignDecisions.md#game-01-rpg-포커스)의 공통 규칙을 유지합니다.
+
 ## Debug 빌드의 정지·시간 탐색
 
 일반 곡을 플레이하는 중에도 `Space`로 디버그 정지에 진입합니다. 타이머·노트 이동과

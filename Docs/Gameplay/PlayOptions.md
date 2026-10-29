@@ -1,5 +1,8 @@
 # Taiko 플레이 옵션과 로컬 기록
 
+설계 기준: [PLAY-01](../DesignDecisions.md#play-01-플레이-옵션),
+[DATA-01](../DesignDecisions.md#data-01-결과와-기록).
+
 게임용 곡 선택 하단에는 실제 등록 모드를 선택하는 Game mode와 Play options가 있습니다.
 현재 등록 모드는 Taiko입니다. 전역 창/장치/키 설정은 기존 Ctrl+O로 엽니다.
 에디터용 곡 선택 하단의 기존 전역 설정 버튼은 유지합니다.

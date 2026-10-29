@@ -1,5 +1,9 @@
 # 타이머·판정·노트 규칙
 
+설계 기준: [TIME-01](../DesignDecisions.md#time-01-시간과-입력) 및
+[GAME-01~04](../DesignDecisions.md#game-01-rpg-포커스).
+포커스·POOR·Buzz 변경 전에 각 결정의 조건·예외·재현 사례를 확인합니다.
+
 코드: `YOUMU.Rhythm/Note/Submodules/<규칙명>.*`, `Lane`, `Judgement`, `Time`.
 모드 조립: `YOUMU.Modes/Taiko/Submodules/TaikoSessionBuilder`, `TaikoLongNoteFactory`.
 검증: `RhythmCoreTests`, `AccuracyTests`, `TaikoModeTests`.
@@ -130,7 +134,7 @@ Completed/Missed에서 `NoteProcessResult::finalizedAccuracies`로 한 번만 �
 Don/Kat 및 BigDon/BigKat/Purple에서 Good 이내의 잘못된 Press가 POOR로 거부되면
 노트는 계속 입력을 기다리지만, 이후 올바른 입력으로 완료되더라도 논리 노트 전체의
 최종 정확도는 0입니다. 큰 노트에서 첫 타격을 성공한 뒤 다른 타격에 POOR가 나도 같습니다.
-Release와 판정 범위 밖의 입력은 이 패널티를 만들지 않습니다. Reset/되감기는
+키 해제(`InputEdge::Released`)와 판정 범위 밖의 입력은 이 패널티를 만들지 않습니다. Reset/되감기는
 해당 입력 이력에 맞춰 패널티를 초기화하거나 재구성합니다.
 
 Buzz 헤드에 POOR가 발생한 뒤 올바르게 시작하면 헤드의 정확도만 0으로 확정하며

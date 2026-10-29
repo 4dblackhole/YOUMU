@@ -1,5 +1,9 @@
 # 목록·패턴·자원 로딩
 
+설계 기준: [LOAD-01](DesignDecisions.md#load-01-로딩과-캐시),
+[FMT-01](DesignDecisions.md#fmt-01-파일-형식과-편집-원본),
+[DATA-01](DesignDecisions.md#data-01-결과와-기록).
+
 목록용 메타데이터와 실제 플레이 세션을 분리합니다. 목록 표시를 위해 모든 노트를
 상주시킬 필요가 없으며, 플레이 직전에는 선택한 원본을 다시 검증합니다.
 

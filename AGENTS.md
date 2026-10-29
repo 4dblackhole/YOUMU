@@ -4,7 +4,8 @@ Applies to this repository; `Dependencies/PhantomCore` follows its own agreement
 
 ## Start and scope
 
-- Read `Docs/SessionHandoff.md`, then select the relevant feature in `Docs/README.md`.
+- Read `Docs/Design.md` and the relevant IDs in `Docs/DesignDecisions.md` before
+  changing a feature. Then use `Docs/SessionHandoff.md` and `Docs/README.md`.
   Use `Docs/ChangeImpactMap.md` for source/test ownership. Read declarations and
   direct callers before expanding the search; do not read every document or SDK.
 - Read `Docs/ExecutionFlow.md` for startup, transitions or lifetime changes,
@@ -12,6 +13,11 @@ Applies to this repository; `Dependencies/PhantomCore` follows its own agreement
   `Docs/EngineOverview.md` only for engine API/ownership work.
 - Implement only the requested behavior. Reuse existing ownership and interfaces;
   keep refactoring local. Do not infer features, data, screens or abstractions.
+- Bug fixes, optimization, refactoring and documentation cleanup do not authorize
+  changing another established design. Check its decision ID, trigger, exceptions
+  and regression examples first. Code/tests are implementation evidence, not
+  authority to override confirmed requirements. A user's explicit change already
+  authorizes that change; do not ask for the same decision again.
 - If reasonable interpretations materially change behavior, ownership, APIs,
   file formats, design or external state, ask before implementing the affected part.
   Independent specified work may continue. For minor choices, use the smallest
@@ -72,6 +78,10 @@ Applies to this repository; `Dependencies/PhantomCore` follows its own agreement
 - Keep permanent contracts in their feature document; update README/index links
   when flows or controls change. Do not append dated completion logs, session-local
   dirty-file lists or superseded findings to onboarding/verification documents.
+- Preserve decision IDs, basis, implementation status, conditions, exceptions,
+  values/units, rationale and regression links when consolidating documents.
+  Update the decision and feature contract together for an authorized design change;
+  never promote proposals or deferred HP work into adopted/implemented features.
 
 ## Git synchronization
 

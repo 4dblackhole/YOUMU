@@ -1,6 +1,7 @@
 # 변경 영향 지도
 
-[기능 문서](README.md)에서 계약을 고른 뒤 아래 소유자와 직접 호출부·관련 테스트만
+[설계 기준](Design.md)과 [관련 결정 ID](DesignDecisions.md), [기능 문서](README.md)에서
+유지할 계약을 확인한 뒤 아래 소유자와 직접 호출부·관련 테스트만
 확인합니다. 경로의 `Submodules/`는 해당 Scene 또는 기능의 구현 폴더입니다.
 모든 코드 변경의 공통 빌드·분석·smoke 절차는 [Verification](Verification.md)을 따릅니다.
 

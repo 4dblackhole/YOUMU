@@ -1,5 +1,8 @@
 # 차트 문법 진입점
 
+설계 기준: [FMT-01](DesignDecisions.md#fmt-01-파일-형식과-편집-원본).
+HP 설계와 미정 문법은 [HP-01·02](DesignDecisions.md#hp-01-기본-hp-설계)로 구분합니다.
+
 문법·기본값·진단/검증 규칙을 변경하면 `Catalog/SongCatalogCacheVersion.h`의
 `SongCatalogParserRevision`도 올립니다. 캐시 자체의 저장 배치를 변경할 때에는
 `SongCatalogCacheSchema`를 올립니다. 원본 파일의 `Version:`과 독립적이며,
