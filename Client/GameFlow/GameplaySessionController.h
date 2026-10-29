@@ -90,12 +90,13 @@ class GameplaySessionController final : public IPlaySessionController
     bool ContinueAt(const UpdateContext &context, RhythmTime target,
                     PlayControlType action);
     void ResetTimeline();
-    void ProcessControlKeys(const UpdateContext &context, const AudioClockSnapshot &clock);
+    void ProcessControlKeys(const UpdateContext &context);
+    void ToggleDebugTimeline(const UpdateContext &context, std::int64_t ticks);
     void ProcessDebugTimeline(const InputState &input, const AudioClockSnapshot &clock,
                               const double deltaSeconds);
-    void ProcessRhythmInput(const InputState &input, std::optional<std::int64_t> exitTicks);
-      void UpdateBeforeInput(const InputState &input, std::size_t eventIndex,
-                             RhythmTime time);
+    void ProcessRhythmInput(const UpdateContext &context, std::optional<std::int64_t> exitTicks);
+    void UpdateBeforeInput(const InputState &input, std::size_t eventIndex,
+                           RhythmTime time);
     void UpdateSession(const InputState &input, const RhythmTime time,
                        bool beforeExit = false);
     bool IsPatternComplete() const noexcept;
@@ -115,7 +116,6 @@ class GameplaySessionController final : public IPlaySessionController
     std::int64_t gameplayStartTicks_{};
     std::string initializationError_;
     double completedElapsedSeconds_{};
-    double debugSpeedMillisecondsPerSecond_{1000.0};
     bool musicRegistered_{};
     bool audioInitialized_{}, resourcesReady_{}, playbackRequested_{};
     bool resourceLoadFailed_{};

@@ -1,5 +1,16 @@
 # 새 관리자·세션 인수인계
 
+## 2026-10-29 Debug 플레이 정지·시간 탐색
+
+- 일반 곡에서도 Debug 빌드의 Space는 음악/타이머를 정지하고 노트 입력·판정은
+  허용합니다. ESC Pause 상태와 구분하며, 재개 시 기존 비동기 음악 준비를 사용합니다.
+- 정지 중 1/2 유지로 -/+1초/실제 1초, 3/4 누름으로 -/+1ms 이동합니다.
+  Accelerate는 탐색 속도에 영향을 주지 않으며 Release에는 이 조작이 없습니다.
+- 소유자는 기존 GameplaySessionController의 GameplayInput/UpdateGameplay입니다.
+  엔진·RhythmTimer API·노트 규칙·HP 런타임은 변경하지 않았습니다.
+- 조작/뒤로 탐색 시 초기화 동작과 검사 경로는 [Debugging](Gameplay/Debugging.md),
+  [Presentation tests](../Tests/Presentation/README.md#gameplay-pause-menu-and-transport)를 참고합니다.
+
 ## 2026-10-29 최신: 에디터 개선·POOR와 버즈 판정
 
 - 에디터 메뉴·공통 이동·선택 도구·틱 표시·고해상도 오디오뷰의 기존 로컬 변경을

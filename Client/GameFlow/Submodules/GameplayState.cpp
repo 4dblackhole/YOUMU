@@ -52,7 +52,7 @@ void GameplaySessionController::UpdatePause(const UpdateContext &context)
         if (context.input.WasKeyPressed(VK_ESCAPE))
             OpenPauseMenu(context);
         else
-            ProcessControlKeys(context, context.audio.CaptureClockSnapshot());
+            ProcessControlKeys(context);
     }
 }
 

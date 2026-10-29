@@ -112,11 +112,10 @@ void GameplaySessionController::Update(const UpdateContext &context)
 void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
 {
     const auto clock = context.audio.CaptureClockSnapshot();
-    ProcessControlKeys(context, clock);
+    ProcessControlKeys(context);
     if (state_ != PlayState::Gameplay)
         return;
-    if (debugMode_)
-        ProcessDebugTimeline(context.input, clock, context.deltaSeconds);
+    ProcessDebugTimeline(context.input, clock, context.deltaSeconds);
     // Freeze gameplay at ESC's timestamp, not at the later frame
     // clock. Inputs after ESC must not turn unfinished notes into hits/misses.
     std::optional<std::int64_t> exitTicks;
@@ -127,14 +126,20 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
             exitTicks = event.performanceCounterTicks;
             break;
         }
-    time_ = timer_.Now(exitTicks.value_or(clock.performanceCounterTicks));
-    if (debugMode_ || timer_.CurrentState() == RhythmTimer::State::Running)
+    ProcessRhythmInput(context, exitTicks);
+    if (state_ != PlayState::Gameplay)
     {
-        ProcessRhythmInput(context.input, exitTicks);
-        UpdateSession(context.input, time_, exitTicks.has_value());
-        audioRouter_.ApplyAutomation(session_->EvaluateAutomation(time_));
-        if (!exitTicks) ScheduleMetronome();
+        // A Space resume can start asynchronous music preparation before ESC
+        // later in this same batch. Keep ESC's request instead of losing it.
+        if (exitTicks && state_ == PlayState::Pause)
+            PauseAt(*exitTicks, true);
+        return;
     }
+    time_ = timer_.Now(exitTicks.value_or(clock.performanceCounterTicks));
+    UpdateSession(context.input, time_, exitTicks.has_value());
+    audioRouter_.ApplyAutomation(session_->EvaluateAutomation(time_));
+    if (!exitTicks && timer_.CurrentState() == RhythmTimer::State::Running)
+        ScheduleMetronome();
     if (exitTicks)
         PauseAt(*exitTicks, true);
     if (!debugMode_ && !pauseMenuOpen_ && timer_.CurrentState() == RhythmTimer::State::Running &&

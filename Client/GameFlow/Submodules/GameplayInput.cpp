@@ -19,8 +19,7 @@ void GameplaySessionController::ResetTimeline()
     nextAudioPreparationPoll_ = 0;
 }
 
-void GameplaySessionController::ProcessControlKeys(const UpdateContext &context,
-                                                   const AudioClockSnapshot &clock)
+void GameplaySessionController::ProcessControlKeys(const UpdateContext &context)
 {
     const auto &input = context.input;
     const auto pressed = [&](std::uint16_t key)
@@ -38,23 +37,34 @@ void GameplaySessionController::ProcessControlKeys(const UpdateContext &context,
         ResetTimeline();
         return;
     }
-    if (pressed(VK_SPACE))
+}
+
+void GameplaySessionController::ToggleDebugTimeline(const UpdateContext &context,
+                                                    std::int64_t ticks)
+{
+    if constexpr (!ReferenceTimeDebug)
+        return;
+    using State = RhythmTimer::State;
+    if (timer_.CurrentState() == State::Running)
     {
-        using State = RhythmTimer::State;
-        if (timer_.CurrentState() == State::Running)
+        time_ = timer_.Now(ticks);
+        timer_.Pause(ticks);
+        audioRouter_.PauseMusicAndStopSamples();
+        session_->RecordControl({PlayControlType::Pause, time_, time_});
+    }
+    else if (timer_.CurrentState() == State::Paused)
+    {
+        if (debugMode_)
         {
-            PauseAt(clock.performanceCounterTicks, false);
+            timer_.Resume(ticks);
+            const auto clock = context.audio.CaptureClockSnapshot();
+            timer_.AnchorDspClock(timer_.Now(clock.performanceCounterTicks), clock.dspClock, clock.sampleRate);
+            return;
         }
-        else if (timer_.CurrentState() == State::Paused)
-        {
-            if (debugMode_ && state_ == PlayState::Gameplay)
-            {
-                timer_.Resume(clock.performanceCounterTicks);
-                timer_.AnchorDspClock(time_, clock.dspClock, clock.sampleRate);
-                return;
-            }
-            static_cast<void>(ContinueAt(context, time_, PlayControlType::Resume));
-        }
+        // Keep accepting note input while frozen, but wait for music seek and
+        // the shared QPC/DSP start deadline when returning to normal playback.
+        state_ = PlayState::Pause;
+        static_cast<void>(ContinueAt(context, time_, PlayControlType::Resume));
     }
 }
 
@@ -64,28 +74,19 @@ void GameplaySessionController::ProcessDebugTimeline(const InputState &input,
 {
     if constexpr (!ReferenceTimeDebug)
         return;
-    if (!debugMode_)
+    if (timer_.CurrentState() != RhythmTimer::State::Paused)
         return;
-
-    if (input.WasKeyPressed(VK_OEM_MINUS))
-    {
-        debugSpeedMillisecondsPerSecond_ = std::max(debugSpeedMillisecondsPerSecond_ - 200.0, 200.0);
-    }
-    if (input.WasKeyPressed(VK_OEM_PLUS))
-    {
-        debugSpeedMillisecondsPerSecond_ = std::min(debugSpeedMillisecondsPerSecond_ + 200.0, 4000.0);
-    }
 
     std::int64_t deltaMicroseconds{};
     if (input.IsKeyDown(static_cast<std::uint16_t>('1')))
     {
         deltaMicroseconds -=
-            static_cast<std::int64_t>(std::llround(debugSpeedMillisecondsPerSecond_ * deltaSeconds * 1000.0));
+            static_cast<std::int64_t>(std::llround(deltaSeconds * 1'000'000.0));
     }
     if (input.IsKeyDown(static_cast<std::uint16_t>('2')))
     {
         deltaMicroseconds +=
-            static_cast<std::int64_t>(std::llround(debugSpeedMillisecondsPerSecond_ * deltaSeconds * 1000.0));
+            static_cast<std::int64_t>(std::llround(deltaSeconds * 1'000'000.0));
     }
     if (input.WasKeyPressed(static_cast<std::uint16_t>('3')))
     {
@@ -100,27 +101,25 @@ void GameplaySessionController::ProcessDebugTimeline(const InputState &input,
         return;
     }
 
-    using TimerState = RhythmTimer::State;
     const auto before = timer_.Now(clock.performanceCounterTicks);
-    if (timer_.CurrentState() == TimerState::Running)
-    {
-        timer_.Pause(clock.performanceCounterTicks);
-        audioRouter_.StopAllVoices();
-    }
     const auto after = before + RhythmDuration{deltaMicroseconds};
+    audioRouter_.PauseMusicAndStopSamples();
     if (after < before)
     {
         feedback_.push_back({true});
         session_->Reset();
-        audioRouter_.StopAllVoices();
+        audioRouter_.ResetAutomation();
     }
     timer_.Seek(after, clock.performanceCounterTicks);
     timer_.AnchorDspClock(after, clock.dspClock, clock.sampleRate);
+    metronomeCursor_ = static_cast<std::size_t>(std::ranges::lower_bound(
+        session_->metronomeBeats, after, {}, &MetronomeBeat::time) - session_->metronomeBeats.begin());
 }
 
-void GameplaySessionController::ProcessRhythmInput(const InputState &input,
+void GameplaySessionController::ProcessRhythmInput(const UpdateContext &context,
                                                    std::optional<std::int64_t> exitTicks)
 {
+    const auto &input = context.input;
     bool synchronized = false;
     const auto events = input.Events();
     for (std::size_t eventIndex = 0; eventIndex < events.size(); ++eventIndex)
@@ -135,6 +134,20 @@ void GameplaySessionController::ProcessRhythmInput(const InputState &input,
             event.type != InputEventType::KeyReleased)
         {
             continue;
+        }
+        if constexpr (ReferenceTimeDebug)
+        {
+            if (event.type == InputEventType::KeyPressed && event.code == VK_SPACE)
+            {
+                // Process earlier edges on the running clock before freezing;
+                // later edges in this batch use the exact frozen chart time.
+                UpdateBeforeInput(input, eventIndex, timer_.Now(event.performanceCounterTicks));
+                ToggleDebugTimeline(context, event.performanceCounterTicks);
+                synchronized = false;
+                if (state_ != PlayState::Gameplay)
+                    break;
+                continue;
+            }
         }
         if (!session_->InputMapping().contains(event.code))
             continue;

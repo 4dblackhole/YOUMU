@@ -114,6 +114,9 @@ Ogg Vorbis는 내장 디코더로 분석하며 MP3/WAV 등은 기존 Media Found
 실시간 뷰의 −/+로 시간축을 25~400% 확대·축소하며 Space로 음악/예상 히트사운드를
 재생·일시정지합니다. Z는 첫 노트/0ms, X는 마지막 노트(테일 포함)/음원 끝을 번갈아 이동합니다.
 Q는 노트 선택 도구이며, 우측 노트 정보의 종류 변경은 같은 도구 묶음 안에서만 허용합니다.
+Debug 플레이에서는 Space로 시간을 정지하고도 노트를 입력할 수 있습니다. 정지 중 1/2를
+누르면 실제 시간과 같은 속도로 뒤/앞으로 탐색하고 3/4는 -1/+1ms 이동합니다.
+Space로 재개하며 Release에는 이 조작이 없습니다. [디버깅](Docs/Gameplay/Debugging.md)을 참고합니다.
 Debug/Release 모두 게임 Scene만 포함합니다. 배포할 때는 깨끗한 폴더에
 `Y's Orchestral Unison - Melodic Ultimatum.exe`, `fmod.dll`, 제공할 `Asset/Songs`를 복사합니다.
 개발 실행은 `Client/Assets`, 다른 폴더에 복사한 EXE는 그 옆 `Asset`을 사용합니다.

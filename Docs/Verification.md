@@ -1,5 +1,21 @@
 # 빌드와 검증
 
+## 2026-10-29 Debug 전용 시간 정지·탐색
+
+- GameplaySessionController에서 Space 정지와 ESC Pause 상태를 구분합니다. Debug 정지
+  중에도 Raw Input 순서로 노트를 판정하고 히트사운드를 재생합니다. Release에서는
+  Space/1~4 디버그 경로를 실행하지 않습니다. 노트 규칙과 엔진 API는 변경하지 않았습니다.
+- Debug/Release x64 솔루션 빌드 후 최종 Client 변경에 실제 구성의 MSVC `/analyze`를
+  실행했습니다. 최종 Client 경고는 없으며, 전체 솔루션의 기존 엔진
+  C26478/C26498/C6011 세 건은 유지했습니다. 각 구성의 로직·카탈로그 73개,
+  네 smoke 경로, CheckArchitecture와 `git diff --check`를 통과했습니다.
+- GameplayPauseTests도 두 구성에서 통과했습니다. 기존 ESC·음악 준비·cold-start 검사에 더해
+  일반 곡 Space 정지/재개, 정지 중 노트 입력·샘플 출력, Accelerate 1x/1.5x에서
+  일정한 탐색 속도, 3/4 단발 이동, Space 직후 같은 배치의 ESC, Release 비활성화를
+  검사합니다. 입력은 테스트에서 주입하며 물리 키보드 수동 조작·청음 검사는 아닙니다.
+- smoke 전후 두 Option.ini의 SHA-256이 같으며, 상세 로그는 ignored
+  `build/debug-timeline-20261029`에 보관합니다.
+
 ## 2026-10-29 POOR·버즈 및 에디터 요청 마무리
 
 - 일반/큰/보라 노트의 POOR는 올바른 재입력을 기다린 뒤 논리 노트 정확도를 0으로

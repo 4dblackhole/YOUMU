@@ -16,6 +16,7 @@ struct InputStateTestAccess
 {
     static void Begin(InputState &input) { input.BeginUpdate(); }
     static void Press(InputState &input, std::uint16_t key, std::int64_t ticks) { input.SetKey(key, true, ticks); }
+    static void Release(InputState &input, std::uint16_t key, std::int64_t ticks) { input.SetKey(key, false, ticks); }
 };
 
 namespace
@@ -675,6 +676,7 @@ namespace
                 Check(musicStarts.back().startPositionMicroseconds == 4'000'000,
                       "Rewind must seek music to the compiled measure start.");
                 CheckConfirmedRewindExample(ctx);
+                CheckDebugTimeline(ctx);
                 CheckSharedLifecycle(ctx);
                 CheckTransientVoices(ctx);
                 controller_->OpenPauseMenu(ctx);
@@ -762,6 +764,121 @@ namespace
         }
 
       private:
+        void CheckDebugTimeline(const UpdateContext &ctx)
+        {
+            for (const auto rate : {1.0, 1.5})
+            {
+                PlaySessionOptions options;
+                options.play.accelerate = rate;
+                auto loaded = TaikoMode(options).CreateSession(Pattern());
+                Check(loaded.Succeeded(), "Debug timeline fixture must load.");
+                GameplaySessionController controller({"probe.ymp", {}, "probe-music.mp3", "Taiko"}, playback_,
+                                                       false, std::move(loaded.session));
+                controller.InitializeSession();
+                controller.Start(*services_, RhythmTime{12'240'000});
+                WaitForGameplay(controller, ctx);
+                InputState input;
+                const auto frame = [&](double seconds = 0.0)
+                {
+                    controller.Update({seconds, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}});
+                };
+                const auto edge = [&](std::uint16_t key, bool down, double seconds = 0.0)
+                {
+                    InputStateTestAccess::Begin(input);
+                    const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                    if (down) InputStateTestAccess::Press(input, key, ticks);
+                    else InputStateTestAccess::Release(input, key, ticks);
+                    frame(seconds);
+                };
+                const auto running = controller.Time();
+                edge('1', true, .25);
+                Check(controller.Time() >= running && controller.Time() - running < RhythmDuration{100'000},
+                      "Timeline controls must not scrub while normal playback is running.");
+                edge('1', false);
+                const auto samples = sampleStarts;
+                InputStateTestAccess::Begin(input);
+                const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                InputStateTestAccess::Press(input, VK_SPACE, ticks);
+                InputStateTestAccess::Press(input, 'F', ticks + 1);
+                frame();
+                Check(controller.CurrentState() == PlayState::Gameplay && !controller.PauseMenuOpen() &&
+                          controller.Session().FinalizedNoteCount() == 1 && sampleStarts > samples,
+                      "A note input after Space in the same batch must still be judged and play a hit sound.");
+                const auto frozen = controller.Time();
+                edge(VK_SPACE, false);
+                edge('F', false);
+#if defined(_DEBUG)
+                InputStateTestAccess::Begin(input);
+                frame(.5);
+                Check(controller.Time() == frozen, "Space must freeze the chart clock without opening the menu.");
+                edge('1', true, .25);
+                Check(controller.Time() == frozen - RhythmDuration{250'000}, "Key 1 must move backwards at 1x.");
+                InputStateTestAccess::Begin(input);
+                frame(.75);
+                Check(controller.Time() == frozen - RhythmDuration{1'000'000} &&
+                          controller.Session().FinalizedNoteCount() == 0,
+                      "Holding 1 must keep seeking and restore notes after moving backwards.");
+                edge('1', false);
+                edge('2', true, .125);
+                InputStateTestAccess::Begin(input);
+                frame(.875);
+                Check(controller.Time() == frozen, "Key 2 must move forward at 1x even with Accelerate enabled.");
+                edge('2', false);
+                edge('3', true);
+                Check(controller.Time() == frozen - RhythmDuration{1000}, "Key 3 must step back exactly 1ms.");
+                InputStateTestAccess::Begin(input);
+                frame(.4);
+                Check(controller.Time() == frozen - RhythmDuration{1000}, "Holding 3 must not repeat the 1ms step.");
+                edge('3', false);
+                edge('4', true);
+                Check(controller.Time() == frozen, "Key 4 must step forward exactly 1ms.");
+                edge('4', false);
+                InputStateTestAccess::Begin(input);
+                const auto both = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                InputStateTestAccess::Press(input, '1', both);
+                InputStateTestAccess::Press(input, '2', both);
+                frame(.5);
+                Check(controller.Time() == frozen, "Holding both continuous-seek keys must cancel out.");
+                edge('1', false);
+                edge('2', false);
+                edge('F', true);
+                Check(controller.Session().FinalizedNoteCount() == 1 && controller.Time() == frozen,
+                      "A restored note must be playable while the clock stays frozen.");
+                edge('F', false);
+                edge(VK_SPACE, true);
+                WaitForGameplay(controller, ctx);
+                Check(musicStarts.back().startPositionMicroseconds == static_cast<std::uint64_t>(frozen.count()),
+                      "Space resume must align music to the frozen chart position.");
+                edge(VK_SPACE, false);
+                edge(VK_SPACE, true);
+                edge(VK_SPACE, false);
+                const auto stopped = controller.Time();
+                InputStateTestAccess::Begin(input);
+                const auto resumeTicks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                InputStateTestAccess::Press(input, VK_SPACE, resumeTicks);
+                InputStateTestAccess::Press(input, VK_ESCAPE, resumeTicks + 1);
+                frame();
+                Check(controller.CurrentState() == PlayState::Pause && controller.PauseMenuOpen(),
+                      "ESC after Space in one batch must cancel resume preparation and open the normal menu.");
+                edge('2', true, .5);
+                Check(controller.Time() == stopped, "Debug seeking must not run inside the ESC menu.");
+#else
+                for (const auto key : {'1', '2', '3', '4'})
+                {
+                    edge(static_cast<std::uint16_t>(key), true, .25);
+                    edge(static_cast<std::uint16_t>(key), false);
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds{2});
+                InputStateTestAccess::Begin(input);
+                frame(.5);
+                Check(controller.Time() > frozen && controller.Time() - frozen < RhythmDuration{100'000} &&
+                          controller.CurrentState() == PlayState::Gameplay,
+                      "Release must ignore Space and all four debug timeline keys.");
+#endif
+                controller.Shutdown();
+            }
+        }
+
         void CheckTransientVoices(const UpdateContext &ctx)
         {
             for (bool musicPitch : {false,true}) for (bool hitPitch : {false,true})
