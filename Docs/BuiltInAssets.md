@@ -91,9 +91,8 @@ FMOD SDK/런타임 버전이 같으면 기존 fmod.dll을 유지할 수 있으�
 유지한 채 Asset/Songs에 추가합니다. 음악·이미지의 배포/사용 권한은 해당 계약으로 확인합니다.
 
 MSVCP140/VCRUNTIME 런타임 의존성은 [Microsoft 공식 x64 재배포 패키지](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)로 설치합니다.
-빌드 도구 이상 버전의 런타임이 필요하며 OS DLL을 임의로 복사하지 않습니다. 2026-10-16의 로컬 demo에는
-Microsoft 공식 설치 파일을 받아 Authenticode Valid/Microsoft Corporation 서명을 확인하여 동봉했고,
-설치 프로그램 자체는 실행하지 않았습니다. 폴더 전체를 묶어 전달하고 안내에 따라 수신자가 설치합니다.
+빌드 도구 이상 버전의 런타임이 필요하며 OS DLL을 임의로 복사하지 않습니다.
+설치 파일을 동봉한다면 Microsoft 공식 배포본과 서명을 확인합니다.
 
 FMOD DLL을 동봉할 수 있는 조건과 크레딧/로고는 [FMOD 라이선스](https://www.fmod.com/licensing)와
 [표기 조건](https://www.fmod.com/attribution)을 확인합니다. 파일 구성과 실행 성공이 공개 배포에 필요한
@@ -223,7 +222,7 @@ PNG가 필수는 아닙니다.
 | --- | --- | --- |
 | `Result/Background/Sky.png` | 1920×1080 | 시안의 RightFade 배경과 하늘 veil |
 | `Result/Background/Clouds.png` | 1920×168 | 하단 투명 구름 |
-| `Result/Mode/Taiko.png` | 48×48 | 짙은 상단 배너용 모드 드럼 아이콘(흰색 채, 2026-10-15 Penpot 갱신본) |
+| `Result/Mode/Taiko.png` | 48×48 | 짙은 상단 배너용 모드 드럼 아이콘(흰색 채) |
 | `Result/Rank/Frame.png` | 509×336 | 링·날개 장식(배치 폭 508.5) |
 | `Result/Rank/{Y,PERFECT,SSS,SS,S,A,B,C,D,E,F}.png` | 각 1774×887 | 정확도별 랭크, 투명 배경·원본 비율 유지 |
 

@@ -1,45 +1,19 @@
-# 판정 이미지 제작 기록
+# 판정 PNG 자산
 
-2026-10-06 built-in `image_gen`으로 MAX를 생성한 뒤 이를 참조해 6종을 편집했습니다.
-CLI/API fallback은 사용하지 않았습니다. 모든 호출에 transparent_background=true를 지정했고,
-선택한 원본 PNG를 변경 없이 프로젝트에 복사했습니다.
+경로: `YOUMU.Assets/Assets/Skins/Default Skin/InGame/Judgements`.
+각 PNG는 1254×1254 RGBA이며 중심과 바깥 여백이 투명합니다.
+동일한 원형 링의 중심·반지름·선 두께와 위쪽 문구 위치를 공유합니다.
 
-저장 위치는 `YOUMU.Assets/Assets/Skins/Default Skin/InGame/Judgements/`이며
-파일명은 MAX.png, PERFECT.png, GREAT.png, GOOD.png, BAD.png, MISS.png, POOR.png입니다.
-실제 결과는 모두 1254×1254 RGBA이며 중심과 모서리 알파가 0입니다.
-아래 프롬프트의 요청 크기와 실제 도구 출력 크기는 다릅니다. 런타임은 이미지 크기를 읽고
-판정원의 크기에 맞춰 비율을 유지해 표시합니다. 교체/표시 계약은 [Presentation](Presentation.md)에 있습니다.
-
-## MAX 생성 프롬프트
-
-```text
-Use case: ui-mockup. Asset type: production 2D rhythm-game judgement overlay PNG on a truly transparent background. Create ONE clean flat circular outline ring plus the exact uppercase word "MAX" laid horizontally across the TOP of that ring, as a combined image. Canvas 1024x1024. Ring MUST be a perfect circle centered exactly at (512,512), outer radius 380 pixels, thin stroke width 22 pixels, empty transparent interior. The word sits at y=125-235, centered x=512, so it overlaps the top arc slightly; bold upright condensed sans serif with a dark navy outline for legibility, white fill. Ring color WHITE with a restrained cyan edge. Match a simple clean game UI: flat crisp geometric graphics, no perspective, no photorealism, no icons, no sparkles, no decorative elements, no other text, no extra circles, no background. Entire ring and word visible with margins. Export with actual alpha transparency. Ring center and radius are critical for overlaying an existing judgement circle. Exact text MAX only.
-```
-
-## 편집 프롬프트와 치환값
-
-MAX.png를 referenced_image_paths로 전달했습니다. 각 요청은 아래 템플릿의
-{grade}/{color}를 표의 값으로 치환한 별도 도구 호출입니다.
-
-```text
-Edit this game judgement overlay asset. Change ONLY the word MAX to exact uppercase text "{grade}" and change the ring and text fill color to {color}. Preserve the exact canvas size, ring center, circle radius, stroke width, overall margins, transparency, flat clean UI style, dark navy text outline, upright bold condensed typography and text position at the top arc. Remove any isolated specks in the transparent interior. No added details, no icons, no extra rings, no background. This is a production sprite: perfectly circular hollow ring with the word {grade} centered above its interior, attached to the top arc. Preserve actual alpha transparency. All seven judgement sprites must align when drawn over the same circle.
-```
-
-| grade | color |
+| 파일 | 색상 |
 | --- | --- |
-| PERFECT | bright cyan |
-| GREAT | vivid green |
-| GOOD | golden yellow |
-| BAD | violet |
-| MISS | muted grey |
-| POOR | red |
+| MAX.png | 흰색 |
+| PERFECT.png | 밝은 청록색(cyan) |
+| GREAT.png, OK.png | 초록 |
+| GOOD.png | 노랑 |
+| BAD.png | 보라 |
+| MISS.png | 회색 |
+| POOR.png | 빨강 |
 
-## OK 추가 (2026-10-12)
-
-built-in image_gen의 편집으로 GREAT.png를 참조하여 OK.png를 추가했습니다.
-CLI fallback을 사용하지 않았으며 생성 원본을 변경 없이 동일 Judgements 폴더에 복사했습니다.
-1254×1254 RGBA, 중앙/모서리 alpha 0을 확인했습니다. 런타임은 다른 링과 같은 크기로 맞춥니다.
-
-```text
-Edit the reference rhythm-game judgement overlay. Change ONLY the word GREAT to the exact uppercase text "OK". Preserve the exact canvas size, circular ring center, radius, stroke widths, transparent hollow interior and transparent background, margins, vivid green ring and text, dark navy text outline, upright bold condensed typography and text position over the top arc. No icons, extra rings, specks, background, or other text. All judgement sprites align over the same circle. Export PNG with actual alpha transparency. Keep the ring completely visible.
-```
+교체 시 정확한 대문자 문구, 짙은 남색 글자 윤곽과 투명 알파를 유지합니다.
+런타임은 이미지 크기를 읽어 판정원에 비율을 맞춥니다.
+표시 조건·크기·수명은 [Presentation](Presentation.md#판정-인디케이터와-링문구)이 기준입니다.

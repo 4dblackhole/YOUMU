@@ -102,7 +102,6 @@ RANK는 아래 정확도 기준의 스킨 이미지를 표시합니다.
 글꼴 굵기는 DirectWrite layout cache key·유지 payload·측정 무효화에 포함됩니다.
 기본값은 기존과 같은 400이며 1..999 범위를 사용합니다. 리절트만 라이선스와 함께 내장한
 Noto Sans KR 글꼴을 사용합니다. 새 PNG의 경로·제작 크기는 [BuiltInAssets](../BuiltInAssets.md)에 있습니다.
-2026-10-15의 배너·열 너비 갱신은 위 기능으로 표현할 수 있어 추가 엔진 변경이 없습니다.
 배너 색은 공통 UiColors의 result::Banner가 소유하고 드럼 PNG는 갱신된 Penpot 원본을 사용합니다.
 
 ## 입력 로그와 종료 시각
@@ -151,44 +150,10 @@ TaikoResultView의 RankImageKey가 한 표에서 키를 선택하고 LoadAssets�
 Scene, 결과 수집기, 정확도 산식과 저장 데이터는 바꾸지 않습니다. 부분 스킨에서 빠진
 랭크 이미지는 기존 SkinManifest 규칙에 따라 해당 내장 기본본으로 대체합니다.
 
-### 랭크 PNG 제작
+### 랭크 PNG 자산
 
-11개 모두 built-in image_gen으로 제작한 1774×887 투명 PNG입니다. 원본은
-`YOUMU.Assets/Assets/Skins/Default Skin/Result/Rank`에 보관하고 기존 내장 자산
-wildcard와 같은 Result/Rank 프로젝트 필터를 사용합니다. Y를 먼저 생성한 뒤 각 문구를
-Y의 스타일을 유지하는 개별 편집으로 제작했습니다. 이미지의 문구/투명 배경은 직접 확인했고,
-PNG 크기·알파와 실제 결과 화면의 자동 검증은 Verification에 별도로 기록합니다.
-
-생성 프롬프트(Y):
-
-```text
-Use case: logo-brand. Asset type: transparent PNG rhythm-game result rank emblem.
-Create exactly one rank emblem with the exact capital text "Y", and nothing else.
-Crisp bold condensed slightly italic geometric display lettering. Flat polished 2D
-game UI artwork, sky-blue face (#80C9EB), deep blue (#285374) outline and a thin
-white inner highlight, matching a clean pale sky-blue rhythm game UI with white
-circular rank frame. Strong readable silhouette when rendered at about 160 pixels
-tall. No surrounding badge, circle, wings, stars, background, scene, icon, percentage
-or extra words. Text must be precisely Y. Center the lettering on a landscape 2:1
-transparent canvas, generous transparent padding, full lettering entirely inside
-the canvas. Genuine alpha transparency. Do not include a checkerboard pattern or
-black rectangle. This is the first of a matching rank family whose texts are
-Y, PERFECT, SSS, SS, S, A, B, C, D, F; produce ONLY Y in this image.
-```
-
-편집 프롬프트 집합: 아래 `{rank}`에 `PERFECT`, `SSS`, `SS`, `S`, `A`, `B`, `C`,
-`D`, `E`, `F`를 각각 넣어 별도 호출했습니다. 참조 이미지는 첫 Y PNG이며 투명 배경을 유지했습니다.
-
-```text
-Use case: text-localization. Asset type: transparent PNG rhythm-game result rank
-emblem, one matching variant of the reference Y.
-Edit the reference rank emblem: replace the letter Y with exactly the capital
-text "{rank}". Preserve the same sky-blue glossy face, deep blue outline, thin white
-bevel highlight, bold condensed slightly italic geometric lettering, clean readable
-game UI style, transparent landscape 2:1 canvas and genuine alpha transparency.
-Center the new lettering and scale it as needed so the whole exact text fits with
-generous transparent padding; preserve letter proportions and legibility. The exact
-text is "{rank}" and no other text. No Y should remain. Do not add a badge, frame,
-circle, wings, stars, icons, percentage, shadow rectangle, scene, background or
-watermark. Output only this one emblem as a standalone transparent PNG.
-```
+`YOUMU.Assets/Assets/Skins/Default Skin/Result/Rank`의 11개 PNG는
+1774×887 RGBA이며 같은 2:1 투명 캔버스를 사용합니다. 교체 시 문구·비율·여백과
+실제 알파를 유지합니다. 하늘색 면(#80C9EB), 짙은 파랑 윤곽(#285374), 얇은 흰색
+하이라이트와 굵은 기울임 글자 스타일을 공유하며 다른 배지/배경은 넣지 않습니다.
+런타임은 위 랭크 표로 이미지를 선택하고 비율을 유지해 표시합니다.

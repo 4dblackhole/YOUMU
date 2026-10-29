@@ -1,162 +1,86 @@
 # YOUMU working agreement
 
-This file applies to the entire repository except the independently versioned
-`Dependencies/PhantomCore` submodule.
+Applies to this repository; `Dependencies/PhantomCore` follows its own agreement.
 
-## Session onboarding
+## Start and scope
 
-- Read `Docs/SessionHandoff.md` and the routing table in `Docs/README.md`.
-  Select only the feature document and source subtree needed for the request.
-  Do not read every document or the whole engine SDK for routine Client work.
-  Read `Docs/ExecutionFlow.md` for startup, transitions, or lifetime changes;
-  read engine `Docs/EngineOverview.md` only for engine API/ownership work.
-- Use `Docs/ChangeImpactMap.md` for the smallest implementation/test boundary.
-  Read declarations and direct callers before expanding the search.
-- Use the Visual2D documents for Sprite, Canvas, input, PNG, and Z-order work.
-  Technical example Scenes are not part of this Client repository.
-- Keep `README.md`, `Docs/README.md`, and affected feature documents in sync
-  when a major Client flow, example, control, or engine integration changes.
+- Read `Docs/SessionHandoff.md`, then select the relevant feature in `Docs/README.md`.
+  Use `Docs/ChangeImpactMap.md` for source/test ownership. Read declarations and
+  direct callers before expanding the search; do not read every document or SDK.
+- Read `Docs/ExecutionFlow.md` for startup, transitions or lifetime changes,
+  Visual2D documentation for Canvas/input/rendering work, and the engine's
+  `Docs/EngineOverview.md` only for engine API/ownership work.
+- Implement only the requested behavior. Reuse existing ownership and interfaces;
+  keep refactoring local. Do not infer features, data, screens or abstractions.
+- If reasonable interpretations materially change behavior, ownership, APIs,
+  file formats, design or external state, ask before implementing the affected part.
+  Independent specified work may continue. For minor choices, use the smallest
+  reversible change and state the assumption in the handoff. Suggestions are not requirements.
+- Use real runtime data and an explicit empty state when unavailable.
+- Use built-in file/command tools; do not use Chat On Steroids.
 
-## Scope discipline
+## Ownership and implementation
 
-- When a request is underspecified, implement the smallest reversible change
-  that satisfies its explicit acceptance criteria. Do not interpret missing
-  detail as permission to add speculative features, generalized subsystems,
-  placeholder data, extra screens, samples, or abstractions.
-- Inspect and reuse the current architecture before creating a new class,
-  project, interface, asset, or framework layer. Add an extension point only
-  when the requested behavior uses it now or the user explicitly asks for it.
-- Keep refactoring local to the code touched by the request unless the user
-  explicitly asks for a broader refactor. Do not turn a focused fix into a
-  repository-wide cleanup.
-- If requirements are insufficient or two reasonable interpretations would
-  materially change behavior, ownership, public API, file format, or design,
-  STOP the affected implementation and ask the user a concrete question.
-  Do not implement a speculative interpretation while waiting. This applies
-  to every contributor and future session. Independent specified work may
-  continue. For immaterial details choose the smallest reversible change.
-- Suggestions and future possibilities are not implementation requirements.
-  Report them separately and stop once the requested behavior and proportional
-  verification are complete.
-- Do not invent songs, records, profile statistics, devices, or other runtime
-  data to make a screen look populated. Use real data when available and an
-  explicit empty state otherwise.
+- This repository owns game code/assets. Engine changes belong in the independent
+  PhantomCore repository, not the detached submodule checkout. Client engine
+  includes/references are limited to `PhantomCore.h` and `PhantomCore.vcxproj`.
+- Domain libraries must not depend on Client/engine implementations. YMP owns
+  playable score data; YME owns visual/audio automation. Game modes implement
+  `IPlayGameMode` and own chart-to-note construction.
+- Public product/domain types use the global scope. Keep anonymous/internal,
+  collision-avoiding UI constants and third-party namespaces where needed.
+- Converter implementation belongs to the independent OsuTaikoConverter repository
+  and its existing dedicated chat. It uses file formats and Taiko note contracts;
+  Client `OsuImportValidation` validates converted files with actual play sessions.
+- Keep Scene IDs in `Client/GameFlow/YOUMUSceneIds.h`. Register factories with
+  explicit retention and use deferred `ChangeScene`. Gameplay Scenes use
+  `DestroyOnExit`; only result data leaves a play session.
+- Use Win32 Virtual-Key values and ordered Raw Input QPC timestamps. One
+  `RhythmTimer` per session converts input and DSP time; re-anchor DSP after pause.
+  Rendering time is never a judgement source. Compile tempo positions to integer
+  microseconds at load time, not through per-frame tempo integration.
+- Notes emit backend-neutral `NoteEvent`/`AudioCueRequest`; Client audio routing
+  maps them to clips, buses and effects. Game-specific UI stays in Client.
+- Song selection uses `SongCatalog`, preserves YMM/YMP relative paths and title/
+  artist list rows, and passes a copied `GameplayLaunchRequest` on entry.
+- Keep lane elements under one parent, authored in its default local direction;
+  rotate the parent for a mode rather than positioning each child in screen space.
+- Scenes compose responsibility-owning classes through small calls. Keep feature
+  headers/sources together, Scene `Submodules/`, and physical/filter trees aligned.
+  Include specific contracts, never implementation `.cpp` files or compatibility
+  facades. Do not substitute file splitting for ownership separation.
+- Extract named helpers for distinct operations. For a long cohesive function,
+  explain meaningful phases and required ordering without restating the code.
+- Do not commit FMOD SDK/import libraries/runtime DLLs. Bundle licenses beside
+  redistributed fonts and preserve third-party notices.
 
-## Purpose and boundary
+## Verification and documentation
 
-- This private repository contains game-specific code and assets.
-- The reusable engine is pinned as the private `Dependencies/PhantomCore`
-  submodule. Engine changes belong in that repository, not in a detached
-  submodule checkout here.
-- Client source may include only `PhantomCore.h` from the engine and may reference
-  only `PhantomCore.vcxproj`.
-- Do not commit FMOD SDK files, import libraries, or runtime DLLs.
+- Review changed code and direct callers for correctness, lifetime, error handling,
+  bounds/conversions, concurrency, duplication and readable responsibilities.
+- Follow `Docs/Verification.md`: code changes require Debug/Release x64 solution
+  builds, logic/catalog tests, four smoke routes per configuration, relevant
+  regressions, and MSVC Code Analysis or clang-tidy on affected Client-owned C++
+  projects using actual include/define/C++ settings. Parsing errors are failures.
+- Run `Scripts/CheckArchitecture.ps1` for code/project changes and `git diff --check`
+  for every change. Documentation-only changes need diff/link checks, not C++ builds.
+- Fix new diagnostics; report existing findings separately. Do not blanket-fix or
+  suppress warnings to pass checks. Keep engine/vendor/generated code outside Client
+  fixes. Report unavailable tools and checks actually performed.
+- Report changed responsibilities, effects, validation and limitations. Distinguish
+  automated checks from manual visual/input/listening validation.
+- Keep permanent contracts in their feature document; update README/index links
+  when flows or controls change. Do not append dated completion logs, session-local
+  dirty-file lists or superseded findings to onboarding/verification documents.
 
-## Client rules
+## Git synchronization
 
-- Keep YOUMU Scene IDs in `Client/GameFlow/YOUMUSceneIds.h`.
-- Register Scene factories through `SceneManager::RegisterScene` with explicit
-  `KeepAlive` or `DestroyOnExit` retention and use deferred `ChangeScene` for
-  all transitions.
-- Register every gameplay-mode Scene as `DestroyOnExit`. Keep only its factory
-  while inactive, create the concrete mode Scene on entry, and return only
-  result data before leaving so `Shutdown` can destroy all play-session state.
-- Use Win32 Virtual-Key values with the engine input API; do not add a Client
-  key enum for physical keyboard input.
-- Preserve timestamped Raw Input events for future rhythm judgement.
-- Keep one `RhythmTimer` per active play session. Convert timestamped QPC
-  input and DSP scheduling through that clock; rendering time is never a
-  judgement source. Re-anchor DSP time after a gameplay pause.
-- Keep note rules backend-neutral. They emit semantic `NoteEvent` and
-  `AudioCueRequest` values; only the Client audio router maps them to engine
-  clips, buses, and effects.
-- Compile beat/BPM positions to integer microseconds when a chart session is
-  loaded. Per-frame gameplay code must not repeatedly integrate tempo maps.
-- Keep YMP focused on playable score data and YME focused on visual/audio
-  automation. New game modes implement `IPlayGameMode` and own parsing-to-note
-  construction policy.
-- Build song selection from `YOUMU.Chart/Catalog/SongCatalog`; preserve
-  the YMM/YMP relative-path relationship and keep list rows limited to title
-  and artist. Pass selected paths through `GameplayLaunchRequest` rather than
-  retaining a gameplay Scene.
-- Author scroll-lane presentation in its default local direction and rotate
-  the lane parent for a game mode. Keep lane backgrounds, effects, judgement
-  lines, note layers and long-note parts under that parent instead of computing
-  independent screen-space positions for each child.
-- Keep Client `.vcxproj.filters` paths synchronized with physical directories.
-- Give each Scene its own directory with `SceneName.h/.cpp` and `Submodules/`.
-  The Scene composes responsibility-owning classes through small calls; moving
-  the same giant class into several files is not sufficient. Keep the same
-  physical/filter tree for domain families such as `Note/Submodules/`.
-  Put shared contracts above leaves; never include implementation `.cpp` files.
-- Include the specific contracts each file uses. Do not restore retired
-  compatibility aliases, facade headers, configuration imports, or example routes.
-- Bundle each redistributed font license beside the font asset.
-- Keep game option behavior in Client code. Compose it from engine
-  `Visual2DNode` components, Canvas actions, and surface mapping rather than
-  adding game-specific widget classes to the engine.
-- Keep functions readable as they grow. If a function performs multiple
-  operations, extract each operation into a clearly named helper/private
-  function. If a long function still represents one cohesive operation, add
-  short section comments at each meaningful phase boundary to explain the
-  intent and required ordering; do not add comments that merely restate an
-  obvious statement.
-
-## Repository synchronization
-
-- Work directly on `main` unless the user explicitly requests a separate
-  branch. Do not create a task branch by default.
-- Treat synchronization as part of every completed engine/Client task. Fetch
-  both repositories, verify the local work branch matches its upstream, and
-  report exact commit IDs when handing work back.
-- When the engine commit changes, first make that commit available on the
-  engine remote, then update and commit the `Dependencies/PhantomCore` gitlink.
-  Verify that `git ls-files -s Dependencies/PhantomCore` and
-  `git -C Dependencies/PhantomCore rev-parse HEAD` name the same commit.
-- After approved PRs are merged, fast-forward the Client `main`, run
-  `git submodule sync --recursive` and `git submodule update --init
-  --recursive`, and verify that both repositories are on the intended latest
-  commits before declaring the task complete.
-- When the user explicitly requests a task branch, publish it after validation,
-  create or update its PR, mark it ready, and merge it into `main`. For combined
-  changes, merge the engine first, update the Client gitlink to the resulting
-  engine `main` commit, and only then merge the Client.
-- Never claim that `main` is current while a required PR remains open. Do not
-  bypass failed checks, merge conflicts, or branch protection; report such a
-  blocker instead. Preserve unrelated working-tree files while synchronizing.
-
-## Code quality checks
-
-- For every code change, review the changed code and direct callers for
-  correctness, ownership/lifetime, error handling, bounds and conversions,
-  applicable concurrency risks, duplication, and function responsibility/readability.
-  Keep fixes within the requested change boundary.
-- Run static analysis on the affected Client-owned C++ projects with
-  `clang-tidy` or MSVC Code Analysis before completing code changes. Use the
-  actual project include paths, defines, C++ standard, and relevant x64 build
-  configurations; a run with parsing errors is not a successful quality check.
-  Follow repository-defined checks and commands when available, and record the
-  tool, configuration, scope, and results in the completion report.
-- Run `Scripts/CheckArchitecture.ps1` for code/project changes and
-  `git diff --check` for every change. Static analysis supplements the builds,
-  logic tests, and smoke routes required below; it does not replace them.
-- Resolve compiler warnings and static-analysis findings introduced by the
-  change. Report unrelated existing findings separately without expanding the
-  task into a repository-wide cleanup.
-- Do not apply blanket automatic fixes or suppress diagnostics merely to make
-  checks pass. Any targeted suppression must explain why the diagnostic does
-  not apply. Keep engine sources, third-party SDKs, and generated files outside
-  the Client analysis/fix scope; engine work follows its own repository rules.
-- If a required tool is unavailable or analysis cannot run, report the exact
-  limitation and the checks actually performed. Do not silently skip the check
-  or claim it passed. Documentation-only changes require `git diff --check`;
-  they do not require C++ static analysis, builds, or runtime tests.
-
-## Verification
-
-Use `Docs/Verification.md` for canonical commands. Code changes require
-Debug/Release x64 solution builds, logic tests and all four Client smoke routes.
-Engine changes additionally require the engine repository's relevant SDK tests.
-Report automated checks separately from actual visual/manual validation.
-Completion reports must also brief the changed classes/files, their responsibility
-boundaries, effects on existing behavior, and verification results.
+- Work on `main` unless the user requests a task branch. Preserve unrelated changes.
+- Fetch Client and engine, verify upstream equality and report exact commits.
+  Publish an engine change first, then update/commit the Client gitlink; verify
+  `git ls-files -s Dependencies/PhantomCore` matches the submodule HEAD.
+- After merges, fast-forward main and run recursive submodule sync/update.
+  For an explicitly requested task branch, validate, publish, create/update the PR,
+  mark it ready and merge; combined changes merge engine before Client.
+- Do not bypass checks/protection/conflicts or claim synchronization while required
+  PRs remain open. Use `Docs/Verification.md` for the completion sequence.

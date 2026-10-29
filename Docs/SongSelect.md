@@ -108,7 +108,7 @@ SongCatalogLoader는 복사한 경로와 파서 캐시만 worker에 넘기며 Sc
 런타임은 `SongCatalog::MetadataIndex`로 목록용 문서와 노트 수·진단만 보관하며,
 수정 시각/크기가 같은 문서는 사용자 캐시 폴더의 디스크 인덱스에서도 재사용한다.
 추가/삭제 파일과 음원·YME 의존성은 매 갱신에서 확인한다. 포맷 변경 시 캐시 무효화
-규칙과 측정은 [자원 로딩 기록](Reviews/ResourceLoading-2026-10-23.md)에 있다.
+규칙과 소유권은 [자원 로딩](ResourceLoading.md)에 있다.
 GO의 검증·세션 생성도 `PlaySessionLoader` worker에서 실행하고 완료 결과만 게시한다.
 대기 중 다른 패턴으로 이동하거나 화면에서 나가면 이전 진입 결과는 적용하지 않는다.
 MusicSelectView는 행 배치 metadata와 실제 카드를 구분하여 viewport 인근 행만 만든다.

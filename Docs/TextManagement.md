@@ -89,7 +89,7 @@ EXE TargetName도 같은 속성에서 계산하며 Windows 파일명에 사용�
 글꼴은 `TextFontSource::System`, 배포 글꼴 파일은 `TextFontSource::File`로
 지정할 수 있습니다. 파일 글꼴을 배포할 때는 글꼴 파일 옆에 라이선스를 함께 둡니다.
 리절트는 Penpot 지정 글꼴인 내장 Noto Sans KR을 별도로 사용합니다.
-경로는 `AssetPaths::fonts::Result`, 굵기·크기는 TaikoResultView의 Label/Button 호출에서
+경로는 `Client/App/AssetPaths.h`의 `NotoSansKR()`, 굵기·크기는 TaikoResultView의 Label/Button 호출에서
 정하며 두 언어에 같은 글꼴을 적용합니다. 파일·라이선스는 [BuiltInAssets](BuiltInAssets.md)에 있습니다.
 
 언어를 추가할 때는 다음을 함께 변경합니다.
@@ -111,8 +111,9 @@ TextCatalog는 문구와 글꼴 선택을 소유하고, 엔진 TextVisual/ComboB
 글꼴과 배치 handle을 유지하므로 Client에 DirectWrite 객체나 아틀라스 UV를 저장하지 않습니다.
 직접 DrawPacket을 만드는 에디터도 `packet.text`에 이 payload를 전달합니다.
 자세한 배치·측정·아틀라스 수명은
-[엔진 텍스트 계약](../Dependencies/PhantomCore/Docs/TextRendering.md), 구현/검증은
-[텍스트 개선 기록](Reviews/TextRenderingFixes-2026-10-14.md)에 있습니다.
+[엔진 텍스트 계약](../Dependencies/PhantomCore/Docs/TextRendering.md)에 있습니다.
+긴 제목은 원본 Unicode와 같은 payload를 유지하고 실제 측정 폭이 영역을 넘을 때만
+픽셀 단위로 순환합니다. 스크롤 단계마다 문자열이나 글리프 배치를 다시 만들지 않습니다.
 
 ## 옵션 패널
 

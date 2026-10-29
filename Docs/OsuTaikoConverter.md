@@ -1,6 +1,6 @@
 # osu!taiko 변환기
 
-2026-10-22 리뷰 수정: General의 SampleVolume은 TimingPoints에 볼륨이 생략된 경우의
+General의 SampleVolume은 TimingPoints에 볼륨이 생략된 경우의
 기본값이며 명시된 TimingPoints 값이 우선합니다. 스피너 요구 횟수는 원작의 연산
 순서와 `1.65f` 정밀도를 보존합니다(OD 5·4초는 32회). 같은 Songs 폴더의 import는
 패키지/라이브러리 배치 모두 전체 저장·rollback 동안 배타 잠금을 유지합니다.
@@ -157,17 +157,7 @@ YMP는 최종 YMM을 Songs 기준으로, YME는 같은 난이도 폴더 기준�
   보정되면 각 대상의 마지막 상태만 비교합니다. 60%→80%→60%처럼 실제로 되돌아가는
   변경은 유지합니다. 볼륨 세 대상은 서로 다른 사운드이므로 각각 기록합니다.
 
-에디터에서 이름이 `9`로 표시되었던 효과는 `EffectCommandType::Kiai`입니다.
-이름 미대응으로 열거형 번호가 표시된 것이며, YME의 `#Kiai ON/OFF` 명령을 뜻합니다.
-기본 OFF 명령은 위 생략 규칙에 포함되지만 실제 ON/OFF 전환은 유지합니다.
-
 ## 제한과 검증
-
-2026-10-19 BG 가져오기: 변환기 `main`의 `a74aec6b7895e88823dae7098e9c4cf6cefe2661`에서
-패키지/라이브러리 출력 모두 Songs/BG 복사와 YMP BG/offset을 지원합니다.
-Debug/Release 빌드·회귀·CLI·MSVC Code Analysis를 통과했습니다. Omoiyoshino 861개와
-PANDORA 1,233개 노트, 이미지 원본 바이트 일치, 재사용/충돌/실패 후 정리를 확인했습니다.
-Omoiyoshino의 osu! `(0, 50)`은 `offset: 0, -75`입니다. 실제 화면·청취는 수동 확인하지 않았습니다.
 
 커스텀 샘플 뱅크/파일·노트별 샘플 override, 영상·스토리보드·break는 내보내지
 않으며 JSON 경고로 알립니다. 기본 Client 스킨 히트사운드를 사용합니다.
@@ -190,21 +180,3 @@ Taiko lane이 노트를 누락시킬 겹침은 실패합니다. 첫 빨간 포�
 
 실제 맵 복사본과 음원은 변환기 저장소의 gitignore 대상 `TestData/`에만 둡니다.
 게임 기본곡이나 원격 저장소에 추가하지 않습니다.
-
-2026-10-17 효과 생략 검증: Debug/Release x64 솔루션 Build, 변환기 회귀·CLI,
-기존 로직 각 63개와 네 smoke 경로씩 총 8개를 통과했습니다. 반복 60%, 실제 값 변경·복귀,
-기본값 생략, 같은 틱의 빨강/초록 덮어쓰기와 시각 보정 충돌, Kiai 전환을 검사했습니다.
-MSVC 14.44 Code Analysis는 변환기 Core/EXE/Tests를 실제 include/define/C++20 및
-두 x64 구성으로 실행했고 경고·오류가 없습니다. 구조/필터와 양쪽 diff 검사도 통과했습니다.
-Omoiyoshino는 두 구성에서 861개 노트를 로드하며 효과가 116개에서 114개로 줄었습니다.
-초기 속도 1과 Kiai OFF만 추가로 빠지고 볼륨 대상별 33개·실제 Kiai 전환 4개는 유지합니다.
-새 실제 결과는 변환기 `TestData/Omoiyoshino-Effects-20261017/<구성>/Songs`,
-로그는 Client의 `build/converter-effects-2026-10-17`에 있습니다. 화면/청음은 수동 검증하지 않았습니다.
-
-2026-10-12 소수점 정리 변경은 Debug/Release x64 전체 솔루션 Build, 변환기 회귀·CLI,
-기존 로직 각 52개 및 smoke 네 경로씩 총 8개를 통과했습니다. 실제 맵은 1,233개
-노트를 모두 로드하며 BPM/속도 필드에 소수점 셋째 자리 이후 숫자가 없음을 검사했습니다.
-MSVC 14.44 Code Analysis는 실제 include/define/C++20 및 두 x64 구성으로 변환기
-Core/Tests(구성별 번역 단위 6개)를 분석했고 경고·오류가 없습니다. 구조/필터 및
-양쪽 git diff --check도 통과했습니다. 로그는 `build/converter-rounding-2026-10-12`,
-새 실제 출력은 변환기 `TestData/Songs/Pandora-ThreeDecimals`에 있습니다.
