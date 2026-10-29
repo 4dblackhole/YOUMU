@@ -3,6 +3,8 @@
 #include "GameFlow/GameplaySessionController.h"
 #include "Submodules/GameplayPauseMenu.h"
 #include "Submodules/GameplayPresenter.h"
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
@@ -60,12 +62,34 @@ void RhythmTestScene::PrepareLoadingBackground()
     if (!ready) return;
     try
     {
+        const auto image = visuals_.RegisterImage(launch_.backgroundPath);
+        const auto size = visuals_.GetImageSize(image);
+        if (size.width <= 0 || size.height <= 0)
+            throw std::runtime_error("Loading background image has no size.");
         auto &sprite = *loadingBackground_->GetComponent<SpriteVisualComponent>();
         sprite.SetTint({1, 1, 1, 1});
-        sprite.SetImage(visuals_.RegisterImage(launch_.backgroundPath));
+        sprite.SetImage(image);
+        loadingBackgroundSize_ = size;
+        UpdateLoadingBackgroundLayout();
     }
     catch (const std::exception &) {}
     loadingBackgroundReady_ = true;
+}
+void RhythmTestScene::UpdateLoadingBackgroundLayout()
+{
+    if (!loadingBackground_ || !loadingCanvas_.Get()) return;
+    const auto logical = loadingCanvas_.Get()->LogicalSize();
+    float width = logical.width, height = logical.height;
+    Point offset{};
+    if (loadingBackgroundSize_.width > 0 && loadingBackgroundSize_.height > 0)
+    {
+        offset = {static_cast<float>(launch_.backgroundOffsetX), static_cast<float>(launch_.backgroundOffsetY)};
+        const auto scale = std::max((logical.width + 2 * std::abs(offset.x)) / loadingBackgroundSize_.width,
+                                    (logical.height + 2 * std::abs(offset.y)) / loadingBackgroundSize_.height);
+        width = loadingBackgroundSize_.width * scale;
+        height = loadingBackgroundSize_.height * scale;
+    }
+    loadingBackground_->SetBounds({-width * .5F + offset.x, -height * .5F + offset.y, width, height});
 }
 bool RhythmTestScene::PreparePresentation()
 {
@@ -174,18 +198,14 @@ void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
         services_->windowHeight = height;
     }
     view_->OnResize(width, height);
-    if (loadingBackground_ && loadingCanvas_.Get())
-    {
-        const auto logical = loadingCanvas_.Get()->LogicalSize();
-        loadingBackground_->SetBounds({-logical.width * .5F, -logical.height * .5F,
-                                       logical.width, logical.height});
-    }
+    UpdateLoadingBackgroundLayout();
     pauseMenu_->OnResize(width, height);
 }
 void RhythmTestScene::Shutdown() noexcept
 {
     pauseMenu_->Shutdown();
     loadingBackground_ = nullptr;
+    loadingBackgroundSize_ = {};
     loadingCanvas_.Reset();
     loadingBackgroundReady_ = false;
     view_->Shutdown(); // Release session observers before the session.

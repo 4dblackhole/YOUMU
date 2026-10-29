@@ -458,8 +458,8 @@ namespace
         class Rendering final : public Visual2DRenderSystem
         {
           public:
-            Rendering(Visual2DRenderSystem &inner, bool &shown, bool &intro)
-                : inner_(inner), shown_(shown), intro_(intro), resumesBefore_(musicResumes) {}
+            Rendering(Visual2DRenderSystem &inner, bool &shown, bool &intro, bool &introImage)
+                : inner_(inner), shown_(shown), intro_(intro), introImage_(introImage), resumesBefore_(musicResumes) {}
             ImageHandle LoadImage(const std::filesystem::path &path) override { return inner_.LoadImage(path); }
             bool PrepareImages(std::span<const std::filesystem::path> paths, std::string &error) override
             { return inner_.PrepareImages(paths, error); }
@@ -467,7 +467,22 @@ namespace
             void SubmitScreen(const Visual2DCanvas &canvas, const RenderContext &ctx, Point origin, std::uint32_t z) override
             {
                 if (Find(canvas.Root(), "Loading.Song"))
+                {
                     intro_ = Find(canvas.Root(), "Loading.Pattern") != nullptr;
+                    const auto *background = Find(canvas.Root(), "Loading.Background");
+                    const auto *sprite = background ? background->GetComponent<SpriteVisualComponent>() : nullptr;
+                    if (sprite && sprite->Style().normalImage.value)
+                    {
+                        const auto bounds = background->BoundsInCanvas();
+                        Check(std::abs(bounds.width / bounds.height - 1920.0F / 1080.0F) < .001F &&
+                              std::abs(bounds.x + bounds.width * .5F - 80.0F) < .01F &&
+                              std::abs(bounds.y + bounds.height * .5F + 20.0F) < .01F &&
+                              bounds.x <= -640 && bounds.x + bounds.width >= 640 &&
+                              bounds.y <= -360 && bounds.y + bounds.height >= 360,
+                              "Loading background must preserve aspect ratio, offset, and viewport coverage.");
+                        introImage_ = true;
+                    }
+                }
                 if (Find(canvas.Root(), "Hud.Accuracy"))
                 {
                     Check(std::chrono::steady_clock::now() >= samplesReadyAt && musicResumes > resumesBefore_,
@@ -487,6 +502,7 @@ namespace
             Visual2DRenderSystem &inner_;
             bool &shown_;
             bool &intro_;
+            bool &introImage_;
             std::size_t resumesBefore_{};
         };
       public:
@@ -501,7 +517,7 @@ namespace
         }
         void Initialize(const EngineServices &services) override
         {
-            rendering_ = std::make_unique<Rendering>(services.visual2DRendering, shown_, intro_);
+            rendering_ = std::make_unique<Rendering>(services.visual2DRendering, shown_, intro_, introImage_);
             visuals_.Initialize(*rendering_, {1280, 720});
             auto store = std::make_shared<GameplayLaunchStore>();
             PlaySessionOptions options;
@@ -510,9 +526,12 @@ namespace
             auto loaded = TaikoMode(options).CreateSession(Pattern());
             Check(loaded.Succeeded(), "Cold-start fixture must load.");
             GameplayLaunchRequest request{"probe.ymp", {}, "probe-music.mp3", "Taiko"}; request.playOptions=options.play;
+            request.backgroundPath = ResolveDefaultSkinAsset(L"Result/Background/Sky.png");
+            request.backgroundOffsetX = 80;
+            request.backgroundOffsetY = -20;
             store->SetValidated(request, std::move(loaded.session));
             scene_ = std::make_unique<RhythmTestScene>(store, playback_, visuals_, false, texts_, result_);
-            sampleDelayMs = 200;
+            sampleDelayMs = 400;
             const EngineServices wrapped{services.meshRendering, services.textRendering, *rendering_, services.audio,
                 services.windowWidth, services.windowHeight};
             scene_->Initialize(wrapped);
@@ -535,6 +554,7 @@ namespace
             if (sent_)
             {
                 Check(intro_, "The loading introduction is visible before gameplay.");
+                Check(introImage_, "The loading introduction displays the selected background.");
                 Check(sampleStarts == before + 2, "The first visible-frame Don and Kat must both request a sample.");
                 if (accelerated_)
                     Check(!stretchRequests.empty() && stretchRequests.back()==1.5 && musicStarts.back().pitch==1.0F &&
@@ -558,7 +578,7 @@ namespace
       private:
         bool &verified_;
         bool accelerated_{};
-        bool shown_{}, sent_{}, intro_{};
+        bool shown_{}, sent_{}, intro_{}, introImage_{};
         InputState input_;
         ScreenVisual2DManager visuals_;
         AudioPlaybackManager playback_;

@@ -56,12 +56,18 @@ void OptionsPanel::CreateKeyControls()
                 constexpr std::array names{"KeyButtonLeftKat", "KeyButtonLeftDon", "KeyButtonRightDon", "KeyButtonRightKat"};
                 constexpr std::array<Color, 4> colors{{{.04F,.57F,.81F,1}, {.92F,.07F,.11F,1},
                                                        {.92F,.07F,.11F,1}, {.04F,.57F,.81F,1}}};
+                constexpr std::array<Rect, 4> gameplayBounds{{
+                    {16, 68, 39, 70}, {68, 92, 39, 70}, {120, 92, 39, 70}, {172, 68, 39, 70}}};
+                constexpr float sourceSize = 228.0F;
+                constexpr float scale = 170.0F / sourceSize;
                 for (std::size_t i = 0; i < names.size(); ++i)
                 {
                     const auto keyPath = SkinSetSelection::Instance().Image("InGame", names[i]);
                     if (keyPath.empty()) continue;
-                    auto &key = CreateSprite(*keyPanel_, {377.0F + 39.0F * static_cast<float>(i),
-                        i == 0 || i == 3 ? 450.0F : 432.0F, 29, 52}, visuals_->RegisterImage(keyPath),
+                    const auto &bounds = gameplayBounds[i];
+                    auto &key = CreateSprite(*keyPanel_, {365.0F + bounds.x * scale,
+                        395.0F + (sourceSize - bounds.y - bounds.height) * scale,
+                        bounds.width * scale, bounds.height * scale}, visuals_->RegisterImage(keyPath),
                         "Options.Taiko.KeyImage");
                     RequireComponent<SpriteVisualComponent>(key).SetTint(colors[i]);
                     keyFaceImages_[i] = &key;

@@ -249,6 +249,28 @@ namespace
         Check(detail("ExtraDetails0") == L"JudgeLevel  40.37" &&
               detail("ExtraDetails1") == L"BPM range  120 – 180" &&
               detail("ExtraDetails2") == L"Length  2:05", "Selected pattern details use real data.");
+        const auto *keyPanel = Find(canvas->Root(), "Options.Taiko.Keys");
+        const auto *keyBackground = Find(canvas->Root(), "Options.Taiko.KeyLayout");
+        if (!keyPanel || !keyBackground)
+            throw std::runtime_error("Taiko settings must use the Gameplay input panel image.");
+        constexpr std::array<Rect, 4> gameplayKeys{{
+            {16, 68, 39, 70}, {68, 92, 39, 70}, {120, 92, 39, 70}, {172, 68, 39, 70}}};
+        const auto panelBounds = keyBackground->Bounds();
+        std::size_t keyIndex{};
+        for (const auto &child : keyPanel->Children())
+        {
+            if (child->Name() != "Options.Taiko.KeyImage") continue;
+            Check(keyIndex < gameplayKeys.size(), "Unexpected extra Gameplay key image.");
+            const auto actual = child->Bounds();
+            const auto expected = gameplayKeys[keyIndex++];
+            const auto scale = panelBounds.width / 228.0F;
+            Check(std::abs(actual.x - (panelBounds.x + expected.x * scale)) < .01F &&
+                  std::abs(actual.y - (panelBounds.y + (228 - expected.y - expected.height) * scale)) < .01F &&
+                  std::abs(actual.width - expected.width * scale) < .01F &&
+                  std::abs(actual.height - expected.height * scale) < .01F,
+                  "Taiko settings key images must match the Gameplay panel proportions and positions.");
+        }
+        Check(keyIndex == gameplayKeys.size(), "Taiko settings must display all four Gameplay key images.");
         auto *image = Find(canvas->Root(), "PreviewImage");
         auto *empty = Find(canvas->Root(), "PreviewEmpty");
         auto *title = Find(canvas->Root(), "PreviewTitle");

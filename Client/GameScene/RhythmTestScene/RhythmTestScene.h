@@ -33,6 +33,7 @@ class RhythmTestScene final : public GameScene
     void UpdatePauseMenu(const UpdateContext &context, SceneManager &scenes);
     bool PreparePresentation();
     void PrepareLoadingBackground();
+    void UpdateLoadingBackgroundLayout();
     std::unique_ptr<IPlayResult> &pendingResult_;
     std::unique_ptr<IPlaySessionController> controller_;
     std::unique_ptr<GameplayPresenter> view_;
@@ -42,6 +43,7 @@ class RhythmTestScene final : public GameScene
     GameplayLaunchRequest launch_;
     ScreenCanvasHandle loadingCanvas_;
     Visual2DNode *loadingBackground_{};
+    Size loadingBackgroundSize_{};
     bool loadingBackgroundReady_{};
     std::optional<EngineServices> services_;
     bool presentationReady_{};
