@@ -121,6 +121,9 @@ class GameplayPresenter final
                                     const RhythmTime time);
     void PresentCompletionEffect(const RhythmTime time);
     void UpdateAccuracyPresentation();
+#if defined(_DEBUG)
+    void UpdateDebugPresentation(RhythmTime time);
+#endif
     void PresentJudgementFeedback(const GameplayFeedback &feedback);
     std::uint32_t width_{1280};
     std::uint32_t height_{720};

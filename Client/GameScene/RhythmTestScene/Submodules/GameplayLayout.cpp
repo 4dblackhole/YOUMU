@@ -57,7 +57,7 @@ void GameplayPresenter::CreatePresentation()
 
 #if defined(_DEBUG)
     noteDebugLabel_ = &CreateLabel(
-        root, {-CanvasReferenceWidth * 0.5F + 12.0F, 160.0F, CanvasReferenceWidth - 24.0F, 120.0F},
+        root, {-CanvasReferenceWidth * 0.5F + 12.0F, 160.0F, CanvasReferenceWidth - 24.0F, 160.0F},
         L"", "Debug.NoteState");
     noteDebugLabel_->SetZIndex(30);
     auto &debugText = RequireComponent<TextVisualComponent>(*noteDebugLabel_);
@@ -192,7 +192,7 @@ void GameplayPresenter::UpdatePresentationLayout()
     if (noteDebugLabel_ != nullptr)
     {
         noteDebugLabel_->SetBounds(
-            {-logicalWidth * 0.5F + 12.0F, 160.0F, std::max(logicalWidth - 24.0F, 1.0F), 120.0F});
+            {-logicalWidth * 0.5F + 12.0F, 160.0F, std::max(logicalWidth - 24.0F, 1.0F), 160.0F});
     }
 #endif
     const float laneScreenLeft = GearMargin + inputPanelSize_.width;

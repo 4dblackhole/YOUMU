@@ -392,6 +392,9 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
 {
     progressView_.Update(time);
     UpdateAccuracyPresentation();
+#if defined(_DEBUG)
+    UpdateDebugPresentation(time);
+#endif
     using Duration = RhythmDuration;
     if (visibilityRevision_ != session_->PresentationRevision())
         RebuildVisibilityIndices();

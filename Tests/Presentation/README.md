@@ -93,6 +93,9 @@ The controller probe also checks Debug-only Space freeze, note inputs in the sam
 Raw Input batch and during frozen time, held 1/2 seeking at 1 chart second per real
 second at 1x/1.5x Accelerate, one-shot 3/4 millisecond steps, music resume alignment
 and the ESC menu boundary. Release checks that Space and 1–4 do not freeze or seek.
+Backward seeking also checks that past MISS history is restored without repeating
+MISS feedback. GameplayJudgementTests checks the signed Debug timer in us/ms,
+frozen time and 1ms changes, and the absence of that label in Release.
 A test-only second mode uses the same IPlaySessionController lifecycle and polymorphic result;
 Ending transfers its result exactly once. A separate real FMOD NoSound MP3 test repeats
 source-zero/positive/near-end seeks and checks the actual source end.

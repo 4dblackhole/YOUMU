@@ -56,12 +56,46 @@ namespace tests
         Require(lane.CurrentIndex() == 0 && HasEvent(early, NoteEventType::InputRejected),
                 "Early Bad must keep focus on the first note.");
 
+        Require(!HasEvent(lane.Update(RhythmTime{60'000}), NoteEventType::Missed) && lane.CurrentIndex() == 0,
+                "Without input, a late-Bad focus must remain until its own window expires.");
         const NoteProcessResult forwarded =
             lane.ProcessInput({RhythmTime{60'000}, 1, 'F', InputEdge::Pressed});
         Require(HasEvent(forwarded, NoteEventType::Missed) &&
-                    HasEvent(forwarded, NoteEventType::HitAccepted) &&
+                    std::ranges::count(forwarded.events, NoteEventType::HitAccepted, &NoteEvent::type) == 1 &&
                     lane.CurrentIndex() == 2,
-                "Late Bad must miss the old note and apply the same Good input to the next note.");
+                "An input must preserve late-Bad protection: miss the old note and hit only the Good next note.");
+
+        lane.Reset();
+        const auto expiry = lane.CurrentNote()->ExpireTime();
+        Require(!HasEvent(lane.Update(expiry), NoteEventType::Missed) && lane.CurrentIndex() == 0,
+                "Time alone must not retire the focus until its closed judgement window is exceeded.");
+        Require(HasEvent(lane.Update(expiry + RhythmDuration{1}), NoteEventType::Missed) &&
+                    lane.CurrentIndex() == 1,
+                "The previous note must be missed when expiry moves focus to the next note.");
+        Require(!HasEvent(lane.Update(expiry + RhythmDuration{2}), NoteEventType::Missed),
+                "An already retired focus must not produce a repeated MISS.");
+        Require(HasEvent(lane.ProcessInput({RhythmTime{100'000}, 1, 'F', InputEdge::Pressed}),
+                         NoteEventType::HitAccepted) && lane.CurrentIndex() == 2,
+                "A new input must target the next focus after expiry.");
+
+        for (const auto spacing : {0, 10'000, 50'000})
+        {
+            Lane overlap;
+            overlap.AddNote(MakeTap(1, {}, profile));
+            overlap.AddNote(MakeTap(2, RhythmTime{spacing}, profile));
+            overlap.Finalize();
+            const auto first = overlap.ProcessInput({{}, 1, 'F', InputEdge::Pressed});
+            Require(std::ranges::count(first.events, NoteEventType::HitAccepted, &NoteEvent::type) == 1 &&
+                        std::ranges::count(first.events, NoteEventType::Completed, &NoteEvent::type) == 1 &&
+                        !HasEvent(first, NoteEventType::Missed) && overlap.CurrentIndex() == 1 &&
+                        overlap.Notes()[1]->State() == NoteState::Pending,
+                    "Overlapping judgement windows must accept only one note per pressed edge.");
+            Require(!HasEvent(overlap.Update({}), NoteEventType::Missed),
+                    "Advancing focus after a hit must not miss the still-open next note.");
+            Require(HasEvent(overlap.ProcessInput({{}, 1, 'J', InputEdge::Pressed}), NoteEventType::HitAccepted) &&
+                        overlap.CurrentIndex() == 2,
+                    "The overlapping second note must wait for its own pressed edge.");
+        }
     }
 
     void TestLargeNoteSoundState()

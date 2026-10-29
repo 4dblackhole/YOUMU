@@ -19,7 +19,7 @@
 | Clip·사운드 정책·공통 PCM·DSP 예약 | [Audio](Gameplay/Audio.md) |
 | ESC 메뉴·재개·되감기·Retire | [Pause](Gameplay/Pause.md) |
 | 정확도 랭크·통계·그래프·입력 로그·Retry | [Results](Gameplay/Results.md) |
-| Debug 정지·탐색·전체 노트/Buzz 재현 | [Debugging](Gameplay/Debugging.md) |
+| Debug 타이머 표시·정지·탐색·전체 노트/Buzz 재현 | [Debugging](Gameplay/Debugging.md) |
 | 표시 이름·번역·글꼴·옵션·Taiko 키·Option.ini | [TextManagement](TextManagement.md) |
 | 스킨·Songs/BG·내장 자산·배포 | [BuiltInAssets](BuiltInAssets.md) |
 | 로고·타이틀 | [YOUMU](YOUMU.md) |

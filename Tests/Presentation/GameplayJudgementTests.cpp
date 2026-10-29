@@ -332,6 +332,13 @@ namespace
                   "Fill texture must be cropped with progress.");
         };
         presenter.UpdatePresentation(RhythmTime{-2'000'000});
+#if defined(_DEBUG)
+        const auto &timerDebug = *Node(root, "Debug.NoteState").GetComponent<TextVisualComponent>();
+        Check(timerDebug.Text().find(L"DEBUG Timer: -2000000 us (-2000.000 ms)") == 0,
+              "Debug must display the signed chart timer including negative pre-roll.");
+#else
+        Check(Find(root, "Debug.NoteState") == nullptr, "Release must not create a debug timer label.");
+#endif
         checkFraction(0);
         Check(!fill.IsVisible() && currentText.Text() == L"0:00", "Pre-roll must not show negative elapsed time.");
         presenter.UpdatePresentation(RhythmTime{2'000'000});
@@ -343,6 +350,14 @@ namespace
         timer.Start(0, 1'000'000);
         timer.Pause(1'000'000);
         presenter.UpdatePresentation(timer.Now(3'000'000));
+#if defined(_DEBUG)
+        Check(timerDebug.Text().find(L"DEBUG Timer: 1000000 us (1000.000 ms)") == 0,
+              "Debug must display the frozen timer rather than render elapsed time.");
+        presenter.UpdatePresentation(RhythmTime{999'000});
+        Check(timerDebug.Text().find(L"DEBUG Timer: 999000 us (999.000 ms)") == 0,
+              "A 1ms seek must immediately update the displayed debug time.");
+        presenter.UpdatePresentation(timer.Now(3'000'000));
+#endif
         checkFraction(.25F);
         timer.Resume(3'000'000);
         presenter.UpdatePresentation(timer.Now(4'000'000));

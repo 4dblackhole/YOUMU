@@ -1,6 +1,7 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
 #include "Texts/GameScene/RhythmTestScene/GameplayTexts.h"
+#include <format>
 
 void GameplayPresenter::PresentJudgementFeedback(const GameplayFeedback &feedback)
 {
@@ -176,7 +177,11 @@ void GameplayPresenter::UpdateAccuracyPresentation()
         .SetText(accuracy.has_value()
                      ? std::vformat(texts_.Get("Gameplay.accuracyFormat"), std::make_wformat_args(percent))
                      : std::wstring(texts_.Get("Gameplay.emptyAccuracy")));
+}
+
 #if defined(_DEBUG)
+void GameplayPresenter::UpdateDebugPresentation(const RhythmTime time)
+{
     const auto &text = Gameplay(texts_);
     std::wstring debug(text.focusNone);
     if (session_->Gear().LaneCount() > 0)
@@ -197,6 +202,7 @@ void GameplayPresenter::UpdateAccuracyPresentation()
         debug += text.lastNone;
     }
     RequireComponent<TextVisualComponent>(*noteDebugLabel_)
-        .SetText(std::move(debug));
-#endif
+        .SetText(std::format(L"DEBUG Timer: {} us ({:.3f} ms)\n{}",
+                             time.count(), static_cast<double>(time.count()) / 1000.0, debug));
 }
+#endif

@@ -770,13 +770,17 @@ namespace
             {
                 PlaySessionOptions options;
                 options.play.accelerate = rate;
-                auto loaded = TaikoMode(options).CreateSession(Pattern());
+                auto pattern = Pattern();
+                pattern.notes.push_back({.position = {0, {}}, .keyType = 1});
+                auto loaded = TaikoMode(options).CreateSession(pattern);
                 Check(loaded.Succeeded(), "Debug timeline fixture must load.");
                 GameplaySessionController controller({"probe.ymp", {}, "probe-music.mp3", "Taiko"}, playback_,
                                                        false, std::move(loaded.session));
                 controller.InitializeSession();
                 controller.Start(*services_, RhythmTime{12'240'000});
                 WaitForGameplay(controller, ctx);
+                const auto priorNotes = controller.Session().FinalizedNoteCount();
+                Check(priorNotes == 1, "The debug rewind fixture must contain one previously missed note.");
                 InputState input;
                 const auto frame = [&](double seconds = 0.0)
                 {
@@ -802,7 +806,7 @@ namespace
                 InputStateTestAccess::Press(input, 'F', ticks + 1);
                 frame();
                 Check(controller.CurrentState() == PlayState::Gameplay && !controller.PauseMenuOpen() &&
-                          controller.Session().FinalizedNoteCount() == 1 && sampleStarts > samples,
+                          controller.Session().FinalizedNoteCount() == priorNotes + 1 && sampleStarts > samples,
                       "A note input after Space in the same batch must still be judged and play a hit sound.");
                 const auto frozen = controller.Time();
                 edge(VK_SPACE, false);
@@ -813,10 +817,19 @@ namespace
                 Check(controller.Time() == frozen, "Space must freeze the chart clock without opening the menu.");
                 edge('1', true, .25);
                 Check(controller.Time() == frozen - RhythmDuration{250'000}, "Key 1 must move backwards at 1x.");
+                const auto noRepeatedMiss = [&]
+                {
+                    return std::ranges::none_of(controller.Feedback(), [](const auto &feedback) {
+                        return std::ranges::any_of(feedback.result.events, [](const auto &event) {
+                            return event.type == NoteEventType::Missed;
+                        });
+                    });
+                };
+                Check(noRepeatedMiss(), "Rewind must restore expired history without replaying old MISS feedback.");
                 InputStateTestAccess::Begin(input);
                 frame(.75);
                 Check(controller.Time() == frozen - RhythmDuration{1'000'000} &&
-                          controller.Session().FinalizedNoteCount() == 0,
+                          controller.Session().FinalizedNoteCount() == priorNotes && noRepeatedMiss(),
                       "Holding 1 must keep seeking and restore notes after moving backwards.");
                 edge('1', false);
                 edge('2', true, .125);
@@ -842,7 +855,7 @@ namespace
                 edge('1', false);
                 edge('2', false);
                 edge('F', true);
-                Check(controller.Session().FinalizedNoteCount() == 1 && controller.Time() == frozen,
+                Check(controller.Session().FinalizedNoteCount() == priorNotes + 1 && controller.Time() == frozen,
                       "A restored note must be playable while the clock stays frozen.");
                 edge('F', false);
                 edge(VK_SPACE, true);

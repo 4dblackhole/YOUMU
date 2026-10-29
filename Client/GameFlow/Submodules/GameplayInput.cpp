@@ -107,7 +107,7 @@ void GameplaySessionController::ProcessDebugTimeline(const InputState &input,
     if (after < before)
     {
         feedback_.push_back({true});
-        session_->Reset();
+        session_->RewindJudgements(after);
         audioRouter_.ResetAutomation();
     }
     timer_.Seek(after, clock.performanceCounterTicks);

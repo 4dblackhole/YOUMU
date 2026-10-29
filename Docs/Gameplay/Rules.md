@@ -50,10 +50,14 @@ YME의 Syncopation ON~OFF에 속한 노트는 전용 객체를 참조하며, 레
 
 ## Lane과 배드말림 방지
 
-Lane은 노트를 시간순으로 안정 정렬하고 가장 앞의 미처리 노트에 우선권을
-줍니다. early Bad 입력은 시도만 보고하고 focus를 유지합니다. 현재 노트가
-late Bad이며 다음 노트가 같은 입력을 Good 이내로 받을 수 있으면 앞 노트를
-Miss 처리한 뒤 같은 입력을 다음 노트에 전달합니다.
+Lane은 노트를 시간순으로 안정 정렬하고 가장 앞의 미처리 노트에 우선권을 줍니다.
+입력 없이 시간만 바뀌면 현재 노트의 ExpireTime을 넘었을 때 MISS로 확정하고 포커스를 옮깁니다.
+범위 끝 시각은 포함하며 이미 확정한 MISS를 반복하지 않습니다.
+early Bad 입력은 시도만 보고하고 포커스를 유지합니다. 입력 시 현재 노트가 late Bad이고
+다음 노트가 같은 입력을 Good 이내로 받을 수 있으면, 배드말림 방지를 위해 앞 노트를
+MISS로 확정하고 다음 노트 하나에 입력을 전달합니다. 그 외에는 현재 노트 하나만 입력을 받습니다.
+겹친 노트의 성공 입력은 한 번에 하나이며, 완료 후 다음 노트는 별도 입력을 기다립니다.
+이 규칙은 Debug/Release 공통입니다.
 
 현재 `TaikoMode`는 RPG `PlayScene`과 같은 방식으로 Don, Kat, BigDon,
 BigKat, Purple, Roll, TickRoll, Balloon, DengDeng, Buzz를 모두 **한 Lane**에 넣습니다. long-note head를
