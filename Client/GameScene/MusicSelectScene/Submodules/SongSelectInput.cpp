@@ -48,7 +48,7 @@ bool MusicSelectView::ProcessActions()
         }
         if (action.type == ActionType::Clicked && action.source == optionButtonId_)
         {
-            searchFocused_ = false;
+            SetSearchFocus(false);
             if (IsEditorSongSelect()) options_.Toggle();
             else static_cast<void>(EditPlayOptions(selection_.playOptions_, texts_));
             inputRouter_.Reset(*canvas_);
@@ -100,7 +100,7 @@ bool MusicSelectView::ProcessActions()
         }
         if (action.source == searchFieldId_)
         {
-            searchFocused_ = true;
+            SetSearchFocus(true);
             RefreshSearchPresentation();
             return false;
         }
@@ -110,7 +110,7 @@ bool MusicSelectView::ProcessActions()
                 action.source == songCards_[position].createDifficultyId)
             {
                 const auto anchor = songCards_[position].button->BoundsInCanvas();
-                searchFocused_ = false;
+                SetSearchFocus(false);
                 SelectVisibleSong(songCards_[position].visiblePosition);
                 RefreshSearchPresentation();
                 OpenAdditionMenu(anchor);
@@ -118,7 +118,7 @@ bool MusicSelectView::ProcessActions()
             }
             if (songCards_[position].button != nullptr && action.source == songCards_[position].button->Id())
             {
-                searchFocused_ = false;
+                SetSearchFocus(false);
                 SelectVisibleSong(songCards_[position].visiblePosition);
                 RefreshSearchPresentation();
                 return false;
@@ -128,7 +128,7 @@ bool MusicSelectView::ProcessActions()
         {
             if (action.source == id)
             {
-                searchFocused_ = false;
+                SetSearchFocus(false);
                 SelectPattern(patternIndex);
                 RefreshSearchPresentation();
                 command_ = SongSelectCommand::Launch;
@@ -145,27 +145,18 @@ bool MusicSelectView::ProcessKeyboard(const InputState &input)
     {
         return false;
     }
-    if (input.WasKeyPressed(VK_ESCAPE))
-    {
-        if (searchFocused_)
-        {
-            searchFocused_ = false;
-            RefreshSearchPresentation();
-            return false;
-        }
-        command_ = SongSelectCommand::Back;
-        return true;
-    }
     const bool controlDown = input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
     if (controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('F')))
     {
-        searchFocused_ = true;
-        RefreshSearchPresentation();
+        SetSearchFocus(true, true);
         return false;
     }
-    if (ProcessSearchKeyboard(input))
+    // Consume all editing keys, including IME commit/cancel, before scene commands.
+    if (ProcessSearchKeyboard(input)) return false;
+    if (input.WasKeyPressed(VK_ESCAPE))
     {
-        return false;
+        command_ = SongSelectCommand::Back;
+        return true;
     }
     if (selection_.visibleSongIndices_.empty())
     {
@@ -199,54 +190,16 @@ bool MusicSelectView::ProcessKeyboard(const InputState &input)
 
 bool MusicSelectView::ProcessSearchKeyboard(const InputState &input)
 {
-    if (!searchFocused_)
+    if (!searchFocused_) return false;
+    if (searchInput_)
     {
-        return false;
+        const bool submit = searchInput_->TakeSubmit();
+        const bool cancel = searchInput_->TakeCancel();
+        if (submit || cancel) SetSearchFocus(false);
     }
-    if (input.WasKeyPressed(VK_RETURN))
-    {
-        searchFocused_ = false;
-        RefreshSearchPresentation();
-        return true;
-    }
-
-    bool changed = false;
-    if (input.WasKeyPressed(VK_BACK) && !selection_.searchText_.empty())
-    {
-        selection_.searchText_.pop_back();
-        changed = true;
-    }
-    if (selection_.searchText_.size() < 48)
-    {
-        for (std::uint16_t key = 'A'; key <= 'Z'; ++key)
-        {
-            if (input.WasKeyPressed(key))
-            {
-                selection_.searchText_.push_back(static_cast<wchar_t>(key));
-                changed = true;
-            }
-        }
-        for (std::uint16_t key = '0'; key <= '9'; ++key)
-        {
-            if (input.WasKeyPressed(key))
-            {
-                selection_.searchText_.push_back(static_cast<wchar_t>(key));
-                changed = true;
-            }
-        }
-        if (input.WasKeyPressed(VK_SPACE))
-        {
-            selection_.searchText_.push_back(L' ');
-            changed = true;
-        }
-    }
-    if (changed)
-    {
-        RebuildVisibleSongs();
-        searchFocused_ = true;
-        RefreshSearchPresentation();
-    }
-    return changed;
+    else if (input.WasKeyPressed(VK_RETURN) || input.WasKeyPressed(VK_ESCAPE))
+        SetSearchFocus(false);
+    return true;
 }
 
 void MusicSelectView::MoveSongFocus(const int delta)

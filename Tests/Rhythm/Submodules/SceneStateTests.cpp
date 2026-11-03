@@ -9,9 +9,9 @@ namespace tests
     {
         SongSelectionState state;
         SongCatalogEntry combined, angelOnly, splitFields, boundary, fallback;
-        combined.music.names = {"Dream of an Angel", "天使の夢"};
+        combined.music.names = {"Angel Dream", "天使の夢"};
         combined.music.artists = {"Primary artist", "Alternate creator", "아티스트"};
-        combined.music.tags = {"Bright-sky", "音楽"};
+        combined.music.tags = {"Bright-sky", "音楽", "ÉTÉ"};
         combined.patterns.resize(2);
         combined.patterns[1].pattern.tags = {"practice", "fast"};
         angelOnly.music.names = {"Angel only"};
@@ -31,11 +31,15 @@ namespace tests
         search(L"dream ANGEL", {0, 2});
         search(L"  ANGEL\t dream\r\n", {0, 2});
         search(L"angel", {0, 1, 2}); // Separate fields must not create the word an+gel.
+        search(L"dream", {0, 2});
+        search(L"ang", {0, 1, 2});
+        search(L"angel\u3000dream", {0, 2});
         search(L"angel absent", {});
         search(L"Alternate practice", {0});
         search(L"sky FAST", {0});
         search(L"天使 音楽", {0});
         search(L"아티스트 practice", {0});
+        search(L"été", {0});
         Require(state.catalog_.songs.front().patterns.size() == 2,
                 "A matching pattern tag filters songs without removing their other patterns.");
         search(L"Fallback track", {4});

@@ -28,6 +28,11 @@ Both gameplay and editor selection check one-shot launch from a difficulty click
 including a different difficulty and a second click on the selected difficulty.
 It also checks marquee Unicode preservation, shared repeated text payloads,
 pixel displacement and stopping after the label becomes wide enough.
+`SongSearchInputTests` runs the production view in a hidden D3D12/NoSound window.
+It inserts English/Korean/Japanese text into the actual Unicode edit control,
+checks single-word and AND results, prevents editing/IME keys from invoking Scene
+commands, and verifies options visibility and native-control cleanup. It does not
+operate the user's clipboard or perform manual IME candidate selection.
 Options-button input closes an already open panel. Catalog refreshes queue only
 the latest Songs root, discard obsolete results and handle switching back mid-load.
 

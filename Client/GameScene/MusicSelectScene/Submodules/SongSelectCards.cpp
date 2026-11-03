@@ -282,9 +282,11 @@ void MusicSelectView::RefreshSearchPresentation()
         std::wstring display =
             selection_.searchText_.empty() ? std::wstring(text.searchSongs)
                                            : selection_.searchText_;
-        if (searchFocused_)
+        if (searchInput_)
         {
-            display += L"_";
+            display.clear();
+            searchInput_->SetPlaceholder(text.searchSongs);
+            if (!searchInput_->HasFocus()) searchInput_->SetText(selection_.searchText_);
         }
         RequireComponent<TextVisualComponent>(*searchField_)
             .SetText(std::move(display));

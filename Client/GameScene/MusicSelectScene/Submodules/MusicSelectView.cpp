@@ -34,9 +34,16 @@ void MusicSelectView::Initialize(const EngineServices &services)
     CreateFooter();
     CreateAdditionMenu();
     options_.Initialize(*canvas_, services.audio, services.windowControl);
+    if (services.windowControl)
+    {
+        searchInput_ = services.windowControl->CreateTextInput();
+        if (!searchInput_) throw std::runtime_error("Failed to create song search input.");
+        searchInput_->SetText(selection_.searchText_);
+    }
     ApplyTexts();
     UpdateResponsiveLayout();
     RebuildVisibleSongs();
+    UpdateSearchInputVisibility();
 }
 
 SongSelectCommand MusicSelectView::Update(const InputState &input,
@@ -45,10 +52,12 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     command_ = SongSelectCommand::None;
     if (!canvas_)
         return command_;
+    SynchronizeSearchText();
     if (textRevision_ != texts_.Revision())
     {
         ApplyTexts();
         RebuildSongCards();
+        UpdateSearchInputLayout();
     }
     UpdateRecords();
     options_.Update(deltaSeconds);
@@ -61,14 +70,19 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     }
     ProcessPointer(input);
     if (ProcessAdditionMenu(input))
+    {
+        UpdateSearchInputVisibility();
         return command_;
+    }
     if (options_.ProcessInput(input, canvasPointer_, inputRouter_.HoveredNode(), inputRouter_))
     {
         static_cast<void>(canvas_->TakeActions());
+        UpdateSearchInputVisibility();
         return command_;
     }
     if (!ProcessActions())
         ProcessKeyboard(input);
+    UpdateSearchInputVisibility();
     return command_;
 }
 
@@ -89,6 +103,8 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 
 void MusicSelectView::Shutdown() noexcept
 {
+    searchInput_.reset();
+    searchFocused_ = false;
     if (canvas_ != nullptr)
     {
         inputRouter_.Reset(*canvas_);

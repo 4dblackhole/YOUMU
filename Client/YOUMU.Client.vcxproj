@@ -190,6 +190,7 @@
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\OsuImportValidation.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectInput.cpp" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectSearch.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionText.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.cpp" />

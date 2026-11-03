@@ -1,4 +1,5 @@
 #include "App/AssetPaths.h"
+#include "SongSearchInputTests.h"
 #include "GameScene/MusicSelectScene/Submodules/EditorOsuImport.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
 #include "GameScene/MusicSelectScene/Submodules/SongCatalogLoader.h"
@@ -622,7 +623,8 @@ int main()
         Check(editor.Update(input, 0) == SongSelectCommand::ConvertOsu && !menu->IsVisible(),
               "Convert .osu must issue only the import command.");
         editor.Shutdown();
-        std::cout << "Music selection viewport and catalog worker tests passed.\n";
+        TestNativeSongSearch();
+        std::cout << "Music selection viewport, catalog worker and native Unicode search tests passed.\n";
         return 0;
     }
     catch (const std::exception &error)

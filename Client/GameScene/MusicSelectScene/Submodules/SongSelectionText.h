@@ -62,15 +62,29 @@ namespace song_select
         return value;
     }
 
+    [[nodiscard]] inline std::wstring FoldSearchText(std::wstring value)
+    {
+        if (value.empty()) return value;
+        const int length = LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_LOWERCASE,
+                                        value.data(), static_cast<int>(value.size()), nullptr, 0,
+                                        nullptr, nullptr, 0);
+        if (length <= 0) return Lowercase(std::move(value));
+        std::wstring folded(static_cast<std::size_t>(length), L'\0');
+        if (!LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_LOWERCASE, value.data(),
+                           static_cast<int>(value.size()), folded.data(), length, nullptr, nullptr, 0))
+            return Lowercase(std::move(value));
+        return folded;
+    }
+
     [[nodiscard]] inline std::vector<std::wstring> SplitSearchTerms(std::wstring_view text)
     {
-        constexpr std::wstring_view whitespace = L" \t\r\n\f\v";
+        constexpr std::wstring_view whitespace = L" \t\r\n\f\v\u3000";
         std::vector<std::wstring> terms;
         auto begin = text.find_first_not_of(whitespace);
         while (begin != std::wstring_view::npos)
         {
             const auto end = text.find_first_of(whitespace, begin);
-            terms.push_back(Lowercase(std::wstring{text.substr(begin, end - begin)}));
+            terms.push_back(FoldSearchText(std::wstring{text.substr(begin, end - begin)}));
             begin = end == std::wstring_view::npos ? end : text.find_first_not_of(whitespace, end);
         }
         return terms;
@@ -85,10 +99,10 @@ namespace song_select
         const auto append = [&fields](const std::vector<std::string> &values)
         {
             for (const auto &value : values)
-                fields.push_back(Lowercase(DecodeDisplayText(value)));
+                fields.push_back(FoldSearchText(DecodeDisplayText(value)));
         };
         if (song.music.names.empty())
-            fields.push_back(Lowercase(song.metadataPath.stem().wstring()));
+            fields.push_back(FoldSearchText(song.metadataPath.stem().wstring()));
         append(song.music.names);
         append(song.music.artists);
         append(song.music.tags);

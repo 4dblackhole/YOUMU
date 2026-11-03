@@ -30,9 +30,11 @@ class MusicSelectView final
     }
     void SetVisible(bool visible)
     {
+        visible_ = visible;
         if (!visible) CloseAdditionMenu();
         else ++recordRevision_;
         static_cast<void>(canvasHandle_.SetVisible(visible));
+        UpdateSearchInputVisibility();
     }
     void Initialize(const EngineServices &services);
     SongSelectCommand Update(const InputState &input, double deltaSeconds);
@@ -91,6 +93,10 @@ class MusicSelectView final
     bool ProcessActions();
     bool ProcessKeyboard(const InputState &input);
     bool ProcessSearchKeyboard(const InputState &input);
+    void SetSearchFocus(bool focused, bool selectAll = false);
+    void SynchronizeSearchText();
+    void UpdateSearchInputLayout();
+    void UpdateSearchInputVisibility();
     void MoveSongFocus(const int delta);
     void MoveDifficultyFocus(const int delta);
     void SelectVisibleSong(const std::size_t visiblePosition);
@@ -134,6 +140,8 @@ class MusicSelectView final
     std::uint32_t width_{1280};
     std::uint32_t height_{720};
     bool searchFocused_{};
+    bool visible_{true};
+    std::unique_ptr<ITextInput> searchInput_;
     Visual2DNode *additionMenu_{}, *newDifficultyItem_{}, *convertOsuItem_{};
     ScreenCanvasHandle canvasHandle_;
     Visual2DCanvas *canvas_{};

@@ -55,6 +55,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     backButton_->SetBounds(responsive.back);
     goButton_->SetBounds(responsive.go);
     UpdateFooterLayout();
+    UpdateSearchInputLayout();
 }
 
 void MusicSelectView::UpdateRecordPanelLayout()

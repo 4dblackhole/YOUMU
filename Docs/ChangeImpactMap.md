@@ -7,7 +7,7 @@
 
 | 작업 | 소유 코드 | 관련 회귀 |
 | --- | --- | --- |
-| 곡 카드·검색·정렬·이동·배경/메타데이터 | `MusicSelectScene/Submodules`: MusicSelectView, SongSelectLayout/Cards/Panels/Input, SongSelectionState | SceneStateTests, RunMusicSelectViewTests |
+| 곡 카드·검색·정렬·이동·배경/메타데이터 | `MusicSelectScene/Submodules`: MusicSelectView, SongSelectLayout/Cards/Panels/Input/Search, SongSelectionState | SceneStateTests, RunMusicSelectViewTests(SongSearchInputTests 포함) |
 | 곡 목록·디스크 캐시·비동기 패턴 로딩 | SongCatalogLoader, `YOUMU.Chart/Catalog`, `GameFlow/PlaySessionLoader` | 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
 | 미리듣기 | SongPreviewController | MusicSelectViewTests, 엔진 오디오 계약 |
 | 새 난이도·.osu 가져오기 | NewDifficultyDialog, EditorPatternCreation, EditorOsuImport, OsuImportValidation | RunNewDifficultyTests, RunOsuImportValidationTests |
