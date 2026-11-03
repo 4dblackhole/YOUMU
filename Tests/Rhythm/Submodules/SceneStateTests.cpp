@@ -5,6 +5,46 @@
 
 namespace tests
 {
+    void TestSongSearchAndMetadata()
+    {
+        SongSelectionState state;
+        SongCatalogEntry combined, angelOnly, splitFields, boundary, fallback;
+        combined.music.names = {"Dream of an Angel", "天使の夢"};
+        combined.music.artists = {"Primary artist", "Alternate creator", "아티스트"};
+        combined.music.tags = {"Bright-sky", "音楽"};
+        combined.patterns.resize(2);
+        combined.patterns[1].pattern.tags = {"practice", "fast"};
+        angelOnly.music.names = {"Angel only"};
+        splitFields.music.names = {"Dream only"};
+        splitFields.music.artists = {"Angel painter"};
+        boundary.music.names = {"an"};
+        boundary.music.artists = {"gel"};
+        fallback.metadataPath = "Fallback Track.ymm";
+        state.catalog_.songs = {combined, angelOnly, splitFields, boundary, fallback};
+        const auto search = [&](std::wstring query, const std::vector<std::size_t> &expected)
+        {
+            state.searchText_ = std::move(query);
+            state.RebuildVisibleSongs();
+            Require(state.visibleSongIndices_ == expected, "Search must AND every word across complete metadata.");
+        };
+        search(L"angel dream", {0, 2});
+        search(L"dream ANGEL", {0, 2});
+        search(L"  ANGEL\t dream\r\n", {0, 2});
+        search(L"angel", {0, 1, 2}); // Separate fields must not create the word an+gel.
+        search(L"angel absent", {});
+        search(L"Alternate practice", {0});
+        search(L"sky FAST", {0});
+        search(L"天使 音楽", {0});
+        search(L"아티스트 practice", {0});
+        Require(state.catalog_.songs.front().patterns.size() == 2,
+                "A matching pattern tag filters songs without removing their other patterns.");
+        search(L"Fallback track", {4});
+        search(L" \t\r\n", {0, 1, 2, 3, 4});
+        search(L"", {0, 1, 2, 3, 4});
+        state.catalog_.songs.clear();
+        search(L"angel dream", {});
+    }
+
     void TestSceneStateBoundaries()
     {
         SongSelectionState state;

@@ -575,6 +575,13 @@ int main()
         visuals.OnResize(900, 720);
         view.OnResize(900, 720);
         Check(Cards(canvas->Root()) < 20 && HasCard(canvas->Root(), 0), "Resize must retain the focused visible card.");
+        selection.searchText_ = L"4999 ARTIST";
+        view.RebuildVisibleSongs();
+        Check(selection.visibleSongIndices_ == std::vector<std::size_t>{4999} && HasCard(canvas->Root(), 0),
+              "AND search must update actual cards using separate title/artist fields.");
+        selection.searchText_ = L"ARTIST 4999 missing";
+        view.RebuildVisibleSongs();
+        Check(Cards(canvas->Root()) == 0, "One unmatched AND term must remove all former cards.");
         selection.searchText_ = L"no matching song";
         view.RebuildVisibleSongs();
         Check(Cards(canvas->Root()) == 0, "Empty searches must remove the former cards.");

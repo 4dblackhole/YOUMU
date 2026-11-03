@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cwctype>
 #include <ranges>
+#include <span>
+#include <string_view>
 
 namespace song_select
 {
@@ -60,15 +62,46 @@ namespace song_select
         return value;
     }
 
-    [[nodiscard]] inline bool MatchesSearch(const SongCatalogEntry &song,
-                                            const std::wstring &searchText)
+    [[nodiscard]] inline std::vector<std::wstring> SplitSearchTerms(std::wstring_view text)
     {
-        if (searchText.empty())
+        constexpr std::wstring_view whitespace = L" \t\r\n\f\v";
+        std::vector<std::wstring> terms;
+        auto begin = text.find_first_not_of(whitespace);
+        while (begin != std::wstring_view::npos)
         {
-            return true;
+            const auto end = text.find_first_of(whitespace, begin);
+            terms.push_back(Lowercase(std::wstring{text.substr(begin, end - begin)}));
+            begin = end == std::wstring_view::npos ? end : text.find_first_not_of(whitespace, end);
         }
-        const std::wstring needle = Lowercase(searchText);
-        return Lowercase(SongTitle(song)).find(needle) != std::wstring::npos ||
-               Lowercase(SongArtist(song)).find(needle) != std::wstring::npos;
+        return terms;
+    }
+
+    [[nodiscard]] inline bool MatchesSearch(const SongCatalogEntry &song, std::span<const std::wstring> terms)
+    {
+        if (terms.empty())
+            return true;
+
+        std::vector<std::wstring> fields;
+        const auto append = [&fields](const std::vector<std::string> &values)
+        {
+            for (const auto &value : values)
+                fields.push_back(Lowercase(DecodeDisplayText(value)));
+        };
+        if (song.music.names.empty())
+            fields.push_back(Lowercase(song.metadataPath.stem().wstring()));
+        append(song.music.names);
+        append(song.music.artists);
+        append(song.music.tags);
+        for (const auto &pattern : song.patterns)
+            append(pattern.pattern.tags);
+
+        // Every word must match a real metadata field. Keep fields separate so
+        // a term cannot accidentally span the end of one field and the next.
+        return std::ranges::all_of(terms,
+                                   [&fields](const auto &term)
+                                   {
+                                       return std::ranges::any_of(fields, [&term](const auto &field)
+                                                                  { return field.find(term) != std::wstring::npos; });
+                                   });
     }
 } // namespace song_select

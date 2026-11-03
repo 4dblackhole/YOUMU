@@ -35,6 +35,7 @@ int main(const int argumentCount, char *arguments[])
         std::function<void()> run;
     };
     std::vector<TestCase> tests{
+        {"TestSongSearchAndMetadata", TestSongSearchAndMetadata},
         {"TestHpFormat", TestHpFormat},
         {"TestHpTimingRecovery", TestHpTimingRecovery},
         {"TestHpCompositeSettlements", TestHpCompositeSettlements},

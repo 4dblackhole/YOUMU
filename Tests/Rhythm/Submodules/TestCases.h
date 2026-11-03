@@ -3,6 +3,7 @@
 
 namespace tests
 {
+    void TestSongSearchAndMetadata();
     void TestHpFormat();
     void TestHpTimingRecovery();
     void TestHpCompositeSettlements();

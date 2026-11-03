@@ -13,10 +13,11 @@ void SongSelectionState::RebuildVisibleSongs()
         previousCatalogIndex = visibleSongIndices_[focusedSongPosition_];
     }
 
+    const auto terms = SplitSearchTerms(searchText_);
     visibleSongIndices_.clear();
     for (std::size_t index = 0; index < catalog_.songs.size(); ++index)
     {
-        if (MatchesSearch(catalog_.songs[index], searchText_))
+        if (MatchesSearch(catalog_.songs[index], terms))
         {
             visibleSongIndices_.push_back(index);
         }
