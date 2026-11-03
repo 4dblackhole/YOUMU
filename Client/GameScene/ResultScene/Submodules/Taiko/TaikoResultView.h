@@ -50,6 +50,8 @@ class TaikoResultView final : public IResultView
     ResultViewContext context_;
     TextFont font_;
     ImageHandle sky_, clouds_, modeIcon_, rankFrame_, rankImage_;
+    ImageHandle chartBackground_;
+    Size chartBackgroundSize_{};
     ScreenCanvasHandle canvasHandle_;
     Visual2DCanvas *canvas_{};
     Visual2DInputRouter router_;

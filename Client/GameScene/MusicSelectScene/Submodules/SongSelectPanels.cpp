@@ -1,5 +1,6 @@
 #include "MusicSelectView.h"
 #include "Presentation/ScrollableTextComponent.h"
+#include "Presentation/BackgroundLayout.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
@@ -100,14 +101,20 @@ void MusicSelectView::CreateSongInformationPanel()
             L"", 15.0F, DeepBlue, "ExtraDetails" + std::to_string(i));
 }
 
-void MusicSelectView::SetBackgroundPreview(const std::filesystem::path &path)
+void MusicSelectView::SetBackgroundPreview(const std::filesystem::path &path, double offsetX, double offsetY)
 {
+    chartBackgroundOffset_ = {static_cast<float>(offsetX), static_cast<float>(offsetY)};
     if (previewPath_ == path)
+    {
+        UpdateChartBackgroundLayout();
         return;
+    }
     previewPath_ = path;
     previewImageSize_ = {};
     previewImage_->SetVisible(false);
     RequireComponent<SpriteVisualComponent>(*previewImage_).SetImage({});
+    chartBackground_->SetVisible(false);
+    RequireComponent<SpriteVisualComponent>(*chartBackground_).SetImage({});
     previewTitle_->SetVisible(true);
     previewEmpty_->SetVisible(true);
     if (path.empty())
@@ -122,6 +129,11 @@ void MusicSelectView::SetBackgroundPreview(const std::filesystem::path &path)
         auto &sprite = RequireComponent<SpriteVisualComponent>(*previewImage_);
         sprite.SetImage(image);
         sprite.SetTint(PureWhite);
+        auto &background = RequireComponent<SpriteVisualComponent>(*chartBackground_);
+        background.SetImage(image);
+        background.SetTint(PureWhite);
+        UpdateChartBackgroundLayout();
+        chartBackground_->SetVisible(true);
         UpdateBackgroundPreviewLayout();
         previewImage_->SetVisible(true);
         previewTitle_->SetVisible(false);
@@ -131,6 +143,17 @@ void MusicSelectView::SetBackgroundPreview(const std::filesystem::path &path)
     {
         // Missing/corrupt artwork keeps NO IMAGE until the selected path changes.
     }
+}
+
+void MusicSelectView::UpdateChartBackgroundLayout()
+{
+    if (!chartBackground_ || !canvas_) return;
+    const auto viewport = canvas_->LogicalSize();
+    auto bounds = ChartBackgroundBounds(viewport, previewImageSize_, chartBackgroundOffset_);
+    // The board's children use its lower-left origin, while gameplay/result use Centre.
+    bounds.x += viewport.width / 2;
+    bounds.y += viewport.height / 2;
+    chartBackground_->SetBounds(bounds);
 }
 
 void MusicSelectView::UpdateBackgroundPreviewLayout()

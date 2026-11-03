@@ -154,6 +154,7 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayProgressView.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayProgressView.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
     <ClInclude Include="Presentation\LaneKeyBeam.h"><Filter>Presentation</Filter></ClInclude>
+    <ClInclude Include="Presentation\BackgroundLayout.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\MarqueeTextComponent.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClCompile Include="Presentation\ScrollableTextComponent.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClInclude Include="Presentation\MarqueeTextComponent.h"><Filter>Presentation</Filter></ClInclude>

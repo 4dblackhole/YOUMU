@@ -234,7 +234,8 @@ void MusicSelectView::RefreshSelectionPresentation()
     const auto &selected = song.patterns[selection_.selectedPatternIndex_];
     SetBackgroundPreview(selected.pattern.backgroundFile.empty()
                              ? std::filesystem::path{}
-                             : settings_.SongsRoot() / L"BG" / selected.pattern.backgroundFile);
+                             : settings_.SongsRoot() / L"BG" / selected.pattern.backgroundFile,
+                         selected.pattern.backgroundOffsetX, selected.pattern.backgroundOffsetY);
     RequireComponent<TextVisualComponent>(*selectedPatternLabel_)
         .SetText(PatternName(selected));
     creatorText.SetText(DisplayLines(selected.pattern.makers));

@@ -108,6 +108,9 @@ std::unique_ptr<GameScene> YOUMUGame::CreateResultScene()
 {
     auto launch = launchRequest_->Snapshot();
     ResultViewContext display{launch.songTitle, launch.patternCreator, launch.IsValid(), launch.songArtist};
+    display.backgroundPath = launch.backgroundPath;
+    display.backgroundOffsetX = launch.backgroundOffsetX;
+    display.backgroundOffsetY = launch.backgroundOffsetY;
     if (!smokeTest_ && !rhythmDebugMode_ && launch.IsValid()) display.recordDatabase = PlayRecordStore::DefaultPath();
     ResultScene::RetryHandler retry;
     if (display.canRetry)

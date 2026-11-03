@@ -237,6 +237,7 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayProgressView.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayProgressView.h" />
     <ClInclude Include="Presentation\LaneKeyBeam.h" />
+    <ClInclude Include="Presentation\BackgroundLayout.h" />
     <ClCompile Include="Presentation\MarqueeTextComponent.cpp" />
     <ClCompile Include="Presentation\ScrollableTextComponent.cpp" />
     <ClInclude Include="Presentation\MarqueeTextComponent.h" />

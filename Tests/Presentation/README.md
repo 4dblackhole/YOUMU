@@ -39,6 +39,11 @@ native Unicode create/rename/cancel dialogs, active-folder deletion, empty selec
 independent folder-list scrolling and language changes. The hidden D3D12 run also
 checks search hiding and modal Escape/options-key isolation. Persistence, malformed
 JSON/Unicode, failed atomic replacement and chart preservation are tested in the logic suite.
+Selected BG coverage checks both song-select purposes for full-screen image reuse,
+aspect/offset framing across resize, same-path offset changes and clearing/fallback.
+ResultPresentationTests checks the BG value snapshot, reference-height offset conversion,
+resize/language rebuild, image failure fallback and actual D3D12 retention after gameplay destruction.
+GameplayJudgementTests retains its existing full-screen BG/offset regression.
 HP information checks both selection purposes for exact hundredths, the 9.00
 default, pattern/language changes, empty-state clearing and four rows fitting
 inside the information panel at narrow, standard and wide viewport sizes.

@@ -15,6 +15,8 @@ struct ResultViewContext
     bool canRetry{};
     std::wstring songArtist;
     std::filesystem::path recordDatabase;
+    std::filesystem::path backgroundPath;
+    double backgroundOffsetX{}, backgroundOffsetY{}; // Logical units at reference height 720.
 };
 class IResultView
 {

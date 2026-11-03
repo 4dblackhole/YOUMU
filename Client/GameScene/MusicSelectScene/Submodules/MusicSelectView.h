@@ -67,8 +67,9 @@ class MusicSelectView final
     void EditRecordQuery();
     void LayoutRecordControls();
     void CreateSongInformationPanel();
-    void SetBackgroundPreview(const std::filesystem::path &path);
+    void SetBackgroundPreview(const std::filesystem::path &path, double offsetX = 0, double offsetY = 0);
     void UpdateBackgroundPreviewLayout();
+    void UpdateChartBackgroundLayout();
     void CreateSongBrowser();
     void CreateFooter();
     void CreateAdditionMenu();
@@ -143,6 +144,7 @@ class MusicSelectView final
     std::filesystem::path recordDatabase_;
     std::filesystem::path previewPath_;
     Size previewImageSize_{};
+    Point chartBackgroundOffset_{};
     std::uint64_t textRevision_{};
     std::vector<SongCard> songCards_;
     std::vector<SongCard> songRows_;
@@ -164,6 +166,7 @@ class MusicSelectView final
     std::optional<Point> canvasPointer_;
     Visual2DNode *board_{};
     Visual2DNode *background_{};
+    Visual2DNode *chartBackground_{};
     Visual2DNode *categoryBar_{};
     Visual2DNode *categoryLabel_{};
     std::future<std::vector<PlayRecord>> recordJob_;

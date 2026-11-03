@@ -2,6 +2,7 @@
 #include "App/AssetPaths.h"
 #include "Judgement/AccuracyScore.h"
 #include "Presentation/SkinVisualComponent.h"
+#include "Presentation/BackgroundLayout.h"
 #include "TaikoResultLayout.h"
 #include "Texts/GameScene/ResultScene/ResultTexts.h"
 #include <algorithm>
@@ -59,6 +60,25 @@ void TaikoResultView::LoadAssets()
     modeIcon_ = load(L"Mode.Taiko");
     rankFrame_ = load(L"Rank.Frame");
     rankImage_ = load(RankImageKey(result_.summary.accuracy));
+    chartBackground_ = {};
+    chartBackgroundSize_ = {};
+    if (!context_.backgroundPath.empty())
+    {
+        try
+        {
+            const auto image = visuals_.RegisterImage(context_.backgroundPath);
+            const auto size = visuals_.GetImageSize(image);
+            if (image && size.width > 0 && size.height > 0)
+            {
+                chartBackground_ = image;
+                chartBackgroundSize_ = size;
+            }
+        }
+        catch (const std::exception &)
+        {
+            // The result remains available with the existing skin background.
+        }
+    }
     font_ = {TextFontSource::File, NotoSansKR().wstring()};
 }
 void TaikoResultView::Initialize(const EngineServices &services)
@@ -142,8 +162,12 @@ void TaikoResultView::BuildBackground()
 {
     const auto size = canvas_->LogicalSize();
     auto &anchor = canvas_->AnchorNode(Anchor::Center);
+    const float referenceScale = size.height / 720.0F;
+    const auto backgroundBounds = ChartBackgroundBounds(size, chartBackgroundSize_,
+        {static_cast<float>(context_.backgroundOffsetX) * referenceScale,
+         static_cast<float>(context_.backgroundOffsetY) * referenceScale});
     auto &sky =
-        CreateSprite(anchor, {-size.width / 2, -size.height / 2, size.width, size.height}, sky_, "Result.Sky");
+        CreateSprite(anchor, backgroundBounds, chartBackground_ ? chartBackground_ : sky_, "Result.Sky");
     sky.SetZIndex(-10);
     backgroundId_ = sky.Id();
     auto &clouds =

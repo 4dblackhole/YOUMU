@@ -123,6 +123,8 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
   gameplay 객체가 파기되므로 다음 곡이나 모드의 상태가 남지 않습니다.
 - `YOUMUGame`의 대기 슬롯으로 결과 unique_ptr를 이동하고 Result factory가 이를
   소비합니다. Result도 `DestroyOnExit`이며 `IResultView`가 모드별 표시를 맡습니다.
+  결과 표시 context에는 플레이 선택 snapshot의 BG 경로·오프셋도 값으로 전달합니다.
+  결과는 카탈로그/채보를 다시 읽거나 gameplay 객체를 유지하지 않고 같은 배경 이미지를 표시합니다.
   BACK·Escape·Enter는 Lobby로 돌아갑니다. Retry는 플레이 선택 snapshot을 복원하고
   RhythmTest factory에서 새 세션을 생성하며 Replay는 비활성입니다. 수집/정밀도/입력 로그는
   [플레이 결과](Gameplay/Results.md)가 기준입니다.

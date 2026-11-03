@@ -20,6 +20,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     board_->SetSize(canvasSize);
     board_->SetPosition({0.0F, 0.0F});
     background_->SetBounds(responsive.background);
+    UpdateChartBackgroundLayout();
 
     ResizeBorderedPanel(*categoryBar_, responsive.category, 3.0F);
     if (recordPanel_ != nullptr)

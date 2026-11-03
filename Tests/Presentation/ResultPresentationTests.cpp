@@ -34,6 +34,13 @@ namespace
       public:
         ImageHandle LoadImage(const std::filesystem::path &path) override
         {
+            if (path.filename() == "chart-bg-fail.png") throw std::runtime_error("BG decode/upload failure fixture.");
+            if (path.filename() == "chart-bg-zero.png")
+            {
+                const auto id = ++imageId_;
+                images_.emplace(id, LoadedImage{Size{}, path});
+                return {id};
+            }
             std::ifstream file(path, std::ios::binary);
             std::array<unsigned char, 24> header{};
             file.read(reinterpret_cast<char *>(header.data()), static_cast<std::streamsize>(header.size()));
@@ -111,6 +118,71 @@ namespace
             if (const auto *found = FindText(*child, value))
                 return found;
         return nullptr;
+    }
+    void TestChartBackground()
+    {
+        for (const auto &path : std::array<std::filesystem::path, 5>{
+            ResolveDefaultSkinAsset(L"Result/Rank/SSS.png"), ResolveDefaultSkinAsset(L"InGame/InputPanel.png"),
+            std::filesystem::path{"chart-bg-fail.png"}, std::filesystem::path{"chart-bg-zero.png"}, {}})
+        {
+            const bool assigned = !path.empty() && path.filename() != "chart-bg-fail.png" && path.filename() != "chart-bg-zero.png";
+            NullRenderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1920, 1080});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            TaikoPlayResult result;
+            ResultViewContext context;
+            context.backgroundPath = path;
+            context.backgroundOffsetX = 70;
+            context.backgroundOffsetY = -25;
+            auto view = CreateResultView(result, visuals, texts, context);
+            context.backgroundPath = "later-selection.png";
+            context.backgroundOffsetX = 999;
+            view->Initialize({meshes, textRendering, renderer, audio, 1920, 1080});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("Chart result Canvas missing.");
+            for (const auto viewport : std::array<Size, 3>{{{1920, 1080}, {2560, 1080}, {900, 720}}})
+            {
+                visuals.OnResize(static_cast<std::uint32_t>(viewport.width), static_cast<std::uint32_t>(viewport.height));
+                view->OnResize(static_cast<std::uint32_t>(viewport.width), static_cast<std::uint32_t>(viewport.height));
+                const auto *background = FindNode(canvas->Root(), "Result.Sky");
+                if (!background) throw std::runtime_error("Result background missing.");
+                const auto *sprite = background->GetComponent<SpriteVisualComponent>();
+                if (!sprite) throw std::runtime_error("Result background sprite missing.");
+                const auto &loaded = renderer.ImagePath(sprite->Style().normalImage);
+                Check(loaded == (assigned ? path : ResolveDefaultSkinAsset(L"Result/Background/Sky.png")),
+                      "Result uses the played chart BG snapshot, with skin fallback for absent or failed images.");
+                const auto size = canvas->LogicalSize();
+                const auto bounds = background->BoundsInCanvas();
+                Check(bounds.x <= -size.width / 2 + .01F && bounds.x + bounds.width >= size.width / 2 - .01F &&
+                          bounds.y <= -size.height / 2 + .01F && bounds.y + bounds.height >= size.height / 2 - .01F,
+                      "Result BG covers narrow and wide viewports without exposing edges.");
+                if (assigned)
+                {
+                    const auto native = renderer.GetImageSize(sprite->Style().normalImage);
+                    Check(std::abs(bounds.width / bounds.height - native.width / native.height) < .001F &&
+                              std::abs(bounds.x + bounds.width / 2 - 105) < .01F &&
+                              std::abs(bounds.y + bounds.height / 2 + 37.5F) < .01F,
+                          "Result preserves image aspect and converts 720-height authored offsets to its 1080-height Canvas.");
+                }
+                const auto packets = canvas->BuildDrawList();
+                Check(!packets.empty() && packets.front().image.value == sprite->Style().normalImage.value,
+                      "Selected BG reaches the draw list behind result UI.");
+            }
+            texts.SetLanguage(Language::English);
+            InputState input;
+            static_cast<void>(view->Update(input));
+            const auto *background = FindNode(canvas->Root(), "Result.Sky");
+            if (!background) throw std::runtime_error("Rebuilt result BG missing.");
+            Check(renderer.ImagePath(background->GetComponent<SpriteVisualComponent>()->Style().normalImage) ==
+                      (assigned ? path : ResolveDefaultSkinAsset(L"Result/Background/Sky.png")),
+                  "Language rebuild retains the original result background snapshot.");
+            view->Shutdown();
+            Check(visuals.CanvasCount() == 0, "Result BG releases its Canvas without retaining gameplay objects.");
+        }
     }
     void TestAccuracyRanks()
     {
@@ -489,9 +561,14 @@ namespace
                                            ++resultCreations_;
                                            resultData_ = pending_.get();
                                            Check(resultData_ != nullptr, "Factory requires moved play data.");
+                                           const auto played = launch_->Snapshot();
+                                           ResultViewContext display{L"Retry fixture", L"Regression", true};
+                                           display.backgroundPath = played.backgroundPath;
+                                           display.backgroundOffsetX = played.backgroundOffsetX;
+                                           display.backgroundOffsetY = played.backgroundOffsetY;
                                            return std::make_unique<ResultScene>(
                                                std::move(pending_), ScreenVisuals(), texts_,
-                                               ResultViewContext{L"Retry fixture", L"Regression", true},
+                                               std::move(display),
                                                [this](SceneManager &manager)
                                                {
                                                    PrepareSession();
@@ -523,6 +600,11 @@ namespace
                 auto *canvas = ScreenVisuals().FindCanvas(3);
                 if (!canvas)
                     throw std::runtime_error("The production Result Canvas must be active.");
+                const auto *background = FindNode(canvas->Root(), "Result.Sky");
+                if (!background) throw std::runtime_error("The played result BG must survive gameplay destruction.");
+                Check(background->GetComponent<SpriteVisualComponent>()->Style().normalImage.value ==
+                          ScreenVisuals().RegisterImage(ResolveDefaultSkinAsset(L"InGame/InputPanel.png")).value,
+                      "Actual Result rendering retains the played chart BG after gameplay Canvas destruction.");
                 const auto *retry = FindNode(canvas->Root(), "Result.Retry");
                 if (!retry)
                     throw std::runtime_error("The retry button must exist.");
@@ -574,7 +656,11 @@ namespace
             pattern.notes.push_back({.keyType = 1});
             auto loaded = TaikoMode{}.CreateSession(pattern);
             Check(loaded.Succeeded(), "Transition fixture must load.");
-            launch_->SetValidated({}, std::move(loaded.session));
+            GameplayLaunchRequest request;
+            request.backgroundPath = ResolveDefaultSkinAsset(L"InGame/InputPanel.png");
+            request.backgroundOffsetX = 70;
+            request.backgroundOffsetY = -25;
+            launch_->SetValidated(std::move(request), std::move(loaded.session));
             ++sessionCreations_;
         }
         bool &verified_;
@@ -595,6 +681,7 @@ int main()
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestResultRecordSaving();
+        TestChartBackground();
         TestAccuracyRanks();
         TestMillisecondHistogram();
         TestHistogramJudgementColors();

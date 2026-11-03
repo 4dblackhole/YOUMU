@@ -24,6 +24,8 @@ void MusicSelectView::Initialize(const EngineServices &services)
     board_->SetPosition({0.0F, 0.0F});
 
     background_ = &AddPanel(*board_, layout::DesignBoard, CanvasBlue, "Background");
+    chartBackground_ = &CreateSprite(*board_, {}, {}, "SongBackground");
+    chartBackground_->SetVisible(false);
     CreateCategoryBar();
     if (!IsEditorSongSelect())
     {
@@ -171,6 +173,8 @@ void MusicSelectView::Shutdown() noexcept
     categoryBar_ = nullptr;
     categoryLabel_ = nullptr;
     background_ = nullptr;
+    chartBackground_ = nullptr;
+    chartBackgroundOffset_ = {};
     board_ = nullptr;
     canvas_ = nullptr;
     canvasHandle_.Reset();

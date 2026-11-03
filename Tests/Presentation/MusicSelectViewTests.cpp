@@ -712,7 +712,7 @@ namespace
             Check(visuals.CanvasCount() == 0, "HP information releases its Canvas.");
         }
     }
-    void TestBackgroundPreview()
+    void TestBackgroundPreview(SongSelectPurpose purpose)
     {
         Renderer renderer;
         ScreenVisual2DManager visuals;
@@ -733,10 +733,12 @@ namespace
             song.patterns.push_back(std::move(pattern));
         }
         song.patterns.front().pattern.judgementLevel = JudgeLevel{40.37};
+        song.patterns.front().pattern.backgroundOffsetX = 70;
+        song.patterns.front().pattern.backgroundOffsetY = -25;
         song.patterns.front().bpmRange = std::pair{120.0, 180.0};
         selection.selectedDurationMicroseconds_ = 125'000'000;
         selection.catalog_.songs.push_back(std::move(song));
-        MusicSelectView view(visuals, selection, SongSelectPurpose::Gameplay, texts, options);
+        MusicSelectView view(visuals, selection, purpose, texts, options);
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas) throw std::runtime_error("Background Canvas missing.");
@@ -778,6 +780,10 @@ namespace
         if (!image || !empty || !title || !preview) throw std::runtime_error("Background nodes missing.");
         auto *sprite = image->GetComponent<SpriteVisualComponent>();
         if (!sprite) throw std::runtime_error("Background sprite missing.");
+        auto *pageBackground = Find(canvas->Root(), "SongBackground");
+        if (!pageBackground) throw std::runtime_error("Full-screen song background missing.");
+        auto *pageSprite = pageBackground->GetComponent<SpriteVisualComponent>();
+        if (!pageSprite) throw std::runtime_error("Full-screen song background sprite missing.");
         InputState input;
         const auto tick = [&] { static_cast<void>(view.Update(input, 0)); };
         const auto select = [&](std::size_t index) {
@@ -786,6 +792,8 @@ namespace
         };
         Check(renderer.loaded.size() == 1 && renderer.loaded.back() == options.SongsRoot() / L"BG" / L"preview-wide.jpg",
               "Artwork must load from the selected Songs/BG.");
+        Check(pageBackground->IsVisible() && pageSprite->Style().normalImage.value == sprite->Style().normalImage.value,
+              "The selected pattern image is shared by the full-screen background and existing preview.");
         select(1);
         tick();
         Check(renderer.loaded.size() == 2 && renderer.loaded.back() == options.SongsRoot() / L"BG" / L"preview-portrait.jpg",
@@ -800,6 +808,9 @@ namespace
         Check(std::abs(sprite->UvScale().x - .5625F) < .001F && std::abs(sprite->UvScale().y - 1) < .001F,
               "Landscape artwork must retain its original aspect ratio.");
         const auto calls = renderer.loaded.size();
+        selection.catalog_.songs[0].patterns[0].pattern.backgroundOffsetX = 35;
+        selection.catalog_.songs[0].patterns[0].pattern.backgroundOffsetY = -15;
+        view.RefreshSelectionPresentation();
         for (int i = 0; i < 10; ++i) tick();
         Check(renderer.loaded.size() == calls, "Ready artwork must not be requested every frame.");
         for (const auto width : {900U, 1920U})
@@ -809,16 +820,27 @@ namespace
             Check(image->NodeSize().width == preview->NodeSize().width &&
                       image->NodeSize().height == preview->NodeSize().height,
                   "Artwork must follow the existing responsive preview bounds.");
+            const auto bg = pageBackground->BoundsInCanvas();
+            const auto size = canvas->LogicalSize();
+            Check(bg.x <= -size.width / 2 && bg.x + bg.width >= size.width / 2 &&
+                      bg.y <= -size.height / 2 && bg.y + bg.height >= size.height / 2 &&
+                      std::abs(bg.width / bg.height - 1600.0F / 900) < .001F,
+                  "Selected artwork covers the whole responsive screen with its source aspect ratio.");
+            Check(std::abs(bg.x + bg.width / 2 - 35) < .01F && std::abs(bg.y + bg.height / 2 + 15) < .01F,
+                  "Changing authored offsets for the same BG updates its framing without another image load.");
         }
         select(2);
         tick();
         Check(!image->IsVisible() && empty->IsVisible() && !sprite->Style().normalImage.value,
               "An unassigned background must clear the previous image.");
+        Check(!pageBackground->IsVisible() && !pageSprite->Style().normalImage,
+              "An unassigned BG restores the skin background instead of leaving the previous chart image.");
         for (const auto index : {3U, 4U})
         {
             select(index);
             tick();
             Check(!image->IsVisible() && empty->IsVisible(), "Decode/upload errors must preserve NO IMAGE.");
+            Check(!pageBackground->IsVisible(), "Failed BG loads also preserve the screen's existing background.");
             const auto failedCalls = renderer.loaded.size();
             tick();
             view.RefreshSelectionPresentation();
@@ -829,6 +851,7 @@ namespace
         selection.searchText_ = L"no match";
         view.RebuildVisibleSongs();
         Check(!image->IsVisible() && empty->IsVisible(), "Empty search results must clear the selected artwork.");
+        Check(!pageBackground->IsVisible(), "Empty search results clear the full-screen selected BG.");
         view.Shutdown();
         Check(visuals.CanvasCount() == 0, "Background shutdown must release the Canvas.");
     }
@@ -1002,7 +1025,8 @@ int main()
         TestFavoriteFolders();
         TestHpInformation();
         TestRecordHistoryView();
-        TestBackgroundPreview();
+        TestBackgroundPreview(SongSelectPurpose::Gameplay);
+        TestBackgroundPreview(SongSelectPurpose::Editor);
         SongCatalogLoader loader;
         loader.Refresh(UserSongs());
         const auto first = AwaitCatalog(loader);
