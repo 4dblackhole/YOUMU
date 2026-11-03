@@ -5,6 +5,9 @@
 선택 정책은 SongSelectionState, 미리듣기는 SongPreviewController를 읽습니다.
 MusicSelectScene은 View와 상태·오디오를 조립하고 View의 전환 의도를 처리합니다.
 
+노트 종류 비율 그래프와 NPS(초당 노트 수) 그래프는 사용자 지시로 폐기했습니다.
+두 그래프 및 이를 위한 분석 버튼/패널은 선곡 화면의 구현 범위에서 제외합니다.
+
 `MusicSelectScene`은 Penpot `Music Select · Sky` 페이지의
 `곡 선택 화면 · Song List Focus · 1920×1080` 보드를 기준으로 구성한다.
 1920×1080 좌표에 `2/3`을 적용한 1280×720 `FixedHeight` Canvas를 사용한다.
