@@ -6,6 +6,94 @@
 
 namespace tests
 {
+    void TestSongFilters()
+    {
+        SongSelectionState state;
+        SongCatalogEntry song, other, empty;
+        song.music.names = {"Angel Dream"};
+        song.patterns.resize(3);
+        for (auto &entry : song.patterns)
+        {
+            entry.pattern.mode = "Taiko";
+            entry.noteCount = 100;
+            entry.pattern.baseBpm = 150;
+            entry.bpmRange = std::pair{1.0, 999.0};
+        }
+        song.patterns[0].pattern.baseBpm = 90;
+        song.patterns[1].pattern.mode = "Other";
+        other.music.names = {"Other"};
+        other.patterns = {song.patterns[2]};
+        state.catalog_.songs = {song, other, empty};
+        Require(!song.patterns[0].calculatedDifficulty, "Runtime difficulty starts uncalculated.");
+        state.filter_.mode = "Taiko";
+        state.filter_.minimumBpm = 140;
+        state.filter_.maximumNotes = 100;
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{0, 1} &&
+                    state.VisiblePatternIndices(0) == std::vector<std::size_t>{2},
+                "All bounds must match the same pattern; BPM uses the base value, not its range.");
+        Require(state.selectedPatternIndex_ == 2, "Selection keeps the real catalog pattern index.");
+        state.SelectPattern(0);
+        Require(state.selectedPatternIndex_ == 2, "Hidden patterns cannot be selected.");
+        state.MoveDifficultyFocus(1);
+        Require(state.focusedSongPosition_ == 1 && state.selectedPatternIndex_ == 0,
+                "Keyboard navigation crosses filtered songs using actual pattern indices.");
+        state.MoveDifficultyFocus(-1);
+        Require(state.focusedSongPosition_ == 0 && state.selectedPatternIndex_ == 2, "Reverse filtered navigation.");
+        state.searchText_ = L"angel dream";
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{0}, "Metadata AND search composes with filters.");
+        state.filter_.minimumDifficulty = 0;
+        state.filter_.maximumDifficulty = 0;
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_.empty(), "An unknown calculated difficulty is not zero.");
+        state.catalog_.songs[0].patterns[2].calculatedDifficulty = 0;
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{0}, "Known zero matches inclusive zero bounds.");
+        state.catalog_.songs[0].patterns[2].calculatedDifficulty = std::numeric_limits<double>::quiet_NaN();
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_.empty(), "Nonfinite calculated values are unavailable.");
+        state.filter_ = {};
+        state.searchText_.clear();
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_.size() == 3 && state.VisiblePatternCount(0) == 3,
+                "Clearing filters restores all original patterns and songs without patterns.");
+
+        SongFilter parsed;
+        SongFilterDraft draft;
+        draft.values = {L" 0 ", L"100", L"120.25", L"150", L"1", L"100", L"", L""};
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::None &&
+                    parsed.minimumNotes == 0 && parsed.minimumBpm == 120.25,
+                "Integer count and fractional range bounds accept whitespace and inclusive endpoints.");
+        Require(FormatSongFilter(parsed).values == std::array<std::wstring, 8>{L"0", L"100", L"120.25", L"150", L"1", L"100", L"", L""},
+                "Committed filters round-trip into editable values.");
+        for (const auto bad : {L"-1", L"1.5", L"184467440737095516160", L"日本語"})
+        {
+            draft.values[0] = bad;
+            Require(ParseSongFilter(draft, parsed) == SongFilterError::Notes && parsed.minimumNotes == 0,
+                    "Invalid count is rejected without mutating the committed filter.");
+        }
+        draft = {};
+        draft.values[2] = L"nan";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::Bpm, "Reject nonfinite BPM.");
+        draft.values[2] = L"-1";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::Bpm, "Reject negative BPM.");
+        draft = {};
+        draft.values[4] = L"0";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::JudgeLevel, "JudgeLevel lower bound is one.");
+        draft.values[4] = L"100.01";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::JudgeLevel, "JudgeLevel upper bound is 100.");
+        draft = {};
+        draft.values[6] = L"inf";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::Difficulty, "Reject infinite difficulty.");
+        draft = {};
+        draft.values[0] = L"101";
+        draft.values[1] = L"100";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::ReversedRange, "Reject reversed bounds.");
+        draft = {};
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::None && !parsed.IsActive(), "Empty bounds remove restrictions.");
+    }
+
     void TestSongBaseBpmSort()
     {
         SongSelectionState state;

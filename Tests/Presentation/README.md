@@ -28,6 +28,11 @@ Both gameplay and editor selection check one-shot launch from a difficulty click
 including a different difficulty and a second click on the selected difficulty.
 Both also select Base BPM through the actual dropdown, verify numeric order and
 stable ties with retained song focus, then check language switching and search.
+Song filter regressions verify visible pattern projection with original indices,
+modal navigation/launch isolation and responsive filter/sort controls in both purposes.
+The hidden native-window run edits real range fields, tests IME versus Enter, validates
+atomic Apply/Reset/Close and invalid bounds, hides fields under the mode popup and checks
+scene-hide cleanup. Difficulty remains empty/disabled while all runtime values are unknown.
 HP information checks both selection purposes for exact hundredths, the 9.00
 default, pattern/language changes, empty-state clearing and four rows fitting
 inside the information panel at narrow, standard and wide viewport sizes.

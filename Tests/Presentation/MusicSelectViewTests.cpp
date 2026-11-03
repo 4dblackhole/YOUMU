@@ -443,6 +443,69 @@ namespace
             view.Shutdown();
         }
     }
+    void TestFilterProjection()
+    {
+        for (const auto purpose : {SongSelectPurpose::Gameplay, SongSelectPurpose::Editor})
+        {
+            Renderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1280, 720});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            OptionSettings options("build/song-filter-unused.ini");
+            SongSelectionState state;
+            SongCatalogEntry song;
+            song.music.names = {"Filtered song"};
+            song.patterns.resize(3);
+            for (std::size_t i = 0; i < 3; ++i) song.patterns[i].noteCount = 100 * i;
+            state.catalog_.songs.push_back(std::move(song));
+            state.filter_.minimumNotes = 100;
+            MusicSelectView view(visuals, state, purpose, texts, options);
+            view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("Filter projection Canvas missing.");
+            Check(!Find(canvas->Root(), "Difficulty.0") && Find(canvas->Root(), "Difficulty.1") &&
+                      Find(canvas->Root(), "Difficulty.2"), "Only matching actual pattern rows are drawn.");
+            Click(*canvas, *Find(canvas->Root(), "Difficulty.2"));
+            InputState input;
+            Check(view.Update(input, 0) == SongSelectCommand::Launch && state.selectedPatternIndex_ == 2,
+                  "Clicking a projected pattern launches its original catalog index.");
+            Check(view.Update(input, 0) == SongSelectCommand::None, "Filtered clicks launch only once.");
+            auto *button = Find(canvas->Root(), "FilterButton");
+            if (!button) throw std::runtime_error("Song filter button missing.");
+            Click(*canvas, *button);
+            static_cast<void>(view.Update(input, 0));
+            const auto selected = state.selectedPatternIndex_;
+            const auto scroll = Find(canvas->Root(), "SongContent")->Bounds().y;
+            InputStateTestAccess::Key(input, VK_DOWN, true);
+            InputStateTestAccess::Key(input, VK_SPACE, true);
+            Check(view.Update(input, 0) == SongSelectCommand::None && state.selectedPatternIndex_ == selected &&
+                      Find(canvas->Root(), "SongContent")->Bounds().y == scroll,
+                  "Filter modal blocks underlying navigation and launch commands.");
+            input = {};
+            auto *reset = Find(canvas->Root(), "SongFilter.Reset");
+            auto *apply = Find(canvas->Root(), "SongFilter.Apply");
+            if (!reset || !apply) throw std::runtime_error("Filter action buttons missing.");
+            Click(*canvas, *reset);
+            static_cast<void>(view.Update(input, 0));
+            Click(*canvas, *apply);
+            static_cast<void>(view.Update(input, 0));
+            Check(!state.filter_.IsActive() && Find(canvas->Root(), "Difficulty.0"),
+                  "Applying a reset restores the hidden difficulty row.");
+            for (const auto width : {900U, 1920U})
+            {
+                visuals.OnResize(width, 720);
+                view.OnResize(width, 720);
+                const auto sort = Find(canvas->Root(), "SortSelector")->BoundsInCanvas();
+                const auto filter = button->BoundsInCanvas();
+                Check(sort.x + sort.width < filter.x && sort.y == filter.y && sort.height == filter.height,
+                      "Filter and sort controls share their responsive row without overlap.");
+            }
+            view.Shutdown();
+        }
+    }
     void TestHpInformation()
     {
         for (const auto purpose : {SongSelectPurpose::Gameplay, SongSelectPurpose::Editor})
@@ -792,6 +855,7 @@ int main()
         TestScrollableText();
         TestMetadataLines();
         TestBaseBpmSortView();
+        TestFilterProjection();
         TestHpInformation();
         TestRecordHistoryView();
         TestBackgroundPreview();

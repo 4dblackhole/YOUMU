@@ -29,14 +29,14 @@ void MusicSelectView::ProcessPointer(const InputState &input)
         inputRouter_.Process(*canvas_, pointer);
 
     bool textScrolled = false;
-    if (!options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) && input.MouseWheelDelta() != 0)
+    if (!filterPanel_.IsVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) && input.MouseWheelDelta() != 0)
     {
         if (auto *hovered = canvas_->FindNode(inputRouter_.HoveredNode()))
             if (auto *text = hovered->GetComponent<ScrollableTextComponent>())
                 textScrolled = text->Scroll(input.MouseWheelDelta(),
                                             input.IsKeyDown(VK_LSHIFT) || input.IsKeyDown(VK_RSHIFT));
     }
-    if (!textScrolled && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) &&
+    if (!textScrolled && !filterPanel_.IsVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) &&
         canvasPointer_.has_value() &&
         songViewport_ != nullptr && songViewport_->BoundsInCanvas().Contains(*canvasPointer_) &&
         std::abs(input.MouseWheelDelta()) > 0.0F)
@@ -67,6 +67,13 @@ bool MusicSelectView::ProcessActions()
         if (options_.IsVisible())
         {
             continue;
+        }
+        if (filterButton_ && action.type == ActionType::Clicked && action.source == filterButton_->Id())
+        {
+            SetSearchFocus(false);
+            CloseAdditionMenu();
+            filterPanel_.Open(selection_.filter_, selection_.catalog_);
+            return true;
         }
         if (action.type == ActionType::SelectionChanged && action.source == modeSelectorId_)
         {

@@ -56,6 +56,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     goButton_->SetBounds(responsive.go);
     UpdateFooterLayout();
     UpdateSearchInputLayout();
+    filterPanel_.SetViewport(width_, height_);
 }
 
 void MusicSelectView::UpdateRecordPanelLayout()
@@ -156,7 +157,7 @@ void MusicSelectView::UpdateSongInformationLayout()
 void MusicSelectView::UpdateSongBrowserLayout()
 {
     if (browserPanel_ == nullptr || searchField_ == nullptr || searchCountLabel_ == nullptr ||
-        sortSelector_ == nullptr || songViewport_ == nullptr || songContent_ == nullptr ||
+        sortSelector_ == nullptr || filterButton_ == nullptr || songViewport_ == nullptr || songContent_ == nullptr ||
         scrollbarTrack_ == nullptr || scrollbarHandle_ == nullptr || browserHint_ == nullptr)
     {
         return;
@@ -178,8 +179,13 @@ void MusicSelectView::UpdateSongBrowserLayout()
                             layout::SearchCount.height},
                            searchField_->NodeSize().height));
 
+    const float filterWidth = std::min(90.0F, innerWidth * .3F);
+    const float sortWidth = std::max(innerWidth - filterWidth - 10.0F, 1.0F);
     sortSelector_->SetBounds(
-        ScaleTopLeftBounds({14.0F, layout::SortSelector.y, innerWidth, layout::SortSelector.height},
+        ScaleTopLeftBounds({14.0F, layout::SortSelector.y, sortWidth, layout::SortSelector.height},
+                           browserPanel_->NodeSize().height));
+    filterButton_->SetBounds(
+        ScaleTopLeftBounds({14.0F + sortWidth + 10.0F, layout::SortSelector.y, filterWidth, layout::SortSelector.height},
                            browserPanel_->NodeSize().height));
     ResizeBorderedPanel(
         *songViewport_,

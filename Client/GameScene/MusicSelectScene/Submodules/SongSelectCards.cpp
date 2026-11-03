@@ -44,7 +44,7 @@ void MusicSelectView::RebuildSongCards()
         const bool focused = position == selection_.focusedSongPosition_;
         const float height = focused ? layout::ExpandedBaseHeight +
                                            layout::DifficultyRowStep *
-                                               static_cast<float>(selection_.catalog_.songs[index].patterns.size())
+                                               static_cast<float>(selection_.VisiblePatternCount(index))
                                      : layout::NormalSongHeight;
         songRows_.push_back({index, top, height, nullptr, nullptr, nullptr, position});
         top += height + layout::SongGap;
@@ -131,12 +131,14 @@ void MusicSelectView::CreateSongCard(const std::size_t visiblePosition,
                      std::wstring(text.noDifficulties), 12.0F,
                      MutedBlue, "NoDifficulties", TextAlignment::Center);
         }
-        for (std::size_t index = 0; index < song.patterns.size(); ++index)
+        const auto visiblePatterns = selection_.VisiblePatternIndices(catalogIndex);
+        for (std::size_t row = 0; row < visiblePatterns.size(); ++row)
         {
+            const auto index = visiblePatterns[row];
             auto &difficulty = CreateButton(
                 button,
                 ScaleTopLeftBounds({14.0F,
-                                    152.0F + layout::DifficultyRowStep * static_cast<float>(index),
+                                    152.0F + layout::DifficultyRowStep * static_cast<float>(row),
                                     titleWidth, layout::DifficultyRowHeight},
                                    button.NodeSize().height),
                 PatternName(song.patterns[index]), std::format("Difficulty.{}", index));

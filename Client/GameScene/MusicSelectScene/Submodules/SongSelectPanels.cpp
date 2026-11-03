@@ -193,6 +193,10 @@ void MusicSelectView::CreateSongBrowser()
     sortBehavior.SetTextColor(DeepBlue);
     sortBehavior.SetSelectedTextColor(PureWhite);
     sortBehavior.SetPopupBackgroundColor(PureWhite);
+    filterButton_ = &CreateButton(panel, {}, L"", "FilterButton");
+    RequireComponent<TextVisualComponent>(*filterButton_).SetFontSize(CanvasFontSize(12.0F));
+    SetCornerRadius(*filterButton_, 10.0F);
+    RefreshFilterButton();
 
     auto &viewport = AddBorderedPanel(panel, layout::SongViewport, ViewportBlue, SubtleBorder, 1.5F,
                                       14.0F, "SongViewport");
@@ -356,6 +360,7 @@ void MusicSelectView::ApplyTexts()
     for (auto *node : {selectedSongLabel_, selectedArtistLabel_, selectedCreatorLabel_})
         if (node) RequireComponent<ScrollableTextComponent>(*node).SetFont(texts_.CurrentProfile().font);
     setLabel(browserHint_, text.browserHint);
+    setLabel(filterButton_, texts_.Get("SongFilter.button"));
     setLabel(optionLabel_, IsEditorSongSelect() ? text.optionSelect : texts_.Get("PlayOptions.title"));
     if (modeSelector_)
     {
@@ -400,6 +405,8 @@ void MusicSelectView::ApplyTexts()
         ++recordRevision_;
     }
     options_.RefreshTexts();
+    filterPanel_.RefreshTexts();
+    filterPanel_.SetViewport(width_, height_);
     RefreshSelectionPresentation();
     RefreshSearchPresentation();
     textRevision_ = texts_.Revision();

@@ -192,6 +192,9 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectInput.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectSearch.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.h" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFilter.h" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFilterPanel.h" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongFilterPanel.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionText.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.h" />

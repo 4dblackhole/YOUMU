@@ -3,6 +3,8 @@
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
 #include "Presentation/ScrollableTextComponent.h"
 #include <Windows.h>
+#include <algorithm>
+#include <vector>
 #include <iostream>
 #include <stdexcept>
 
@@ -43,8 +45,14 @@ namespace
             SongCatalogEntry song, other;
             song.music.names = {"Angel Dream", "天使の夢", "천사의 꿈"};
             song.patterns.resize(1);
+            song.patterns[0].noteCount = 100;
+            song.patterns[0].pattern.baseBpm = 150;
+            song.patterns[0].pattern.mode = "Taiko";
             other.music.names = {"Other song"};
             other.patterns.resize(1);
+            other.patterns[0].noteCount = 200;
+            other.patterns[0].pattern.baseBpm = 90;
+            other.patterns[0].pattern.mode = "Taiko";
             state_.catalog_.songs = {song, other};
             view_ = std::make_unique<MusicSelectView>(visuals_, state_, SongSelectPurpose::Editor, texts_, options_);
             view_->Initialize(services);
@@ -52,7 +60,9 @@ namespace
             DWORD process{};
             GetWindowThreadProcessId(parent, &process);
             Check(process == GetCurrentProcessId(), "Search test owns its window.");
-            const HWND child = FindWindowExW(parent, nullptr, L"EDIT", nullptr);
+            HWND child = nullptr;
+            while ((child = FindWindowExW(parent, child, L"EDIT", nullptr)) != nullptr)
+                if ((GetWindowLongPtrW(child, GWL_STYLE) & WS_VISIBLE) != 0) break;
             if (!child) throw std::runtime_error("Search uses a real native editor.");
             child_ = child;
             InputState input;
@@ -123,12 +133,108 @@ namespace
             static_cast<void>(view_->Update(input, .3));
             input = {};
             static_cast<void>(view_->Update(input, .3));
+            TestFilters(parent);
             report_.tested = true;
         }
         catch (const std::exception &error)
         {
             std::cerr << "Native search initialization: " << error.what() << '\n';
             throw;
+        }
+        void TestFilters(HWND parent)
+        {
+            auto *canvas = visuals_.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("Filter Canvas missing.");
+            InputState input;
+            const auto click = [&](std::string_view name)
+            {
+                auto *node = Find(canvas->Root(), name);
+                if (!node) throw std::runtime_error("Filter widget missing.");
+                const auto bounds = node->BoundsInCanvas();
+                Visual2DInputRouter router;
+                PointerInput pointer{};
+                pointer.available = true;
+                pointer.position = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
+                pointer.leftButtonDown = pointer.leftButtonPressed = true;
+                router.Process(*canvas, pointer);
+                pointer.leftButtonDown = pointer.leftButtonPressed = false;
+                pointer.leftButtonReleased = true;
+                router.Process(*canvas, pointer);
+                Check(view_->Update(input, 0) == SongSelectCommand::None, "Filter buttons never launch or leave the scene.");
+            };
+            const auto edits = [&]
+            {
+                std::vector<HWND> fields;
+                HWND edit{};
+                while ((edit = FindWindowExW(parent, edit, L"EDIT", nullptr)) != nullptr)
+                    if ((GetWindowLongPtrW(edit, GWL_STYLE) & WS_VISIBLE) != 0) fields.push_back(edit);
+                std::ranges::sort(fields, [](HWND left, HWND right)
+                {
+                    RECT a{}, b{};
+                    GetWindowRect(left, &a);
+                    GetWindowRect(right, &b);
+                    return a.top == b.top ? a.left < b.left : a.top < b.top;
+                });
+                return fields;
+            };
+            const auto setText = [](HWND field, const wchar_t *text)
+            {
+                SendMessageW(field, EM_SETSEL, 0, -1);
+                SendMessageW(field, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(text));
+            };
+            setText(child_, L"");
+            static_cast<void>(view_->Update(input, 0));
+            click("FilterButton");
+            auto fields = edits();
+            Check(fields.size() == 6 && (GetWindowLongPtrW(child_, GWL_STYLE) & WS_VISIBLE) == 0,
+                  "Filter shows native numeric fields, hides search and leaves uncalculated difficulty disabled.");
+            auto *overlay = Find(canvas->Root(), "SongFilter.Overlay");
+            if (!overlay) throw std::runtime_error("Filter overlay missing.");
+            setText(fields[0], L"100");
+            setText(fields[1], L"150");
+            setText(fields[2], L"140");
+            static_cast<void>(view_->Update(input, 0));
+            Check(state_.visibleSongIndices_.size() == 2 && !state_.filter_.IsActive(), "Editing leaves the committed filter unchanged.");
+            SetFocus(fields[0]);
+            SendMessageW(fields[0], WM_IME_STARTCOMPOSITION, 0, 0);
+            SendMessageW(fields[0], WM_KEYDOWN, VK_RETURN, 0);
+            InputStateTestAccess::Key(input, VK_RETURN, true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && overlay->IsVisible(),
+                  "IME confirmation does not apply filters or launch gameplay.");
+            SendMessageW(fields[0], WM_IME_ENDCOMPOSITION, 0, 0);
+            input = {};
+            SendMessageW(fields[0], WM_KEYDOWN, VK_RETURN, 0);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && !overlay->IsVisible() &&
+                      state_.visibleSongIndices_ == std::vector<std::size_t>{0},
+                  "Native Enter commits inclusive note/BPM AND bounds without leaking to gameplay.");
+            Check(edits().size() == 1 && state_.catalog_.songs.size() == 2, "Apply restores search and preserves the original catalog.");
+            click("FilterButton");
+            click("SongFilter.Reset");
+            click("SongFilter.Close");
+            Check(state_.filter_.IsActive() && state_.visibleSongIndices_.size() == 1, "Closing a reset draft cancels it.");
+            click("FilterButton");
+            fields = edits();
+            Check(fields.size() == 6, "Reopen native fields.");
+            setText(fields[0], L"200");
+            setText(fields[1], L"100");
+            click("SongFilter.Apply");
+            Check(overlay->IsVisible() && state_.filter_.minimumNotes == 100,
+                  "Invalid reversed bounds keep the panel open and preserve committed conditions.");
+            click("SongFilter.Reset");
+            click("SongFilter.Apply");
+            Check(!state_.filter_.IsActive() && state_.visibleSongIndices_.size() == 2, "Reset plus Apply restores all songs.");
+            click("FilterButton");
+            click("SongFilter.Mode");
+            Check(edits().empty(), "Native fields hide while the Canvas mode popup covers them.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_ESCAPE, true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && !overlay->IsVisible(), "Filter Escape is modal and never leaves the scene.");
+            input = {};
+            click("FilterButton");
+            view_->SetVisible(false);
+            Check(edits().empty() && !overlay->IsVisible(), "Hiding the scene closes the filter and hides every native field.");
+            view_->SetVisible(true);
+            Check(edits().size() == 1, "Returning to the scene restores only search.");
         }
         bool Update(const UpdateContext &context) override
         {

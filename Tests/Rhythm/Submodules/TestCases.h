@@ -5,6 +5,7 @@ namespace tests
 {
     void TestSongSearchAndMetadata();
     void TestSongBaseBpmSort();
+    void TestSongFilters();
     void TestHpFormat();
     void TestHpTimingRecovery();
     void TestHpCompositeSettlements();

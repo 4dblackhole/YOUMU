@@ -1,5 +1,6 @@
 #pragma once
 #include "Catalog/SongCatalog.h"
+#include "SongFilter.h"
 #include "Mode/PlayOptions.h"
 #include <cstdint>
 #include <string>
@@ -34,6 +35,7 @@ class SongSelectionState final
     std::size_t selectedPatternIndex_{};
     SortMode sortMode_{SortMode::Difficulty};
     std::wstring searchText_;
+    SongFilter filter_;
     LaunchErrorKind launchErrorKind_{LaunchErrorKind::None};
     std::string launchErrorDetail_;
 
@@ -44,4 +46,9 @@ class SongSelectionState final
     void SelectPattern(std::size_t index);
     void SetLaunchError(LaunchErrorKind kind, std::string detail);
     void ClearLaunchError() noexcept;
+    [[nodiscard]] std::vector<std::size_t> VisiblePatternIndices(std::size_t catalogIndex) const;
+    [[nodiscard]] std::size_t VisiblePatternCount(std::size_t catalogIndex) const noexcept;
+  private:
+    bool patternsFiltered_{};
+    std::vector<std::vector<std::size_t>> filteredPatterns_;
 };

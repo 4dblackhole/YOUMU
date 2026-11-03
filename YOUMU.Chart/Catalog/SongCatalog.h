@@ -18,6 +18,8 @@ struct SongCatalogPattern
     PatternDocument pattern;
     std::optional<std::size_t> noteCount;
     std::optional<std::pair<double, double>> bpmRange;
+    // Client-calculated value. Empty until calculation; not stored in YMP or the disk index.
+    std::optional<double> calculatedDifficulty;
 };
 
 struct SongCatalogEntry

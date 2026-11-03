@@ -2,6 +2,7 @@
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
 #include "SongSelectionState.h"
+#include "SongFilterPanel.h"
 #include "SongSelectPurpose.h"
 #include "Texts/TextCatalog.h"
 #include <filesystem>
@@ -31,7 +32,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) CloseAdditionMenu();
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); }
         else ++recordRevision_;
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -91,6 +92,8 @@ class MusicSelectView final
     void UpdateScrollbar();
     void ProcessPointer(const InputState &input);
     bool ProcessActions();
+    bool ProcessFilterPanel(const InputState &input);
+    void RefreshFilterButton();
     bool ProcessKeyboard(const InputState &input);
     bool ProcessSearchKeyboard(const InputState &input);
     void SetSearchFocus(bool focused, bool selectAll = false);
@@ -127,6 +130,7 @@ class MusicSelectView final
     TextCatalog &texts_;
     OptionSettings &settings_;
     OptionsPanel options_;
+    SongFilterPanel filterPanel_;
     std::filesystem::path recordDatabase_;
     std::filesystem::path previewPath_;
     Size previewImageSize_{};
@@ -181,6 +185,7 @@ class MusicSelectView final
     Visual2DNode *searchField_{};
     Visual2DNode *searchCountLabel_{};
     Visual2DNode *sortSelector_{};
+    Visual2DNode *filterButton_{};
     Visual2DNode *browserHint_{};
     Visual2DNode *selectedSongLabel_{};
     Visual2DNode *selectedArtistLabel_{};

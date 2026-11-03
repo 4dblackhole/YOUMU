@@ -45,7 +45,7 @@ void MusicSelectView::SynchronizeSearchText()
 void MusicSelectView::UpdateSearchInputVisibility()
 {
     if (!searchInput_) return;
-    const bool available = visible_ && !options_.IsVisible() &&
+    const bool available = visible_ && !filterPanel_.IsVisible() && !options_.IsVisible() &&
                            !(additionMenu_ && additionMenu_->IsVisible());
     searchInput_->SetVisible(available);
     if (!available) searchFocused_ = false;

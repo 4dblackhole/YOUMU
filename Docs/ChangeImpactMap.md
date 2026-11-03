@@ -8,6 +8,7 @@
 | 작업 | 소유 코드 | 관련 회귀 |
 | --- | --- | --- |
 | 곡 카드·검색·정렬·이동·배경/메타데이터 | `MusicSelectScene/Submodules`: MusicSelectView, SongSelectLayout/Cards/Panels/Input/Search, SongSelectionState | SceneStateTests, RunMusicSelectViewTests(SongSearchInputTests 포함) |
+| 선곡 필터·계산 난이도 빈 필드 | SongFilter, SongFilterPanel, SongSelectionState의 패턴 투영; SongCatalogPattern 런타임 메타데이터 | TestSongFilters, RunMusicSelectViewTests(필터 적용/취소·실 native 입력 포함) |
 | 복수 표기·칸별 스크롤 | `Presentation/ScrollableTextComponent`, SongSelectCards/Panels/Input | RunMusicSelectViewTests, RunSkinTests |
 | 곡 목록·디스크 캐시·비동기 패턴 로딩 | SongCatalogLoader, `YOUMU.Chart/Catalog`, `GameFlow/PlaySessionLoader` | 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
 | 미리듣기 | SongPreviewController | MusicSelectViewTests, 엔진 오디오 계약 |

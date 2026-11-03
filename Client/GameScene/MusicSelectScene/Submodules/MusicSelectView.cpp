@@ -40,6 +40,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
         if (!searchInput_) throw std::runtime_error("Failed to create song search input.");
         searchInput_->SetText(selection_.searchText_);
     }
+    filterPanel_.Initialize(*canvas_, texts_, services.windowControl);
     ApplyTexts();
     UpdateResponsiveLayout();
     RebuildVisibleSongs();
@@ -63,12 +64,17 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     options_.Update(deltaSeconds);
     const bool controlDown =
         input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
-    if (!options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
+    if (!filterPanel_.IsVisible() && !options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
     {
         CloseAdditionMenu();
         options_.Toggle();
     }
     ProcessPointer(input);
+    if (ProcessFilterPanel(input))
+    {
+        UpdateSearchInputVisibility();
+        return command_;
+    }
     if (ProcessAdditionMenu(input))
     {
         UpdateSearchInputVisibility();
@@ -103,6 +109,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 
 void MusicSelectView::Shutdown() noexcept
 {
+    filterPanel_.Shutdown();
     searchInput_.reset();
     searchFocused_ = false;
     if (canvas_ != nullptr)
@@ -133,6 +140,7 @@ void MusicSelectView::Shutdown() noexcept
     selectedSongLabel_ = nullptr;
     browserHint_ = nullptr;
     sortSelector_ = nullptr;
+    filterButton_ = nullptr;
     searchCountLabel_ = nullptr;
     searchField_ = nullptr;
     scrollbarHandle_ = nullptr;
@@ -170,6 +178,28 @@ void MusicSelectView::RebuildVisibleSongs()
     scrollOffset_ = 0.0F;
     RefreshSelection();
     RefreshSearchPresentation();
+    RefreshFilterButton();
+}
+
+bool MusicSelectView::ProcessFilterPanel(const InputState &input)
+{
+    if (!filterPanel_.IsVisible()) return false;
+    for (const auto &action : canvas_->TakeActions()) filterPanel_.ProcessAction(action);
+    filterPanel_.ProcessInput(input);
+    if (auto applied = filterPanel_.TakeApplied())
+    {
+        selection_.filter_ = std::move(*applied);
+        RebuildVisibleSongs();
+    }
+    if (!filterPanel_.IsVisible()) inputRouter_.Reset(*canvas_);
+    return true;
+}
+
+void MusicSelectView::RefreshFilterButton()
+{
+    if (!filterButton_) return;
+    ApplyButtonStyle(*filterButton_, selection_.filter_.IsActive() ? AccentBlue : PureWhite,
+                     PaleBlue, selection_.filter_.IsActive() ? PureWhite : DeepBlue);
 }
 
 bool MusicSelectView::IsEditorSongSelect() const noexcept
