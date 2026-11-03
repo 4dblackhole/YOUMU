@@ -257,6 +257,8 @@ Retry는 방금 플레이한 옵션/시드를 다시 사용합니다. 원본 YMM
 - 실시간 뷰는 컴파일 시각 차이를 Base BPM·시간축 줌으로 환산한 등속 시간축입니다.
   YME Whole·Separate 속도 효과를 노트·롱노트·마디선·그리드·선택·스냅에 적용하지 않습니다.
   같은 시간 차이는 BPM 변화 구간에서도 같은 거리입니다. 원본 효과는 보존하며 플레이에서 적용합니다.
+- 실시간 뷰에서 선택 도구로 빈 레인을 클릭해도 재생 위치를 옮기지 않고 선택만 해제합니다.
+  악보 뷰의 빈 그리드 클릭은 해당 시각으로 이동합니다.
 
 상세: [ChartEditor](ChartEditor.md). 검증: ChartEditorTests, ChartReviewRegressionTests, EditorModeTests.
 

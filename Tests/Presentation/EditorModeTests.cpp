@@ -373,8 +373,10 @@ namespace
               "Realtime long-note placement must preserve time and support cancellation.");
         state.Mode().DrawTools(canvas, state, TestCatalog(Language::English));
         canvas.actions.front()();
-        state.PlaceNote({0, {}});
-        Check(state.Document().Notes().empty(), "Selection tool must not place a note.");
+        state.Mode().DrawChart(canvas, state, TestCatalog(Language::English));
+        state.Mode().EditScore(state, {700, 465}, false);
+        Check(state.Document().Notes().empty() && state.TimeMilliseconds() == 123,
+              "Clicking empty realtime space with the selection tool must preserve the cursor and place no note.");
     }
 
     void TestTaikoPlacementConflicts()

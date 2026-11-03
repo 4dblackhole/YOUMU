@@ -63,8 +63,8 @@ void TaikoEditorMode::SelectTool(int value)
 
 void TaikoEditorMode::PlaceNote(IEditorContext &state, MusicalPosition p)
 {
-    // Placing the first realtime endpoint must not pan the second-click grid.
-    if (!state.Score().realtime || tool_ == 0)
+    // Realtime selection and placement keep the cursor and second-click grid fixed.
+    if (!state.Score().realtime)
         state.Seek(state.Document().Timeline().Compile(p).count() / 1000.0);
     if (tool_ == 0)
     {
