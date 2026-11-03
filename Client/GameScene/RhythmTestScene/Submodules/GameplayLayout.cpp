@@ -219,7 +219,7 @@ void GameplayPresenter::UpdatePresentationLayout()
         background_->SetBounds({-width * .5F + offset.x, -height * .5F + offset.y, width, height});
     }
     progressView_.SetLayout(
-        {-logicalWidth * 0.5F + GearMargin, CanvasReferenceHeight * 0.5F - 16.0F - progressView_.Height(),
+        {-logicalWidth * 0.5F + GearMargin, -CanvasReferenceHeight * 0.5F + 16.0F,
          std::max(logicalWidth - GearMargin * 2.0F, 1.0F), progressView_.Height()});
     if (accuracyIndicator_ != nullptr)
     {

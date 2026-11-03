@@ -201,7 +201,7 @@ INI를 편집했다면 재실행하거나 다른 스킨을 선택했다 돌아�
 판정 링·문구 8종도 `InGame/Judgements/MAX.png`부터 `POOR.png`, `OK.png`까지 같은 파일별
 fallback을 사용합니다. 인디케이터는 별도 색 구간 요소로 구성합니다.
 판정별 파일명과 표시 계약은 [Presentation](Gameplay/Presentation.md)에 있습니다.
-상단 진행바는 `InGame/Progress/{Background,Track,Fill,Marker}.png` 네 파일을 사용합니다.
+하단 진행바는 `InGame/Progress/{Background,Track,Fill,Marker}.png` 네 파일을 사용합니다.
 각 요소는 따로 교체할 수 있고 누락 파일만 내장본으로 대체합니다. 시간 문구는 PNG에
 포함하지 않고 런타임에 표시합니다. 제작 크기와 시간 기준은 같은 Presentation 문서에 있습니다.
 

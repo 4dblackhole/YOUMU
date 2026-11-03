@@ -70,7 +70,7 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 │        ├─ Input.Key.Glow ×4         강/약 키 점등
 │        ├─ Input.Key.Face ×4         키 이미지
 │        └─ Input.Key.PressFlash ×4   누를 때 섬광
-├─ Hud.GameProgress                   상단 진행바 바탕
+├─ Hud.GameProgress                   하단 진행바 바탕
 │  ├─ Progress.Track / Progress.Fill / Progress.Marker
 │  └─ Progress.CurrentTime / Progress.TotalTime
 ├─ Hud.Accuracy                       정확도 텍스트
@@ -211,7 +211,7 @@ PNG 자체의 밝기 차이와 함께 강·약 상태가 명확히 구분됩니�
 우측 정확도 표시는 같은 HUD 영역의 동적 텍스트로 노트별 평균을 소수점 여섯 자리까지
 표시합니다. 아직 확정된 노트가 없으면 `--.--%`입니다.
 
-## 상단 플레이 진행바
+## 하단 플레이 진행바
 
 `GameplayProgressView`는 세션 진입 시 실제 생성된 노트의 마지막 head/tail 시각을 한 번
 계산합니다. BPM·delay·offset이 이미 적용된 정수 us 시각을 사용하며, 플레이 중에는
@@ -232,7 +232,9 @@ PNG 자체의 밝기 차이와 함께 강·약 상태가 명확히 구분됩니�
 Canvas는 노드를 소유하며 View는 observer만 보관하고 종료 시 해제합니다.
 PNG는 진입 때 등록하고 프레임 갱신에서 파일 읽기/노트 전체 검색/노드 생성을 하지 않습니다.
 폭은 `FixedHeight` 논리 화면 폭에서 좌우 20px를 제외하고, 시간 문구와 마커 크기는
-이미지의 2/3 기준 배율을 유지합니다. 선택 스킨 INI의 `Progress.*` 이미지 매핑이 우선하며
+이미지의 2/3 기준 배율을 유지합니다. Penpot의 하단 배치처럼 화면 아래에서 논리 16px
+(1080p에서 24px) 띄워 배치하며 창 크기가 바뀌어도 같은 하단 간격을 유지합니다.
+선택 스킨 INI의 `Progress.*` 이미지 매핑이 우선하며
 없는 요소만 내장 기본본을 사용합니다. 제작 도구/프롬프트는 [진행바 자산](ProgressAssets.md)에 있습니다.
 입력/탐색 동작이 없는 표시 전용 진행바이며 판정·오디오·Result 전환 조건은 바꾸지 않습니다.
 

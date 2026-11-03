@@ -411,14 +411,14 @@ namespace
         click("Options.Taiko.OpenKeys");
         canvas.Update(0);
         {
-            const auto bounds = FindNode(canvas.Root(), "Options.Key.Taiko.LeftDon.0").BoundsInCanvas();
+            const auto bounds = FindNode(canvas.Root(), "Options.Key.Taiko.LeftKat.0").BoundsInCanvas();
             PointerInput pointer{};
             pointer.available = true;
-            pointer.position = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
+            pointer.position = {bounds.x + 10.0F, bounds.y + bounds.height / 2};
             pointer.leftButtonDown = pointer.leftButtonPressed = true;
             router.Process(canvas, pointer);
-            Check(router.HoveredNode() == FindNode(canvas.Root(), "Options.Key.Taiko.LeftDon.0").Id(),
-                  "Visible key panel receives pointer input above the options panel.");
+            Check(router.HoveredNode() == FindNode(canvas.Root(), "Options.Key.Taiko.LeftKat.0").Id(),
+                  "The leftmost key receives pointer input where the key panel overlaps the options panel.");
             pointer.leftButtonDown = pointer.leftButtonPressed = false;
             pointer.leftButtonReleased = true;
             router.Process(canvas, pointer);
