@@ -443,6 +443,149 @@ namespace
             view.Shutdown();
         }
     }
+    void FavoriteNameDialog(MusicSelectView &view, Visual2DCanvas &canvas, const char *action, std::wstring value, bool cancel = false)
+    {
+        struct Driver { std::wstring value; bool cancel{}; std::atomic_bool handled{}; } driver;
+        driver.value = std::move(value);
+        driver.cancel = cancel;
+        const auto thread = GetCurrentThreadId();
+        std::jthread input([&](std::stop_token stop)
+        {
+            while (!stop.stop_requested() && !driver.handled)
+            {
+                EnumThreadWindows(thread, [](HWND window, LPARAM parameter) -> BOOL
+                {
+                    wchar_t type[32]{};
+                    GetClassNameW(window, type, 32);
+                    if (std::wstring_view(type) != L"#32770" || !GetDlgItem(window, 100)) return TRUE;
+                    auto &data = *reinterpret_cast<Driver *>(parameter);
+                    ShowWindow(window, SW_HIDE);
+                    SetDlgItemTextW(window, 100, data.value.c_str());
+                    PostMessageW(window, WM_COMMAND, data.cancel ? IDCANCEL : IDOK, 0);
+                    data.handled = true;
+                    return FALSE;
+                }, reinterpret_cast<LPARAM>(&driver));
+                std::this_thread::sleep_for(std::chrono::milliseconds{1});
+            }
+        });
+        auto *button = Find(canvas.Root(), action);
+        if (!button) throw std::runtime_error("Favorite name action missing.");
+        Click(canvas, *button);
+        InputState none;
+        Check(view.Update(none, 0) == SongSelectCommand::None, "Favorite names never emit scene commands.");
+        input.request_stop();
+        input.join();
+        Check(driver.handled, "Favorite create/rename uses the native Unicode name dialog.");
+    }
+    void TestFavoriteFolders()
+    {
+        for (const auto purpose : {SongSelectPurpose::Gameplay, SongSelectPurpose::Editor})
+        {
+            Renderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1280, 720});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            OptionSettings options("build/favorites-view-unused.ini");
+            SongSelectionState state;
+            SongCatalogEntry song;
+            song.music.names = {"Favorite song"};
+            song.patterns.resize(3);
+            for (std::size_t i = 0; i < 3; ++i)
+            {
+                song.patterns[i].patternPath = "build/favorite-view-" + std::to_string(i) + ".ymp";
+                song.patterns[i].noteCount = (i + 1) * 100;
+            }
+            const auto key = SongFavorites::PatternKey(song.patterns[2].patternPath);
+            state.catalog_.songs.push_back(std::move(song));
+            SongFavoritesValues values;
+            for (std::size_t i = 0; i < 12; ++i) values.Create(L"Folder " + std::to_wstring(i + 1));
+            values.SetMembership(1, SongFavorites::PatternKey(state.catalog_.songs[0].patterns[0].patternPath), true);
+            values.SetMembership(1, key, true);
+            std::string error;
+            Check(state.favorites_.Save(values, error), "Seed in-memory favorites.");
+            MusicSelectView view(visuals, state, purpose, texts, options);
+            view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("Favorites Canvas missing.");
+            InputState none;
+            const auto click = [&](const std::string &name)
+            {
+                auto *node = Find(canvas->Root(), name);
+                if (!node) throw std::runtime_error("Favorite control missing: " + name);
+                Click(*canvas, *node);
+                Check(view.Update(none, 0) == SongSelectCommand::None, "Favorite controls consume their own actions.");
+            };
+            auto *content = Find(canvas->Root(), "Favorites.TabContent");
+            auto *tabs = Find(canvas->Root(), "Favorites.Tabs");
+            auto *scroll = Find(canvas->Root(), "Favorites.TabScroll");
+            if (!content || !tabs || !scroll) throw std::runtime_error("Favorite tab nodes missing.");
+            Check(scroll->IsVisible(), "Overflowing folders expose horizontal tab scrolling.");
+            const auto bounds = tabs->BoundsInCanvas();
+            const auto songY = Find(canvas->Root(), "SongContent")->Bounds().y;
+            InputState wheel;
+            InputStateTestAccess::Mouse(wheel, {bounds.x + 20, bounds.y + 20}, -1);
+            static_cast<void>(view.Update(wheel, 0));
+            Check(content->Bounds().x < 0 && Find(canvas->Root(), "SongContent")->Bounds().y == songY,
+                  "Wheel over tabs scrolls horizontally without moving the song list.");
+            click("Favorites.Tab.1");
+            Check(state.favoriteFolder_ == 1 && !Find(canvas->Root(), "Difficulty.1") && Find(canvas->Root(), "Difficulty.2"),
+                  "Folder tab projects the matching real pattern rows.");
+            InputState down;
+            InputStateTestAccess::Key(down, VK_DOWN, true);
+            static_cast<void>(view.Update(down, 0));
+            Check(state.selectedPatternIndex_ == 2, "Favorite keyboard navigation skips nonmember patterns.");
+            click("Favorites.Manage");
+            auto *overlay = Find(canvas->Root(), "Favorites.Overlay");
+            Check(overlay && overlay->IsVisible(), "Favorites opens one modal folder/membership editor.");
+            click("Favorites.Member.2");
+            Check(!state.favorites_.Values().Find(2)->patternKeys.contains(key), "Membership edits remain a draft.");
+            click("Favorites.Close");
+            Check(!state.favorites_.Values().Find(2)->patternKeys.contains(key), "Close cancels membership changes.");
+            click("Favorites.Manage");
+            InputState blocked;
+            InputStateTestAccess::Key(blocked, VK_SPACE, true);
+            InputStateTestAccess::Key(blocked, VK_DOWN, true);
+            Check(view.Update(blocked, 0) == SongSelectCommand::None && state.selectedPatternIndex_ == 2,
+                  "Favorites modal blocks navigation and launch keys.");
+            click("Favorites.Member.2");
+            click("Favorites.Apply");
+            Check(state.favorites_.Values().Find(1)->patternKeys.contains(key) && state.favorites_.Values().Find(2)->patternKeys.contains(key),
+                  "Apply preserves simultaneous membership in multiple folders.");
+            click("Favorites.Manage");
+            FavoriteNameDialog(view, *canvas, "Favorites.Create", L"練習 한글 🎵");
+            FavoriteNameDialog(view, *canvas, "Favorites.Rename", L"Renamed 練習");
+            FavoriteNameDialog(view, *canvas, "Favorites.Rename", L"Cancelled name", true);
+            Check(state.favorites_.Values().folders.size() == 12, "Create and rename are also transactional drafts.");
+            click("Favorites.Apply");
+            Check(state.favorites_.Values().Find(13) && state.favorites_.Values().Find(13)->name == L"Renamed 練習",
+                  "Native names persist together, and cancelling a name dialog preserves the draft name.");
+            state.favoriteFolder_ = 13;
+            view.RebuildVisibleSongs();
+            Check(state.visibleSongIndices_.empty(), "Selecting a new empty favorite folder shows an empty result.");
+            click("Favorites.Manage");
+            Check(!Find(canvas->Root(), "Favorites.Member.1")->IsEnabled(), "No selected pattern disables membership editing while folder management remains available.");
+            const auto list = Find(canvas->Root(), "Favorites.Folders")->BoundsInCanvas();
+            InputState listWheel;
+            InputStateTestAccess::Mouse(listWheel, {list.x + 10, list.y + 10}, -1);
+            static_cast<void>(view.Update(listWheel, 0));
+            Check(!Find(canvas->Root(), "Favorites.Folder.1") && Find(canvas->Root(), "Favorites.Folder.7"), "Folder management scrolls its own list.");
+            while (!Find(canvas->Root(), "Favorites.Folder.13")) click("Favorites.Next");
+            click("Favorites.Folder.13");
+            click("Favorites.Delete");
+            click("Favorites.Apply");
+            Check(state.favoriteFolder_ == 0 && state.visibleSongIndices_.size() == 1 && state.VisiblePatternCount(0) == 3,
+                  "Deleting the selected folder returns to All and leaves every chart intact.");
+            texts.SetLanguage(Language::English);
+            static_cast<void>(view.Update(none, 0));
+            Check(Find(canvas->Root(), "Favorites.Tab.0")->GetComponent<TextVisualComponent>()->Text() == L"All",
+                  "Folder controls follow language changes while custom names retain Unicode.");
+            view.Shutdown();
+            Check(visuals.CanvasCount() == 0, "Favorite controls release the view Canvas.");
+        }
+    }
     void TestFilterProjection()
     {
         for (const auto purpose : {SongSelectPurpose::Gameplay, SongSelectPurpose::Editor})
@@ -856,6 +999,7 @@ int main()
         TestMetadataLines();
         TestBaseBpmSortView();
         TestFilterProjection();
+        TestFavoriteFolders();
         TestHpInformation();
         TestRecordHistoryView();
         TestBackgroundPreview();

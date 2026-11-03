@@ -32,6 +32,7 @@
     <ClCompile Include="Submodules\RhythmCoreTests.cpp" />
     <ClCompile Include="Submodules\InputOrderingTests.cpp" />
     <ClCompile Include="Submodules\SceneStateTests.cpp" />
+    <ClCompile Include="Submodules\SongFavoritesTests.cpp" />
     <ClCompile Include="Submodules\SongCatalogTests.cpp" />
     <ClCompile Include="Submodules\SoundPolicyTests.cpp" />
     <ClCompile Include="Submodules\TaikoModeTests.cpp" />

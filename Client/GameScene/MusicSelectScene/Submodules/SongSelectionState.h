@@ -1,6 +1,7 @@
 #pragma once
 #include "Catalog/SongCatalog.h"
 #include "SongFilter.h"
+#include "SongFavorites.h"
 #include "Mode/PlayOptions.h"
 #include <cstdint>
 #include <string>
@@ -36,6 +37,8 @@ class SongSelectionState final
     SortMode sortMode_{SortMode::Difficulty};
     std::wstring searchText_;
     SongFilter filter_;
+    SongFavorites favorites_;
+    std::uint64_t favoriteFolder_{}; // Zero selects All.
     LaunchErrorKind launchErrorKind_{LaunchErrorKind::None};
     std::string launchErrorDetail_;
 

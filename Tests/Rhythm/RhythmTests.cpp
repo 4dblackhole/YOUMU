@@ -38,6 +38,8 @@ int main(const int argumentCount, char *arguments[])
         {"TestSongSearchAndMetadata", TestSongSearchAndMetadata},
         {"TestSongBaseBpmSort", TestSongBaseBpmSort},
         {"TestSongFilters", TestSongFilters},
+        {"TestSongFavoritesPersistence", TestSongFavoritesPersistence},
+        {"TestSongFavoriteSelection", TestSongFavoriteSelection},
         {"TestHpFormat", TestHpFormat},
         {"TestHpTimingRecovery", TestHpTimingRecovery},
         {"TestHpCompositeSettlements", TestHpCompositeSettlements},

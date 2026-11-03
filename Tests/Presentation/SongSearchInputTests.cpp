@@ -235,6 +235,17 @@ namespace
             Check(edits().empty() && !overlay->IsVisible(), "Hiding the scene closes the filter and hides every native field.");
             view_->SetVisible(true);
             Check(edits().size() == 1, "Returning to the scene restores only search.");
+            click("Favorites.Manage");
+            Check(edits().empty(), "Favorite management hides native search and numeric fields.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_LCONTROL, true);
+            InputStateTestAccess::Key(input, 'O', true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None, "Favorites consumes background options shortcuts.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_ESCAPE, true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && edits().size() == 1,
+                  "Favorite Escape closes only its modal and restores native search.");
+            input = {};
         }
         bool Update(const UpdateContext &context) override
         {

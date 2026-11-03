@@ -19,6 +19,7 @@ MusicSelectScene::MusicSelectScene(ScreenVisual2DManager &visuals,
       view_(std::make_unique<MusicSelectView>(visuals, *selection_, purpose, texts, options)),
       preview_(std::make_unique<SongPreviewController>(playback))
 {
+    selection_->favorites_ = SongFavorites{options.Path().parent_path() / L"favorites.json"};
 }
 MusicSelectScene::~MusicSelectScene() = default;
 
@@ -32,6 +33,8 @@ void MusicSelectScene::Initialize(const EngineServices &services)
 }
 void MusicSelectScene::BeginScene()
 {
+    std::string favoritesError;
+    static_cast<void>(selection_->favorites_.Load(favoritesError));
     // Initialize started the first load. Re-entry still observes user edits.
     if (!firstEntry_ && !osuImport_.Busy())
     {

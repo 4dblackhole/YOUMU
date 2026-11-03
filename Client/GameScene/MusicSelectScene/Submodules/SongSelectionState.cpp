@@ -17,7 +17,9 @@ void SongSelectionState::RebuildVisibleSongs()
     }
 
     const auto terms = SplitSearchTerms(searchText_);
-    patternsFiltered_ = filter_.IsActive();
+    const auto *folder = favorites_.Values().Find(favoriteFolder_);
+    if (!folder) favoriteFolder_ = 0;
+    patternsFiltered_ = filter_.IsActive() || folder;
     if (patternsFiltered_)
     {
         filteredPatterns_.resize(catalog_.songs.size());
@@ -33,7 +35,9 @@ void SongSelectionState::RebuildVisibleSongs()
             {
                 const auto &patterns = catalog_.songs[index].patterns;
                 for (std::size_t pattern = 0; pattern < patterns.size(); ++pattern)
-                    if (filter_.Matches(patterns[pattern])) filteredPatterns_[index].push_back(pattern);
+                    if (filter_.Matches(patterns[pattern]) && (!folder ||
+                        folder->patternKeys.contains(SongFavorites::PatternKey(patterns[pattern].patternPath))))
+                        filteredPatterns_[index].push_back(pattern);
                 if (filteredPatterns_[index].empty()) continue;
             }
             visibleSongIndices_.push_back(index);

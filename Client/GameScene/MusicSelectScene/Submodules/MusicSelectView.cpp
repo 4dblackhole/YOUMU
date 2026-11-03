@@ -31,6 +31,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     }
     CreateSongInformationPanel();
     CreateSongBrowser();
+    favoriteTabs_.Initialize(*browserPanel_, texts_);
     CreateFooter();
     CreateAdditionMenu();
     options_.Initialize(*canvas_, services.audio, services.windowControl);
@@ -41,6 +42,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
         searchInput_->SetText(selection_.searchText_);
     }
     filterPanel_.Initialize(*canvas_, texts_, services.windowControl);
+    favoritesPanel_.Initialize(*canvas_, texts_);
     ApplyTexts();
     UpdateResponsiveLayout();
     RebuildVisibleSongs();
@@ -64,13 +66,13 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     options_.Update(deltaSeconds);
     const bool controlDown =
         input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
-    if (!filterPanel_.IsVisible() && !options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
+    if (!IsSelectionModalVisible() && !options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
     {
         CloseAdditionMenu();
         options_.Toggle();
     }
     ProcessPointer(input);
-    if (ProcessFilterPanel(input))
+    if (ProcessFavoritesPanel(input) || ProcessFilterPanel(input))
     {
         UpdateSearchInputVisibility();
         return command_;
@@ -110,6 +112,8 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 void MusicSelectView::Shutdown() noexcept
 {
     filterPanel_.Shutdown();
+    favoritesPanel_.Shutdown();
+    favoriteTabs_.Shutdown();
     searchInput_.reset();
     searchFocused_ = false;
     if (canvas_ != nullptr)
@@ -175,6 +179,7 @@ void MusicSelectView::Shutdown() noexcept
 void MusicSelectView::RebuildVisibleSongs()
 {
     selection_.RebuildVisibleSongs();
+    favoriteTabs_.Refresh(selection_.favorites_, selection_.favoriteFolder_);
     scrollOffset_ = 0.0F;
     RefreshSelection();
     RefreshSearchPresentation();

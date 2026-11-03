@@ -57,6 +57,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     UpdateFooterLayout();
     UpdateSearchInputLayout();
     filterPanel_.SetViewport(width_, height_);
+    favoritesPanel_.SetViewport();
 }
 
 void MusicSelectView::UpdateRecordPanelLayout()
@@ -165,8 +166,10 @@ void MusicSelectView::UpdateSongBrowserLayout()
 
     const float panelWidth = browserPanel_->NodeSize().width / DesignToCanvasScale;
     const float innerWidth = std::max(panelWidth - 28.0F, 1.0F);
+    constexpr float tabsHeight = 64;
+    favoriteTabs_.SetBounds(ScaleTopLeftBounds({14, 14, innerWidth, 54}, browserPanel_->NodeSize().height));
     searchField_->SetBounds(
-        ScaleTopLeftBounds({14.0F, layout::SearchField.y, innerWidth, layout::SearchField.height},
+        ScaleTopLeftBounds({14.0F, layout::SearchField.y + tabsHeight, innerWidth, layout::SearchField.height},
                            browserPanel_->NodeSize().height));
     auto &searchText = RequireComponent<TextVisualComponent>(*searchField_);
     const float countWidth = std::min(96.0F, innerWidth);
@@ -182,14 +185,14 @@ void MusicSelectView::UpdateSongBrowserLayout()
     const float filterWidth = std::min(90.0F, innerWidth * .3F);
     const float sortWidth = std::max(innerWidth - filterWidth - 10.0F, 1.0F);
     sortSelector_->SetBounds(
-        ScaleTopLeftBounds({14.0F, layout::SortSelector.y, sortWidth, layout::SortSelector.height},
+        ScaleTopLeftBounds({14.0F, layout::SortSelector.y + tabsHeight, sortWidth, layout::SortSelector.height},
                            browserPanel_->NodeSize().height));
     filterButton_->SetBounds(
-        ScaleTopLeftBounds({14.0F + sortWidth + 10.0F, layout::SortSelector.y, filterWidth, layout::SortSelector.height},
+        ScaleTopLeftBounds({14.0F + sortWidth + 10.0F, layout::SortSelector.y + tabsHeight, filterWidth, layout::SortSelector.height},
                            browserPanel_->NodeSize().height));
     ResizeBorderedPanel(
         *songViewport_,
-        ScaleTopLeftBounds({14.0F, layout::SongViewport.y, innerWidth, layout::SongViewport.height},
+        ScaleTopLeftBounds({14.0F, layout::SongViewport.y + tabsHeight, innerWidth, layout::SongViewport.height - tabsHeight},
                            browserPanel_->NodeSize().height),
         1.5F);
     songViewport_->SetClipRect(
@@ -200,7 +203,7 @@ void MusicSelectView::UpdateSongBrowserLayout()
     const float trackX = std::max(innerWidth - 9.0F, 0.0F);
     scrollbarTrack_->SetBounds(
         ScaleTopLeftBounds({trackX, layout::ScrollbarTrack.y, layout::ScrollbarTrack.width,
-                            layout::ScrollbarTrack.height},
+                            layout::ScrollbarTrack.height - tabsHeight},
                            songViewport_->NodeSize().height));
     browserHint_->SetBounds(
         ScaleTopLeftBounds({18.0F, layout::BrowserHint.y, std::max(panelWidth - 36.0F, 1.0F),

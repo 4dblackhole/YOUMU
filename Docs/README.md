@@ -10,7 +10,7 @@
 | 결정별 근거·조건·예외·구현 상태·재현 사례 | [DesignDecisions](DesignDecisions.md) |
 | 작업 위치·현재 제약·미구현 설계 | [SessionHandoff](SessionHandoff.md) |
 | 시작·Scene 전환·종료·소유권 | [ExecutionFlow](ExecutionFlow.md) |
-| 곡 선택·검색·정렬·배경·난이도 정보 | [SongSelect](SongSelect.md) |
+| 곡 선택·검색·필터·정렬·즐겨찾기 폴더·배경·난이도 정보 | [SongSelect](SongSelect.md) |
 | 목록 캐시·비동기 세션/자원 준비·포맷 변경 시 무효화 | [ResourceLoading](ResourceLoading.md) |
 | 새 난이도·osu 가져오기 UI | [EditorSongSelect](EditorSongSelect.md) |
 | 독립 변환기·격자·OD·BG·Client 검증 | [OsuTaikoConverter](OsuTaikoConverter.md) |

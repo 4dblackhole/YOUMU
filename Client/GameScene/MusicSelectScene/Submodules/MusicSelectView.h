@@ -3,6 +3,8 @@
 #include "Presentation/OptionsPanel.h"
 #include "SongSelectionState.h"
 #include "SongFilterPanel.h"
+#include "SongFavoriteTabs.h"
+#include "SongFavoritesPanel.h"
 #include "SongSelectPurpose.h"
 #include "Texts/TextCatalog.h"
 #include <filesystem>
@@ -32,7 +34,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); }
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); }
         else ++recordRevision_;
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -93,6 +95,11 @@ class MusicSelectView final
     void ProcessPointer(const InputState &input);
     bool ProcessActions();
     bool ProcessFilterPanel(const InputState &input);
+    bool ProcessFavoritesPanel(const InputState &input);
+    void OpenFavoritesPanel();
+    [[nodiscard]] bool IsSelectionModalVisible() const noexcept
+    { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible(); }
+    [[nodiscard]] float VisibleSongBottom() const noexcept;
     void RefreshFilterButton();
     bool ProcessKeyboard(const InputState &input);
     bool ProcessSearchKeyboard(const InputState &input);
@@ -131,6 +138,8 @@ class MusicSelectView final
     OptionSettings &settings_;
     OptionsPanel options_;
     SongFilterPanel filterPanel_;
+    SongFavoriteTabs favoriteTabs_;
+    SongFavoritesPanel favoritesPanel_;
     std::filesystem::path recordDatabase_;
     std::filesystem::path previewPath_;
     Size previewImageSize_{};

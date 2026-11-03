@@ -49,7 +49,7 @@ void MusicSelectView::RebuildSongCards()
         songRows_.push_back({index, top, height, nullptr, nullptr, nullptr, position});
         top += height + layout::SongGap;
     }
-    contentHeight_ = songRows_.empty() ? layout::ContentBottom : top - layout::SongGap + layout::ContentTop;
+    contentHeight_ = songRows_.empty() ? VisibleSongBottom() : top - layout::SongGap + layout::ContentTop;
     songCardsDirty_ = true;
     EnsureFocusedCardVisible();
 }
@@ -59,7 +59,7 @@ void MusicSelectView::UpdateVisibleSongCards()
     if (!songContent_ || !canvas_)
         return;
     const float begin = layout::ContentTop + scrollOffset_ - layout::NormalSongHeight;
-    const float end = layout::ContentBottom + scrollOffset_ + layout::NormalSongHeight;
+    const float end = VisibleSongBottom() + scrollOffset_ + layout::NormalSongHeight;
     const auto first =
         std::ranges::lower_bound(songRows_, begin, {}, [](const SongCard &row) { return row.top + row.height; });
     const auto last = std::ranges::upper_bound(first, songRows_.end(), end, {}, &SongCard::top);
@@ -303,6 +303,12 @@ void MusicSelectView::RefreshSearchPresentation()
     }
 }
 
+float MusicSelectView::VisibleSongBottom() const noexcept
+{
+    return songViewport_ ? std::max(songViewport_->NodeSize().height / DesignToCanvasScale - layout::ContentTop, layout::ContentTop + 1)
+                         : layout::ContentBottom;
+}
+
 void MusicSelectView::EnsureFocusedCardVisible()
 {
     if (selection_.focusedSongPosition_ >= songRows_.size())
@@ -313,21 +319,21 @@ void MusicSelectView::EnsureFocusedCardVisible()
     }
     const SongCard &card = songRows_[selection_.focusedSongPosition_];
     const float visibleTop = layout::ContentTop + scrollOffset_;
-    const float visibleBottom = layout::ContentBottom + scrollOffset_;
+    const float visibleBottom = VisibleSongBottom() + scrollOffset_;
     if (card.top < visibleTop)
     {
         scrollOffset_ = card.top - layout::ContentTop;
     }
     else if (card.top + card.height > visibleBottom)
     {
-        scrollOffset_ = card.top + card.height - layout::ContentBottom;
+        scrollOffset_ = card.top + card.height - VisibleSongBottom();
     }
     ApplyScrollOffset();
 }
 
 void MusicSelectView::ApplyScrollOffset()
 {
-    const float maximum = std::max(contentHeight_ - layout::ContentBottom, 0.0F);
+    const float maximum = std::max(contentHeight_ - VisibleSongBottom(), 0.0F);
     scrollOffset_ = std::clamp(scrollOffset_, 0.0F, maximum);
     if (songContent_ != nullptr)
     {
@@ -344,14 +350,16 @@ void MusicSelectView::UpdateScrollbar()
     {
         return;
     }
-    const float maximum = std::max(contentHeight_ - layout::ContentBottom, 0.0F);
+    const float maximum = std::max(contentHeight_ - VisibleSongBottom(), 0.0F);
+    const float visibleHeight = std::max(VisibleSongBottom() - layout::ContentTop, 1.0F);
+    const float trackHeight = visibleHeight;
     const float handleHeight =
         maximum <= 0.0F
-            ? layout::ScrollbarTrack.height
-            : std::max(48.0F, layout::ScrollbarTrack.height * layout::ViewportVisibleHeight /
+            ? trackHeight
+            : std::max(48.0F, trackHeight * visibleHeight /
                                   std::max(contentHeight_ - layout::ContentTop,
-                                           layout::ViewportVisibleHeight));
-    const float travel = layout::ScrollbarTrack.height - handleHeight;
+                                           visibleHeight));
+    const float travel = trackHeight - handleHeight;
     const float handleTop =
         layout::ScrollbarTrack.y + (maximum <= 0.0F ? 0.0F : travel * scrollOffset_ / maximum);
     const float trackX =

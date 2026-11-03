@@ -33,6 +33,12 @@ modal navigation/launch isolation and responsive filter/sort controls in both pu
 The hidden native-window run edits real range fields, tests IME versus Enter, validates
 atomic Apply/Reset/Close and invalid bounds, hides fields under the mode popup and checks
 scene-hide cleanup. Difficulty remains empty/disabled while all runtime values are unknown.
+Favorite-folder coverage runs both selection purposes through real folder tabs,
+horizontal wheel scrolling, projected keyboard navigation, transactional membership,
+native Unicode create/rename/cancel dialogs, active-folder deletion, empty selection,
+independent folder-list scrolling and language changes. The hidden D3D12 run also
+checks search hiding and modal Escape/options-key isolation. Persistence, malformed
+JSON/Unicode, failed atomic replacement and chart preservation are tested in the logic suite.
 HP information checks both selection purposes for exact hundredths, the 9.00
 default, pattern/language changes, empty-state clearing and four rows fitting
 inside the information panel at narrow, standard and wide viewport sizes.
