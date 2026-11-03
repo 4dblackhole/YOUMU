@@ -36,6 +36,19 @@ namespace song_select
         return result;
     }
 
+    [[nodiscard]] inline std::wstring DisplayLines(const std::vector<std::string> &values,
+                                                  std::wstring_view fallback = L"—")
+    {
+        std::wstring text;
+        for (const auto &value : values)
+        {
+            if (value.empty()) continue;
+            if (!text.empty()) text += L'\n';
+            text += DecodeDisplayText(value);
+        }
+        return text.empty() ? std::wstring{fallback} : text;
+    }
+
     [[nodiscard]] inline std::wstring SongTitle(const SongCatalogEntry &song)
     {
         return song.music.names.empty() ? song.metadataPath.stem().wstring()

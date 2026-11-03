@@ -1,4 +1,5 @@
 #include "MusicSelectView.h"
+#include "Presentation/ScrollableTextComponent.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
@@ -112,18 +113,21 @@ void MusicSelectView::CreateSongCard(const std::size_t visiblePosition,
 
     const float titleWidth = std::max(songContentWidth_ - 28.0F, 1.0F);
     const float headingWidth = IsEditorSongSelect() ? std::max(titleWidth - 48.0F, 1.0F) : titleWidth;
-    auto &title = AddLabel(button, {14.0F, focused ? 16.0F : 10.0F, headingWidth, focused ? 32.0F : 30.0F},
-                           SongTitle(song), focused ? 20.0F : 16.0F, DeepBlue, "Title");
-    title.AddComponent<MarqueeTextComponent>(SongTitle(song), 0.24);
-    auto &artist = AddLabel(button, {14.0F, focused ? 50.0F : 40.0F, headingWidth, 20.0F}, SongArtist(song),
+    auto &title = AddScrollableLabel(button, {14.0F, focused ? 16.0F : 10.0F, headingWidth, focused ? 60.0F : 56.0F},
+                           DisplayLines(song.music.names, song.metadataPath.stem().wstring()),
+                           focused ? 20.0F : 16.0F, DeepBlue, "Title");
+    auto &artist = AddScrollableLabel(button, {14.0F, focused ? 82.0F : 72.0F, headingWidth, focused ? 48.0F : 44.0F},
+                            DisplayLines(song.music.artists),
                             focused ? 12.0F : 11.0F, MutedBlue, "Artist");
+    RequireComponent<ScrollableTextComponent>(title).SetClickTarget(button.Id());
+    RequireComponent<ScrollableTextComponent>(artist).SetClickTarget(button.Id());
 
     if (focused)
     {
-        AddPanel(button, {14.0F, 80.0F, titleWidth, 1.0F}, PaleBorder, "Divider");
+        AddPanel(button, {14.0F, 140.0F, titleWidth, 1.0F}, PaleBorder, "Divider");
         if (song.patterns.empty())
         {
-            AddLabel(button, {14.0F, 92.0F, titleWidth, 24.0F},
+            AddLabel(button, {14.0F, 152.0F, titleWidth, 24.0F},
                      std::wstring(text.noDifficulties), 12.0F,
                      MutedBlue, "NoDifficulties", TextAlignment::Center);
         }
@@ -132,7 +136,7 @@ void MusicSelectView::CreateSongCard(const std::size_t visiblePosition,
             auto &difficulty = CreateButton(
                 button,
                 ScaleTopLeftBounds({14.0F,
-                                    92.0F + layout::DifficultyRowStep * static_cast<float>(index),
+                                    152.0F + layout::DifficultyRowStep * static_cast<float>(index),
                                     titleWidth, layout::DifficultyRowHeight},
                                    button.NodeSize().height),
                 PatternName(song.patterns[index]), std::format("Difficulty.{}", index));
@@ -187,10 +191,9 @@ void MusicSelectView::RefreshSelectionPresentation()
         return;
     }
 
-    auto &songMarquee =
-        RequireComponent<MarqueeTextComponent>(*selectedSongLabel_);
-    auto &artistMarquee =
-        RequireComponent<MarqueeTextComponent>(*selectedArtistLabel_);
+    auto &songText = RequireComponent<ScrollableTextComponent>(*selectedSongLabel_);
+    auto &artistText = RequireComponent<ScrollableTextComponent>(*selectedArtistLabel_);
+    auto &creatorText = RequireComponent<ScrollableTextComponent>(*selectedCreatorLabel_);
     const auto &text = MusicSelect(texts_);
     const std::wstring launchError = LaunchErrorText(selection_, text);
     for (auto *label : extraDetailsLabels_)
@@ -198,10 +201,10 @@ void MusicSelectView::RefreshSelectionPresentation()
     if (selection_.visibleSongIndices_.empty())
     {
         SetBackgroundPreview({});
-        songMarquee.SetText(std::wstring(text.noSongSelected));
-        artistMarquee.SetText(L"");
+        songText.SetText(std::wstring(text.noSongSelected));
+        artistText.SetText(L"");
         RequireComponent<TextVisualComponent>(*selectedPatternLabel_).SetText(L"—");
-        RequireComponent<TextVisualComponent>(*selectedCreatorLabel_).SetText(L"—");
+        creatorText.SetText(L"—");
         RequireComponent<TextVisualComponent>(*selectedDetailsLabel_)
             .SetText(launchError.empty() ? std::wstring(text.emptyDetails) : launchError);
         return;
@@ -211,14 +214,14 @@ void MusicSelectView::RefreshSelectionPresentation()
         std::min(selection_.focusedSongPosition_, selection_.visibleSongIndices_.size() - 1);
     const auto &song =
         selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
-    songMarquee.SetText(SongTitle(song));
-    artistMarquee.SetText(SongArtist(song));
+    songText.SetText(DisplayLines(song.music.names, song.metadataPath.stem().wstring()));
+    artistText.SetText(DisplayLines(song.music.artists));
     if (song.patterns.empty())
     {
         SetBackgroundPreview({});
         RequireComponent<TextVisualComponent>(*selectedPatternLabel_)
             .SetText(std::wstring(text.noDifficulty));
-        RequireComponent<TextVisualComponent>(*selectedCreatorLabel_).SetText(L"—");
+        creatorText.SetText(L"—");
         RequireComponent<TextVisualComponent>(*selectedDetailsLabel_)
             .SetText(std::wstring(text.emptyDetails));
         return;
@@ -232,10 +235,7 @@ void MusicSelectView::RefreshSelectionPresentation()
                              : settings_.SongsRoot() / L"BG" / selected.pattern.backgroundFile);
     RequireComponent<TextVisualComponent>(*selectedPatternLabel_)
         .SetText(PatternName(selected));
-    RequireComponent<TextVisualComponent>(*selectedCreatorLabel_)
-        .SetText(selected.pattern.makers.empty()
-                     ? L"—"
-                     : DecodeDisplayText(selected.pattern.makers.front()));
+    creatorText.SetText(DisplayLines(selected.pattern.makers));
     std::wstring mode =
         selected.pattern.mode.empty() ? L"—" : DecodeDisplayText(selected.pattern.mode);
     std::ranges::transform(mode, mode.begin(), [](const wchar_t character) {

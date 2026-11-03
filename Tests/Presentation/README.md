@@ -31,6 +31,10 @@ stable ties with retained song focus, then check language switching and search.
 HP information checks both selection purposes for exact hundredths, the 9.00
 default, pattern/language changes, empty-state clearing and four rows fitting
 inside the information panel at narrow, standard and wide viewport sizes.
+Multiline metadata checks complete Unicode names/artists/makers in both selection
+purposes, independent wheel scrolling, range limits, scrollbar dragging versus
+card clicks, resize/content changes, and a real DirectWrite multiline measurement
+in the hidden D3D12 integration run.
 It also checks marquee Unicode preservation, shared repeated text payloads,
 pixel displacement and stopping after the label becomes wide enough.
 `SongSearchInputTests` runs the production view in a hidden D3D12/NoSound window.

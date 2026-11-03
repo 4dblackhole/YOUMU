@@ -1,14 +1,11 @@
+#include "MusicSelectTestInput.h"
 #include "SongSearchInputTests.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
+#include "Presentation/ScrollableTextComponent.h"
 #include <Windows.h>
 #include <iostream>
 #include <stdexcept>
 
-struct InputStateTestAccess
-{
-    static void Key(InputState &input, std::uint16_t key, bool down) { input.SetKey(key, down, 1); }
-    static void Begin(InputState &input) { input.BeginUpdate(); }
-};
 namespace
 {
     void Check(bool value, const char *message)
@@ -19,7 +16,14 @@ namespace
             throw std::runtime_error(message);
         }
     }
-    struct Report { bool tested{}, rendered{}, cleaned{}; };
+    struct Report { bool tested{}, rendered{}, measured{}, cleaned{}; };
+    Visual2DNode *Find(Visual2DNode &node, std::string_view name)
+    {
+        if (node.Name() == name) return &node;
+        for (const auto &child : node.Children())
+            if (auto *found = Find(*child, name)) return found;
+        return nullptr;
+    }
     class SearchClient final : public IGameClient
     {
       public:
@@ -112,6 +116,13 @@ namespace
             Check((GetWindowLongPtrW(child, GWL_STYLE) & WS_VISIBLE) == 0, "Options cover and hide native search.");
             view_->SetVisible(false);
             Check(GetFocus() != child, "Hidden scene releases search focus.");
+            view_->SetVisible(true);
+            input = {};
+            InputStateTestAccess::Key(input, VK_LCONTROL, true);
+            InputStateTestAccess::Key(input, 'O', true);
+            static_cast<void>(view_->Update(input, .3));
+            input = {};
+            static_cast<void>(view_->Update(input, .3));
             report_.tested = true;
         }
         catch (const std::exception &error)
@@ -122,6 +133,19 @@ namespace
         bool Update(const UpdateContext &context) override
         {
             Check(context.totalSeconds < 10, "Native search test completes promptly.");
+            visuals_.Update(context.deltaSeconds);
+            if (report_.rendered)
+            {
+                auto *canvas = visuals_.FindCanvas(1);
+                if (!canvas) throw std::runtime_error("Rendered metadata Canvas missing.");
+                auto *title = Find(canvas->Root(), "SelectedSong");
+                if (!title) throw std::runtime_error("Rendered metadata title missing.");
+                auto *scroll = title->GetComponent<ScrollableTextComponent>();
+                Check(scroll && scroll->Text() == L"Angel Dream\n天使の夢\n천사의 꿈" &&
+                          scroll->ScrollRange().height > 0,
+                      "Real DirectWrite multiline measurement drives the selected title scrollbar.");
+                report_.measured = true;
+            }
             return !report_.rendered;
         }
         void Render(const RenderContext &context) override
@@ -153,6 +177,7 @@ namespace
 void TestNativeSongSearch()
 {
     Report report;
-    Check(Run(std::make_unique<SearchClient>(report)) == 0 && report.tested && report.rendered && report.cleaned,
+    Check(Run(std::make_unique<SearchClient>(report)) == 0 && report.tested && report.rendered &&
+              report.measured && report.cleaned,
           "Native search integration and shutdown must pass.");
 }

@@ -1,4 +1,5 @@
 #include "MusicSelectView.h"
+#include "Presentation/ScrollableTextComponent.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
@@ -72,13 +73,10 @@ void MusicSelectView::CreateSongInformationPanel()
     previewEmpty_ = &AddLabel(preview, layout::PreviewEmpty, std::wstring(text.noImage), 10.0F, SoftTextBlue,
                               "PreviewEmpty", TextAlignment::Center);
 
-    selectedSongLabel_ = &AddLabel(panel, layout::SelectedSong, std::wstring(text.noSongSelected), 28.0F,
+    selectedSongLabel_ = &AddScrollableLabel(panel, layout::SelectedSong, std::wstring(text.noSongSelected), 28.0F,
                                    DeepBlue, "SelectedSong");
-    selectedSongLabel_->AddComponent<MarqueeTextComponent>(std::wstring(text.noSongSelected),
-                                                                                      0.28);
     selectedArtistLabel_ =
-        &AddLabel(panel, layout::SelectedArtist, L"", 16.0F, MutedBlue, "SelectedArtist");
-    selectedArtistLabel_->AddComponent<MarqueeTextComponent>(L"", 0.32);
+        &AddScrollableLabel(panel, layout::SelectedArtist, L"", 16.0F, MutedBlue, "SelectedArtist");
 
     auto &information = AddBorderedPanel(panel, layout::DifficultyInformation, PaleBlue, PaleBorder,
                                          1.0F, 12.0F, "DifficultyInformation");
@@ -90,7 +88,7 @@ void MusicSelectView::CreateSongInformationPanel()
     selectedPatternLabel_ = &AddLabel(information, layout::SelectedDifficulty, L"—", 18.0F,
                                       AccentBlue, "SelectedDifficulty");
     selectedCreatorLabel_ =
-        &AddLabel(information, layout::SelectedCreator, L"—", 18.0F, DeepBlue, "SelectedCreator");
+        &AddScrollableLabel(information, layout::SelectedCreator, L"—", 18.0F, DeepBlue, "SelectedCreator");
     informationDivider_ =
         &AddPanel(information, layout::InformationDivider, PaleBorder, "InformationDivider");
     selectedDetailsLabel_ =
@@ -98,7 +96,7 @@ void MusicSelectView::CreateSongInformationPanel()
                   MutedBlue, "SelectedDetails", TextAlignment::Center);
     for (std::size_t i = 0; i < extraDetailsLabels_.size(); ++i)
         extraDetailsLabels_[i] = &AddLabel(information,
-            {16.0F, 112.0F + 24.0F * static_cast<float>(i), 299.43F, 22.0F},
+            {16.0F, layout::ExtraDetails.y + 24.0F * static_cast<float>(i), 299.43F, 22.0F},
             L"", 15.0F, DeepBlue, "ExtraDetails" + std::to_string(i));
 }
 
@@ -326,6 +324,17 @@ Visual2DNode &MusicSelectView::AddLabel(
     return label;
 }
 
+Visual2DNode &MusicSelectView::AddScrollableLabel(Visual2DNode &parent, Rect bounds, std::wstring text,
+                                                float fontSize, Color color, std::string name)
+{
+    auto &node = parent.CreateChild(std::move(name));
+    node.SetBounds(ScaleTopLeftBounds(bounds, parent.NodeSize().height));
+    auto &scroll = node.AddComponent<ScrollableTextComponent>();
+    scroll.SetStyle(texts_.CurrentProfile().font, CanvasFontSize(fontSize), color);
+    scroll.SetText(std::move(text));
+    return node;
+}
+
 void MusicSelectView::ApplyTexts()
 {
     const auto &text = MusicSelect(texts_);
@@ -344,6 +353,8 @@ void MusicSelectView::ApplyTexts()
     setLabel(previewEmpty_, text.noImage);
     setLabel(difficultyHeading_, text.difficulty);
     setLabel(creatorHeading_, text.creator);
+    for (auto *node : {selectedSongLabel_, selectedArtistLabel_, selectedCreatorLabel_})
+        if (node) RequireComponent<ScrollableTextComponent>(*node).SetFont(texts_.CurrentProfile().font);
     setLabel(browserHint_, text.browserHint);
     setLabel(optionLabel_, IsEditorSongSelect() ? text.optionSelect : texts_.Get("PlayOptions.title"));
     if (modeSelector_)

@@ -117,6 +117,8 @@ class MusicSelectView final
         std::wstring text, const float penpotFontSize, const Color color,
         std::string name,
         const TextAlignment alignment = TextAlignment::Leading);
+    Visual2DNode &AddScrollableLabel(Visual2DNode &parent, Rect penpotBounds, std::wstring text,
+                                    float penpotFontSize, Color color, std::string name);
     void RefreshSelection();
     SongSelectionState &selection_;
     SongSelectPurpose purpose_;

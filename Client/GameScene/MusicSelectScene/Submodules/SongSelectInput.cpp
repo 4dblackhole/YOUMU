@@ -1,4 +1,5 @@
 #include "MusicSelectView.h"
+#include "Presentation/ScrollableTextComponent.h"
 #include "Presentation/PlayOptionsDialog.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
@@ -27,7 +28,16 @@ void MusicSelectView::ProcessPointer(const InputState &input)
     else
         inputRouter_.Process(*canvas_, pointer);
 
-    if (!options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) && canvasPointer_.has_value() &&
+    bool textScrolled = false;
+    if (!options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) && input.MouseWheelDelta() != 0)
+    {
+        if (auto *hovered = canvas_->FindNode(inputRouter_.HoveredNode()))
+            if (auto *text = hovered->GetComponent<ScrollableTextComponent>())
+                textScrolled = text->Scroll(input.MouseWheelDelta(),
+                                            input.IsKeyDown(VK_LSHIFT) || input.IsKeyDown(VK_RSHIFT));
+    }
+    if (!textScrolled && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) &&
+        canvasPointer_.has_value() &&
         songViewport_ != nullptr && songViewport_->BoundsInCanvas().Contains(*canvasPointer_) &&
         std::abs(input.MouseWheelDelta()) > 0.0F)
     {

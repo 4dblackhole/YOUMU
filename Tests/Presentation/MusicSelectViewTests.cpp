@@ -1,3 +1,4 @@
+#include "MusicSelectTestInput.h"
 #include "App/AssetPaths.h"
 #include "SongSearchInputTests.h"
 #include "GameScene/MusicSelectScene/Submodules/EditorOsuImport.h"
@@ -6,6 +7,7 @@
 #include "GameFlow/PlaySessionLoader.h"
 #include "Judgement/AccuracyRange.h"
 #include "Presentation/MarqueeTextComponent.h"
+#include "Presentation/ScrollableTextComponent.h"
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -16,11 +18,6 @@
 #include <atomic>
 #include "Presentation/PlayOptionsDialog.h"
 
-struct InputStateTestAccess
-{
-    static void Key(InputState &input, std::uint16_t key, bool down) { input.SetKey(key, down, 1); }
-    static void Begin(InputState &input) { input.BeginUpdate(); }
-};
 namespace
 {
 
@@ -274,6 +271,176 @@ namespace
                 Check(Find(canvas->Root(),"Options.Panel")->IsVisible(),"Editor footer still opens its global settings.");
             }
             clickable.Shutdown();
+        }
+    }
+    void MeasureText(Visual2DCanvas &canvas, std::wstring_view text, Size size)
+    {
+        bool found = false;
+        for (const auto &packet : canvas.BuildDrawList())
+            if (packet.text && packet.text->value == text)
+            {
+                packet.text->measuredSize = size;
+                found = true;
+            }
+        Check(found, "The complete multiline text must reach the renderer.");
+    }
+    void TestScrollableText()
+    {
+        Visual2DCanvas canvas;
+        auto &field = canvas.Root().CreateChild("Field");
+        field.SetBounds({-100, -100, 100, 60});
+        auto &scroll = field.AddComponent<ScrollableTextComponent>();
+        scroll.SetStyle({TextFontSource::System, L"Segoe UI"}, 12, {0, 0, 0, 1});
+        const std::wstring text = L"天使の夢\n한글 \U0001F3B5\nAngel Dream\nMaker";
+        scroll.SetText(text);
+        scroll.SetClickTarget(777);
+        MeasureText(canvas, text, {400, 120});
+        scroll.Update(0);
+        Check(scroll.Scroll(-1) && scroll.ScrollPosition().y > 0 && scroll.ScrollPosition().x == 0,
+              "Wheel scrolling moves multiline text vertically.");
+        Check(scroll.Scroll(-1, true) && scroll.ScrollPosition().x > 0,
+              "Long lines can scroll horizontally without truncating Unicode.");
+        Check(scroll.Text() == text && WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                  scroll.Text().data(), static_cast<int>(scroll.Text().size()), nullptr, 0, nullptr, nullptr) > 0,
+              "Scrolling preserves every Unicode line and surrogate pair.");
+        auto *thumb = Find(field, "TextScroll.VerticalThumb");
+        auto *track = Find(field, "TextScroll.VerticalTrack");
+        if (!thumb || !track) throw std::runtime_error("Multiline scrollbar missing.");
+        Visual2DInputRouter router;
+        PointerInput pointer{};
+        const auto bounds = thumb->BoundsInCanvas();
+        const auto trackBounds = track->BoundsInCanvas();
+        pointer.available = true;
+        pointer.position = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
+        pointer.leftButtonDown = pointer.leftButtonPressed = true;
+        router.Process(canvas, pointer);
+        pointer.leftButtonPressed = false;
+        pointer.position.y = trackBounds.y;
+        router.Process(canvas, pointer);
+        pointer.leftButtonDown = false;
+        pointer.leftButtonReleased = true;
+        router.Process(canvas, pointer);
+        Check(scroll.ScrollPosition().y == scroll.ScrollRange().height && canvas.TakeActions().empty(),
+              "Dragging the thumb reaches the bottom without selecting the enclosing card.");
+        Click(canvas, Point{-80, -80});
+        const auto actions = canvas.TakeActions();
+        Check(actions.size() == 1 && actions[0].source == 777,
+              "Clicking ordinary text retains the enclosing song-card action.");
+        field.SetSize({1000, 1000});
+        scroll.Update(0);
+        Check(scroll.ScrollRange().width == 0 && scroll.ScrollRange().height == 0 &&
+                  scroll.ScrollPosition().x == 0 && scroll.ScrollPosition().y == 0,
+              "Growing a field removes obsolete overflow and clamps both offsets.");
+        scroll.SetText(L"New");
+        Check(scroll.ScrollPosition().x == 0 && scroll.ScrollPosition().y == 0,
+              "Changing metadata starts at the beginning of the new text.");
+    }
+    void TestMetadataLines()
+    {
+        for (const auto purpose : {SongSelectPurpose::Gameplay, SongSelectPurpose::Editor})
+        {
+            Renderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1280, 720});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            OptionSettings options("build/metadata-lines-unused.ini");
+            SongSelectionState state;
+            SongCatalogEntry song;
+            song.music.names = {"Angel Dream", "", "天使の夢", "천사의 꿈", "Alias four", "Alias five"};
+            song.music.artists = {"Artist A", "Artist B", "Artist C", "Artist D", "Artist E"};
+            song.patterns.resize(2);
+            song.patterns[0].pattern.makers = {"Maker A", "Maker B", "Maker C", "Maker D"};
+            song.patterns[1].pattern.makers = {"Other maker"};
+            state.catalog_.songs.push_back(song);
+            for (int i = 0; i < 20; ++i)
+            {
+                SongCatalogEntry other;
+                other.music.names = {"Other " + std::to_string(i)};
+                other.patterns.resize(1);
+                state.catalog_.songs.push_back(std::move(other));
+            }
+            MusicSelectView view(visuals, state, purpose, texts, options);
+            view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("Metadata-lines Canvas missing.");
+            const auto field = [&](Visual2DNode &parent, const char *name) -> ScrollableTextComponent &
+            {
+                auto *node = Find(parent, name);
+                if (!node) throw std::runtime_error("Metadata field missing.");
+                auto *component = node->GetComponent<ScrollableTextComponent>();
+                if (!component) throw std::runtime_error("Metadata scroll component missing.");
+                return *component;
+            };
+            const std::wstring title = L"Angel Dream\n天使の夢\n천사의 꿈\nAlias four\nAlias five";
+            Check(field(canvas->Root(), "SelectedSong").Text() == title &&
+                      field(canvas->Root(), "SelectedArtist").Text() == L"Artist A\nArtist B\nArtist C\nArtist D\nArtist E" &&
+                      field(canvas->Root(), "SelectedCreator").Text() == L"Maker A\nMaker B\nMaker C\nMaker D",
+                  "All registered names, artists and makers appear in file order as separate lines.");
+            auto *card = Find(canvas->Root(), "Song.0");
+            auto *content = Find(canvas->Root(), "SongContent");
+            if (!card || !content) throw std::runtime_error("Metadata song card missing.");
+            auto *caption = Find(*card, "Title");
+            if (!caption) throw std::runtime_error("Card title missing.");
+            auto &cardText = field(*card, "Title");
+            Check(cardText.Text() == title, "Song cards retain every title alias as well as the detail view.");
+            const auto captionBounds = caption->BoundsInCanvas();
+            const Point point{captionBounds.x + 5, captionBounds.y + captionBounds.height / 2};
+            const float originalY = content->Bounds().y;
+            InputState input;
+            InputStateTestAccess::Mouse(input, point, -1);
+            static_cast<void>(view.Update(input, 0));
+            Check(cardText.ScrollPosition().y > 0 && content->Bounds().y == originalY,
+                  "Wheeling an overflowing card caption scrolls only that caption.");
+            input = {};
+            InputStateTestAccess::Mouse(input, point, -1000);
+            static_cast<void>(view.Update(input, 0));
+            Check(cardText.ScrollPosition().y == cardText.ScrollRange().height && content->Bounds().y == originalY,
+                  "A caption at its limit must not start scrolling the song list.");
+            MeasureText(*canvas, title, {1500, 300});
+            cardText.Update(0);
+            const float previousTextY = cardText.ScrollPosition().y;
+            input = {};
+            InputStateTestAccess::Key(input, VK_LSHIFT, true);
+            InputStateTestAccess::Mouse(input, point, -1);
+            static_cast<void>(view.Update(input, 0));
+            Check(cardText.ScrollPosition().x > 0 && cardText.ScrollPosition().y == previousTextY &&
+                      content->Bounds().y == originalY,
+                  "Shift+wheel scrolls only the long line horizontally.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_LCONTROL, true);
+            InputStateTestAccess::Key(input, 'O', true);
+            static_cast<void>(view.Update(input, .3));
+            const auto beforeModalWheel = cardText.ScrollPosition();
+            input = {};
+            InputStateTestAccess::Mouse(input, point, -1);
+            static_cast<void>(view.Update(input, .3));
+            Check(cardText.ScrollPosition().x == beforeModalWheel.x &&
+                      cardText.ScrollPosition().y == beforeModalWheel.y && content->Bounds().y == originalY,
+                  "Global options prevent background text and list scrolling.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_LCONTROL, true);
+            InputStateTestAccess::Key(input, 'O', true);
+            static_cast<void>(view.Update(input, .3));
+            input = {};
+            static_cast<void>(view.Update(input, .3));
+            input = {};
+            const auto cardBounds = card->BoundsInCanvas();
+            InputStateTestAccess::Mouse(input, {cardBounds.x + 1, point.y}, -1);
+            static_cast<void>(view.Update(input, 0));
+            Check(content->Bounds().y != originalY, "The surrounding song list still scrolls outside text fields.");
+            state.SelectPattern(1);
+            view.RefreshSelectionPresentation();
+            Check(field(canvas->Root(), "SelectedCreator").Text() == L"Other maker",
+                  "Changing the pattern refreshes its complete maker list.");
+            state.catalog_.songs.clear();
+            view.RebuildVisibleSongs();
+            Check(field(canvas->Root(), "SelectedArtist").Text().empty() &&
+                      field(canvas->Root(), "SelectedCreator").Text() == L"—",
+                  "Empty selection clears previous multiline metadata.");
+            view.Shutdown();
         }
     }
     void TestHpInformation()
@@ -622,6 +789,8 @@ int main()
         }
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
+        TestScrollableText();
+        TestMetadataLines();
         TestBaseBpmSortView();
         TestHpInformation();
         TestRecordHistoryView();
