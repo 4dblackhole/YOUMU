@@ -67,7 +67,7 @@ bool MusicSelectView::ProcessActions()
         if (action.type == ActionType::SelectionChanged && action.source == sortSelectorId_)
         {
             selection_.sortMode_ = static_cast<SortMode>(
-                std::min<std::size_t>(action.selectedIndex, static_cast<std::size_t>(SortMode::Artist)));
+                std::min<std::size_t>(action.selectedIndex, static_cast<std::size_t>(SortMode::BaseBpm)));
             RebuildVisibleSongs();
             return false;
         }

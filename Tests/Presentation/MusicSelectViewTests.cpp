@@ -99,18 +99,80 @@ namespace
                 return found;
         return nullptr;
     }
-    void Click(Visual2DCanvas &canvas, const Visual2DNode &node)
+    void Click(Visual2DCanvas &canvas, Point position)
     {
-        const auto bounds = node.BoundsInCanvas();
         Visual2DInputRouter router;
         PointerInput pointer{};
         pointer.available = true;
-        pointer.position = {bounds.x + bounds.width * .5F, bounds.y + bounds.height * .5F};
+        pointer.position = position;
         pointer.leftButtonDown = pointer.leftButtonPressed = true;
         router.Process(canvas, pointer);
         pointer.leftButtonDown = pointer.leftButtonPressed = false;
         pointer.leftButtonReleased = true;
         router.Process(canvas, pointer);
+    }
+    void Click(Visual2DCanvas &canvas, const Visual2DNode &node)
+    {
+        const auto bounds = node.BoundsInCanvas();
+        Click(canvas, Point{bounds.x + bounds.width * .5F, bounds.y + bounds.height * .5F});
+    }
+    void TestBaseBpmSortView()
+    {
+        for (const auto purpose : {SongSelectPurpose::Gameplay, SongSelectPurpose::Editor})
+        {
+            Renderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1280, 720});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            OptionSettings options("build/bpm-sort-unused.ini");
+            SongSelectionState state;
+            for (const auto bpm : {200.0, 80.0, 80.0})
+            {
+                SongCatalogEntry song;
+                song.music.names = {bpm == 200 ? "Fast" : "Slow"};
+                song.patterns.resize(1);
+                song.patterns[0].pattern.baseBpm = bpm;
+                state.catalog_.songs.push_back(std::move(song));
+            }
+            state.RebuildVisibleSongs();
+            if (purpose == SongSelectPurpose::Editor) state.sortMode_ = SongSelectionState::SortMode::BaseBpm;
+            MusicSelectView view(visuals, state, purpose, texts, options);
+            view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("BPM sort Canvas missing.");
+            auto *sort = Find(canvas->Root(), "SortSelector");
+            if (!sort) throw std::runtime_error("BPM sort selector missing.");
+            auto *behavior = sort->GetComponent<ComboBoxBehaviorComponent>();
+            if (!behavior) throw std::runtime_error("BPM sort behavior missing.");
+            auto &combo = *behavior;
+            Check(combo.Items().size() == 4 && combo.Items()[3] == L"Base BPM순" && combo.MaxVisibleItems() == 4,
+                  "The Korean sort menu exposes Base BPM alongside existing modes.");
+            Check(combo.SelectedIndex() == static_cast<std::size_t>(state.sortMode_),
+                  "A newly initialized view reflects its retained sort mode.");
+            Click(*canvas, *sort);
+            Check(combo.IsExpanded(), "The actual sort menu must open.");
+            const auto bounds = sort->BoundsInCanvas();
+            Click(*canvas, Point{bounds.x + bounds.width / 2, bounds.y - combo.ItemHeight() * 3.5F});
+            InputState input;
+            Check(view.Update(input, 0) == SongSelectCommand::None &&
+                      state.sortMode_ == SongSelectionState::SortMode::BaseBpm &&
+                      state.visibleSongIndices_ == std::vector<std::size_t>{1, 2, 0} &&
+                      state.focusedSongPosition_ == 2 && HasCard(canvas->Root(), 2),
+                  "Clicking Base BPM must reorder real cards and retain the focused song.");
+            texts.SetLanguage(Language::English);
+            static_cast<void>(view.Update(input, 0));
+            Check(combo.Items()[3] == L"BASE BPM" && combo.SelectedIndex() == 3,
+                  "Language changes must retain the selected BPM mode.");
+            state.searchText_ = L"slow";
+            view.RebuildVisibleSongs();
+            Check(state.visibleSongIndices_ == std::vector<std::size_t>{1, 2} && combo.SelectedIndex() == 3,
+                  "Search results must keep BPM ordering and stable ties.");
+            view.Shutdown();
+            Check(visuals.CanvasCount() == 0, "BPM sort test releases its Canvas.");
+        }
     }
     SongCatalogLoadResult AwaitCatalog(SongCatalogLoader &loader)
     {
@@ -496,6 +558,7 @@ int main()
         }
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
+        TestBaseBpmSortView();
         TestRecordHistoryView();
         TestBackgroundPreview();
         SongCatalogLoader loader;

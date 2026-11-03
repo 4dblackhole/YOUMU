@@ -26,6 +26,8 @@ create only viewport cards across focus/search/resize, and polls real catalog
 loads/cache reuse/error results. It writes no song or option files.
 Both gameplay and editor selection check one-shot launch from a difficulty click,
 including a different difficulty and a second click on the selected difficulty.
+Both also select Base BPM through the actual dropdown, verify numeric order and
+stable ties with retained song focus, then check language switching and search.
 It also checks marquee Unicode preservation, shared repeated text payloads,
 pixel displacement and stopping after the label becomes wide enough.
 `SongSearchInputTests` runs the production view in a hidden D3D12/NoSound window.

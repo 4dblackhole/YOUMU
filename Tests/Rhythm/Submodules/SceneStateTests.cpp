@@ -2,9 +2,51 @@
 #include "GameFlow/GameplayLaunchStore.h"
 #include "GameScene/MusicSelectScene/Submodules/SongSelectionState.h"
 #include "TestSupport.h"
+#include <limits>
 
 namespace tests
 {
+    void TestSongBaseBpmSort()
+    {
+        SongSelectionState state;
+        SongCatalogEntry fast, slow, multiple, tied, missing, invalid;
+        fast.music.names = {"Fast match"};
+        slow.music.names = {"Slow match"};
+        fast.patterns.resize(1);
+        fast.patterns[0].pattern.baseBpm = 240;
+        slow.patterns.resize(1);
+        slow.patterns[0].pattern.baseBpm = 90.5;
+        multiple.patterns.resize(2);
+        multiple.patterns[0].pattern.baseBpm = 150;
+        multiple.patterns[0].bpmRange = std::pair{1.0, 999.0};
+        multiple.patterns[1].pattern.baseBpm = 10;
+        tied.patterns.resize(1);
+        tied.patterns[0].pattern.baseBpm = 150;
+        invalid.patterns.resize(1);
+        invalid.patterns[0].pattern.baseBpm = std::numeric_limits<double>::quiet_NaN();
+        state.catalog_.songs = {fast, slow, multiple, tied, missing, invalid};
+        state.RebuildVisibleSongs();
+        state.sortMode_ = SongSelectionState::SortMode::BaseBpm;
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{1, 2, 3, 0, 4, 5},
+                "Base BPM sorts numerically by the first pattern, keeps ties stable and puts unavailable values last.");
+        Require(state.focusedSongPosition_ == 3,
+                "Changing sort preserves the focused song even when its visible position changes.");
+        state.SelectVisibleSong(1);
+        state.SelectPattern(1);
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{1, 2, 3, 0, 4, 5} &&
+                    state.focusedSongPosition_ == 1,
+                "The selected difficulty and BPM range must not change the first-pattern sort key.");
+        state.searchText_ = L"match";
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{1, 0},
+                "Search filters compose with BPM sorting without restoring catalog order.");
+        state.catalog_.songs.clear();
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_.empty(), "BPM sorting accepts an empty catalog.");
+    }
+
     void TestSongSearchAndMetadata()
     {
         SongSelectionState state;

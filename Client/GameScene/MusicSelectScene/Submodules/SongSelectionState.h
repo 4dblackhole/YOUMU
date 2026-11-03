@@ -13,6 +13,7 @@ class SongSelectionState final
         Difficulty,
         Title,
         Artist,
+        BaseBpm,
     };
 
     enum class LaunchErrorKind : std::uint8_t

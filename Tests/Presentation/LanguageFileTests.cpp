@@ -1,6 +1,7 @@
 #include "Texts/EditorScene/EditorTexts.h"
 #include "Texts/GameScene/YOUMULogoScene/LogoTexts.h"
 #include "Texts/GameScene/ResultScene/ResultTexts.h"
+#include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 #include "Texts/TextCatalog.h"
 #include <Windows.h>
 #include <format>
@@ -47,7 +48,8 @@ namespace
     void Catalog(const std::filesystem::path &directory)
     {
         TextCatalog empty(directory);
-        Check(Logo(empty).menu[0] == L"Game Start" && Editor(empty).save == L"SAVE",
+        Check(Logo(empty).menu[0] == L"Game Start" && Editor(empty).save == L"SAVE" &&
+                  MusicSelect(empty).sortModes[3] == L"BASE BPM",
               "Missing Korean and English files must use built-in English for every screen.");
         Write(directory / "en.ini", "[Logo]\nOptions=Preferences\n");
         Write(directory / "ko.ini", "[Logo]\nStart=\"직접 시작\"\nExit=\"\"\n"

@@ -179,7 +179,7 @@ void MusicSelectView::CreateSongBrowser()
     auto &sort = CreateComboBox(
         panel, ScaleTopLeftBounds(layout::SortSelector, panel.NodeSize().height),
         {std::wstring(text.sortModes[0]), std::wstring(text.sortModes[1]),
-         std::wstring(text.sortModes[2])}, "SortSelector");
+         std::wstring(text.sortModes[2]), std::wstring(text.sortModes[3])}, "SortSelector");
     sortSelector_ = &sort;
     sortSelectorId_ = sort.Id();
     sort.SetZIndex(10);
@@ -187,8 +187,9 @@ void MusicSelectView::CreateSongBrowser()
     SetCornerRadius(sort, 10.0F);
     BindSkinImage(sort, screenVisuals_, "MusicSelect", "SortSelector");
     auto &sortBehavior = RequireComponent<ComboBoxBehaviorComponent>(sort);
+    sortBehavior.SetSelectedIndex(static_cast<std::size_t>(selection_.sortMode_));
     sortBehavior.SetItemHeight(38.0F * DesignToCanvasScale);
-    sortBehavior.SetMaxVisibleItems(3);
+    sortBehavior.SetMaxVisibleItems(4);
     sortBehavior.SetFontSize(CanvasFontSize(12.0F));
     texts_.ApplyFont(sortBehavior);
     sortBehavior.SetTextColor(DeepBlue);
@@ -371,7 +372,7 @@ void MusicSelectView::ApplyTexts()
         auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*sortSelector_);
         const std::size_t selected = combo.SelectedIndex();
         combo.SetItems({std::wstring(text.sortModes[0]), std::wstring(text.sortModes[1]),
-                        std::wstring(text.sortModes[2])});
+                        std::wstring(text.sortModes[2]), std::wstring(text.sortModes[3])});
         combo.SetSelectedIndex(selected);
         texts_.ApplyFont(combo);
     }

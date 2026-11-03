@@ -1,6 +1,8 @@
 #include "SongSelectionState.h"
 #include "SongSelectionText.h"
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <ranges>
 
 using namespace song_select;
@@ -26,7 +28,22 @@ void SongSelectionState::RebuildVisibleSongs()
     // YMM/YMP currently has no chart LEVEL field. "Difficulty" therefore
     // preserves catalog order instead of inventing a score from note count or
     // judgement timing strictness.
-    if (sortMode_ != SortMode::Difficulty)
+    if (sortMode_ == SortMode::BaseBpm)
+    {
+        std::vector<double> keys(catalog_.songs.size(), std::numeric_limits<double>::infinity());
+        for (const auto index : visibleSongIndices_)
+        {
+            const auto &patterns = catalog_.songs[index].patterns;
+            if (!patterns.empty())
+            {
+                const double bpm = patterns.front().pattern.baseBpm;
+                if (std::isfinite(bpm) && bpm > 0) keys[index] = bpm;
+            }
+        }
+        std::stable_sort(visibleSongIndices_.begin(), visibleSongIndices_.end(),
+                         [&keys](const auto left, const auto right) { return keys[left] < keys[right]; });
+    }
+    else if (sortMode_ != SortMode::Difficulty)
     {
         std::vector<std::wstring> keys(catalog_.songs.size());
         for (const auto index : visibleSongIndices_)

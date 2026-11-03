@@ -18,7 +18,7 @@ struct MusicSelectTextSet
     std::wstring_view emptyDetails;
     std::wstring_view searchSongs;
     std::wstring_view songCountFormat;
-    std::array<std::wstring_view, 3> sortModes;
+    std::array<std::wstring_view, 4> sortModes;
     std::wstring_view browserHint;
     std::wstring_view optionSelect;
     std::wstring_view back;
