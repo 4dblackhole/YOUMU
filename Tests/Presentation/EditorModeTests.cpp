@@ -960,37 +960,61 @@ namespace
               "Changing variants must retain the paired end IDs and update both musical positions in the index.");
     }
 
-    void TestCustomSeparateRealtimeVisibility()
+    void TestRealtimeIgnoresScrollEffects()
     {
         auto pattern = PatternDocument{};
         pattern.baseBpm = 120;
-        pattern.notes.push_back({{4, {}}, 1});
+        pattern.timing = {{{2, {}}, TimingDirectiveType::Bpm, 240}};
+        pattern.notes = {{{0, {1, 4}}, 1}, {{1, {}}, 11, 1}, {{3, {}}, 11, 2}, {{4, {}}, 1}};
         const auto parsed = ChartParser{}.ParseEffect(R"([Interpolation]
 Dip: 1-3*u*(1-u)
 [Speed]
+1,0/1,Area,9,0/1,#ScrollSpeed Whole,From=1,To=2,Curve=Linear
 1,0/1,Area,9,0/1,#ScrollSpeed Separate,From=1,To=1,Curve=Dip
 )");
-        Check(parsed.Succeeded(), "Custom Separate regression fixture must parse.");
+        Check(parsed.Succeeded(), "Realtime scroll-effect regression fixture must parse.");
+        EditorWorkspace baseline(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
         EditorWorkspace state(CreateEditorMode("Taiko"),
                               std::make_unique<ChartEditor>(pattern, parsed.document));
+        Check(state.Document().Notes().back().scrollMultiplier < 1 &&
+                  state.Document().ScrollDistance(RhythmTime{1'000'000}, {}) > 1'000'000,
+              "The fixture must retain active Whole and custom Separate effects in the chart.");
+        baseline.SetRealtime(true);
         state.SetRealtime(true);
+        for (const double zoom : {.25, .5, 1., 2., 4.})
+            for (const double time : {0., 1000., 2500., 4500., 5500.})
+            {
+                baseline.SetRealtimeZoom(zoom);
+                state.SetRealtimeZoom(zoom);
+                baseline.Seek(time);
+                state.Seek(time);
+                RecordingCanvas expected, actual;
+                baseline.Mode().DrawChart(expected, baseline, TestCatalog(Language::Korean));
+                state.Mode().DrawChart(actual, state, TestCatalog(Language::Korean));
+                Check(actual.rectangles.size() == expected.rectangles.size(),
+                      "Scroll effects must not change realtime note, long-body or grid visibility.");
+                for (std::size_t i = 0; i < expected.rectangles.size(); ++i)
+                {
+                    const auto &a = actual.rectangles[i], &b = expected.rectangles[i];
+                    Check(std::abs(a.x - b.x) < .01F && std::abs(a.y - b.y) < .01F &&
+                              std::abs(a.width - b.width) < .01F && std::abs(a.height - b.height) < .01F,
+                          "Realtime notes, long bodies and grids must use the same time axis with or without effects.");
+                }
+            }
+        state.SetRealtimeZoom(1);
+        state.Seek(5000);
         state.SelectTool(1);
         RecordingCanvas canvas;
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        const auto drawn = std::ranges::any_of(
-            canvas.rectangles, [](const auto &rect)
-            { return std::abs(rect.x + rect.width / 2 - 1209.2F) < .01F && rect.width == 72 && rect.height == 72; });
-        Check(drawn, "The custom curve's slow 8s note must be drawn inside the realtime lane.");
-        state.Mode().EditScore(state, {1209.2F, 465}, true);
-        Check(state.Document().Notes().empty(), "The visible slow note must participate in deletion hit testing.");
-        // With no authored slow note left, the endpoint bound becomes 1.
-        // The same custom curve's visible grid still needs to be selectable.
+        state.Mode().EditScore(state, {719.6F, 465}, true);
+        Check(state.Document().Notes().size() == 3,
+              "Deleting at the uniform time coordinate must find the note despite its speed effects.");
         canvas.rectangles.clear();
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        state.Mode().EditScore(state, {1209.2F, 465}, false);
-        Check(state.Document().Notes().size() == 1 &&
-                  state.Document().Notes().front().note.position == MusicalPosition{4, {}},
-              "A custom Separate grid must remain visible/snappable without an authored minimum-speed note.");
+        state.Mode().EditScore(state, {719.6F, 465}, false);
+        Check(state.Document().Notes().size() == 4 &&
+                  state.Document().Notes().back().note.position == MusicalPosition{4, {}},
+              "Placement must snap to the uniform time grid under Whole and custom Separate effects.");
     }
     void TestTaikoToolGroups(TextCatalog &texts)
     {
@@ -1158,7 +1182,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     TestDelayViewsAndSnapping();
     TestSeekAndEffectEdits();
     TestInspectorMusicalTiming();
-    TestCustomSeparateRealtimeVisibility();
+    TestRealtimeIgnoresScrollEffects();
     auto mode = std::make_unique<ProbeMode>();
     auto *probe = mode.get();
     EditorWorkspace state(GameplayLaunchRequest{}, std::move(mode));

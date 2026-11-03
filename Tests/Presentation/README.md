@@ -164,7 +164,8 @@ NoSound playback also changes rates across repeated MP3 pause/seek/resume cycles
 It also covers realtime lane boundaries, spaced/case-insensitive Buzz options,
 Purple and timed/explicit sound agreement with play, invalid seek preservation,
 effect/timing commands, failed edit rollback and drawing failure recovery.
-Custom Separate curves also cover visible slow-note drawing/deletion and grid snapping after removing the slow note.
+Realtime geometry is compared with and without Whole/custom Separate curves across five zoom levels and five
+times, including BPM changes and long-note bodies. Deletion and placement use the same uniform time grid.
 `EditorMenuTests.cpp` checks the Save-only Canvas menu, Korean/English and dirty
 labels, pointer mapping at four viewport sizes, one-shot mouse/keyboard Save,
 Escape/outside/right-click dismissal, input consumption and observer cleanup.

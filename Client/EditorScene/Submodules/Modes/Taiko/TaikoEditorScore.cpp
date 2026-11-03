@@ -223,51 +223,36 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
     const float pixelsPerWholeNote =
         normalHeadRadius * 2.0F * 16.0F * .85F * static_cast<float>(state.Score().realtimeZoom);
     const auto currentTime = Microseconds(state.TimeMilliseconds());
-    const auto xAtTime = [currentTime, pixelsPerWholeNote, &document = state.Document(),
-                          baseBpm = timeline.BaseBpm()](const auto timing, const double speed)
+    const long double pixelsPerMicrosecond = timeline.BaseBpm() / 240'000'000.0L * pixelsPerWholeNote;
+    // The editor's time axis stays uniform across Whole and Separate speed effects.
+    const auto xAtTime = [currentTime, pixelsPerMicrosecond](const RhythmTime timing)
     {
-        return 230.0F + static_cast<float>(document.ScrollDistance(timing, currentTime)) *
-                            static_cast<float>(baseBpm / 240'000'000.0) * pixelsPerWholeNote *
-                            static_cast<float>(speed);
+        const long double elapsed = static_cast<long double>(timing.count()) - currentTime.count();
+        return 230.0F + static_cast<float>(elapsed * pixelsPerMicrosecond);
     };
     if (const auto &range = state.NoteSelectionRange(); range)
     {
-        const float first = xAtTime(timeline.Compile(range->first), 1);
-        const float last = xAtTime(timeline.Compile(range->second), 1);
+        const float first = xAtTime(timeline.Compile(range->first));
+        const float last = xAtTime(timeline.Compile(range->second));
         const float left = std::clamp(std::min(first, last), RealtimeLane.x, RealtimeLane.x + RealtimeLane.width);
         const float right = std::clamp(std::max(first, last), RealtimeLane.x, RealtimeLane.x + RealtimeLane.width);
         canvas.Box({left, RealtimeLane.y, std::max(2.0F, right - left), RealtimeLane.height}, {.2F, .5F, 1, .18F});
     }
     const auto currentMeasure = MeasureNearTime(timeline, state.TimeMilliseconds());
     const auto gridBegin = std::max<std::int64_t>(0, currentMeasure - 1);
-    const long double pixelsPerMicrosecond = timeline.BaseBpm() / 240'000'000.0L * pixelsPerWholeNote;
-    const auto minimumSpeed = state.Document().MinimumScrollMultiplier();
-    const bool customGridSpeed = std::ranges::any_of(state.Document().Effects().commands,
-                                                     [&timeline](const auto &command)
-                                                     {
-                                                         return timeline.IsEffectActive(command) &&
-                                                                command.type == EffectCommandType::NoteSpeed &&
-                                                                command.curve == AutomationCurve::Expression;
-                                                     });
     const auto visibleBegin =
-        BoundedTime(currentTime.count() + (RealtimeLane.x - 230.0L - 110) / (pixelsPerMicrosecond * minimumSpeed));
+        BoundedTime(currentTime.count() + (RealtimeLane.x - 230.0L - 110) / pixelsPerMicrosecond);
     const auto visibleEnd = BoundedTime(currentTime.count() + (RealtimeLane.x + RealtimeLane.width - 230.0L + 110) /
-                                                                  (pixelsPerMicrosecond * minimumSpeed));
+                                                                  pixelsPerMicrosecond);
     // Drawing and input share the same visible snap positions.
     for (std::int64_t m = gridBegin; m < std::min(currentMeasure + 32, MaximumMeasureCount); ++m)
     {
         const int count = static_cast<int>(
             std::min(4096.0L, std::ceil(timeline.MeasureLength(m).Value() * subdivisionsPerWholeNote)));
-        // Arbitrary expressions can dip below both endpoints between authored
-        // notes. Keep the bounded grid traversal and clip by its actual X.
-        if (!customGridSpeed)
-        {
-            const auto span = timeline.MeasureSpan(m);
-            if (span.end < visibleBegin || span.begin > visibleEnd)
-                continue;
-        }
         const auto span = timeline.MeasureSpan(m);
-        const float barX = xAtTime(span.begin, 1);
+        if (span.end < visibleBegin || span.begin > visibleEnd)
+            continue;
+        const float barX = xAtTime(span.begin);
         if (span.end > span.begin && barX >= RealtimeLane.x && barX <= RealtimeLane.x + RealtimeLane.width &&
             state.Document().EffectValueAt(EffectCommandType::MeasureLineVisible, span.sourceBegin) >= .5)
             canvas.Box({barX, 361, measureWidth, 202}, White);
@@ -277,8 +262,7 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
             MusicalPosition p{m, {i, subdivisionsPerWholeNote}};
             if (!timeline.IsPositionActive(p))
                 continue;
-            const auto speed = state.Document().EffectValueAt(EffectCommandType::NoteSpeed, p);
-            const float x = xAtTime(timeline.Compile(p), speed);
+            const float x = xAtTime(timeline.Compile(p));
             if (x < RealtimeLane.x || x > RealtimeLane.x + RealtimeLane.width)
                 continue;
             if (std::abs(x - lastDrawnX) >= tickWidth)
@@ -289,9 +273,7 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
             realtimeGrid_.push_back({x, p});
         }
     }
-    // A linked tail uses its head's speed so the whole interval stays aligned.
     std::optional<float> headX;
-    double headSpeed = 1;
     std::optional<PatternNote> realtimeHead;
     const auto visibleNotes = PlayableInSourceOrder(
         state.Document().NotesInTimeRange(visibleBegin, visibleEnd));
@@ -299,13 +281,11 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
     std::vector<std::pair<const CompiledPatternNote *, float>> heads;
     for (const auto &n : visibleNotes)
     {
-        const auto speed = n.note.actionType == 2 && headX ? headSpeed : n.scrollMultiplier;
-        const float x = xAtTime(n.timing, speed);
+        const float x = xAtTime(n.timing);
         if (n.note.actionType == 1 && !headX)
         {
             headX = x;
             realtimeHead = n.note;
-            headSpeed = n.scrollMultiplier;
         }
         if (n.note.actionType == 2 && headX && realtimeHead->keyType == n.note.keyType)
         {
@@ -342,7 +322,7 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
     {
         if (t.type != TimingDirectiveType::Bpm || !timeline.IsPositionActive(t.position))
             continue;
-        const float x = xAtTime(timeline.Compile(t.position), 1.0);
+        const float x = xAtTime(timeline.Compile(t.position));
         if (x >= 164 && x <= 1360)
             canvas.Text({x, 320, 140, 28},
                         std::wstring(catalog.Get("Editor.bpm")) + L" " + std::to_wstring(static_cast<int>(t.value)), 18,

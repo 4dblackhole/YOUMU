@@ -254,6 +254,9 @@ Retry는 방금 플레이한 옵션/시드를 다시 사용합니다. 원본 YMM
 - 실패한 배치/수정/저장은 원본·ID·dirty·Undo/Redo를 보존합니다. 두 파일 staging/backup/
   설치 전에 YMP/YME/tmp/bak 경로의 정규화·대소문자·hardlink 별칭을 검사합니다.
 - 빈/미지원 모드를 Taiko로 대신 열지 않습니다. 모드 context와 분석의 읽기 전용 계약을 분리합니다.
+- 실시간 뷰는 컴파일 시각 차이를 Base BPM·시간축 줌으로 환산한 등속 시간축입니다.
+  YME Whole·Separate 속도 효과를 노트·롱노트·마디선·그리드·선택·스냅에 적용하지 않습니다.
+  같은 시간 차이는 BPM 변화 구간에서도 같은 거리입니다. 원본 효과는 보존하며 플레이에서 적용합니다.
 
 상세: [ChartEditor](ChartEditor.md). 검증: ChartEditorTests, ChartReviewRegressionTests, EditorModeTests.
 
