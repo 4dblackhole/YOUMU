@@ -39,6 +39,7 @@ void GameplayPresenter::CreatePresentation()
     errorText.SetHorizontalAlignment(TextAlignment::Center);
 
     progressView_.Initialize(screenVisuals_, root, *session_, texts_);
+    hpView_.Initialize(root);
 
     const auto accuracyImage = screenVisuals_.RegisterImage(InGameSkinAssetPath(L"AccuracyIndicator"));
     const auto accuracySize = ScaledImageSize(screenVisuals_, accuracyImage);
@@ -221,6 +222,7 @@ void GameplayPresenter::UpdatePresentationLayout()
     progressView_.SetLayout(
         {-logicalWidth * 0.5F + GearMargin, -CanvasReferenceHeight * 0.5F + 16.0F,
          std::max(logicalWidth - GearMargin * 2.0F, 1.0F), progressView_.Height()});
+    hpView_.SetLayout(logicalWidth);
     if (accuracyIndicator_ != nullptr)
     {
         const auto bounds = accuracyIndicator_->Bounds();

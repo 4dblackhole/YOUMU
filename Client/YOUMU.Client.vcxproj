@@ -325,4 +325,8 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectRecords.cpp" />
     <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultOptions.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.h" />
+    <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.cpp" />
+  </ItemGroup>
 </Project>

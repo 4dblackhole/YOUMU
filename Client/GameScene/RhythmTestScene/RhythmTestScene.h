@@ -35,6 +35,7 @@ class RhythmTestScene final : public GameScene
     void PrepareLoadingBackground();
     void UpdateLoadingBackgroundLayout();
     std::unique_ptr<IPlayResult> &pendingResult_;
+    std::vector<std::unique_ptr<IHpGauge>> hpGauges_;
     std::unique_ptr<IPlaySessionController> controller_;
     std::unique_ptr<GameplayPresenter> view_;
     std::unique_ptr<GameplayPauseMenu> pauseMenu_;

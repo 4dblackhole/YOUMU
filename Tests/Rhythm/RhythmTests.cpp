@@ -35,6 +35,13 @@ int main(const int argumentCount, char *arguments[])
         std::function<void()> run;
     };
     std::vector<TestCase> tests{
+        {"TestHpFormat", TestHpFormat},
+        {"TestHpTimingRecovery", TestHpTimingRecovery},
+        {"TestHpCompositeSettlements", TestHpCompositeSettlements},
+        {"TestHpSessionReplayAndClear", TestHpSessionReplayAndClear},
+        {"TestHpLongRuntime", TestHpLongRuntime},
+        {"TestEmptyHpEligibility", TestEmptyHpEligibility},
+
         {"TestAcceleratedClockAndWindows", TestAcceleratedClockAndWindows},
         {"TestTaikoPlayOptions", TestTaikoPlayOptions},
         {"TestPersistentRecordConditions", TestPersistentRecordConditions},

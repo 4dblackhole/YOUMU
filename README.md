@@ -50,7 +50,7 @@ Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Verificatio
   32단계 Undo/Redo, 고해상도 파형·비동기 스펙트로그램과 미리듣기를 제공합니다.
   [새 난이도·osu 가져오기](Docs/EditorSongSelect.md)도 곡 선택에서 시작합니다.
 - [결과](Docs/Gameplay/Results.md)는 정확도·랭크·판정 통계·오차 그래프·옵션을 표시합니다.
-  HP는 설계만 있으며 SCORE 계산·리플레이 재생은 미구현입니다.
+  [기본 HP 게이지](Docs/Formats/Ymp.md#hp-게이지)는 구현되어 있으며 SCORE 계산·리플레이 재생은 미구현입니다.
 
 ## 설정과 자산
 

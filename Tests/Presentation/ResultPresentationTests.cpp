@@ -24,7 +24,10 @@ namespace
     void Check(bool condition, const char *message)
     {
         if (!condition)
+        {
+            std::fprintf(stderr, "CHECK FAILED: %s\n", message);
             throw std::runtime_error(message);
+        }
     }
     class NullRenderer final : public Visual2DRenderSystem
     {
@@ -510,10 +513,14 @@ namespace
                 Check(summary.endReason == PlayEndReason::Completed && summary.processedNotes == 1 &&
                           summary.unprocessedNotes == 0 && context.totalSeconds >= 4.9,
                       "All notes must finalize before the three-second Result delay.");
+                Check(summary.hpGauges.size() == 1 && summary.hpGauges.front().applicable &&
+                          summary.hpGauges.front().percent == 0 && !summary.IsCleared(),
+                      "An automatic MISS must transfer its final HP and fail the clear gate.");
                 Check(resultCreations_ == 1 && !pending_ && ScreenVisuals().CanvasCount() == 1 &&
                           !ScreenVisuals().FindCanvas(1),
                       "The moved result must survive gameplay Scene/Canvas destruction.");
-                auto *canvas = ScreenVisuals().FindCanvas(2);
+                // The first attempt owns loading Canvas 1 and gameplay Canvas 2.
+                auto *canvas = ScreenVisuals().FindCanvas(3);
                 if (!canvas)
                     throw std::runtime_error("The production Result Canvas must be active.");
                 const auto *retry = FindNode(canvas->Root(), "Result.Retry");
@@ -536,12 +543,16 @@ namespace
             else if (Scenes().CurrentSceneId() == RhythmTestSceneId && retryRequested_ &&
                      !returnRequested_)
             {
-                Check(sessionCreations_ == 2 && resultCreations_ == 1 && !pending_ && !ScreenVisuals().FindCanvas(2),
+                Check(sessionCreations_ == 2 && resultCreations_ == 1 && !pending_ && !ScreenVisuals().FindCanvas(3),
                       "Retry must construct a fresh session and destroy the old Result Canvas.");
                 // Gameplay creates its Canvas only after asynchronous resources
                 // are ready. Scene entry alone is not presentation readiness.
-                if (ScreenVisuals().CanvasCount() == 0) return;
-                Check(ScreenVisuals().CanvasCount() == 1, "Retry publishes exactly one prepared gameplay Canvas.");
+                // Retry owns loading Canvas 4 while asynchronously preparing 5.
+                auto *gameplay = ScreenVisuals().FindCanvas(5);
+                if (!gameplay) return;
+                Check(ScreenVisuals().CanvasCount() == 2 && FindNode(gameplay->Root(), "Hud.HP.Fill") &&
+                          !FindNode(gameplay->Root(), "Hud.HP.Fill")->IsVisible(),
+                      "Retry owns loading/gameplay Canvases and starts the fresh HP fill at zero.");
                 Check(Scenes().ChangeScene(LobbySceneId), "Queue returning after retry.");
                 returnRequested_ = true;
             }

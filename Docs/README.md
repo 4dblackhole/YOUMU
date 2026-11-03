@@ -28,7 +28,7 @@
 | 로고·타이틀 | [YOUMU](YOUMU.md) |
 | Canvas·PNG·입력·Z-order | [Visual2DGuide](Visual2DGuide.md) |
 | Penpot 페이지·보드·자산 제작 | [DesignReferences](DesignReferences.md) |
-| HP 설계(미구현) | [YMP](Formats/Ymp.md#hp-게이지-설계-미구현) |
+| 기본 HP 게이지·HP 필드 | [YMP](Formats/Ymp.md#hp-게이지) |
 | 공용 미디어·랭크 무결성 제안(미구현) | [RankedContentProposal](RankedContentProposal.md) |
 | 엔진 API/수명 자체 변경 | 엔진 [EngineOverview](../Dependencies/PhantomCore/Docs/EngineOverview.md) |
 

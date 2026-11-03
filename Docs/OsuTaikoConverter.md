@@ -33,7 +33,8 @@ Client 솔루션은 변환기의 Core 정적 라이브러리, 콘솔 EXE, 테스
 
 변환기는 엔진 비종속 Chart/Rhythm 라이브러리와 Taiko의 저장 노트 ID·동작 계약만 재사용합니다.
 도메인 라이브러리가 변환기나 Client 실행 프로젝트를 역참조하지 않습니다.
-기존 YMM/YMP/YME 문법과 플레이 규칙은 그대로 사용합니다. 에디터 곡 카드 +의
+공통 YMP writer를 사용해 `[Difficulty]`의 JudgeLevel 바로 아래 `HP: 9.00`을 출력합니다.
+osu! HPDrainRate는 매핑하지 않으며 JudgeLevel 변환 규칙은 유지합니다. 에디터 곡 카드 +의
 Convert .osu는 Client의 EditorOsuImport가 EXE를 백그라운드에서 실행합니다.
 선택/완료 UI는 [EditorSongSelect](EditorSongSelect.md)가 설명합니다.
 

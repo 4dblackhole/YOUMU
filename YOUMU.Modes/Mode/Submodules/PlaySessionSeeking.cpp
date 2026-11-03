@@ -51,6 +51,7 @@ void PlaySession::RetireRemaining(RhythmTime time)
             if (note->Accuracy().finalized)
                 continue;
             const auto result = note->MarkMissed(time);
+            for (auto *gauge : hpGauges_) gauge->Consume(result, false);
             for (const auto &accuracy : result.finalizedAccuracies)
             {
                 if (resultCollector_)

@@ -4,11 +4,14 @@
 #include "GameScene/RhythmTestScene/RhythmTestScene.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "Taiko/TaikoMode.h"
+#include "Note/Submodules/RuleBasedNote.h"
+#include "Note/Submodules/TapInputRule.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 #include <stdexcept>
 #include <thread>
 
@@ -412,12 +415,14 @@ namespace
         void ResetJudgements() noexcept override
         {
         }
-        std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time) override
+        std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time,
+                                              std::vector<HpGaugeState> hp = {}) override
         {
             auto result = std::make_unique<ProbeResult>();
             result->summary = summary_;
             result->summary.endReason = reason;
             result->summary.endTime = time;
+            result->summary.hpGauges = std::move(hp);
             return result;
         }
 
@@ -448,7 +453,8 @@ namespace
             auto session = std::make_unique<PlaySession>();
             session->SetInputLayout(InputLayout());
             session->SetTimeline(MusicalTimeline(pattern));
-            session->Gear().CreateLane();
+            session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
+                1, RhythmTime{}, std::make_shared<const AccuracyRange>(), std::make_unique<TapInputRule>(1)));
             session->Gear().Finalize();
             session->SetResultCollector(std::make_unique<ProbeCollector>());
             return {std::move(session), {}};
@@ -1176,6 +1182,35 @@ namespace
         audio.RetireClip(std::move(pending));
         audio.Shutdown();
     }
+    void TestEmptyGameplayEntry()
+    {
+        PatternDocument pattern;
+        pattern.mode = "Taiko";
+        auto created = TaikoMode{}.CreateSession(pattern);
+        AudioPlaybackManager playback;
+        GameplaySessionController controller({}, playback, false, std::move(created.session));
+        bool rejected = false;
+        try { controller.InitializeSession(); }
+        catch (const std::runtime_error &) { rejected = true; }
+        Check(rejected, "Prepared empty sessions cannot enter gameplay.");
+
+        const auto file = std::filesystem::temp_directory_path() /
+            ("youmu-empty-entry-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".ymp");
+        struct Cleanup
+        {
+            std::filesystem::path path;
+            ~Cleanup() { std::error_code ignored; std::filesystem::remove(path, ignored); }
+        } cleanup{file};
+        { std::ofstream out(file); out << "[Difficulty]\nMode: Taiko\nJudgeLevel: 50\nHP: 9\n[Pattern]\n"; }
+        PlaySessionLoader loader;
+        loader.Start({file, {}, "unused.mp3", "Taiko"});
+        std::optional<ModeLoadResult> loaded;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        while (!(loaded = loader.Poll()) && std::chrono::steady_clock::now() < deadline)
+            std::this_thread::sleep_for(std::chrono::milliseconds{1});
+        Check(loaded && !loaded->Succeeded() && !loaded->diagnostics.empty() && !loaded->session,
+              "The normal song-selection loader reports an empty-chart error before scene entry.");
+    }
 } // namespace
 int main(int argc, char **argv)
 {
@@ -1192,6 +1227,7 @@ int main(int argc, char **argv)
             return 0;
         }
         TestMenu();
+        TestEmptyGameplayEntry();
         TestActualMusicSeek();
         bool verified{};
         Check(Run(std::make_unique<PauseClient>(verified)) == 0 && verified,

@@ -2,6 +2,7 @@
 #include "GameFlow/GameplayFeedback.h"
 #include "GameplayJudgementView.h"
 #include "GameplayProgressView.h"
+#include "GameplayHpView.h"
 #include "PhantomCore.h"
 #include "Mode/PlayGameMode.h"
 #include "Presentation/LaneKeyBeam.h"
@@ -40,6 +41,7 @@ class GameplayPresenter final
     void ApplyFeedback(const GameplayFeedback &feedback);
     void PresentErrorMessage(const std::string_view message);
     void UpdatePresentation(const RhythmTime time);
+    void UpdateHp(double percent) { hpView_.Update(percent); }
     [[nodiscard]] RhythmTime InitialTimelineTime() const;
     void UpdateInputPresentation(const InputState &input, const double deltaSeconds);
 
@@ -135,6 +137,7 @@ class GameplayPresenter final
     LaneKeyBeam keyBeam_;
     GameplayJudgementView judgementView_;
     GameplayProgressView progressView_;
+    GameplayHpView hpView_;
     std::unordered_map<NoteId, NoteVisualLayers> noteVisuals_;
     std::unordered_map<NoteId, const INote *> noteModels_;
     std::map<std::wstring, ImageHandle, std::less<>> noteImages_;

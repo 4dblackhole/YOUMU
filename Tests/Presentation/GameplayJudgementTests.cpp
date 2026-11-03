@@ -809,6 +809,34 @@ namespace
               "Surviving processed ticks must disappear after overwritten ticks have been excluded.");
         presenter.Shutdown();
     }
+    void TestHpRectangles()
+    {
+        Visual2DCanvas canvas;
+        const auto baseline = NodeCount(canvas.Root());
+        GameplayHpView view;
+        view.Initialize(canvas.Root());
+        view.SetLayout(1280);
+        auto &track = Node(canvas.Root(), "Hud.HP.Track");
+        auto &fill = Node(canvas.Root(), "Hud.HP.Fill");
+        Check(NodeCount(canvas.Root()) == baseline + 2 && track.Children().size() == 1,
+              "HP consists only of a track and fill.");
+        Check(Near(track.Bounds().x, -486) && Near(track.Bounds().y, 179.333333F) &&
+                  Near(track.Bounds().width, 413.333333F) && Near(track.Bounds().height, 13.333333F),
+              "HP must match the latest Penpot placement at 1280x720.");
+        Check(!fill.IsVisible(), "Starting HP is zero.");
+        const auto nodes = NodeCount(canvas.Root());
+        for (const auto percent : {30.0, 60.0, 100.0, 0.0})
+        {
+            view.Update(percent);
+            Check(Near(fill.Bounds().width, track.Bounds().width * static_cast<float>(percent / 100)),
+                  "The HP fill reflects the live gauge value.");
+        }
+        view.Update(60);
+        view.SetLayout(800);
+        Check(Near(fill.Bounds().width, track.Bounds().width * .6F) && NodeCount(canvas.Root()) == nodes,
+              "Resizing preserves HP without allocating new nodes.");
+        view.Shutdown();
+    }
 } // namespace
 
 int main()
@@ -819,6 +847,7 @@ int main()
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestGuideAndOverlays();
         TestGameplayProgress();
+        TestHpRectangles();
         TestSlowNotesDoNotExpandAllVisuals();
         TestMeasureLinesShareNoteMotion();
         TestCountOnlyHeadsAndCounters();

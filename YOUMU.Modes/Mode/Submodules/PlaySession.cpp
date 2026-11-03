@@ -17,6 +17,20 @@ const ScrollGear &PlaySession::Gear() const noexcept
     return gear_;
 }
 
+std::size_t PlaySession::PlayableNoteCount() const noexcept
+{
+    std::size_t count = 0;
+    for (const auto &lane : gear_.Lanes()) count += lane->Notes().size();
+    return count;
+}
+
+void PlaySession::SetHpGauges(std::span<IHpGauge *const> gauges)
+{
+    for (const auto *gauge : gauges)
+        if (!gauge) throw std::invalid_argument("A borrowed HP gauge cannot be null.");
+    hpGauges_.assign(gauges.begin(), gauges.end());
+}
+
 void PlaySession::SetTimeline(MusicalTimeline timeline)
 {
     timeline_.emplace(std::move(timeline));
@@ -307,6 +321,7 @@ void PlaySession::Reset() noexcept
 }
 void PlaySession::ResetNoteState() noexcept
 {
+    for (auto *gauge : hpGauges_) gauge->Reset();
     gear_.Reset();
     heldPhysicalKeys_.clear();
     heldActions_.clear();
@@ -327,6 +342,7 @@ bool PlaySession::IsKiaiActive(RhythmTime time) const
 
 void PlaySession::AccumulateAccuracy(const NoteProcessResult &result, bool keyPressed)
 {
+    for (auto *gauge : hpGauges_) gauge->Consume(result, keyPressed);
     if (resultCollector_) resultCollector_->Consume(result, keyPressed);
     for (const NoteAccuracy &accuracy : result.finalizedAccuracies)
     {
@@ -358,7 +374,10 @@ void PlaySession::SetResultInitialTime(RhythmTime time) noexcept
 std::unique_ptr<IPlayResult> PlaySession::TakeResult(PlayEndReason reason, RhythmTime time)
 {
     if (!resultCollector_) throw std::logic_error("The mode has no result collector.");
-    return resultCollector_->TakeResult(reason, time);
+    std::vector<HpGaugeState> hp;
+    hp.reserve(hpGauges_.size());
+    for (const auto *gauge : hpGauges_) hp.push_back(gauge->State());
+    return resultCollector_->TakeResult(reason, time, std::move(hp));
 }
 
 const std::optional<NoteAccuracy> &PlaySession::LastNoteAccuracy() const noexcept

@@ -48,4 +48,11 @@
   <ItemGroup>
     <ClInclude Include="Judgement\JudgeLevel.h"><Filter>Judgement</Filter></ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Gauge" />
+    <ClInclude Include="Gauge\IHpGauge.h"><Filter>Gauge</Filter></ClInclude>
+    <ClInclude Include="Gauge\BasicHpGauge.h"><Filter>Gauge</Filter></ClInclude>
+    <ClCompile Include="Gauge\BasicHpGauge.cpp"><Filter>Gauge</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup><ClInclude Include="Gauge\HpLevel.h"><Filter>Gauge</Filter></ClInclude></ItemGroup>
 </Project>

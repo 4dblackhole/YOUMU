@@ -16,7 +16,8 @@ class TaikoResultCollector final : public IPlayResultCollector
     void SetInitialTime(RhythmTime time) noexcept override;
     void Reset() noexcept override;
     void ResetJudgements() noexcept override;
-    std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time) override;
+    std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time,
+                                          std::vector<HpGaugeState> hp = {}) override;
 
   private:
     void ConsumeEvent(const NoteEvent &event, bool keyPressed);

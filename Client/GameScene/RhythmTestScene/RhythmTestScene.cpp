@@ -3,6 +3,7 @@
 #include "GameFlow/GameplaySessionController.h"
 #include "Submodules/GameplayPauseMenu.h"
 #include "Submodules/GameplayPresenter.h"
+#include "Gauge/BasicHpGauge.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -104,6 +105,18 @@ bool RhythmTestScene::PreparePresentation()
     if (!images || audio == AudioPreparationState::Loading)
         return false;
     view_->Initialize(*services_, controller_->Session());
+    const auto &session = controller_->Session();
+    std::vector<HpNoteDefinition> hpNotes;
+    hpNotes.reserve(session.PlayableNoteCount());
+    for (const auto &lane : session.Gear().Lanes())
+        for (const auto &note : lane->Notes())
+            hpNotes.push_back({note->Id(), note->Accuracy().target,
+                note->Profile().HalfWindow(JudgementGrade::Perfect),
+                note->Profile().HalfWindow(JudgementGrade::Great)});
+    hpGauges_.push_back(std::make_unique<BasicHpGauge>(session.HealthLevel(), hpNotes));
+    std::vector<IHpGauge *> borrowedGauges;
+    for (const auto &gauge : hpGauges_) borrowedGauges.push_back(gauge.get());
+    controller_->SetHpGauges(borrowedGauges);
     controller_->Start(*services_, view_->InitialTimelineTime());
     view_->PresentErrorMessage(controller_->ErrorMessage());
     view_->SetVisible(false);
@@ -188,7 +201,10 @@ void RhythmTestScene::ShowResult(SceneManager &scenes)
 void RhythmTestScene::Render(const RenderContext &)
 {
     if (presentationReady_)
+    {
+        view_->UpdateHp(hpGauges_.front()->State().percent);
         view_->UpdatePresentation(controller_->Time());
+    }
 }
 void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
 {
@@ -210,6 +226,7 @@ void RhythmTestScene::Shutdown() noexcept
     loadingBackgroundReady_ = false;
     view_->Shutdown(); // Release session observers before the session.
     controller_->Shutdown();
+    hpGauges_.clear();
     services_.reset();
     presentationReady_ = false;
     nextPreparationPoll_ = 0;

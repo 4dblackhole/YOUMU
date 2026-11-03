@@ -163,6 +163,15 @@ ParseResult<PatternDocument> ChartParser::ParsePattern(const std::string_view ut
             else
                 result.document.judgementLevel = level;
         }
+        else if (key == "HP")
+        {
+            double level{};
+            if (!ParseDouble(value, level) || !HpLevel::IsValid(level))
+                AddDiagnostic(result.diagnostics, sourcePath, lineNumber,
+                              "HP must be 1.00..100.00 in steps of 0.01.");
+            else
+                result.document.hpLevel = level;
+        }
         else if (key == "Tags")
         {
             for (const std::string_view tag : Split(value, ','))

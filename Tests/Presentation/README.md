@@ -33,6 +33,10 @@ the latest Songs root, discard obsolete results and handle switching back mid-lo
 
 ## Gameplay judgement guide and overlays
 
+HP 회귀는 GameplayJudgementTests의 두 사각형·0/30/60/100%·크기 변경과
+GameplayPauseTests의 유효 노트가 없는 채보 진입 차단을 포함합니다.
+수치·롱노트·POOR·되감기·종료 판정과 포맷/기본값 검사는 Rhythm의 HpGaugeTests가 담당합니다.
+
 After a solution build, run in an x64 Visual Studio developer PowerShell with
 `FMOD_ROOT` set to the installed SDK:
 

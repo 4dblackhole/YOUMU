@@ -36,6 +36,7 @@ class IPlaySessionController
     virtual bool PauseMenuOpen() const noexcept = 0;
     virtual bool CanContinue() const noexcept = 0;
     virtual const PlaySession &Session() const = 0;
+    virtual void SetHpGauges(std::span<IHpGauge *const> gauges) = 0;
     virtual RhythmTime Time() const noexcept = 0;
     virtual std::span<const GameplayFeedback> Feedback() const noexcept = 0;
     virtual std::string_view ErrorMessage() const noexcept = 0;

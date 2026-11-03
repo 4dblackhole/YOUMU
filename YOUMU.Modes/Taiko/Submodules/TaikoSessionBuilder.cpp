@@ -39,6 +39,7 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     const auto judgeLevel = options.play.judgeLevel.value_or(pattern.judgementLevel);
     TaikoNoteTransform transform(options.play);
     auto session = std::make_unique<PlaySession>();
+    session->SetHpLevel(pattern.hpLevel);
     session->SetPlayOptions(options.play, pattern.baseBpm);
     Lane &lane = session->Gear().CreateLane();
     auto defaultRange = std::make_shared<const AccuracyRange>("Taiko.Default", judgeLevel);

@@ -32,6 +32,8 @@ void GameplaySessionController::InitializeSession()
     PrepareDebugLaunchRequest();
     if (!session_)
         session_ = CreateSession();
+    if (!session_->CanEnterGameplay())
+        throw std::runtime_error("A chart with no playable notes is available only in editor preview/test.");
     heldKeys_.reserve(session_->InputMapping().size());
     time_ = initialTime_;
     sessionInitialized_ = true;

@@ -3,6 +3,13 @@
 
 namespace tests
 {
+    void TestHpFormat();
+    void TestHpTimingRecovery();
+    void TestHpCompositeSettlements();
+    void TestHpSessionReplayAndClear();
+    void TestHpLongRuntime();
+    void TestEmptyHpEligibility();
+
     void TestAcceleratedClockAndWindows();
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();

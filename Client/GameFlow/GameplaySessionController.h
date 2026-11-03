@@ -49,6 +49,7 @@ class GameplaySessionController final : public IPlaySessionController
     {
         return *session_;
     }
+    void SetHpGauges(std::span<IHpGauge *const> gauges) override { session_->SetHpGauges(gauges); }
     RhythmTime Time() const noexcept override
     {
         return time_;

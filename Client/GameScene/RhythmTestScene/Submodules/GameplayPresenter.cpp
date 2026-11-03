@@ -82,6 +82,7 @@ void GameplayPresenter::Shutdown() noexcept
     keyBeam_.Shutdown();
     judgementView_.Shutdown();
     progressView_.Shutdown();
+    hpView_.Shutdown();
     noteVisuals_.clear();
     noteModels_.clear();
     noteImages_.clear();

@@ -96,9 +96,9 @@ Ready일 때 새 QPC/DSP 기준으로 시작합니다. 파일 로딩 실패도 �
 
 ## HP·리플레이와 기록의 연동 계약
 
-**HP 런타임과 리플레이 재생/파일 저장은 미구현입니다.**
+**기본 HP 런타임은 구현되어 있고 리플레이 재생/파일 저장은 미구현입니다.**
 [SQLite 성적 기록](PlayOptions.md#로컬-기록)은 구현되어 있으며 아래 자격·통계 계약을 따릅니다.
-향후 HP·리플레이도 같은 계약을 연결해야 합니다.
+HP는 Resume 보존, Retry 초기화, Rewind의 이전 작업 재적용을 통해 같은 계약을 따릅니다.
 
 - 메뉴가 한 번이라도 나타나면 해당 시도의 `pauseMenuUsed`는 계속 true입니다.
   마지막까지 처리해 Completed로 끝나도 `PlayResultSummary::IsCleared()`는 false입니다.

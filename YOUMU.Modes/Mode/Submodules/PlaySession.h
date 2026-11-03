@@ -1,5 +1,7 @@
 #pragma once
 #include "Automation/ScrollAutomation.h"
+#include "Gauge/HpLevel.h"
+#include "Gauge/IHpGauge.h"
 #include "Timing/MetronomeBeats.h"
 #include "Mode/ModeInputLayout.h"
 #include "Mode/Results/IPlayResultCollector.h"
@@ -15,6 +17,12 @@ class PlaySession final
     void SetPlayOptions(PlayOptions options, double baseBpm)
     { scrollMultiplier_ = options.ScrollMultiplier(baseBpm); playOptions_ = std::move(options); }
     const PlayOptions &Options() const noexcept { return playOptions_; }
+    void SetHpLevel(HpLevel level) noexcept { hpLevel_ = level; }
+    HpLevel HealthLevel() const noexcept { return hpLevel_; }
+    std::size_t PlayableNoteCount() const noexcept;
+    // Empty documents remain valid for editor preview, but cannot enter gameplay.
+    bool CanEnterGameplay() const noexcept { return PlayableNoteCount() != 0; }
+    void SetHpGauges(std::span<IHpGauge *const> gauges);
     ScrollGear &Gear() noexcept;
     [[nodiscard]] const ScrollGear &Gear() const noexcept;
     void SetTimeline(MusicalTimeline timeline);
@@ -76,7 +84,7 @@ class PlaySession final
     void RecordControl(PlayControlEvent event);
     bool CanUseHp() const noexcept
     {
-        return !pauseMenuUsed_;
+        return !pauseMenuUsed_ && PlayableNoteCount() != 0;
     }
     void SetResultCollector(std::unique_ptr<IPlayResultCollector> collector);
     void SetResultInitialTime(RhythmTime time) noexcept;
@@ -106,6 +114,8 @@ class PlaySession final
     double EvaluateTrack(std::size_t effectIndex, std::size_t trackIndex, RhythmTime time) const;
 
     PlayOptions playOptions_;
+    HpLevel hpLevel_;
+    std::vector<IHpGauge *> hpGauges_; // Borrowed from the owning Scene.
     double scrollMultiplier_{1.0};
     ModeInputLayout inputLayout_;
     ScrollGear gear_;

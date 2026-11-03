@@ -23,6 +23,7 @@ namespace
         result.patternOffsetMilliseconds = source.patternOffsetMilliseconds;
         result.baseBpm = source.baseBpm;
         result.judgementLevel = source.judgementLevel;
+        result.hpLevel = source.hpLevel;
         result.systemBreakMeasures = source.systemBreakMeasures;
         return result;
     }

@@ -56,5 +56,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Judgement\JudgeLevel.h" />
+    <ClInclude Include="Gauge\HpLevel.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Gauge\IHpGauge.h" />
+    <ClInclude Include="Gauge\BasicHpGauge.h" />
+    <ClCompile Include="Gauge\BasicHpGauge.cpp" />
   </ItemGroup>
 </Project>

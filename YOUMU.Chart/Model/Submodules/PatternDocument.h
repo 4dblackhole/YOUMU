@@ -1,5 +1,6 @@
 #pragma once
 #include "Judgement/JudgeLevel.h"
+#include "Gauge/HpLevel.h"
 #include "Model/Submodules/ChartTypes.h"
 
 enum class TimingDirectiveType : std::uint8_t
@@ -45,6 +46,7 @@ struct PatternDocument
     double patternOffsetMilliseconds{};
     double baseBpm{120.0};
     JudgeLevel judgementLevel;
+    HpLevel hpLevel;
     std::vector<TimingDirective> timing;
     std::vector<PatternNote> notes;
     // Each entry is the zero-based measure that starts a new notation

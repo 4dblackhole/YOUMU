@@ -110,6 +110,7 @@ namespace
         out.Path(doc.backgroundFile); out.Number(doc.backgroundOffsetX); out.Number(doc.backgroundOffsetY);
         out.Strings(doc.makers); out.Strings(doc.tags); out.Text(doc.name); out.Text(doc.mode);
         out.Number(doc.patternOffsetMilliseconds); out.Number(doc.baseBpm); out.Number(doc.judgementLevel.Value());
+        out.Number(doc.hpLevel.Value());
     }
     void Read(Reader &in, PatternDocument &doc)
     {
@@ -118,6 +119,7 @@ namespace
         doc.makers = in.Strings(); doc.tags = in.Strings(); doc.name = in.Text(); doc.mode = in.Text();
         doc.patternOffsetMilliseconds = in.Number<double>(); doc.baseBpm = in.Number<double>();
         doc.judgementLevel = JudgeLevel{in.Number<double>()};
+        doc.hpLevel = HpLevel{in.Number<double>()};
     }
     // Effect bodies aren't needed by song selection; their parse diagnostics are.
     void Write(Writer &, const EffectDocument &) {}

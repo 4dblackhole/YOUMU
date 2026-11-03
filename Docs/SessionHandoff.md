@@ -21,9 +21,9 @@
 - 지원 모드는 Taiko, 편집 형식은 YMP/YME입니다. 플레이 옵션과 로컬 기록은
   [PlayOptions](Gameplay/PlayOptions.md), Debug 전용 정지·탐색은
   [Debugging](Gameplay/Debugging.md)이 기준입니다.
-- HP 게이지는 사용자의 요청으로 **문서·Penpot 설계만** 유지합니다.
-  [YMP의 HP 설계](Formats/Ymp.md#hp-게이지-설계-미구현)를 런타임 구현이나
-  새 파일 문법으로 해석하지 않습니다.
+- 기본 HP 게이지와 YMP `HP:` 필드는 구현되어 있습니다. 기본값·가중치·빈 채보·
+  세션 수명과 되감기 계약은 [YMP의 HP](Formats/Ymp.md#hp-게이지)를 따릅니다.
+  추가 게이지·HP 그래프·등급 순서는 미정입니다.
 - [랭크 콘텐츠 제안](RankedContentProposal.md)은 미구현 제안입니다.
   결과 SCORE 계산과 리플레이 재생도 미구현이며 실제 제한은
   [Results](Gameplay/Results.md)를 따릅니다. 제안은 추가 구현 지시가 아닙니다.

@@ -14,5 +14,6 @@ class IPlayResultCollector
     virtual void Reset() noexcept = 0;
     // Rewind replaces judgement data but retains the complete replay trace.
     virtual void ResetJudgements() noexcept = 0;
-    virtual std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time) = 0;
+    virtual std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time,
+                                                  std::vector<HpGaugeState> hp = {}) = 0;
 };

@@ -73,7 +73,7 @@
 | EDIT-02 | 공통 탐색·원본 PCM·확대 파형/STFT | [분석](DesignDecisions.md#edit-02-오디오-뷰) |
 | UI-01 | 선곡 정보·키 패널·메뉴·표시 계약 | [화면](DesignDecisions.md#ui-01-화면과-키-설정) |
 | DATA-01 | 결과·영속 기록·조건식·사용자 데이터 | [데이터](DesignDecisions.md#data-01-결과와-기록) |
-| HP-01 | 기본 게이지 수치/가중치, 문서만 유지 | [HP 수치](DesignDecisions.md#hp-01-기본-hp-설계) |
+| HP-01 | 기본 게이지 수치/가중치·체력 레벨 | [HP 수치](DesignDecisions.md#hp-01-기본-hp-설계) |
 | HP-02 | 게이지 인터페이스/씬 소유 방향과 미정점 | [HP 구조](DesignDecisions.md#hp-02-hp-구조와-미정점) |
 | PLAN-01 | 제안·미구현 기능을 확정 기능과 구분 | [미구현](DesignDecisions.md#plan-01-제안과-미구현-범위) |
 

@@ -2,6 +2,8 @@
 
 #include "Judgement/AccuracyScore.h"
 #include "Judgement/JudgeLevel.h"
+#include "Gauge/IHpGauge.h"
+#include <algorithm>
 #include "Mode/PlayOptions.h"
 #include "Mode/Results/PlayControlEvent.h"
 #include "Note/Submodules/NoteTypes.h"
@@ -37,14 +39,15 @@ struct PlayResultSummary
     std::vector<PlayControlEvent> controls;
     RhythmDuration globalOffset{}; // Reproduce the compiled timing in a future replay.
     bool pauseMenuUsed{};
-    // Future HP/record systems must use these gates, not completion alone.
+    std::vector<HpGaugeState> hpGauges;
     bool CanUseHp() const noexcept
     {
-        return !pauseMenuUsed;
+        return !pauseMenuUsed && totalNotes != 0;
     }
     bool IsCleared() const noexcept
     {
-        return endReason == PlayEndReason::Completed && !pauseMenuUsed;
+        return endReason == PlayEndReason::Completed && CanUseHp() &&
+            std::ranges::any_of(hpGauges, [](const auto &hp) { return hp.applicable && hp.passed; });
     }
 };
 

@@ -49,4 +49,7 @@
   <ItemGroup>
     <ClCompile Include="Submodules\PlayOptionsTests.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Submodules\HpGaugeTests.cpp" />
+  </ItemGroup>
 </Project>
