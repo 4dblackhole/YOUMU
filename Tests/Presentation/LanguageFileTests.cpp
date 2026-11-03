@@ -51,6 +51,8 @@ namespace
         Check(Logo(empty).menu[0] == L"Game Start" && Editor(empty).save == L"SAVE" &&
                   MusicSelect(empty).sortModes[3] == L"BASE BPM",
               "Missing Korean and English files must use built-in English for every screen.");
+        Check(empty.Get("MusicSelect.hpLevelLabel") == L"HP level",
+              "Older language packs must retain an English fallback for the HP label.");
         Write(directory / "en.ini", "[Logo]\nOptions=Preferences\n");
         Write(directory / "ko.ini", "[Logo]\nStart=\"직접 시작\"\nExit=\"\"\n"
                                     "[Result]\npercent=\"{:d}%\"\nnoteCounts=\"Pending {2} / total {0} / done {1}\"\n"

@@ -185,7 +185,7 @@ class MusicSelectView final
     Visual2DNode *selectedPatternLabel_{};
     Visual2DNode *selectedCreatorLabel_{};
     Visual2DNode *selectedDetailsLabel_{};
-    std::array<Visual2DNode *, 3> extraDetailsLabels_{};
+    std::array<Visual2DNode *, 4> extraDetailsLabels_{};
     Visual2DNode *modeSelector_{};
     NodeId modeSelectorId_{};
     Visual2DNode *optionButton_{};

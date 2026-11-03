@@ -276,6 +276,69 @@ namespace
             clickable.Shutdown();
         }
     }
+    void TestHpInformation()
+    {
+        for (const auto purpose : {SongSelectPurpose::Gameplay, SongSelectPurpose::Editor})
+        {
+            Renderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1280, 720});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            OptionSettings options("build/hp-information-unused.ini");
+            SongSelectionState selection;
+            SongCatalogEntry song;
+            song.music.names = {"HP information"};
+            song.patterns.resize(2);
+            song.patterns[0].pattern.hpLevel = HpLevel{17.25};
+            selection.catalog_.songs.push_back(std::move(song));
+            MusicSelectView view(visuals, selection, purpose, texts, options);
+            view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("HP information Canvas missing.");
+            auto *hp = Find(canvas->Root(), "ExtraDetails1");
+            if (!hp) throw std::runtime_error("HP information label missing.");
+            auto *value = hp->GetComponent<TextVisualComponent>();
+            if (!value) throw std::runtime_error("HP information text missing.");
+            Check(value->Text() == L"HP 난이도  17.25", "Song details show the selected pattern's exact HP level.");
+            selection.SelectPattern(1);
+            view.RefreshSelectionPresentation();
+            Check(value->Text() == L"HP 난이도  9.00", "Unspecified HP displays the existing 9.00 default.");
+            texts.SetLanguage(Language::English);
+            InputState input;
+            static_cast<void>(view.Update(input, 0));
+            Check(value->Text() == L"HP level  9.00", "Language switching refreshes HP without changing its value.");
+            auto *panel = Find(canvas->Root(), "DifficultyInformation");
+            if (!panel) throw std::runtime_error("Pattern information panel missing.");
+            for (const auto width : {900U, 1280U, 1920U})
+            {
+                visuals.OnResize(width, 720);
+                view.OnResize(width, 720);
+                const auto bounds = panel->BoundsInCanvas();
+                float previousBottom = bounds.y + bounds.height;
+                for (std::size_t i = 0; i < 4; ++i)
+                {
+                    auto *row = Find(canvas->Root(), "ExtraDetails" + std::to_string(i));
+                    if (!row) throw std::runtime_error("Pattern information row missing.");
+                    const auto actual = row->BoundsInCanvas();
+                    Check(actual.x >= bounds.x && actual.x + actual.width <= bounds.x + bounds.width + .01F &&
+                              actual.y >= bounds.y && actual.y + actual.height <= previousBottom + .01F,
+                          "All four information rows fit inside the responsive panel without overlap.");
+                    previousBottom = actual.y;
+                }
+            }
+            selection.catalog_.songs[0].patterns.clear();
+            view.RebuildVisibleSongs();
+            Check(value->Text().empty(), "A song without a pattern clears HP instead of showing a default chart.");
+            selection.catalog_.songs.clear();
+            view.RebuildVisibleSongs();
+            Check(value->Text().empty(), "An empty catalog clears the former HP information.");
+            view.Shutdown();
+            Check(visuals.CanvasCount() == 0, "HP information releases its Canvas.");
+        }
+    }
     void TestBackgroundPreview()
     {
         Renderer renderer;
@@ -310,8 +373,9 @@ namespace
             return node->GetComponent<TextVisualComponent>()->Text();
         };
         Check(detail("ExtraDetails0") == L"JudgeLevel  40.37" &&
-              detail("ExtraDetails1") == L"BPM range  120 – 180" &&
-              detail("ExtraDetails2") == L"Length  2:05", "Selected pattern details use real data.");
+              detail("ExtraDetails1") == L"HP level  9.00" &&
+              detail("ExtraDetails2") == L"BPM range  120 – 180" &&
+              detail("ExtraDetails3") == L"Length  2:05", "Selected pattern details use real data.");
         const auto *keyPanel = Find(canvas->Root(), "Options.Taiko.Keys");
         const auto *keyBackground = Find(canvas->Root(), "Options.Taiko.KeyLayout");
         if (!keyPanel || !keyBackground)
@@ -559,6 +623,7 @@ int main()
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestBaseBpmSortView();
+        TestHpInformation();
         TestRecordHistoryView();
         TestBackgroundPreview();
         SongCatalogLoader loader;

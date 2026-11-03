@@ -263,6 +263,8 @@ void MusicSelectView::RefreshSelectionPresentation()
     }
     const std::array values{std::format(L"{}  {:.2f}", texts_.Get("MusicSelect.judgeLevelLabel"),
                                         selected.pattern.judgementLevel.Value()),
+                            std::format(L"{}  {:.2f}", texts_.Get("MusicSelect.hpLevelLabel"),
+                                        selected.pattern.hpLevel.Value()),
                             std::wstring(texts_.Get("MusicSelect.bpmRangeLabel")) + L"  " + range,
                             std::wstring(texts_.Get("MusicSelect.durationLabel")) + L"  " + duration};
     for (std::size_t i = 0; i < values.size(); ++i)
