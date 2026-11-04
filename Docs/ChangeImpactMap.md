@@ -28,7 +28,7 @@
 | 판정 난이도·JudgeLevel | `Rhythm/Judgement`, PatternDocument/Parser, TaikoSessionBuilder | RhythmCoreTests, ChartParserTests, NewDifficultyTests |
 | HP 체력·게이지·빈 채보 진입 | `Rhythm/Gauge`, PlaySession/Results, TaikoSessionBuilder, GameplayHpView, PlaySessionLoader | HpGaugeTests, SongCatalogTests, GameplayJudgementTests, GameplayPauseTests |
 | 플레이 옵션·배속·Random·메트로놈 | PlayOptions, TaikoNoteTransform/SessionBuilder, RhythmTimer, GameplayAudioRouter, PlayOptionsDialog | PlayOptionsTests, MusicSelectViewTests, GameplayPauseTests |
-| 영속 기록·조건식·결과 옵션 표시 | `Client/Records`, SongSelectRecords, `Taiko/Results`, ResultScene | MusicSelectViewTests, RunResultPresentationTests |
+| 영속 기록·조건식·기록 필터·결과 옵션 표시 | `Client/Records`, RecordFilterPanel, SongSelectRecords, `Taiko/Results`, ResultScene | RecordFilterTests, MusicSelectViewTests/SongSearchInputTests, RunResultPresentationTests |
 | 음악/히트사운드·YME 오디오 연결 | `GameFlow/Submodules/GameplayAudio`, `Client/Audio/GameplayAudioRouter`, TaikoChartAudio/AudioPreview | SoundPolicyTests, GameplayPauseTests, AllNotesGameplayTests |
 | Result·통계·그래프·Retry | `Modes/Mode/Results`, `Taiko/Results`, `Client/GameScene/ResultScene` | PlayResultTests, ResultPresentationTests |
 | 에디터 조립·모드/문서 교체 | EditorScene, EditorWorkspace, Modes/IEditorMode/IEditorContext/IEditorAudioSource, `Chart/Editing/IEditorDocument` | RunEditorPresentationTests의 EditorModeTests |

@@ -55,7 +55,22 @@ Windows 내장 SQLite를 사용하며 `user_version=1`로 스키마를 확인합
 
 ## 조건식
 
-기록칸의 Filter records에서 입력합니다. 비워두면 선택 패턴의 모든 기록입니다.
+기록칸의 Filter records는 별도 기록 필터 패널을 엽니다. 기록은 기존 왼쪽 기록 영역에 표시합니다.
+켜짐/꺼짐/전체 선택은 Mirror, Random, Metronome, Ignore scroll effects, BGM/HIT 음정 유지,
+JudgeLevel 덮어쓰기 여부입니다. Scroll unit은 전체/x/BPM이며, JudgeLevel(1..100),
+재생속도(0.5..2.0x), 스크롤속도(양수), Random 시도 확률(0..100%)은 최소/최대 범위입니다.
+Random 시드는 uint64 정수 동등 조건입니다. 스크롤속도는 기록에 저장한 x/BPM 원래 값이며,
+단위를 한정하려면 Scroll unit을 함께 지정합니다.
+
+빈 경계·전체 선택은 제한 없음이며 지정한 조건은 경계를 포함해 AND로 결합합니다.
+직접 조건 편집은 기존 텍스트 대화상자와 아래 AND/OR/NOT 문법을 유지합니다.
+선택형 조건과 함께 쓰면 직접 조건식 전체를 괄호로 묶어 AND로 결합합니다.
+적용은 기록 페이지를 처음으로 돌려 다시 조회하고, 닫기/Escape/Scene 숨김은 편집을 취소합니다.
+잘못된 값·역전 범위·조건식은 적용하지 않습니다. 검색어·선택 곡/패턴·곡 목록 스크롤은 보존합니다.
+필터는 해당 선곡 View 수명 동안 유지하며 별도 설정 파일이나 DB 필드를 추가하지 않습니다.
+모든 조건을 비우면 선택 패턴의 모든 기록입니다. 온라인 기록 연결은 현재 미구현입니다.
+
+직접 조건 예:
 예: `JudgeLevel >= 60 AND Random = true`, `Random = true`,
 `Accelerate >= 1.5 AND NOT (Mirror = true)`.
 
@@ -88,6 +103,7 @@ Windows 내장 SQLite를 사용하며 `user_version=1`로 스키마를 확인합
 `RhythmTimer`는 배속을 포함한 공통 시간 변환,
 `GameplayAudioRouter`는 음정 정책과 clip/bus/예약 재생을 맡습니다.
 `ValueDialog`와 `PlayOptionsDialog`는 Client 입력 UI,
+`RecordFilter`는 입력 검증과 기존 조건식 조합, `RecordFilterPanel`은 임시 편집/적용/취소 UI,
 `PlayRecordStore`/`RecordCondition`은 SQLite 저장/제한된 조건식,
 `SongSelectRecords`는 비동기 페이지 게시와 기록칸 표현을 맡습니다.
 

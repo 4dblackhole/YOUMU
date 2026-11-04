@@ -429,6 +429,8 @@ void MusicSelectView::ApplyTexts()
     }
     options_.RefreshTexts();
     filterPanel_.RefreshTexts();
+    recordFilterPanel_.RefreshTexts();
+    recordFilterPanel_.SetViewport(height_);
     filterPanel_.SetViewport(width_, height_);
     favoriteTabs_.Refresh(selection_.favorites_, selection_.favoriteFolder_);
     favoritesPanel_.RefreshTexts();

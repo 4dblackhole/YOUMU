@@ -33,6 +33,7 @@
   <ItemGroup><ClCompile Include="Submodules\OptionTimingTests.cpp"><Filter>Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup>
     <ClCompile Include="Submodules\PlayOptionsTests.cpp"><Filter>Submodules</Filter></ClCompile>
+    <ClCompile Include="Submodules\RecordFilterTests.cpp"><Filter>Submodules</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Submodules\HpGaugeTests.cpp"><Filter>Submodules</Filter></ClCompile>

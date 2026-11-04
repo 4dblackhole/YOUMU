@@ -1,5 +1,4 @@
 #include "MusicSelectView.h"
-#include "Presentation/ValueDialog.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include <chrono>
@@ -20,31 +19,28 @@ void MusicSelectView::LayoutRecordControls()
     recordNextButton_->SetBounds(ScaleTopLeftBounds({34 + (width - 56) / 2, height - 65, (width - 56) / 2, 40},
                                                     recordPanel_->NodeSize().height));
 }
-void MusicSelectView::EditRecordQuery()
+void MusicSelectView::OpenRecordFilter()
 {
-    std::vector<DialogValue> fields{
-        {std::wstring(texts_.Get("Records.condition")), std::wstring(recordQuery_.begin(), recordQuery_.end())}};
-    if (ShowValueDialog(std::wstring(texts_.Get("Records.query")), fields, std::wstring(texts_.Get("PlayOptions.ok")),
-                        std::wstring(texts_.Get("PlayOptions.cancel")),
-                        [&]
-                        {
-                            std::string query;
-                            for (auto ch : fields[0].value)
-                            {
-                                if (ch > 127)
-                                    throw std::invalid_argument("Query field names and operators use ASCII.");
-                                query.push_back(static_cast<char>(ch));
-                            }
-                            PlayRecordStore::ValidateQuery(query);
-                        }))
+    SetSearchFocus(false);
+    CloseAdditionMenu();
+    recordFilterPanel_.Open(recordFilter_);
+}
+bool MusicSelectView::ProcessRecordFilterPanel(const InputState &input)
+{
+    if (!recordFilterPanel_.IsVisible()) return false;
+    for (const auto &action : canvas_->TakeActions()) recordFilterPanel_.ProcessAction(action);
+    recordFilterPanel_.ProcessInput(input);
+    if (auto applied = recordFilterPanel_.TakeApplied())
     {
-        recordQuery_.clear();
-        for (auto ch : fields[0].value)
-            recordQuery_.push_back(static_cast<char>(ch));
+        auto query = applied->Query();
+        recordFilter_ = std::move(*applied);
+        recordQuery_ = std::move(query);
         recordOffset_ = 0;
         ++recordRevision_;
     }
-    inputRouter_.Reset(*canvas_);
+    if (!recordFilterPanel_.IsVisible()) inputRouter_.Reset(*canvas_);
+    else inputRouter_.InvalidateHitTest();
+    return true;
 }
 void MusicSelectView::UpdateRecords()
 {

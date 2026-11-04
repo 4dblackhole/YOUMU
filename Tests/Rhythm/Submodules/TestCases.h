@@ -18,6 +18,7 @@ namespace tests
     void TestAcceleratedClockAndWindows();
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
+    void TestRecordFilters();
     void TestIntervalRangeQueries();
     void TestLongViewportIndexEdits();
     void TestUnusedChartSoundsAreNotPrepared();

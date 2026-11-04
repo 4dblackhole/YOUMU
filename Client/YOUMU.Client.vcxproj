@@ -200,7 +200,9 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongFavoritesPanel.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectFavorites.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFilterPanel.h" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\RecordFilterPanel.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongFilterPanel.cpp" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\RecordFilterPanel.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionText.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.h" />

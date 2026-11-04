@@ -49,6 +49,7 @@
   <ItemGroup><ClCompile Include="Submodules\OptionTimingTests.cpp" /></ItemGroup>
   <ItemGroup>
     <ClCompile Include="Submodules\PlayOptionsTests.cpp" />
+    <ClCompile Include="Submodules\RecordFilterTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Submodules\HpGaugeTests.cpp" />

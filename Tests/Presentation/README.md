@@ -44,6 +44,13 @@ aspect/offset framing across resize, same-path offset changes and clearing/fallb
 ResultPresentationTests checks the BG value snapshot, reference-height offset conversion,
 resize/language rebuild, image failure fallback and actual D3D12 retention after gameplay destruction.
 GameplayJudgementTests retains its existing full-screen BG/offset regression.
+Record history remains in its assigned panel with real SQLite paging and a separate
+record-filter modal. Tests edit the legacy direct condition through that modal and
+verify deferred Apply, actual matching rows, retained panel bounds and chart changes.
+The hidden native-window run checks record ranges, invalid bounds, IME/Enter isolation,
+committed-value restoration, Close/Escape/scene-hide cancellation, combo popup occlusion
+and preservation of song search/selection. RecordFilterTests verifies inclusive AND
+conditions against an isolated database, uint64 seeds, direct OR/NOT grouping and invalid input.
 HP information checks both selection purposes for exact hundredths, the 9.00
 default, pattern/language changes, empty-state clearing and four rows fitting
 inside the information panel at narrow, standard and wide viewport sizes.

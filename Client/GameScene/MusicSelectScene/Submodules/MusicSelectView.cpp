@@ -45,6 +45,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     }
     filterPanel_.Initialize(*canvas_, texts_, services.windowControl);
     favoritesPanel_.Initialize(*canvas_, texts_);
+    if (recordPanel_) recordFilterPanel_.Initialize(*canvas_, texts_, services.windowControl);
     ApplyTexts();
     UpdateResponsiveLayout();
     RebuildVisibleSongs();
@@ -74,7 +75,7 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         options_.Toggle();
     }
     ProcessPointer(input);
-    if (ProcessFavoritesPanel(input) || ProcessFilterPanel(input))
+    if (ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input) || ProcessFilterPanel(input))
     {
         UpdateSearchInputVisibility();
         return command_;
@@ -113,6 +114,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 
 void MusicSelectView::Shutdown() noexcept
 {
+    recordFilterPanel_.Shutdown();
     filterPanel_.Shutdown();
     favoritesPanel_.Shutdown();
     favoriteTabs_.Shutdown();

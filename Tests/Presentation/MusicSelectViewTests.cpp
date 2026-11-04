@@ -877,6 +877,13 @@ namespace
         SongCatalogPattern pattern;pattern.patternPath=patternPath;pattern.pattern.mode="Taiko";pattern.pattern.name="Recorded";
         song.patterns.push_back(pattern);pattern.patternPath=directory/"other.ymp";song.patterns.push_back(pattern);
         selection.catalog_.songs.push_back(std::move(song));
+        for (int i=0;i<20;++i)
+        {
+            auto extra=selection.catalog_.songs.front();
+            extra.music.names={"Record fixture "+std::to_string(i)};
+            selection.catalog_.songs.push_back(std::move(extra));
+        }
+        selection.searchText_=L"Record";
         MusicSelectView view(visuals,selection,SongSelectPurpose::Gameplay,texts,options,database);
         view.Initialize({meshes,textRendering,renderer,audio,1280,720});auto *canvas=visuals.FindCanvas(1);
         Check(canvas!=nullptr,"Record history owns its selection canvas.");InputState input;
@@ -890,6 +897,11 @@ namespace
         wait(6);auto *next=Find(canvas->Root(),"RecordNext");if(!next)throw std::runtime_error("Record next page control is missing.");Check(next->IsEnabled(),"Actual history has an older page.");
         Click(*canvas,*next);static_cast<void>(view.Update(input,0));wait(2);
         Click(*canvas,*Find(canvas->Root(),"RecordPrevious"));static_cast<void>(view.Update(input,0));wait(6);
+        const auto viewport=Find(canvas->Root(),"SongViewport")->BoundsInCanvas();
+        InputStateTestAccess::Mouse(input,{viewport.x+viewport.width/2,viewport.y+viewport.height/2},-3);
+        static_cast<void>(view.Update(input,0));input={};
+        const auto contentY=Find(canvas->Root(),"SongContent")->BoundsInCanvas().y;
+        const auto selectedSong=selection.focusedSongPosition_, selectedPattern=selection.selectedPatternIndex_;
         const auto thread=GetCurrentThreadId();std::atomic_bool handled{};
         std::jthread queryInput([&](std::stop_token stop){
             while(!stop.stop_requested()&&!handled)
@@ -903,8 +915,23 @@ namespace
                 std::this_thread::sleep_for(std::chrono::milliseconds{1});
             }
         });
-        Click(*canvas,*Find(canvas->Root(),"RecordQuery"));static_cast<void>(view.Update(input,0));queryInput.request_stop();queryInput.join();
-        Check(handled,"The history condition is editable through its actual action.");wait(4);
+        auto *recordPanel = Find(canvas->Root(),"RecordPanel");
+        if (!recordPanel) throw std::runtime_error("Record panel missing.");
+        const auto recordBounds = recordPanel->BoundsInCanvas();
+        Click(*canvas,*Find(canvas->Root(),"RecordQuery"));static_cast<void>(view.Update(input,0));
+        auto *filter = Find(canvas->Root(),"RecordFilter.Overlay");
+        if (!filter) throw std::runtime_error("Record filter overlay missing.");
+        Check(filter && filter->IsVisible() && rows()==6,"Record filtering opens separately and leaves records in their assigned area.");
+        Click(*canvas,*Find(canvas->Root(),"RecordFilter.Condition"));static_cast<void>(view.Update(input,0));queryInput.request_stop();queryInput.join();
+        Check(handled && filter->IsVisible() && rows()==6,"Direct history conditions remain a draft until Apply.");
+        static_cast<void>(view.Update(input,0)); // Release the nested dialog's keyboard gate.
+        Click(*canvas,*Find(canvas->Root(),"RecordFilter.Apply"));static_cast<void>(view.Update(input,0));
+        Check(!filter->IsVisible(),"Apply closes only the record filter.");wait(4);
+        Check(recordPanel->BoundsInCanvas().x==recordBounds.x && recordPanel->BoundsInCanvas().width==recordBounds.width,
+              "Record results reuse the existing panel without relocating it.");
+        Check(Find(canvas->Root(),"SongContent")->BoundsInCanvas().y==contentY && selection.searchText_==L"Record" &&
+                  selection.focusedSongPosition_==selectedSong && selection.selectedPatternIndex_==selectedPattern,
+              "Applying a record filter preserves song list scroll, search and the selected chart.");
         for(const auto &row:Find(canvas->Root(),"RecordRows")->Children())
             Check(row->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only matching effective JudgeLevel records appear.");
         selection.selectedPatternIndex_=1;view.RefreshSelectionPresentation();static_cast<void>(view.Update(input,0));wait(0);

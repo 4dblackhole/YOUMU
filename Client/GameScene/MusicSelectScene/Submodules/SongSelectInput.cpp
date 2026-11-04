@@ -106,7 +106,7 @@ bool MusicSelectView::ProcessActions()
         }
         if (recordQueryButton_ && action.source == recordQueryButton_->Id())
         {
-            EditRecordQuery(); return true;
+            OpenRecordFilter(); return true;
         }
         if (recordPreviousButton_ && action.source == recordPreviousButton_->Id())
         {

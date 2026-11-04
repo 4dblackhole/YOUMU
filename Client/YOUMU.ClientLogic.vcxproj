@@ -31,6 +31,8 @@
     <ClInclude Include="Records\PlayRecordStore.h" />
     <ClCompile Include="Records\PlayRecordStore.cpp" />
     <ClInclude Include="Records\RecordCondition.h" />
+    <ClInclude Include="Records\RecordFilter.h" />
     <ClCompile Include="Records\RecordCondition.cpp" />
+    <ClCompile Include="Records\RecordFilter.cpp" />
   </ItemGroup>
 </Project>

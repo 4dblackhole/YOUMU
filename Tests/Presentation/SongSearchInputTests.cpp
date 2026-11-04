@@ -54,7 +54,7 @@ namespace
             other.patterns[0].pattern.baseBpm = 90;
             other.patterns[0].pattern.mode = "Taiko";
             state_.catalog_.songs = {song, other};
-            view_ = std::make_unique<MusicSelectView>(visuals_, state_, SongSelectPurpose::Editor, texts_, options_);
+            view_ = std::make_unique<MusicSelectView>(visuals_, state_, SongSelectPurpose::Gameplay, texts_, options_);
             view_->Initialize(services);
             const HWND parent = FindWindowW(nullptr, L"YOUMU.NativeSearch.Test");
             DWORD process{};
@@ -246,6 +246,64 @@ namespace
             Check(view_->Update(input, 0) == SongSelectCommand::None && edits().size() == 1,
                   "Favorite Escape closes only its modal and restores native search.");
             input = {};
+            setText(child_, L"angel");
+            static_cast<void>(view_->Update(input, 0));
+            const auto selected = state_.focusedSongPosition_, pattern = state_.selectedPatternIndex_;
+            const auto visible = state_.visibleSongIndices_;
+            click("RecordQuery");
+            auto *recordFilter = Find(canvas->Root(), "RecordFilter.Overlay");
+            if (!recordFilter) throw std::runtime_error("Record filter overlay missing.");
+            fields = edits();
+            Check(recordFilter && recordFilter->IsVisible() && fields.size() == 9,
+                  "Record filters own a separate panel with real native numeric editors.");
+            setText(fields[0], L"70"); setText(fields[1], L"60");
+            click("RecordFilter.Apply");
+            Check(recordFilter->IsVisible(), "Reversed record bounds are rejected without closing the draft.");
+            setText(fields[0], L"60"); setText(fields[1], L"70");
+            SetFocus(fields[0]);
+            SendMessageW(fields[0], WM_IME_STARTCOMPOSITION, 0, 0);
+            SendMessageW(fields[0], WM_KEYDOWN, VK_RETURN, 0);
+            InputStateTestAccess::Key(input, VK_RETURN, true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && recordFilter->IsVisible(),
+                  "IME Enter cannot apply a record filter or launch gameplay.");
+            SendMessageW(fields[0], WM_IME_ENDCOMPOSITION, 0, 0);
+            input = {};
+            for (const auto key : {VK_RIGHT, VK_DOWN, VK_SPACE, static_cast<int>('O')})
+            {
+                input = {};
+                InputStateTestAccess::Key(input, VK_LCONTROL, true);
+                InputStateTestAccess::Key(input, static_cast<std::uint16_t>(key), true);
+                Check(view_->Update(input, 0) == SongSelectCommand::None && recordFilter->IsVisible(),
+                      "Record filtering consumes background shortcuts and navigation.");
+            }
+            input = {};
+            SendMessageW(fields[0], WM_KEYDOWN, VK_RETURN, 0);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && !recordFilter->IsVisible() && edits().size() == 1,
+                  "Native Enter applies record conditions and restores only search.");
+            Check(state_.searchText_ == L"angel" && state_.visibleSongIndices_ == visible &&
+                      state_.focusedSongPosition_ == selected && state_.selectedPatternIndex_ == pattern,
+                  "Record filtering preserves the search, visible songs and selected chart.");
+            click("RecordQuery");
+            fields = edits();
+            wchar_t minimum[32]{}; GetWindowTextW(fields[0], minimum, 32);
+            Check(std::wstring_view(minimum) == L"60", "Reopen restores applied record conditions.");
+            setText(fields[0], L"65");
+            click("RecordFilter.Close");
+            click("RecordQuery");
+            fields = edits(); GetWindowTextW(fields[0], minimum, 32);
+            Check(std::wstring_view(minimum) == L"60", "Close discards the pending record filter edit.");
+            click("RecordFilter.Choice.0");
+            Check(edits().empty(), "Record combo popups hide native fields so they cannot cover choices.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_ESCAPE, true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && !recordFilter->IsVisible(),
+                  "Record Escape returns to song selection without leaving it.");
+            input = {};
+            click("RecordQuery");
+            view_->SetVisible(false);
+            Check(edits().empty() && !recordFilter->IsVisible(), "Scene hiding closes the record modal and all editors.");
+            view_->SetVisible(true);
+            Check(edits().size() == 1, "Scene return restores search without reopening a record draft.");
         }
         bool Update(const UpdateContext &context) override
         {

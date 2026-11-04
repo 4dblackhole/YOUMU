@@ -50,6 +50,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestAcceleratedClockAndWindows", TestAcceleratedClockAndWindows},
         {"TestTaikoPlayOptions", TestTaikoPlayOptions},
         {"TestPersistentRecordConditions", TestPersistentRecordConditions},
+        {"TestRecordFilters", TestRecordFilters},
         {"TestIntervalRangeQueries", TestIntervalRangeQueries},
         {"TestLongViewportIndexEdits", TestLongViewportIndexEdits},
         {"TestUnusedChartSoundsAreNotPrepared", TestUnusedChartSoundsAreNotPrepared},
