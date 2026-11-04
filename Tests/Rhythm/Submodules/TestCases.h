@@ -24,6 +24,8 @@ namespace tests
     void TestUnusedChartSoundsAreNotPrepared();
     void TestAccuracySixDecimalPrecision();
     void TestPlayResultCollection();
+    void TestLivePlayStatistics();
+    void TestComboEventOrder();
     void TestLongResultCompletionAndReset();
     void TestRewindJudgementsAndTrace();
     void TestLongNoteRewindState();

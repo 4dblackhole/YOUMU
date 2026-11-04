@@ -3,9 +3,12 @@
 제작본: [HudDigits.png](Assets/HudDigits.png).
 
 흰색 채움·짙은 남색 윤곽의 0–9 숫자 시트입니다. 상단 행은 0–4, 하단 행은 5–9이며
-배경과 숫자 내부 공간은 투명합니다. 이 파일은 새 HUD용 디자인 원본이며 현재 런타임에
-연결하지 않았습니다. 기존 NumberImage 자산은 유지합니다. 게임 적용은 사용자 요청에 따라
-구현 전 브리핑과 답변 후 진행합니다. 콤보·점수 규칙과 화면 배치는 아직 확정하지 않았습니다.
+배경과 숫자 내부 공간은 투명합니다. 디자인 원본은 위 파일이며 배포용 동일 PNG는
+`YOUMU.Assets/Assets/Skins/Default Skin/InGame/HudDigits.png`에 있습니다. 기존 NumberImage
+자산은 유지합니다. 실제 크기는 1983×793 RGBA이며 UV로 5열×2행을 나눠 읽습니다.
+`skin.ini`의 `[InGame] HudDigits`로 같은 셀 순서의 PNG를 교체할 수 있습니다.
+사용자 브리핑 후 승인한 [플레이 HUD](Presentation.md#콤보점수판정-누적-hud)와
+[리절트](Results.md#점수와-판정-개수)의 숫자 표시에서 사용합니다.
 
 제작 도구는 기본 image_gen입니다. 첫 생성에서 보인 옅은 구분선을 편집 호출로 제거했습니다.
 

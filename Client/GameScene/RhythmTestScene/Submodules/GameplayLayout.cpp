@@ -84,6 +84,7 @@ void GameplayPresenter::CreatePresentation()
         inputPanelImage, "Input.Panel");
     inputPanel_->SetZIndex(0);
     CreateKeyIndicators(*inputPanel_);
+    statisticsView_.Initialize(screenVisuals_, root, *inputPanel_, texts_);
 
     UpdatePresentationLayout();
 }
@@ -228,6 +229,7 @@ void GameplayPresenter::UpdatePresentationLayout()
         const auto bounds = accuracyIndicator_->Bounds();
         accuracyIndicator_->SetBounds({logicalWidth * 0.5F - GearMargin - bounds.width, bounds.y,
                                        bounds.width, bounds.height});
+        statisticsView_.SetLayout(logicalWidth, inputPanelSize_, accuracyIndicator_->Bounds());
     }
     if (scrollGearBorder_ != nullptr)
     {

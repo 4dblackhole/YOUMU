@@ -354,8 +354,19 @@ void PlaySession::AccumulateAccuracy(const NoteProcessResult &result, bool keyPr
 
 std::optional<double> PlaySession::AccuracyRate() const noexcept
 {
+    const auto accuracy = Accuracy();
+    return accuracy ? std::optional{accuracy->Rate()} : std::nullopt;
+}
+
+std::optional<AccuracyScore> PlaySession::Accuracy() const noexcept
+{
     return finalizedNoteCount_ == 0 ? std::nullopt
-        : std::optional<double>{AccuracyScore::Average(accuracySum_, finalizedNoteCount_).Rate()};
+        : std::optional{AccuracyScore::Average(accuracySum_, finalizedNoteCount_)};
+}
+
+PlayStatistics PlaySession::Statistics() const noexcept
+{
+    return resultCollector_ ? resultCollector_->Statistics() : PlayStatistics{};
 }
 
 std::size_t PlaySession::FinalizedNoteCount() const noexcept

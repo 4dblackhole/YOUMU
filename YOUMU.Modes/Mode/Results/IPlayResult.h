@@ -27,6 +27,7 @@ struct PlayResultSummary
     std::size_t totalNotes{};
     std::size_t processedNotes{};
     std::size_t unprocessedNotes{};
+    std::size_t maximumCombo{};
     PlayEndReason endReason{PlayEndReason::Interrupted};
     RhythmTime initialTime{};
     RhythmTime endTime{};

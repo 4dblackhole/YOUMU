@@ -56,6 +56,8 @@ int main(const int argumentCount, char *arguments[])
         {"TestUnusedChartSoundsAreNotPrepared", TestUnusedChartSoundsAreNotPrepared},
         {"TestAccuracySixDecimalPrecision", TestAccuracySixDecimalPrecision},
         {"TestPlayResultCollection", TestPlayResultCollection},
+        {"TestLivePlayStatistics", TestLivePlayStatistics},
+        {"TestComboEventOrder", TestComboEventOrder},
         {"TestLongResultCompletionAndReset", TestLongResultCompletionAndReset},
         {"TestRewindJudgementsAndTrace", TestRewindJudgementsAndTrace},
         {"TestLongNoteRewindState", TestLongNoteRewindState},

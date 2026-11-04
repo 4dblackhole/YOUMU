@@ -343,5 +343,8 @@
   <ItemGroup>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.h" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.cpp" />
+    <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.h" />
+    <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.cpp" />
+    <ClInclude Include="Presentation\SpriteNumber.h" />
   </ItemGroup>
 </Project>

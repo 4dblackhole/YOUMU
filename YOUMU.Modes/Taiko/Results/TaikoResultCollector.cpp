@@ -19,12 +19,14 @@ TaikoResultCollector::TaikoResultCollector(PlayResultSummary summary, std::size_
     result_->timingErrors.reserve(reserveNotes);
     result_->summary.inputs.reserve(reserveNotes);
     noteIndices_.reserve(reserveNotes);
+    comboEligible_.reserve(reserveNotes);
 }
 void TaikoResultCollector::RegisterNote(NoteId id, TaikoNoteType type, RhythmTime time)
 {
     if (!result_ || !noteIndices_.emplace(id, result_->notes.size()).second)
         throw std::logic_error("Result note IDs must be unique.");
     result_->notes.push_back({id, type, time});
+    comboEligible_.push_back(true);
 }
 void TaikoResultCollector::RecordInput(const RhythmInputEvent &input)
 {
@@ -58,6 +60,11 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
         result_->notes[found->second].finalState = event.stateAfter;
     if (event.type == NoteEventType::HitAccepted && grade < 5)
     {
+        if (event.judgement.grade == JudgementGrade::Bad)
+        {
+            combo_ = 0;
+            comboEligible_[found->second] = false;
+        }
         ++result_->judgements[grade];
         result_->timingErrors.push_back({event.noteId, event.hitIndex, event.eventTime, event.judgement.signedError,
                                          event.judgement.grade,
@@ -65,7 +72,10 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     }
     else if (keyPressed && event.type == NoteEventType::InputRejected &&
              IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good))
+    {
         ++result_->poorCount;
+        combo_ = 0;
+    }
     else if (event.type == NoteEventType::TickAccepted &&
              (result_->notes[found->second].type == TaikoNoteType::TickRoll ||
               result_->notes[found->second].type == TaikoNoteType::BigTickRoll ||
@@ -77,6 +87,7 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     {
         ++result_->missedTicks;
         ++result_->poorCount;
+        combo_ = 0;
     }
     // HoldStarted and Completed carry head judgements too; ignoring them
     // here prevents a single Buzz press from producing duplicate samples.
@@ -102,8 +113,18 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
     note.acceptedHits = accuracy.acceptedHits;
     note.acceptedTicks = accuracy.acceptedTicks;
     const bool longNote = ResultGroup(note.type) == TaikoResultGroup::Roll;
-    if (longNote && note.finalState == NoteState::Completed && accuracy.acceptedHits >= accuracy.target.hits &&
-        accuracy.acceptedTicks >= accuracy.target.ticks)
+    const bool success = note.finalState == NoteState::Completed &&
+        (longNote ? accuracy.acceptedHits >= accuracy.target.hits &&
+                        accuracy.acceptedTicks >= accuracy.target.ticks
+                  : comboEligible_[found->second]);
+    if (success)
+    {
+        ++combo_;
+        result_->summary.maximumCombo = std::max(result_->summary.maximumCombo, combo_);
+    }
+    else
+        combo_ = 0;
+    if (longNote && success)
         ++result_->okCount;
     else if (note.finalState == NoteState::Missed || longNote)
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Miss)];
@@ -112,8 +133,27 @@ void TaikoResultCollector::Consume(const NoteProcessResult &result, bool keyPres
 {
     if (!result_)
         return;
+    std::unordered_map<NoteId, const NoteAccuracy *> completions;
+    if (result.finalizedAccuracies.size() > 1)
+    {
+        completions.reserve(result.finalizedAccuracies.size());
+        for (const auto &accuracy : result.finalizedAccuracies)
+            completions.emplace(accuracy.noteId, &accuracy);
+    }
     for (const auto &event : result.events)
+    {
         ConsumeEvent(event, keyPressed);
+        // Complete in event order: one update can finish earlier notes before
+        // rejecting a later input. A late POOR must remain a combo break.
+        if (event.type == NoteEventType::Completed || event.type == NoteEventType::Missed)
+        {
+            if (result.finalizedAccuracies.size() == 1 &&
+                result.finalizedAccuracies.front().noteId == event.noteId)
+                FinalizeNote(result.finalizedAccuracies.front());
+            else if (const auto accuracy = completions.find(event.noteId); accuracy != completions.end())
+                FinalizeNote(*accuracy->second);
+        }
+    }
     for (const auto &accuracy : result.finalizedAccuracies)
         FinalizeNote(accuracy);
 }
@@ -141,6 +181,14 @@ void TaikoResultCollector::ResetJudgements() noexcept
     result_->timingErrors.clear();
     result_->judgements = {};
     result_->okCount = result_->poorCount = result_->acceptedTicks = result_->missedTicks = 0;
+    combo_ = result_->summary.maximumCombo = 0;
+    std::fill(comboEligible_.begin(), comboEligible_.end(), true);
+}
+PlayStatistics TaikoResultCollector::Statistics() const noexcept
+{
+    return result_ ? PlayStatistics{combo_, result_->summary.maximumCombo, result_->judgements,
+                                    result_->okCount, result_->poorCount}
+                   : PlayStatistics{};
 }
 void TaikoResultCollector::Summarize()
 {

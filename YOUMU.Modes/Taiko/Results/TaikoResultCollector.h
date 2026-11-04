@@ -16,6 +16,7 @@ class TaikoResultCollector final : public IPlayResultCollector
     void SetInitialTime(RhythmTime time) noexcept override;
     void Reset() noexcept override;
     void ResetJudgements() noexcept override;
+    PlayStatistics Statistics() const noexcept override;
     std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time,
                                           std::vector<HpGaugeState> hp = {}) override;
 
@@ -25,4 +26,6 @@ class TaikoResultCollector final : public IPlayResultCollector
     void Summarize();
     std::unique_ptr<TaikoPlayResult> result_;
     std::unordered_map<NoteId, std::size_t> noteIndices_;
+    std::vector<bool> comboEligible_;
+    std::size_t combo_{};
 };

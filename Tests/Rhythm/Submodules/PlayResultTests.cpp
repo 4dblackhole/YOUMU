@@ -1,9 +1,101 @@
 #include "Taiko/Results/TaikoPlayResult.h"
+#include "Taiko/Results/TaikoResultCollector.h"
 #include "TestSupport.h"
 #include <limits>
 
 namespace tests
 {
+    void TestLivePlayStatistics()
+    {
+        auto parsed = ChartParser{}.ParsePattern(
+            "[Metadata]\nName: HUD\nBase BPM: 120\n[Difficulty]\nMode: Taiko\n"
+            "[Time Signature]\n[Pattern]\n0/1,1,0\n1/4,3,0\n"
+            "1/2,11,1,,HitCount=2\n3/4,11,2\n--\n0/1,2,0\n1/4,1,0\n1/2,1,0\n", "hud.ymp");
+        Require(parsed.Succeeded(), "HUD fixture must parse.");
+        auto loaded = TaikoMode{}.CreateSession(parsed.document);
+        Require(loaded.Succeeded(), "HUD fixture must load.");
+        auto &session = *loaded.session;
+        const auto hit = [&](char key, std::int64_t time)
+        {
+            static_cast<void>(session.ProcessInput(key, InputEdge::Pressed, RhythmTime{time}));
+            static_cast<void>(session.ProcessInput(key, InputEdge::Released, RhythmTime{time}));
+        };
+        Require(!session.Accuracy() && session.Statistics().combo == 0,
+                "A new attempt has no accuracy sample and zero statistics.");
+        hit('F', 0);
+        Require(session.Accuracy()->Units() == 100'000'000 && session.Statistics().combo == 1,
+                "100 percent current accuracy is exactly one hundred million points, without progress weighting.");
+        hit('F', 500'000);
+        Require(session.Statistics().combo == 1, "The first half of a big note is not another combo.");
+        hit('J', 500'000);
+        Require(session.Statistics().combo == 2, "A successful big note contributes one logical combo.");
+        hit('F', 1'000'000);
+        hit('F', 1'050'000);
+        Require(session.Statistics().combo == 2, "Roll hits do not each increment combo.");
+        static_cast<void>(session.Update(RhythmTime{1'500'000}));
+        auto statistics = session.Statistics();
+        Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.okCount == 1 &&
+                    statistics.judgements[0] == 3 && session.Accuracy()->Units() == 100'000'000,
+                "A successful roll adds one OK/combo; live counts share the result collector.");
+        hit('D', 2'070'000);
+        Require(session.Statistics().combo == 0 && session.Statistics().judgements[4] == 1,
+                "BAD breaks combo even though the note completes.");
+        hit('F', 2'500'000);
+        hit('D', 3'000'000);
+        Require(session.Statistics().combo == 0 && session.Statistics().poorCount == 1,
+                "A real POOR immediately breaks combo; key releases never add POOR.");
+        hit('F', 3'000'000);
+        Require(session.Statistics().combo == 1 && session.Statistics().maximumCombo == 3,
+                "A later accepted completion starts a new combo and preserves the maximum.");
+        session.RewindJudgements(RhythmTime{2'000'000});
+        statistics = session.Statistics();
+        Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.poorCount == 0 &&
+                    statistics.judgements[4] == 0 && statistics.okCount == 1 &&
+                    session.Accuracy()->Units() == 100'000'000,
+                "Rewind rebuilds score, combo, maximum and all counts from retained judgement history.");
+        session.RetireRemaining(RhythmTime{2'000'000});
+        Require(session.Statistics().combo == 0 && session.Statistics().judgements[5] == 3,
+                "Retirement applies remaining logical misses to live counts and combo.");
+        auto result = session.TakeResult(PlayEndReason::Interrupted, RhythmTime{2'000'000});
+        Require(result->Summary().maximumCombo == 3 && result->Summary().accuracy.Units() == 50'000'000,
+                "Final score is the same accuracy multiplier and maximum combo survives result transfer.");
+    }
+
+    void TestComboEventOrder()
+    {
+        TaikoResultCollector collector({}, 2);
+        collector.RegisterNote(1, TaikoNoteType::Don, {});
+        collector.RegisterNote(2, TaikoNoteType::Don, RhythmTime{1});
+        NoteEvent hit;
+        hit.noteId = 1;
+        hit.type = NoteEventType::HitAccepted;
+        hit.judgement = {JudgementGrade::Max, {}, 1};
+        auto completed = hit;
+        completed.type = NoteEventType::Completed;
+        completed.stateAfter = NoteState::Completed;
+        NoteEvent poor = hit;
+        poor.noteId = 2;
+        poor.type = NoteEventType::InputRejected;
+        NoteAccuracy accuracy;
+        accuracy.noteId = 1;
+        accuracy.finalized = true;
+        accuracy.hitScoreRates = {1};
+        accuracy.acceptedHits = 1;
+        NoteProcessResult batch;
+        batch.events = {hit, completed, poor};
+        batch.finalizedAccuracies = {accuracy};
+        collector.Consume(batch, true);
+        Require(collector.Statistics().combo == 0 && collector.Statistics().maximumCombo == 1,
+                "A later rejection must break the combo after an earlier completion in the same batch.");
+        collector.ResetJudgements();
+        Require(collector.Statistics().combo == 0 && collector.Statistics().maximumCombo == 0 &&
+                    collector.Statistics().poorCount == 0, "Reset removes all HUD statistics.");
+        hit.judgement.grade = JudgementGrade::Bad;
+        batch.events = {hit, completed};
+        collector.Consume(batch, true);
+        Require(collector.Statistics().combo == 0, "A terminal event cannot turn a BAD hit into a successful combo.");
+    }
+
     void TestAccuracySixDecimalPrecision()
     {
 
@@ -112,6 +204,8 @@ namespace tests
             Require(taiko->okCount == 1 && taiko->judgements[5] == 0 && taiko->summary.processedNotes == 1 &&
                         taiko->summary.accuracy.Units() == 100'000'000,
                     "Each successful long-note completion must produce exactly one OK.");
+            Require(taiko->summary.maximumCombo == 1,
+                    "Every long-note kind contributes exactly one combo on successful completion.");
             Require(taiko->timingErrors.size() == (type == TaikoNoteType::Buzz ? 1U : 0U),
                     "Buzz head and HoldStarted must not duplicate one timing error.");
             Require(taiko->summary.inputs.size() ==

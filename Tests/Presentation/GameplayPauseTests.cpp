@@ -391,6 +391,7 @@ namespace
     class ProbeCollector final : public IPlayResultCollector
     {
       public:
+        PlayStatistics Statistics() const noexcept override { return {}; }
         void RecordInput(const RhythmInputEvent &) override
         {
         }

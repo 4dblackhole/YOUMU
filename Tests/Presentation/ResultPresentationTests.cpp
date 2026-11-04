@@ -119,6 +119,20 @@ namespace
                 return found;
         return nullptr;
     }
+    std::string Number(const Visual2DNode &root, std::string_view name)
+    {
+        const auto *node = FindNode(root, name);
+        if (!node)
+            throw std::runtime_error("Expected result number is missing.");
+        std::string value;
+        for (const auto &child : node->Children())
+        {
+            if (!child->IsVisible()) continue;
+            const auto offset = child->GetComponent<SpriteVisualComponent>()->UvOffset();
+            value += static_cast<char>('0' + std::lround(offset.x * 5) + std::lround(offset.y * 2) * 5);
+        }
+        return value;
+    }
     void TestChartBackground()
     {
         for (const auto &path : std::array<std::filesystem::path, 5>{
@@ -374,6 +388,12 @@ namespace
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas)
             throw std::runtime_error("Result Canvas must exist.");
+        Check(FindNode(canvas->Root(), "Result.Score") != nullptr &&
+                  FindNode(canvas->Root(), "Result.MaximumCombo") != nullptr &&
+                  HasText(*canvas, texts.Get("Result.maximumCombo")) &&
+                  Number(canvas->Root(), "Result.Score") == std::to_string(taiko->summary.accuracy.Units()) &&
+                  Number(canvas->Root(), "Result.MaximumCombo") == std::to_string(taiko->summary.maximumCombo),
+              "The result must display the actual score and maximum combo with numeric sprites.");
         for(const auto key:{"scrollSpeed","metronome","mirror","random","accelerate","judgeLevel"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
         Check(HasText(*canvas, L"정확도") && HasText(*canvas, L"Recorded song") &&

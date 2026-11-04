@@ -464,7 +464,8 @@ namespace
         presenter.Initialize({meshes, textRendering, renderer, audio, 1280, 720}, *loaded.session);
         auto &root = visuals.FindCanvas(1)->Root();
         presenter.UpdatePresentation({});
-        Check(NodeCount(root) < 400 && Find(root, "Lane.Note.5000"),
+        // Bound lane visibility independently of the fixed, reusable HUD pool.
+        Check(NodeCount(Node(root, "ScrollGear.Lane")) < 400 && Find(root, "Lane.Note.5000"),
               "One slow future note must remain visible without creating thousands of ordinary offscreen notes.");
         const auto checkOrder = [&]
         {
@@ -485,7 +486,7 @@ namespace
         presenter.UpdatePresentation({});
         Check(!Find(root, "Lane.Note.5000"), "Changing Separate must refresh the visibility projection.");
         presenter.UpdatePresentation(loaded.session->Gear().Lanes().front()->Notes().back()->Timing());
-        Check(NodeCount(root) < 400 && Find(root, "Lane.Note.5000"), "Forward seek must query the end of the score.");
+        Check(NodeCount(Node(root, "ScrollGear.Lane")) < 400 && Find(root, "Lane.Note.5000"), "Forward seek must query the end of the score.");
         presenter.UpdatePresentation({});
         Check(Find(root, "Lane.Note.1") && !Find(root, "Lane.Note.5000"),
               "Backward seek must restore only visible notes.");
@@ -493,7 +494,7 @@ namespace
         visuals.OnResize(2560, 1080);
         presenter.OnResize(2560, 1080);
         presenter.UpdatePresentation({});
-        Check(NodeCount(root) < 400, "A wide viewport must retain bounded visibility work.");
+        Check(NodeCount(Node(root, "ScrollGear.Lane")) < 400, "A wide viewport must retain bounded visibility work.");
         presenter.Shutdown();
     }
 
@@ -809,6 +810,100 @@ namespace
               "Surviving processed ticks must disappear after overwritten ticks have been excluded.");
         presenter.Shutdown();
     }
+    std::string Number(Visual2DNode &root, std::string_view name)
+    {
+        std::string value;
+        for (const auto &child : Node(root, name).Children())
+        {
+            if (!child->IsVisible()) continue;
+            const auto &sprite = *child->GetComponent<SpriteVisualComponent>();
+            const auto offset = sprite.UvOffset();
+            Check(Near(sprite.UvScale().x, .2F) && Near(sprite.UvScale().y, .5F),
+                  "Number glyphs must sample one cell from the 5x2 atlas.");
+            value += static_cast<char>('0' + std::lround(offset.x * 5) + std::lround(offset.y * 2) * 5);
+        }
+        return value;
+    }
+    void TestStatisticsHud()
+    {
+        AssetRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        auto parsed = ChartParser{}.ParsePattern(
+            "[Metadata]\nName: HUD\nBase BPM: 120\n[Difficulty]\nMode: Taiko\n"
+            "[Time Signature]\n[Pattern]\n0/1,1,0\n1/4,1,0\n1/2,1,0\n", "hud.ymp");
+        auto loaded = TaikoMode{}.CreateSession(parsed.document);
+        Check(loaded.Succeeded(), "HUD fixture must load.");
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts;
+        GameplayPresenter presenter(visuals, texts);
+        presenter.Initialize({meshes, textRendering, renderer, audio, 1280, 720}, *loaded.session);
+        auto &root = visuals.FindCanvas(1)->Root();
+        const auto hit = [&](char key, std::int64_t time)
+        {
+            static_cast<void>(loaded.session->ProcessInput(key, InputEdge::Pressed, RhythmTime{time}));
+            static_cast<void>(loaded.session->ProcessInput(key, InputEdge::Released, RhythmTime{time}));
+        };
+        const auto numberNodes = [&]
+        {
+            auto count = NodeCount(Node(root, "Hud.Combo")) + NodeCount(Node(root, "Hud.Score"));
+            for (std::size_t i = 0; i < 8; ++i)
+                count += NodeCount(Node(root, "Hud.JudgementCount" + std::to_string(i)));
+            return count;
+        };
+        const auto nodes = numberNodes(), loads = renderer.loads;
+        presenter.UpdatePresentation({});
+        Check(Number(root, "Hud.Combo") == "0" && Number(root, "Hud.Score") == "0",
+              "New attempts show zero combo/score using images.");
+        Check(Find(Node(root, "Input.Panel"), "Hud.Combo") != nullptr,
+              "Combo must belong to the key layout and inherit its transform.");
+        const auto combo = Node(root, "Hud.Combo").Bounds();
+        for (const auto &child : Node(root, "Input.Panel").Children())
+            if (child->Name() == "Input.Key.Face")
+                Check(combo.y + combo.height <= child->Bounds().y,
+                      "Combo must fit beneath the existing key faces.");
+        hit('F', 0);
+        presenter.UpdatePresentation({});
+        Check(Number(root, "Hud.Score") == "100000000" && Number(root, "Hud.Combo") == "1" &&
+                  Number(root, "Hud.JudgementCount0") == "1",
+              "A perfect first note displays 100 million points, one combo and one MAX.");
+        hit('D', 500'000);
+        hit('F', 500'000);
+        static_cast<void>(loaded.session->Update(RhythmTime{1'200'000}));
+        presenter.UpdatePresentation(RhythmTime{1'200'000});
+        Check(Number(root, "Hud.Score") == "33333333" && Number(root, "Hud.Combo") == "0" &&
+                  Number(root, "Hud.JudgementCount5") == "1" && Number(root, "Hud.JudgementCount7") == "1",
+              "POOR and automatic MISS update exact score/counts and break combo.");
+        loaded.session->RewindJudgements(RhythmTime{500'000});
+        presenter.UpdatePresentation(RhythmTime{500'000});
+        Check(Number(root, "Hud.Score") == "100000000" && Number(root, "Hud.Combo") == "1" &&
+                  Number(root, "Hud.JudgementCount5") == "0" && Number(root, "Hud.JudgementCount7") == "0",
+              "Rewind immediately restores all visible HUD values.");
+        for (const auto width : {405U, 1280U, 1920U})
+        {
+            visuals.OnResize(width, 720);
+            presenter.OnResize(width, 720);
+            for (std::size_t i = 0; i < 8; ++i)
+            {
+                const auto bounds = Node(root, "Hud.JudgementCount" + std::to_string(i)).BoundsInCanvas();
+                Check(bounds.x >= -static_cast<float>(width) * .5F &&
+                          bounds.x + bounds.width <= static_cast<float>(width) * .5F,
+                      "Counters must wrap within narrow and wide viewports.");
+                if (width >= 1280)
+                    Check(bounds.x >= static_cast<float>(width) * .5F - 380,
+                          "The compact right-hand counters must leave the central processing area free.");
+            }
+        }
+        loaded.session->Reset();
+        presenter.UpdatePresentation({});
+        Check(Number(root, "Hud.Score") == "0" && Number(root, "Hud.Combo") == "0" &&
+                  Number(root, "Hud.JudgementCount0") == "0", "Reset clears every visible statistic.");
+        Check(numberNodes() == nodes && renderer.loads == loads,
+              "Updates/resizes reuse every number node and image independently of note pooling.");
+        presenter.Shutdown();
+    }
     void TestHpRectangles()
     {
         Visual2DCanvas canvas;
@@ -848,6 +943,7 @@ int main()
         TestGuideAndOverlays();
         TestGameplayProgress();
         TestHpRectangles();
+        TestStatisticsHud();
         TestSlowNotesDoNotExpandAllVisuals();
         TestMeasureLinesShareNoteMotion();
         TestCountOnlyHeadsAndCounters();

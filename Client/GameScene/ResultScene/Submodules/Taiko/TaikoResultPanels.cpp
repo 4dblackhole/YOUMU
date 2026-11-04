@@ -1,6 +1,8 @@
 #include "TaikoResultLayout.h"
 #include "TaikoResultView.h"
 #include "Texts/GameScene/ResultScene/ResultTexts.h"
+#include "App/AssetPaths.h"
+#include "Presentation/SpriteNumber.h"
 #include <algorithm>
 #include <array>
 #include <climits>
@@ -94,7 +96,17 @@ void TaikoResultView::BuildSummary(Visual2DNode &root)
     for (const float y : {320.0F, 494.0F, 818.0F})
         Panel(root, {76, y, 472, 1}, Keyline, 0);
     Label(root, {76, 332, 472, 24}, std::wstring(text.score), 15, 700, TextAlignment::Leading, Muted);
-    Label(root, {76, 358, 472, 80}, L"—", 52, 800, TextAlignment::Leading, Accent);
+    const auto atlas = visuals_.RegisterImage(InGame(L"HudDigits"));
+    SpriteNumber score;
+    score.Initialize(root, atlas, "Result.Score");
+    score.SetLayout(Bounds({76, 358, 472, 58}), TextAlignment::Leading);
+    score.SetValue(result_.summary.accuracy.Units());
+    Label(root, {76, 418, 248, 20}, std::wstring(texts_.Get("Result.maximumCombo")), 14, 600,
+          TextAlignment::Leading, Muted);
+    SpriteNumber maximumCombo;
+    maximumCombo.Initialize(root, atlas, "Result.MaximumCombo");
+    maximumCombo.SetLayout(Bounds({324, 416, 224, 24}));
+    maximumCombo.SetValue(result_.summary.maximumCombo);
     Label(root, {76, 442, 140, 40}, std::wstring(text.accuracy), 18, 600);
     Label(root, {214, 440, 332, 46}, Format(text.percent, result_.summary.accuracy.Percent()), 30, 700,
           TextAlignment::Trailing);

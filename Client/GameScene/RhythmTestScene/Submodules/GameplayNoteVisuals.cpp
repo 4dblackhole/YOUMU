@@ -32,6 +32,7 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
         for (const auto file : NoteImageKeys)
             preparingImages_.push_back(InGameSkinAssetPath(file));
         for (const auto file : {L"AccuracyIndicator",
+                                L"HudDigits",
                                 L"InputPanel",
                                 L"LaneLight",
                                 L"JudgementCircle",
@@ -392,6 +393,7 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
 {
     progressView_.Update(time);
     UpdateAccuracyPresentation();
+    statisticsView_.Update(*session_);
 #if defined(_DEBUG)
     UpdateDebugPresentation(time);
 #endif

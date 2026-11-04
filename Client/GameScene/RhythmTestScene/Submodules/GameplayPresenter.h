@@ -3,6 +3,7 @@
 #include "GameplayJudgementView.h"
 #include "GameplayProgressView.h"
 #include "GameplayHpView.h"
+#include "GameplayStatisticsView.h"
 #include "PhantomCore.h"
 #include "Mode/PlayGameMode.h"
 #include "Presentation/LaneKeyBeam.h"
@@ -138,6 +139,7 @@ class GameplayPresenter final
     GameplayJudgementView judgementView_;
     GameplayProgressView progressView_;
     GameplayHpView hpView_;
+    GameplayStatisticsView statisticsView_;
     std::unordered_map<NoteId, NoteVisualLayers> noteVisuals_;
     std::unordered_map<NoteId, const INote *> noteModels_;
     std::map<std::wstring, ImageHandle, std::less<>> noteImages_;
