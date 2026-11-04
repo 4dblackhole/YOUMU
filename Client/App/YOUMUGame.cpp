@@ -3,6 +3,7 @@
 #include "App/AssetPaths.h"
 #include "Catalog/SongCatalog.h"
 #include "EditorScene/EditorScene.h"
+#include "EditorScene/Submodules/EditorWorkspaceStore.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "GameScene/YOUMULogoScene/YOUMULogoScene.h"
 #include "GameScene/MusicSelectScene/MusicSelectScene.h"
@@ -25,6 +26,7 @@ YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId,
     : smokeTest_(smokeTest), showPerformanceOverlay_(smokeTest), rhythmDebugMode_(rhythmDebugMode),
       initialSceneId_(std::move(initialSceneId)),
       launchRequest_(std::make_shared<GameplayLaunchStore>()),
+      editorWorkspaceStore_(std::make_shared<EditorWorkspaceStore>()),
       optionSettings_(OptionSettings::NextToExecutable())
 {
     std::string error;
@@ -89,7 +91,7 @@ void YOUMUGame::RegisterScenes(SceneManager &scenes)
                                                 std::ref(texts_), std::ref(optionSettings_)) ||
         !scenes.RegisterScene<EditorScene>(std::string(EditorSceneId),
                                            SceneRetention::DestroyOnExit, std::ref(ScreenVisuals()),
-                                           launchRequest_, std::ref(texts_)) ||
+                                           launchRequest_, std::ref(texts_), editorWorkspaceStore_) ||
         !scenes.RegisterScene<RhythmTestScene>(std::string(RhythmTestSceneId),
                                                // Gameplay routes keep only their factory while inactive. The
                                                // concrete mode Scene is constructed on entry and destroyed as

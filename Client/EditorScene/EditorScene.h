@@ -6,13 +6,14 @@
 
 class EditorWorkspace;
 class EditorView;
+class EditorWorkspaceStore;
 
 class EditorScene final : public GameScene
 {
   public:
     EditorScene(ScreenVisual2DManager &visuals,
                 std::shared_ptr<GameplayLaunchStore> request,
-                TextCatalog &texts);
+                TextCatalog &texts, std::shared_ptr<EditorWorkspaceStore> workspaceStore);
     ~EditorScene() override;
     void Initialize(const EngineServices &services) override;
     void Update(const UpdateContext &context, SceneManager &scenes) override;
@@ -21,6 +22,9 @@ class EditorScene final : public GameScene
     void Shutdown() noexcept override;
 
   private:
+    std::shared_ptr<GameplayLaunchStore> launchStore_;
+    std::shared_ptr<EditorWorkspaceStore> workspaceStore_;
     std::unique_ptr<EditorWorkspace> workspace_;
     std::unique_ptr<EditorView> view_;
+    bool testStarting_{};
 };

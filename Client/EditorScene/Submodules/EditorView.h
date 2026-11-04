@@ -50,12 +50,14 @@ class EditorView final : public IEditorModeCanvas
     void Build();
     void ReloadSize();
     bool Update(const UpdateContext &context);
+    bool TakeTestRequest() noexcept { return std::exchange(testRequested_, false); }
 
   private:
     void BuildContent();
     void SyncInputControls();
     void DrawNavigation();
     void DrawFooter();
+    void RequestTest();
     void DrawTimeInput(Rect);
     void DrawEffectRows();
     void DrawEffectFields();
@@ -112,6 +114,7 @@ class EditorView final : public IEditorModeCanvas
     EditorMenuBar menuBar_;
     EditorVisual *visual{};
     bool buildFailed_{};
+    bool testRequested_{};
     bool toggleSelection_{}, rangeSelection_{};
     static constexpr Rect DivisionSliderRect{1240, 6 + EditorMenuBar::Height, 480, 26};
     static constexpr Rect TimelineSliderRect{205, 915, 1645, 44};

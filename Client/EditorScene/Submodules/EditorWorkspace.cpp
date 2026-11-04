@@ -2,6 +2,7 @@
 #include "App/AssetPaths.h"
 #include "EditorTime.h"
 #include "EditorValueParsing.h"
+#include "EditorSupport.h"
 #include "Modes/EditorModeFactory.h"
 
 void EditorWorkspace::Initialize()
@@ -260,6 +261,28 @@ void EditorWorkspace::Save()
     SetStatus({});
     savedPath_ = Document().SourcePath();
     RequestRebuild();
+}
+GameplayLaunchRequest EditorWorkspace::TestLaunchRequest() const
+{
+    if (Document().Dirty())
+        throw std::runtime_error("Save the current chart before starting Test.");
+    auto launch = request_;
+    launch.patternPath = Document().SourcePath();
+    const auto &effect = Document().Effects().sourcePath;
+    launch.effectPath = effect.empty() ? std::nullopt : std::optional{effect};
+    const auto files = mode_->AudioFiles(Document(), request_);
+    launch.musicPath = files.at("Music");
+    launch.mode = Document().Pattern().mode;
+    launch.patternTitle = editor_ui::Wide(Document().Pattern().name);
+    const auto &pattern = Document().Pattern();
+    launch.backgroundPath = pattern.backgroundFile.empty() ? std::filesystem::path{}
+        : (request_.songsRoot.empty() ? UserSongs() : request_.songsRoot) / L"BG" / pattern.backgroundFile;
+    launch.backgroundOffsetX = pattern.backgroundOffsetX;
+    launch.backgroundOffsetY = pattern.backgroundOffsetY;
+    launch.playOptions.accelerate = 1.0;
+    launch.playOptions.preserveMusicPitch = launch.playOptions.preserveHitSoundPitch = false;
+    launch.editorTestStart = Microseconds(timeMs_);
+    return launch;
 }
 void EditorWorkspace::PlaceNote(MusicalPosition position)
 {

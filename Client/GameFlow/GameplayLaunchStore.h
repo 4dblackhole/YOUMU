@@ -27,9 +27,12 @@ class GameplayLaunchStore final
     {
         return request_;
     }
+    void SetEditorTestError(std::string error) { editorTestError_ = std::move(error); }
+    std::string TakeEditorTestError() { return std::exchange(editorTestError_, {}); }
 
   private:
     GameplayLaunchRequest request_;
     // Single-use transfer; the gameplay controller owns it after Scene entry.
     std::unique_ptr<PlaySession> preparedSession_;
+    std::string editorTestError_;
 };

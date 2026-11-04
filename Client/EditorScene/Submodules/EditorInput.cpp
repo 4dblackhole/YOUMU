@@ -247,6 +247,19 @@ void EditorView::ExecuteMenuAction(EditorMenuAction action)
     }
 }
 
+void EditorView::RequestTest()
+{
+    if (state_.Document().Dirty())
+    {
+        if (MessageBoxW(GetActiveWindow(), texts_.Get("Editor.saveBeforeTest").data(),
+                        std::format(L"{} {}", GameName, Texts().editorTitleSuffix).c_str(),
+                        MB_YESNO | MB_ICONQUESTION) != IDYES)
+            return;
+        state_.Save(); // Exceptions keep the editor open and never publish a Test request.
+    }
+    testRequested_ = true;
+}
+
 void EditorView::OpenDocumentFolder(const std::filesystem::path &path)
 {
     if (path.empty())

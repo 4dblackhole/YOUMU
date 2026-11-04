@@ -1,5 +1,35 @@
 #include "GameFlow/GameplaySessionController.h"
 #include <algorithm>
+#include <cmath>
+#include <stdexcept>
+
+void GameplaySessionController::SetEditorTestRate(double rate, const UpdateContext &context)
+{
+    if (!launchRequest_.editorTestStart || !std::isfinite(rate) ||
+        rate < GameplayLaunchRequest::EditorTestMinimumRate || rate > GameplayLaunchRequest::EditorTestMaximumRate)
+        throw std::invalid_argument("Editor Test rate must be within 0.25..2.0.");
+    if (rate == playbackRate_ || state_ == PlayState::Ending) return;
+    const auto clock = context.audio.CaptureClockSnapshot();
+    if (state_ == PlayState::Gameplay)
+        time_ = timer_.Now(clock.performanceCounterTicks);
+    const bool running = state_ == PlayState::Gameplay;
+    if (playbackStart_)
+    {
+        audioRouter_.PauseMusicAndStopSamples();
+        playbackStart_.reset();
+        nextAudioPreparationPoll_ = 0;
+    }
+    playbackRate_ = rate;
+    timer_.Start(clock.performanceCounterTicks, clock.performanceCounterFrequency, time_, rate);
+    timer_.AnchorDspClock(time_, clock.dspClock, clock.sampleRate);
+    if (!running) timer_.Pause(clock.performanceCounterTicks);
+    std::string error;
+    if (!audioRouter_.SetEditorTestRate(rate, time_, timer_, error))
+    {
+        initializationError_ = std::move(error);
+        FailPlaybackPreparation();
+    }
+}
 
 bool GameplaySessionController::PrepareResources(const UpdateContext &context)
 {
@@ -18,11 +48,18 @@ bool GameplaySessionController::PrepareResources(const UpdateContext &context)
         return false;
     }
     resourcesReady_ = prepared == AudioPreparationState::Ready;
+    if (resourcesReady_ && launchRequest_.editorTestStart)
+        testEndTime_ = std::max(testEndTime_, audioRouter_.MusicDuration().value_or(RhythmTime{}));
     return resourcesReady_;
 }
 
 void GameplaySessionController::UpdateLoading(const UpdateContext &context)
 {
+    if (launchRequest_.editorTestStart && context.input.WasKeyPressed(VK_SPACE))
+    {
+        PauseAt(context.audio.CaptureClockSnapshot().performanceCounterTicks, true);
+        return;
+    }
     if (context.input.WasKeyPressed(VK_ESCAPE))
     {
         OpenPauseMenu(context);
@@ -36,6 +73,19 @@ void GameplaySessionController::UpdatePause(const UpdateContext &context)
 {
     if (!PrepareResources(context))
         return;
+    if (launchRequest_.editorTestStart)
+    {
+        if (context.input.WasKeyPressed(VK_SPACE))
+        {
+            if (playbackRequested_)
+                PauseAt(context.audio.CaptureClockSnapshot().performanceCounterTicks, true);
+            else if (CanContinue())
+                static_cast<void>(ContinueAt(context, time_, PlayControlType::Resume));
+        }
+        else if (playbackRequested_)
+            PrepareGameplay(context);
+        return;
+    }
     if (playbackRequested_)
     {
         // ESC cancels the pending start at its frozen target. Record the newly
@@ -113,7 +163,7 @@ void GameplaySessionController::ScheduleGameplay(const UpdateContext &context)
         start.performanceCounterTicks += start.performanceCounterFrequency / 50;
         start.dspClock += static_cast<std::uint64_t>(std::max(start.sampleRate, 0)) / 50;
     }
-    timer_.Start(start.performanceCounterTicks, start.performanceCounterFrequency, time_, session_->Options().accelerate);
+    timer_.Start(start.performanceCounterTicks, start.performanceCounterFrequency, time_, playbackRate_);
     timer_.Pause(start.performanceCounterTicks);
     timer_.AnchorDspClock(time_, start.dspClock, start.sampleRate);
     metronomeCursor_ = static_cast<std::size_t>(std::ranges::lower_bound(session_->metronomeBeats, time_, {}, &MetronomeBeat::time) - session_->metronomeBeats.begin());

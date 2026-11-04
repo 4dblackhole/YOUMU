@@ -56,7 +56,11 @@ void GameplaySessionController::InitializeAudio(AudioSystem &audio)
     }
 
     if (musicError.empty())
+    {
         static_cast<void>(audioRouter_.ConfigurePlayback(session_->Options(), musicError));
+        if (musicError.empty() && launchRequest_.editorTestStart)
+            static_cast<void>(audioRouter_.SetEditorTestRate(playbackRate_, time_, timer_, musicError));
+    }
     if (!hitSoundError.empty() || !musicError.empty())
     {
         initializationError_ = !musicError.empty() ? musicError : hitSoundError;
@@ -114,7 +118,7 @@ namespace
 void GameplaySessionController::ScheduleMetronome()
 {
     const auto &beats = session_->metronomeBeats;
-    const auto horizon = time_ + RhythmDuration{static_cast<RhythmDuration::rep>(100'000 * session_->Options().accelerate)};
+    const auto horizon = time_ + RhythmDuration{static_cast<RhythmDuration::rep>(100'000 * playbackRate_)};
     while (metronomeCursor_ < beats.size() && beats[metronomeCursor_].time <= horizon)
     {
         const auto &beat = beats[metronomeCursor_++];

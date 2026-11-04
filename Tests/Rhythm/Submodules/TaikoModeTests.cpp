@@ -3,6 +3,40 @@
 
 namespace tests
 {
+    void TestPartialPreviewNotes()
+    {
+        for (const auto type : {TaikoNoteType::Roll, TaikoNoteType::TickRoll, TaikoNoteType::BigRoll,
+                               TaikoNoteType::BigTickRoll, TaikoNoteType::Balloon, TaikoNoteType::DengDeng,
+                               TaikoNoteType::Buzz})
+        {
+            auto pattern = MakeLongPattern(type, type == TaikoNoteType::Buzz
+                ? std::vector<std::string>{"Action=Don", "TickDivision=16"} : std::vector<std::string>{});
+            pattern.notes.push_back({.position = {1, {}}, .keyType = 1, .sourceOrder = 2});
+            const auto source = pattern.notes;
+            for (const auto start : {RhythmTime{1}, RhythmTime{500'000}, RhythmTime{1'000'000}, RhythmTime{2'000'000}})
+            {
+                PlaySessionOptions options;
+                options.minimumNoteTime = start;
+                auto loaded = TaikoMode{options}.CreateSession(pattern);
+                Require(loaded.Succeeded() && loaded.session->PlayableNoteCount() == 1,
+                        "A partial preview must omit a spanning/earlier long note, keeping the head at its boundary.");
+                auto &session = *loaded.session;
+                Require(session.Gear().Lanes().front()->Notes().front()->Timing() == RhythmTime{2'000'000},
+                        "The retained note must use the original compiled timeline, without rebasing its time.");
+                const auto before = session.Update(start);
+                Require(before.finalizedAccuracies.empty() && session.FinalizedNoteCount() == 0,
+                        "Omitted preview notes must never become MISS or contribute to accuracy.");
+            }
+            auto atHead = TaikoMode{PlaySessionOptions{.minimumNoteTime = RhythmTime{}}}.CreateSession(pattern);
+            Require(atHead.Succeeded() && atHead.session->PlayableNoteCount() == 2,
+                    "A long note beginning exactly at the preview start is included.");
+            auto after = TaikoMode{PlaySessionOptions{.minimumNoteTime = RhythmTime{2'000'001}}}.CreateSession(pattern);
+            Require(after.Succeeded() && after.session->PlayableNoteCount() == 0 && !after.session->CanUseHp(),
+                    "No remaining notes is a valid preview with HP inapplicable.");
+            Require(pattern.notes.size() == source.size() && pattern.notes.front().position == source.front().position,
+                    "Partial session construction must not edit the source chart.");
+        }
+    }
     void TestDengDengEitherStart()
     {
         for (const char first : {'F', 'D'})

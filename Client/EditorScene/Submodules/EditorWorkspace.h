@@ -53,6 +53,7 @@ class EditorWorkspace final : public IEditorContext
     void SetRealtimeZoom(double factor);
     void SelectTool(int value) override;
     void Save();
+    GameplayLaunchRequest TestLaunchRequest() const;
     std::filesystem::path MusicMetadataPath() const;
     void PlaceNote(MusicalPosition position);
     [[nodiscard]] std::pair<double, double> TimelineRangeMilliseconds() const;

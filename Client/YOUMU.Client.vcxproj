@@ -347,4 +347,10 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.cpp" />
     <ClInclude Include="Presentation\SpriteNumber.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="EditorScene\Submodules\EditorWorkspaceStore.cpp" />
+    <ClInclude Include="EditorScene\Submodules\EditorWorkspaceStore.h" />
+    <ClCompile Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.cpp" />
+    <ClInclude Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.h" />
+  </ItemGroup>
 </Project>

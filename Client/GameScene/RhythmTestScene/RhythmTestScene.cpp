@@ -3,6 +3,7 @@
 #include "GameFlow/GameplaySessionController.h"
 #include "Submodules/GameplayPauseMenu.h"
 #include "Submodules/GameplayPresenter.h"
+#include "Submodules/EditorTestControls.h"
 #include "Gauge/BasicHpGauge.h"
 #include <algorithm>
 #include <cmath>
@@ -19,15 +20,20 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
           debug, request ? request->TakeValidatedSession() : nullptr)),
       view_(std::make_unique<GameplayPresenter>(visuals, texts)),
       pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts)),
-      visuals_(visuals), texts_(texts), launch_(request->Snapshot())
+      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), launchStore_(std::move(request))
 {
-    const auto launch = request->Snapshot();
-    view_->ConfigureBackground(launch.backgroundPath, launch.backgroundOffsetX, launch.backgroundOffsetY);
+    view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
 }
 RhythmTestScene::~RhythmTestScene() = default;
 void RhythmTestScene::Initialize(const EngineServices &services)
 {
     services_.emplace(services);
+    if (launch_.editorTestStart)
+    {
+        testControls_ = std::make_unique<EditorTestControls>(visuals_, texts_);
+        testControls_->Initialize(services.windowWidth, services.windowHeight);
+        testControls_->SetVisible(false);
+    }
     loadingCanvas_ = visuals_.CreateOwnedCanvas({{1280, 720}, CanvasScaleMode::FixedHeight});
     auto *canvas = loadingCanvas_.Get();
     if (!canvas) throw std::runtime_error("Failed to create loading canvas.");
@@ -51,7 +57,21 @@ void RhythmTestScene::Initialize(const EngineServices &services)
     }
     title.GetComponent<TextVisualComponent>()->SetFontSize(40);
     pattern.GetComponent<TextVisualComponent>()->SetFontSize(26);
-    static_cast<void>(PreparePresentation());
+    static_cast<void>(TryPreparePresentation());
+}
+bool RhythmTestScene::TryPreparePresentation()
+{
+    try
+    {
+        return PreparePresentation();
+    }
+    catch (const std::exception &error)
+    {
+        if (!launch_.editorTestStart) throw;
+        launchStore_->SetEditorTestError(error.what());
+        testPreparationFailed_ = true;
+        return false;
+    }
 }
 void RhythmTestScene::PrepareLoadingBackground()
 {
@@ -101,10 +121,13 @@ bool RhythmTestScene::PreparePresentation()
     // Start both preparations before polling either. The playable screen must
     // never appear while cold hit samples are still being decoded.
     const auto audio = controller_->PrepareAudioResources(services_->audio);
+    if (launch_.editorTestStart && audio == AudioPreparationState::Failed)
+        throw std::runtime_error(std::string(controller_->ErrorMessage()));
     const bool images = view_->PrepareAssets(*services_);
     if (!images || audio == AudioPreparationState::Loading)
         return false;
     view_->Initialize(*services_, controller_->Session());
+    view_->SetDebugVisible(!launch_.editorTestStart);
     const auto &session = controller_->Session();
     std::vector<HpNoteDefinition> hpNotes;
     hpNotes.reserve(session.PlayableNoteCount());
@@ -117,7 +140,7 @@ bool RhythmTestScene::PreparePresentation()
     std::vector<IHpGauge *> borrowedGauges;
     for (const auto &gauge : hpGauges_) borrowedGauges.push_back(gauge.get());
     controller_->SetHpGauges(borrowedGauges);
-    controller_->Start(*services_, view_->InitialTimelineTime());
+    controller_->Start(*services_, launch_.editorTestStart.value_or(view_->InitialTimelineTime()));
     view_->PresentErrorMessage(controller_->ErrorMessage());
     view_->SetVisible(false);
     presentationReady_ = true;
@@ -135,17 +158,36 @@ void RhythmTestScene::EndScene() noexcept
 }
 void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
 {
+    if (launch_.editorTestStart && (testPreparationFailed_ || context.input.WasKeyPressed(VK_ESCAPE)))
+    {
+        ReturnToEditor(scenes);
+        return;
+    }
     PrepareLoadingBackground();
-    if (!presentationReady_ && (context.totalSeconds < nextPreparationPoll_ || !PreparePresentation()))
+    if (!presentationReady_ && (context.totalSeconds < nextPreparationPoll_ || !TryPreparePresentation()))
     {
         if (context.totalSeconds >= nextPreparationPoll_)
             nextPreparationPoll_ = context.totalSeconds + 0.002;
-        if (controller_->SessionReady() && context.input.WasKeyPressed(VK_ESCAPE))
+        if (!launch_.editorTestStart && controller_->SessionReady() && context.input.WasKeyPressed(VK_ESCAPE))
             controller_->OpenPauseMenu(context);
         UpdatePauseMenu(context, scenes);
         return;
     }
     controller_->Update(context);
+    if (launch_.editorTestStart && controller_->CurrentState() == PlayState::Pause && !controller_->ErrorMessage().empty())
+    {
+        launchStore_->SetEditorTestError(std::string(controller_->ErrorMessage()));
+        ReturnToEditor(scenes);
+        return;
+    }
+    if (testControls_)
+    {
+        testControls_->SetVisible(controller_->CurrentState() != PlayState::Loading);
+        if (controller_->CurrentState() != PlayState::Loading)
+            if (const auto rate = testControls_->Update(context.input, controller_->PlaybackRate(),
+                                                       controller_->CurrentState() == PlayState::Pause))
+                controller_->SetEditorTestRate(*rate, context);
+    }
     view_->SetVisible(controller_->CurrentState() != PlayState::Loading);
     static_cast<void>(loadingCanvas_.SetVisible(controller_->CurrentState() == PlayState::Loading));
     UpdatePauseMenu(context, scenes);
@@ -161,7 +203,7 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
 }
 void RhythmTestScene::UpdatePauseMenu(const UpdateContext &context, SceneManager &scenes)
 {
-    if (!controller_->PauseMenuOpen())
+    if (launch_.editorTestStart || !controller_->PauseMenuOpen())
     {
         pauseMenu_->Hide();
         return;
@@ -194,9 +236,19 @@ void RhythmTestScene::UpdatePauseMenu(const UpdateContext &context, SceneManager
 }
 void RhythmTestScene::ShowResult(SceneManager &scenes)
 {
+    if (launch_.editorTestStart)
+    {
+        ReturnToEditor(scenes);
+        return;
+    }
     pendingResult_ = controller_->TakeResult();
     if (!scenes.ChangeScene(ResultSceneId))
         throw std::runtime_error("Failed to enter the Result Scene.");
+}
+void RhythmTestScene::ReturnToEditor(SceneManager &scenes)
+{
+    if (!scenes.ChangeScene(EditorSceneId))
+        throw std::runtime_error("Failed to return from Test to the editor.");
 }
 void RhythmTestScene::Render(const RenderContext &)
 {
@@ -216,10 +268,12 @@ void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
     view_->OnResize(width, height);
     UpdateLoadingBackgroundLayout();
     pauseMenu_->OnResize(width, height);
+    if (testControls_) testControls_->Resize(width, height);
 }
 void RhythmTestScene::Shutdown() noexcept
 {
     pauseMenu_->Shutdown();
+    if (testControls_) testControls_->Shutdown();
     loadingBackground_ = nullptr;
     loadingBackgroundSize_ = {};
     loadingCanvas_.Reset();

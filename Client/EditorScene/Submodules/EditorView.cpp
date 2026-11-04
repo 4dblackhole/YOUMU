@@ -193,8 +193,9 @@ void EditorView::DrawFooter()
     Button(
         {1740, 1035, 150, 36}, std::wstring(state_.Document().Dirty() ? text.saveDirty : text.save),
         [this] { state_.Save(); }, true);
+    Button({1580, 1035, 150, 36}, std::wstring(texts_.Get("Editor.test")), [this] { RequestTest(); });
     const auto savedPath = state_.SavedPath().wstring();
-    Text({24, 1040, 1690, 32},
+    Text({24, 1040, 1530, 32},
          savedPath.empty() ? Wide(state_.Status()) : texts_.Format("Editor.savedFormat", savedPath), 16);
 }
 

@@ -43,6 +43,7 @@ class GameplayPresenter final
     void PresentErrorMessage(const std::string_view message);
     void UpdatePresentation(const RhythmTime time);
     void UpdateHp(double percent) { hpView_.Update(percent); }
+    void SetDebugVisible(bool visible);
     [[nodiscard]] RhythmTime InitialTimelineTime() const;
     void UpdateInputPresentation(const InputState &input, const double deltaSeconds);
 

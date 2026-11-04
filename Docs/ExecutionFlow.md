@@ -26,6 +26,8 @@ flowchart TD
     Logo --> EditorSelect["MusicSelectScene · Editor Song Select"]
     EditorSelect --> Editor["EditorScene · ChartEditor / YMP + YME"]
     Editor --> EditorSelect
+    Editor -->|저장한 채보 Test| Test
+    Test -->|Test의 Esc / 곡 종료| Editor
     Lobby --> Request["GameplayLaunchStore · 진입 시 Snapshot"]
     Request --> Manager
     Manager --> Test["RhythmTestScene · transient Taiko play"]
@@ -132,6 +134,9 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 ## 프레임과 종료
 
 에디터 진입 시 Workspace의 EditorPlayback에 AudioSystem을 연결합니다.
+Test 왕복에서는 EditorWorkspaceStore가 문서/이력/시각을 포함한 Workspace를 단일 소유로 보관합니다.
+Editor와 플레이 Scene은 계속 DestroyOnExit이며 Canvas·분석 작업·음성은 나갈 때 정리합니다.
+Test는 Result/기록 저장을 거치지 않고 복귀 시 기존 Workspace를 한 번 소비합니다.
 Space가 재생 의도를 설정하면 mode/analysis의 revision별 파일·cue를 받아 준비하고,
 매 update DSP 시각으로 음악·히트사운드 예약과 편집 cursor를 갱신합니다.
 Scene은 연결/Update/Shutdown만 호출합니다. 종료 시 에디터 Voice를 먼저 정지하고

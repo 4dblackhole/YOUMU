@@ -19,9 +19,10 @@ class PlaySessionLoader final
             try
             {
                 auto result = CreatePlayGameMode(request.mode,
-                    {RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000}, request.inputKeys, request.playOptions})
+                    {RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000}, request.inputKeys,
+                     request.playOptions, request.editorTestStart})
                     ->LoadSession(request.patternPath, request.effectPath);
-                if (result.Succeeded() && !result.session->CanEnterGameplay())
+                if (result.Succeeded() && !request.editorTestStart && !result.session->CanEnterGameplay())
                 {
                     result.session.reset();
                     result.diagnostics.push_back({DiagnosticSeverity::Error, {request.patternPath, 1, 1},

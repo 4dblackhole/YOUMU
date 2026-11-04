@@ -33,6 +33,7 @@
 | Result·통계·그래프·Retry | `Modes/Mode/Results`, `Taiko/Results`, `Client/GameScene/ResultScene` | PlayResultTests, ResultPresentationTests |
 | 에디터 조립·모드/문서 교체 | EditorScene, EditorWorkspace, Modes/IEditorMode/IEditorContext/IEditorAudioSource, `Chart/Editing/IEditorDocument` | RunEditorPresentationTests의 EditorModeTests |
 | 에디터 메뉴·공통 이동·선택·붙여넣기 | EditorMenuBar/Input/View, EditorSelection/Clipboard, TaikoEditorSelection | EditorMenuTests, EditorModeTests, ChartEditorTests |
+| 저장한 채보 Test·복귀·부분 노트·가변 배속 | EditorScene/WorkspaceStore, TestLaunchRequest, RhythmTestScene/EditorTestControls, GameplayState/AudioRouter, TaikoSessionBuilder의 minimumNoteTime, RhythmTimer | RunEditorTestSceneTests, EditorAudioViewTests의 저장 확인, TestPartialPreviewNotes, TestAcceleratedClockAndWindows |
 | 노트/타이밍/효과 편집·Undo/Redo·저장 | TaikoEditorNoteInspector/Score/Metadata, EditorForms/TimingView/EffectsView, ChartEditor/History | ChartEditorTests, ChartReviewRegressionTests, EditorModeTests |
 | 파형·FFT·탐색·배속·offset | EditorAnalysisController, EditorAudioView/Selection/Controls, EditorPlayback/Metronome, `YOUMU.Editor/Audio` | EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests, EditorMetronomeTests |
 | YMM/YMP/YME 문법·효과·타이밍 | `Chart/Parsing/Submodules`, Model, MusicalTimeline, EffectValidation, InterpolationExpression/ScrollAutomation | ChartParserTests, YmeEffectsTests, 저장 왕복·캐시 무효화 |

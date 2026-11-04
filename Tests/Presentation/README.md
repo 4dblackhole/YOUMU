@@ -1,4 +1,16 @@
-# Lane key beam regression test
+# Presentation regression tests
+
+## Editor Test round trips
+
+`RunEditorTestSceneTests.ps1 -Configuration Debug` (and Release) uses actual NoSound
+FMOD audio and production Editor/gameplay Scenes to verify partial-chart loading,
+quarter/double speed, Space pause/resume, Debug-seek isolation, rate bounds, repeated
+Esc round trips, natural completion without Result, empty-Test HP exclusion,
+localization and retained editor Undo. It writes only its `build/fixtures` data.
+`RunEditorPresentationTests.ps1` also checks the actual Test button and native Save
+Yes/No/error paths; `-SongFilter --test-launch` selects those focused checks.
+
+## Lane key beam regression test
 
 Build the Client solution first. From an x64 Visual Studio developer command
 prompt in the repository root, compile the presentation test against the same

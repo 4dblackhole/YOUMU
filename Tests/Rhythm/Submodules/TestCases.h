@@ -49,6 +49,7 @@ namespace tests
     void TestTaikoRollAndTickRollRules();
     void TestCountOnlyRollHeadJudgements();
     void TestDengDengEitherStart();
+    void TestPartialPreviewNotes();
     void TestMeasureLineScrollEffects();
     void TestBalloonDengDengAndBuzzRules();
     void TestTimingAccuracyAndSessionAggregation();

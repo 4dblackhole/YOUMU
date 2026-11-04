@@ -8,6 +8,7 @@
 class IPlaySessionController;
 class GameplayPresenter;
 class GameplayPauseMenu;
+class EditorTestControls;
 class RhythmTestScene final : public GameScene
 {
   public:
@@ -32,6 +33,8 @@ class RhythmTestScene final : public GameScene
     void ShowResult(SceneManager &scenes);
     void UpdatePauseMenu(const UpdateContext &context, SceneManager &scenes);
     bool PreparePresentation();
+    bool TryPreparePresentation();
+    void ReturnToEditor(SceneManager &scenes);
     void PrepareLoadingBackground();
     void UpdateLoadingBackgroundLayout();
     std::unique_ptr<IPlayResult> &pendingResult_;
@@ -39,9 +42,12 @@ class RhythmTestScene final : public GameScene
     std::unique_ptr<IPlaySessionController> controller_;
     std::unique_ptr<GameplayPresenter> view_;
     std::unique_ptr<GameplayPauseMenu> pauseMenu_;
+    std::unique_ptr<EditorTestControls> testControls_;
     ScreenVisual2DManager &visuals_;
     TextCatalog &texts_;
     GameplayLaunchRequest launch_;
+    std::shared_ptr<GameplayLaunchStore> launchStore_;
+    bool testPreparationFailed_{};
     ScreenCanvasHandle loadingCanvas_;
     Visual2DNode *loadingBackground_{};
     Size loadingBackgroundSize_{};

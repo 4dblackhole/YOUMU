@@ -9,7 +9,8 @@
 class EditorPlayback final
 {
   public:
-    static constexpr double MinimumRate = .25, MaximumRate = 2.0;
+    static constexpr double MinimumRate = GameplayLaunchRequest::EditorTestMinimumRate,
+                            MaximumRate = GameplayLaunchRequest::EditorTestMaximumRate;
     void SetRate(double rate);
     double Rate() const noexcept
     {

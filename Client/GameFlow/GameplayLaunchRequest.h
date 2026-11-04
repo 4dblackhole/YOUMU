@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Mode/PlayOptions.h"
+#include "Common/RhythmTypes.h"
 #include <cstdint>
 #include <filesystem>
 #include <map>
@@ -12,6 +13,7 @@
 // GameplayLaunchStore; an active session owns its copy.
 struct GameplayLaunchRequest
 {
+    static constexpr double EditorTestMinimumRate = .25, EditorTestMaximumRate = 2.0;
     std::filesystem::path patternPath;
     std::optional<std::filesystem::path> effectPath;
     std::filesystem::path musicPath;
@@ -30,6 +32,8 @@ struct GameplayLaunchRequest
 
     PlayOptions playOptions;
     std::wstring patternTitle;
+    // Present only for a saved editor Test. Normal play options stay unchanged.
+    std::optional<RhythmTime> editorTestStart;
 
     [[nodiscard]] bool IsValid() const noexcept
     {
@@ -45,6 +49,7 @@ struct GameplayLaunchRequest
         songTitle.clear();
         patternCreator.clear();
         patternTitle.clear();
+        editorTestStart.reset();
         globalOffsetMs = 0;
         playOptions = {};
         inputKeys.clear();

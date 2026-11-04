@@ -32,9 +32,14 @@ void GameplaySessionController::InitializeSession()
     PrepareDebugLaunchRequest();
     if (!session_)
         session_ = CreateSession();
-    if (!session_->CanEnterGameplay())
+    if (!launchRequest_.editorTestStart && !session_->CanEnterGameplay())
         throw std::runtime_error("A chart with no playable notes is available only in editor preview/test.");
     heldKeys_.reserve(session_->InputMapping().size());
+    playbackRate_ = launchRequest_.editorTestStart ? 1.0 : session_->Options().accelerate;
+    if (launchRequest_.editorTestStart)
+        for (const auto &lane : session_->Gear().Lanes())
+            for (const auto &note : lane->Notes())
+                testEndTime_ = std::max(testEndTime_, note->ExpireTime());
     time_ = initialTime_;
     sessionInitialized_ = true;
 }
@@ -70,7 +75,10 @@ AudioPreparationState GameplaySessionController::PrepareAudioResources(AudioSyst
     }
     if (!initializationError_.empty())
         return AudioPreparationState::Failed;
-    return audioRouter_.PrepareResources();
+    const auto prepared = audioRouter_.PrepareResources();
+    if (launchRequest_.editorTestStart && prepared == AudioPreparationState::Ready)
+        testEndTime_ = std::max(testEndTime_, audioRouter_.MusicDuration().value_or(RhythmTime{}));
+    return prepared;
 }
 void GameplaySessionController::Start(const EngineServices &services,
                                       const RhythmTime initialTime)
@@ -144,7 +152,10 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
         ScheduleMetronome();
     if (exitTicks)
         PauseAt(*exitTicks, true);
-    if (!debugMode_ && !pauseMenuOpen_ && timer_.CurrentState() == RhythmTimer::State::Running &&
+    if (launchRequest_.editorTestStart && !pauseMenuOpen_ &&
+        timer_.CurrentState() == RhythmTimer::State::Running && time_ >= testEndTime_ && IsPatternComplete())
+        EnterEnding(PlayEndReason::Completed);
+    else if (!launchRequest_.editorTestStart && !debugMode_ && !pauseMenuOpen_ && timer_.CurrentState() == RhythmTimer::State::Running &&
         IsPatternComplete())
     {
         completedElapsedSeconds_ += context.deltaSeconds;

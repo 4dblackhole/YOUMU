@@ -11,8 +11,8 @@ void RhythmTimer::Start(
     const RhythmTime timelinePosition,
     const double playbackRate)
 {
-    if (!std::isfinite(playbackRate) || playbackRate < 0.5 || playbackRate > 2.0)
-        throw std::invalid_argument("Playback rate must be 0.5..2.0.");
+    if (!std::isfinite(playbackRate) || playbackRate < 0.25 || playbackRate > 2.0)
+        throw std::invalid_argument("Playback rate must be 0.25..2.0.");
     playbackRate_ = playbackRate;
     counterFrequency_ = std::max<std::int64_t>(
         performanceCounterFrequency,

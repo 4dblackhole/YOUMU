@@ -102,6 +102,8 @@ Random 시드는 uint64 정수 동등 조건입니다. 스크롤속도는 기록
 `TaikoSessionBuilder`는 판정/스크롤/박 컴파일을 맡습니다.
 `RhythmTimer`는 배속을 포함한 공통 시간 변환,
 `GameplayAudioRouter`는 음정 정책과 clip/bus/예약 재생을 맡습니다.
+시계는 에디터 Test를 위해 0.25배속까지 허용하지만 일반 `PlayOptions.accelerate` 검증은
+0.5~2.0을 유지합니다. Test의 가변 배속은 일시 상태이며 결과/설정 파일에 저장하지 않습니다.
 `ValueDialog`와 `PlayOptionsDialog`는 Client 입력 UI,
 `RecordFilter`는 입력 검증과 기존 조건식 조합, `RecordFilterPanel`은 임시 편집/적용/취소 UI,
 `PlayRecordStore`/`RecordCondition`은 SQLite 저장/제한된 조건식,

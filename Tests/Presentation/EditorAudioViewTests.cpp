@@ -7,10 +7,13 @@
 #include "EditorModeTests.h"
 #include "EditorPlaybackTests.h"
 #include "EditorScene/Submodules/EditorView.h"
+#include "EditorScene/Submodules/EditorWorkspaceStore.h"
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "GameScene/MusicSelectScene/Submodules/SongPreviewController.h"
 #include <chrono>
+#include <atomic>
 #include <iostream>
+#include <fstream>
 #include <thread>
 
 struct InputStateTestAccess
@@ -26,6 +29,12 @@ struct InputStateTestAccess
         input.SetKey(key, true, 1);
     }
     static void Reset(InputState &input) { input.Reset(); }
+    static void Click(InputState &input, int x, int y)
+    {
+        input.Reset();
+        input.SetMousePosition(x, y, true);
+        input.SetMouseButton(MouseButton::Left, true, 1);
+    }
 };
 
 namespace
@@ -94,6 +103,96 @@ namespace
                     if (tile->Name() == "Spectrum.Tile")
                         if (auto *geometry = tile->GetComponent<EditorVisual>()) geometry->AppendDrawPackets(result);
         return result;
+    }
+
+    void TestEditorTestLaunch(ScreenVisual2DManager &visuals, const EngineServices &services, TextCatalog &texts)
+    {
+        const auto root = std::filesystem::absolute("build/fixtures/EditorTestLaunch");
+        std::filesystem::create_directories(root);
+        std::ofstream(root / "Song.ymm") << "Version: 1\nFile: Music.wav\nMusic Name 1: Editor Test\n";
+        std::ofstream(root / "Pattern.ymp") <<
+            "Version: 1\nMusic metadata: Song.ymm\nPattern Name: Editor Test\nMode: Taiko\n"
+            "Base BPM: 120\nJudgeLevel: 50\nHP: 9\n[Pattern]\n0/1,1,0\n1/2,2,0\n";
+        GameplayLaunchRequest request{root / "Pattern.ymp", {}, root / "Music.wav", "Taiko"};
+        request.songsRoot = root;
+        auto workspace = std::make_unique<EditorWorkspace>(request);
+        workspace->Initialize();
+        workspace->Seek(1234.567);
+        workspace->SetPlaybackRate(2);
+        const auto snapshot = workspace->TestLaunchRequest();
+        Check(snapshot.editorTestStart == RhythmTime{1'234'567} && snapshot.playOptions.accelerate == 1 &&
+                  snapshot.patternPath == request.patternPath && snapshot.musicPath == request.musicPath,
+              "Test starts at the displayed editor time and 1x, using the saved current chart.");
+        EditorView view(visuals, *workspace, texts);
+        view.Initialize(services);
+        InputState click;
+        InputStateTestAccess::Click(click, 1655, 1053);
+        Check(!view.Update({0, 0, 1, click, services.audio, {}}) && view.TakeTestRequest() && !view.TakeTestRequest(),
+              "Test beside Save must publish one launch without leaving the editor selector route.");
+        workspace->AddNote({2, {}}, 1);
+        const auto dirtyRevision = workspace->Document().Revision();
+        bool rejected = false;
+        try { static_cast<void>(workspace->TestLaunchRequest()); }
+        catch (const std::exception &) { rejected = true; }
+        Check(rejected && workspace->Document().Dirty() && workspace->Document().Revision() == dirtyRevision,
+              "An unsaved document cannot become a gameplay Test snapshot.");
+        const auto answerSave = [&](int answer)
+        {
+            const auto uiThread = GetCurrentThreadId();
+            struct Reply { int answer; std::atomic<bool> sent{}; } reply{answer};
+            std::jthread responder([&](std::stop_token stop)
+            {
+                while (!stop.stop_requested() && !reply.sent)
+                {
+                    EnumThreadWindows(uiThread, [](HWND window, LPARAM data) -> BOOL
+                    {
+                        wchar_t type[32]{};
+                        GetClassNameW(window, type, 32);
+                        if (std::wstring_view(type) != L"#32770") return TRUE;
+                        auto &target = *reinterpret_cast<Reply *>(data);
+                        target.sent = PostMessageW(window, WM_COMMAND, static_cast<WPARAM>(target.answer), 0) != FALSE;
+                        return FALSE;
+                    }, reinterpret_cast<LPARAM>(&reply));
+                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                }
+            });
+            InputStateTestAccess::Click(click, 1655, 1053);
+            static_cast<void>(view.Update({0, 0, 1, click, services.audio, {}}));
+            responder.request_stop();
+            responder.join();
+            Check(reply.sent, "Test must ask about saving the actual dirty editor document.");
+        };
+        answerSave(IDNO);
+        Check(!view.TakeTestRequest() && workspace->Document().Dirty() &&
+                  workspace->Document().Revision() == dirtyRevision,
+              "Declining Save must cancel Test and preserve the edited document.");
+        answerSave(IDYES);
+        Check(!workspace->Document().Dirty() && workspace->TestLaunchRequest().effectPath.has_value(),
+              "A successful save must publish the actual YME selected by Save.");
+        Check(view.TakeTestRequest(), "Only successful Save may publish the dirty-document Test.");
+        workspace->AddNote({3, {}}, 2);
+        const auto failedRevision = workspace->Document().Revision();
+        const auto blockedStaging = root / "Pattern.ymp.editor.tmp";
+        std::filesystem::create_directory(blockedStaging);
+        answerSave(IDYES);
+        std::filesystem::remove(blockedStaging);
+        Check(!view.TakeTestRequest() && workspace->Document().Dirty() &&
+                  workspace->Document().Revision() == failedRevision && !workspace->Status().empty(),
+              "Failed Save must keep the document/Undo state and cancel Test with an error.");
+        workspace->Undo();
+        view.Shutdown();
+        const auto *identity = workspace.get();
+        EditorWorkspaceStore transfer;
+        transfer.Suspend(std::move(workspace));
+        workspace = transfer.Take();
+        Check(workspace.get() == identity && !transfer.Take() && workspace->TimeMilliseconds() == 1234.567 &&
+                  workspace->PlaybackRate() == 2,
+              "Only the original workspace survives the single-use Test return transfer.");
+        workspace->Undo();
+        Check(workspace->Document().Notes().size() == 2 && workspace->Document().Dirty(),
+              "Test return must preserve editor Undo rather than reopen the saved document.");
+        workspace->Redo();
+        Check(!workspace->Document().Dirty(), "Save identity and Redo must survive Test return.");
     }
 
     void TestAudioRangeSelection(Visual2DCanvas &canvas, EditorView &view, EditorWorkspace &state,
@@ -166,6 +265,19 @@ int main(int argc, char** argv)
     {
         std::string assetError;
         Check(InitializeBuiltInAssets(assetError), assetError.c_str());
+        if (argc > 1 && std::string_view(argv[1]) == "--test-launch")
+        {
+            RecordingRenderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1920, 1080});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            TestEditorTestLaunch(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts);
+            std::cout << "Editor Test launch and workspace transfer passed.\n";
+            return 0;
+        }
         TestEditorMenu();
         TestEditorPlayback();
         TestEditorMetronome();
@@ -533,6 +645,7 @@ int main(int argc, char** argv)
         visuals.OnResize(1920, 1080);
         TestEditorModes(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts,
                         [&renderer]() -> const std::vector<DrawPacket> & { return renderer.packets; });
+        TestEditorTestLaunch(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts);
         std::cout << "Editor audio view tests passed.\n";
         return 0;
     }

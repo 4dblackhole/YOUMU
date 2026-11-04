@@ -25,6 +25,8 @@ class IPlaySessionController
     virtual AudioPreparationState PrepareAudioResources(AudioSystem &) = 0;
     virtual void Start(const EngineServices &, RhythmTime initialTime) = 0;
     virtual void Update(const UpdateContext &) = 0;
+    virtual double PlaybackRate() const noexcept = 0;
+    virtual void SetEditorTestRate(double rate, const UpdateContext &) = 0;
     virtual PlayState CurrentState() const noexcept = 0;
     virtual void OpenPauseMenu(const UpdateContext &) = 0;
     // true means the command was accepted once. CurrentState remains Pause

@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+class EditorWorkspaceStore;
 
 // The Client root for YOUMU.  The Engine owns the platform loop while
 // this class selects the game window policy and registers game-owned Scenes.
@@ -43,6 +44,7 @@ class YOUMUGame final : public SceneGameClient
     bool rhythmDebugMode_{};
     std::string initialSceneId_;
     std::shared_ptr<GameplayLaunchStore> launchRequest_;
+    std::shared_ptr<EditorWorkspaceStore> editorWorkspaceStore_;
     std::unique_ptr<IPlayResult> pendingResult_;
     TextCatalog texts_;
     OptionSettings optionSettings_;

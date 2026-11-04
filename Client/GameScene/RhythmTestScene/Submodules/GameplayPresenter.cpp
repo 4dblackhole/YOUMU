@@ -153,3 +153,9 @@ void GameplayPresenter::ApplyFeedback(const GameplayFeedback &feedback)
         }
     }
 }
+void GameplayPresenter::SetDebugVisible([[maybe_unused]] bool visible)
+{
+#if defined(_DEBUG)
+    if (noteDebugLabel_) noteDebugLabel_->SetVisible(visible);
+#endif
+}

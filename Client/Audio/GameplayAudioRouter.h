@@ -38,6 +38,8 @@ public:
                                             AudioLoadMode loadMode = AudioLoadMode::Sample);
     AudioPreparationState PrepareResources();
     bool ConfigurePlayback(const PlayOptions &options, std::string &error);
+    bool SetEditorTestRate(double rate, RhythmTime position, const RhythmTimer &timer, std::string &error);
+    std::optional<RhythmTime> MusicDuration() const;
 
     // Input-driven cues start immediately. Timeline scheduling remains a
     // separate path for music and other deliberately future playback.
@@ -76,6 +78,8 @@ private:
     void ApplyAutomationValue(const AutomationValue& value);
 
     float musicPitch_{1.0F}, hitSoundPitch_{1.0F};
+    bool editorTestPlayback_{};
+    std::map<AudioPlaybackId, RhythmTime> scheduledCueTimes_;
     AudioSystem* audioSystem_{};
     AudioPlaybackManager& playback_;
     std::map<std::string, std::shared_ptr<AudioBus>, std::less<>>

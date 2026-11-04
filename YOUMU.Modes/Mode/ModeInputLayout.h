@@ -2,6 +2,7 @@
 #include "Common/RhythmTypes.h"
 #include "Mode/PlayOptions.h"
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,8 @@ struct PlaySessionOptions
     RhythmDuration globalOffset{};
     InputKeyOverrides inputKeys;
     PlayOptions play;
+    // A partial preview omits whole logical notes whose heads precede this time.
+    std::optional<RhythmTime> minimumNoteTime;
 };
 // Resolve and validate before publishing settings or constructing a session.
 [[nodiscard]] ModeInputLayout ResolveInputLayout(ModeInputLayout defaults, const InputKeyOverrides &overrides);

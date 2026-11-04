@@ -8,7 +8,7 @@ namespace tests
     void TestAcceleratedClockAndWindows()
     {
         AccuracyRange range("test", 60);
-        for (double rate : {.5, 1., 1.5, 2.})
+        for (double rate : {.25, .5, 1., 1.5, 2.})
         {
             RhythmTimer timer;
             timer.Start(1'000'000, 1'000'000, RhythmTime{-100'000}, rate);

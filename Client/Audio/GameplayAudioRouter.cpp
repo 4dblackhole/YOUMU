@@ -156,6 +156,40 @@ bool GameplayAudioRouter::ConfigurePlayback(const PlayOptions &options, std::str
     error.clear();
     return true;
 }
+std::optional<RhythmTime> GameplayAudioRouter::MusicDuration() const
+{
+    const auto music = clips_.find("Music.Track");
+    if (music == clips_.end()) return {};
+    std::string error;
+    std::uint64_t duration{};
+    if (!music->second.clip->GetDurationMicroseconds(duration, error) ||
+        duration > static_cast<std::uint64_t>(RhythmTime::max().count())) return {};
+    return RhythmTime{static_cast<RhythmTime::rep>(duration)};
+}
+bool GameplayAudioRouter::SetEditorTestRate(double rate, RhythmTime position, const RhythmTimer &timer,
+                                           std::string &error)
+{
+    editorTestPlayback_ = true;
+    musicPitch_ = hitSoundPitch_ = static_cast<float>(rate);
+    for (const auto id : voices_)
+    {
+        auto *voice = playback_.FindVoice(id);
+        if (!voice || !voice->IsPlaying()) continue;
+        if (!voice->SetPitch(static_cast<float>(rate), error)) return false;
+        // Re-time only future sounds. Audible samples keep playing at the new pitch.
+        if (id == musicVoice_ && position < RhythmTime{})
+        {
+            if (!voice->SetDelay(timer.ToDspClock(RhythmTime{}), 0, error)) return false;
+        }
+        else if (const auto cue = scheduledCueTimes_.find(id);
+                 cue != scheduledCueTimes_.end() && cue->second > position)
+        {
+            if (!voice->SetDelay(timer.ToDspClock(cue->second), 0, error)) return false;
+        }
+    }
+    error.clear();
+    return true;
+}
 
 AudioPreparationState GameplayAudioRouter::PrepareResources()
 {
@@ -361,6 +395,10 @@ void GameplayAudioRouter::Route(
                     {
                         lastError_ = std::move(error);
                     }
+                    if (editorTestPlayback_ && settings.startDspClock)
+                        scheduledCueTimes_[active->second] = cue.timelineTime;
+                    else
+                        scheduledCueTimes_.erase(active->second);
                     continue;
                 }
 
@@ -388,6 +426,8 @@ void GameplayAudioRouter::Route(
             continue;
         }
         voices_.push_back(voice);
+        if (editorTestPlayback_ && settings.startDspClock)
+            scheduledCueTimes_[voice] = cue.timelineTime;
         if (sound->second.restartWhilePlaying)
         {
             sampleVoices_.insert_or_assign(clipAddress, voice);
@@ -430,6 +470,7 @@ void GameplayAudioRouter::PauseMusicAndStopSamples()
         musicVoice_ = InvalidAudioPlaybackId;
     musicPositioned_ = false;
     sampleVoices_.clear();
+    scheduledCueTimes_.clear();
     appliedValues_.clear();
 }
 
@@ -456,6 +497,8 @@ void GameplayAudioRouter::StopAllVoices() noexcept
     musicPositioned_ = false;
     musicPastEnd_ = false;
     sampleVoices_.clear();
+    scheduledCueTimes_.clear();
+    editorTestPlayback_ = false;
     appliedValues_.clear();
 }
 
@@ -471,6 +514,8 @@ void GameplayAudioRouter::Update()
         });
     std::erase_if(sampleVoices_,
                   [this](const auto &entry) { return playback_.FindVoice(entry.second) == nullptr; });
+    std::erase_if(scheduledCueTimes_,
+                  [this](const auto &entry) { return playback_.FindVoice(entry.first) == nullptr; });
 }
 
 std::string_view GameplayAudioRouter::LastError() const noexcept

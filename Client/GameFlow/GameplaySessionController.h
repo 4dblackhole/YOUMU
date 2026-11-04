@@ -27,6 +27,8 @@ class GameplaySessionController final : public IPlaySessionController
     AudioPreparationState PrepareAudioResources(AudioSystem &audio) override;
     void Start(const EngineServices &services, RhythmTime initialTime) override;
     void Update(const UpdateContext &context) override;
+    double PlaybackRate() const noexcept override { return playbackRate_; }
+    void SetEditorTestRate(double rate, const UpdateContext &context) override;
     PlayState CurrentState() const noexcept override
     {
         return state_;
@@ -117,6 +119,8 @@ class GameplaySessionController final : public IPlaySessionController
     std::int64_t gameplayStartTicks_{};
     std::string initializationError_;
     double completedElapsedSeconds_{};
+    double playbackRate_{1.0};
+    RhythmTime testEndTime_{};
     bool musicRegistered_{};
     bool audioInitialized_{}, resourcesReady_{}, playbackRequested_{};
     bool resourceLoadFailed_{};

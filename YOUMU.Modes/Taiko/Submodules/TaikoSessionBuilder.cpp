@@ -115,6 +115,11 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
             }
             const auto longNoteId = nextId;
             transform.Apply(longNoteHead->note);
+            if (options.minimumNoteTime && longNoteHead->timing < *options.minimumNoteTime)
+            {
+                longNoteHead.reset();
+                continue;
+            }
             AddLongNote(*longNoteHead, compiledNote, timeline,
                         UsesSyncopation(effectLookup, timeline, longNoteHead->note.position) ? syncopationRange
                                                                                              : defaultRange,
@@ -145,6 +150,8 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
         }
 
         transform.Apply(source);
+        if (options.minimumNoteTime && compiledNote.timing < *options.minimumNoteTime)
+            continue;
         type = static_cast<TaikoNoteType>(source.keyType);
         const bool don = IsDonType(type);
         const NoteAction requiredAction = ActionValue(don ? TaikoAction::Don : TaikoAction::Kat);
