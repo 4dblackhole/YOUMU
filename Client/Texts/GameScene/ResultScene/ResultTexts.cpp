@@ -37,5 +37,6 @@ ResultTextSet Result(const TextCatalog &texts)
             texts.Get("Result.backShortcut"),
             texts.Get("Result.artist"),
             texts.Get("Result.pauseUsed"),
-            texts.Get("Result.rewindUsed")};
+            texts.Get("Result.rewindUsed"),
+            texts.Get("Result.failed")};
 }

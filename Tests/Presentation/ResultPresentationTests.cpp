@@ -133,6 +133,73 @@ namespace
         }
         return value;
     }
+    void TestFailureOverlay()
+    {
+        struct Case
+        {
+            PlayEndReason reason;
+            HpGaugeState hp;
+            bool paused{}, rewound{}, showFailure{}, hpAvailable{true};
+        };
+        const std::array cases{
+            Case{PlayEndReason::Completed, {60, true, true}},
+            Case{PlayEndReason::Completed, {59.999999, true, false}, false, false, true},
+            Case{PlayEndReason::Interrupted, {90, true, true}},
+            Case{PlayEndReason::Interrupted, {0, true, false}},
+            Case{PlayEndReason::Completed, {30, true, false}, true},
+            Case{PlayEndReason::Completed, {30, true, false}, false, true},
+            Case{PlayEndReason::Completed, {0, false, false}},
+            Case{PlayEndReason::Completed, {}, false, false, false, false},
+        };
+        for (const auto &fixture : cases)
+        {
+            NullRenderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1920, 1080});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            TaikoPlayResult result;
+            result.summary.totalNotes = 1;
+            result.summary.endReason = fixture.reason;
+            result.summary.endTime = RhythmTime{4'000'000};
+            result.summary.pauseMenuUsed = fixture.paused;
+            if (fixture.hpAvailable) result.summary.hpGauges.push_back(fixture.hp);
+            result.summary.hpHistory = std::vector<HpHistoryPoint>{{RhythmTime{1'000'000}, fixture.hp.percent}};
+            if (fixture.rewound) result.summary.controls.push_back({PlayControlType::Rewind, RhythmTime{2'000'000}, {}});
+            auto view = CreateResultView(result, visuals, texts);
+            view->Initialize({meshes, textRendering, renderer, audio, 1920, 1080});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("Failure-overlay Canvas missing.");
+            for (const auto language : {Language::Korean, Language::English})
+            {
+                texts.SetLanguage(language);
+                InputState input;
+                static_cast<void>(view->Update(input));
+                const auto *label = FindNode(canvas->Root(), "Result.Failure");
+                Check((label != nullptr) == fixture.showFailure,
+                      "Only an HP-eligible completed failure is labelled; clear, retire and HP-disabled plays are not.");
+                Check(!FindNode(canvas->Root(), "Result.EndStatus"), "Do not add a separate end-state display.");
+                if (label)
+                {
+                    const auto *text = label->GetComponent<TextVisualComponent>();
+                    if (!text) throw std::runtime_error("Failure caption missing.");
+                    Check(text->Text() == texts.Get("Result.failed"), "Failure caption follows the selected language.");
+                    const auto b = label->Bounds();
+                    Check(b.x >= 122 && b.x + b.width <= 548 && b.y >= 806 &&
+                              b.y + b.height <= 806 + 104 * .6F && label->ZIndex() > 0,
+                          "Failure stays within the HP plot below the passing-height band and above its curve.");
+                }
+                if (fixture.hpAvailable)
+                    Check(result.summary.hpGauges.front().percent == fixture.hp.percent,
+                          "Displaying status must preserve actual HP, including high-HP retirement.");
+                Check(result.summary.hpHistory->back().percent == fixture.hp.percent,
+                      "Failure/retirement display never rewrites the HP curve.");
+            }
+            view->Shutdown();
+        }
+    }
     void TestControlUsageOverlay()
     {
         for (unsigned mask = 0; mask < 5; ++mask)
@@ -796,6 +863,7 @@ int main()
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestResultRecordSaving();
+        TestFailureOverlay();
         TestControlUsageOverlay();
         TestHpCurveGeometry();
         TestChartBackground();

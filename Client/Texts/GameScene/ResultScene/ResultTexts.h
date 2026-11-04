@@ -14,5 +14,6 @@ struct ResultTextSet
     std::wstring_view replay, retry, back, backShortcut;
     std::wstring_view artist;
     std::wstring_view pauseUsed, rewindUsed;
+    std::wstring_view failed;
 };
 ResultTextSet Result(const TextCatalog &texts);

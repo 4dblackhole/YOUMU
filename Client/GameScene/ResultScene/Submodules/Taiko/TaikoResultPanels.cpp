@@ -62,6 +62,15 @@ void TaikoResultView::BuildHpGraph(Visual2DNode &root)
         label.SetName("Result.ControlUsage");
         label.SetZIndex(5);
     }
+    const auto &summary = result_.summary;
+    if (summary.endReason == PlayEndReason::Completed && summary.CanUseHp() && !summary.IsCleared() &&
+        std::ranges::any_of(summary.hpGauges, [](const auto &hp) { return hp.applicable; }))
+    {
+        auto &label = Label(root, {154, 236, 362, 26}, std::wstring(text.failed), 18, 700,
+                            TextAlignment::Center, Markers[7]);
+        label.SetName("Result.Failure");
+        label.SetZIndex(5);
+    }
 }
 void TaikoResultView::BuildJudgements(Visual2DNode &root)
 {

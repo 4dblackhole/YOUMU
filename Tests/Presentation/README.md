@@ -88,6 +88,11 @@ Pause/Rewind summaries inside the plot, language rebuilds, unavailable versus va
 deactivation-time cutoff and clipped finite geometry. HpGaugeTests verifies that real HP/history
 stop at menu pause/Rewind, survive Resume/rewind/retirement, transfer by value and reset on Retry.
 
+Failure-overlay cases cover the HP pass boundary, eligible failure, high/low-HP retirement,
+pause/Rewind-disabled completion and unavailable HP. Only failure receives an annotation inside
+the lower HP plot; result HP/history are never rewritten. GameplayPauseTests retains the real
+Retire regression that all remaining notes become MISS without pending logical notes.
+
 HP 회귀는 GameplayJudgementTests의 두 사각형·0/30/60/100%·크기 변경과
 GameplayPauseTests의 유효 노트가 없는 채보 진입 차단을 포함합니다.
 수치·롱노트·POOR·되감기·종료 판정과 포맷/기본값 검사는 Rhythm의 HpGaugeTests가 담당합니다.
