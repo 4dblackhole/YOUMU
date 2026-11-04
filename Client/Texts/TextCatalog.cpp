@@ -1,6 +1,8 @@
 #include "TextCatalog.h"
 #include "EnglishTexts.generated.h"
 #include "YOUMUAssets.h"
+#include "Submodules/ExplanationKeys.h"
+#include <algorithm>
 #include <stdexcept>
 
 namespace
@@ -18,7 +20,12 @@ namespace
     }
     std::size_t Index(Language language) noexcept
     {
-        return language == Language::Korean ? 0U : 1U;
+        switch (language)
+        {
+        case Language::Korean: return 0;
+        case Language::Japanese: return 2;
+        default: return 1;
+        }
     }
 }
 TextCatalog::TextCatalog() : TextCatalog(UserAssetRoot() / L"Languages")
@@ -29,30 +36,35 @@ TextCatalog::TextCatalog(const std::filesystem::path &languageDirectory)
     const auto &english = EnglishDefaults();
     files_[0] = ReadLanguageFile(languageDirectory / L"ko.ini");
     files_[1] = ReadLanguageFile(languageDirectory / L"en.ini");
+    files_[2] = ReadLanguageFile(languageDirectory / L"ja.ini");
+    constexpr std::array names{"ko.ini: ", "en.ini: ", "ja.ini: "};
     for (std::size_t i = 0; i < files_.size(); ++i)
     {
         auto &file = files_[i];
         ValidateTranslations(file, english);
         for (const auto &diagnostic : file.diagnostics)
-            diagnostics_.push_back(std::string(i == 0 ? "ko.ini: " : "en.ini: ") + diagnostic);
+            diagnostics_.push_back(std::string(names[i]) + diagnostic);
     }
     profiles_ = {{{Language::Korean,
-                   Get(Language::Korean, "Languages.Korean"),
+                   Get(Language::English, "Languages.Korean"),
                    {TextFontSource::System, L"Segoe UI"}},
                   {Language::English,
                    Get(Language::English, "Languages.English"),
+                   {TextFontSource::System, L"Segoe UI"}},
+                  {Language::Japanese,
+                   Get(Language::English, "Languages.Japanese"),
                    {TextFontSource::System, L"Segoe UI"}}}};
 }
 std::wstring_view TextCatalog::Get(std::string_view key) const noexcept
 {
-    return Get(language_, key);
+    return Get(std::ranges::find(ExplanationTextKeys, key) != ExplanationTextKeys.end() ? language_ : Language::English, key);
 }
 std::wstring_view TextCatalog::Get(Language language, std::string_view key) const noexcept
 {
     const auto &selected = files_[Index(language)].entries;
     if (const auto found = selected.find(key); found != selected.end())
         return found->second;
-    // A partial Korean pack always falls back to English.
+    // Partial translation packs fall back to English.
     if (const auto found = files_[1].entries.find(key); found != files_[1].entries.end())
         return found->second;
     const auto &english = EnglishDefaults();

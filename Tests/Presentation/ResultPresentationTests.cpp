@@ -558,7 +558,7 @@ namespace
               "The result must display the actual score and maximum combo with numeric sprites.");
         for(const auto key:{"scrollSpeed","metronome","mirror","random","accelerate","judgeLevel"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
-        Check(HasText(*canvas, L"정확도") && HasText(*canvas, L"Recorded song") &&
+        Check(HasText(*canvas, L"Accuracy") && HasText(*canvas, L"Recorded song") &&
                   HasText(*canvas, L"Recorded creator") && HasText(*canvas, L"Recorded artist") &&
                   HasText(*canvas, std::format(L"{:.6f}%", taiko->summary.accuracy.Percent())),
               "Result view must display the recorded six-decimal accuracy.");

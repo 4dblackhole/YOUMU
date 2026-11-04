@@ -19,14 +19,6 @@ void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio,
     audio_ = &audio;
     window_ = window;
     inputLayouts_ = AvailableInputLayouts();
-    contentHeight_ = 1280.0F;
-    for (const auto &layout : inputLayouts_)
-    {
-        contentHeight_ += 52.0F;
-        if (layout.modeId == "Taiko") contentHeight_ += 84.0F;
-        else for (const auto &binding : layout.bindings)
-            contentHeight_ += 84.0F * static_cast<float>(binding.keys.size());
-    }
     auto &leftAnchor = canvas.AnchorNode(Anchor::MiddleLeft);
     leftAnchor.SetZIndex(100);
     panel_ = &CreatePanel(leftAnchor, {-PanelWidth, -PanelHeight * 0.5F, PanelWidth, PanelHeight},
@@ -43,20 +35,13 @@ void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio,
     titleText.SetFontSize(30.0F);
     titleText.SetTextColor(HeadingColor);
 
-    auto &viewport = panel_->CreateChild("Options.Viewport");
-    viewport.SetBounds({0.0F, 24.0F, PanelWidth, ContentViewportHeight});
-    viewport.SetClipRect({0.0F, 0.0F, PanelWidth, ContentViewportHeight});
-    content_ = &viewport.CreateChild("Options.Content");
-    content_->SetSize({PanelWidth, contentHeight_});
-    content_->SetPosition({0.0F, ContentViewportHeight - contentHeight_});
-
-    CreateLanguageControls();
-    CreateSkinControls();
-    CreateAudioControls();
-    CreateDisplayControls();
-    CreateOffsetControls();
-    CreateSongsControls();
-    CreateKeyControls();
+    viewport_ = &panel_->CreateChild("Options.Viewport");
+    statusLabel_ = &CreateLabel(*panel_, {24, 24, PanelWidth - 48, 140}, L"", "Options.Status");
+    auto &status = RequireComponent<TextVisualComponent>(*statusLabel_);
+    status.SetFontSize(14);
+    status.SetTextColor(ui_colors::Error);
+    statusLabel_->SetVisible(false);
+    CreateTabs();
     RefreshTexts();
     panel_->SetVisible(false);
 }
@@ -78,13 +63,13 @@ void OptionsPanel::CreateLanguageControls()
         &CreateComboBox(*content_, {24.0F, contentHeight_ - 96.0F, PanelWidth - 48.0F, 46.0F},
                                        std::move(languageNames), "Options.Language.Combo");
     languageComboId_ = languageCombo_->Id();
-    ConfigureCombo(*languageCombo_, 2);
+    ConfigureCombo(*languageCombo_, texts_.Languages().size());
     languageCombo_->SetZIndex(50);
 }
 
 void OptionsPanel::CreateSkinControls()
 {
-    skinLabel_ = &CreateLabel(*content_, {24.0F, contentHeight_ - 174.0F, PanelWidth - 48.0F, 28.0F},
+    skinLabel_ = &CreateLabel(*content_, {24.0F, contentHeight_ - 38.0F, PanelWidth - 48.0F, 28.0F},
                                              L"", "Options.Skin.Label");
     auto &label = RequireComponent<TextVisualComponent>(*skinLabel_);
     label.SetFontSize(18.0F);
@@ -92,32 +77,26 @@ void OptionsPanel::CreateSkinControls()
 
     skinNames_ = SkinSetSelection::Instance().AvailableNames();
     skinCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 232.0F, PanelWidth - 48.0F, 46.0F}, skinNames_, "Options.Skin.Combo");
+        *content_, {24.0F, contentHeight_ - 96.0F, PanelWidth - 48.0F, 46.0F}, skinNames_, "Options.Skin.Combo");
     skinComboId_ = skinCombo_->Id();
     ConfigureCombo(*skinCombo_, 4);
     skinCombo_->SetZIndex(40);
 
-    statusLabel_ =
-        &CreateLabel(*content_, {24.0F, 24.0F, PanelWidth - 48.0F, 140.0F}, L"", "Options.Status");
-    auto &status = RequireComponent<TextVisualComponent>(*statusLabel_);
-    status.SetFontSize(14.0F);
-    status.SetTextColor(ui_colors::Error);
-    statusLabel_->SetVisible(false);
 }
 
 void OptionsPanel::CreateAudioControls()
 {
     middlewareLabel_ =
-        &CreateFieldLabel(*content_, contentHeight_ - 310.0F, PanelWidth, "Options.Middleware.Label");
-    outputLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 438.0F, PanelWidth, "Options.Output.Label");
-    driverLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 566.0F, PanelWidth, "Options.Driver.Label");
+        &CreateFieldLabel(*content_, contentHeight_ - 38.0F, PanelWidth, "Options.Middleware.Label");
+    outputLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 166.0F, PanelWidth, "Options.Output.Label");
+    driverLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 294.0F, PanelWidth, "Options.Driver.Label");
     middlewareCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 368.0F, PanelWidth - 48.0F, 46.0F},
+        *content_, {24.0F, contentHeight_ - 96.0F, PanelWidth - 48.0F, 46.0F},
         {std::wstring(texts_.Get("Options.middlewareFmod"))}, "Options.Middleware.Combo");
     outputCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 496.0F, PanelWidth - 48.0F, 46.0F}, {}, "Options.Output.Combo");
+        *content_, {24.0F, contentHeight_ - 224.0F, PanelWidth - 48.0F, 46.0F}, {}, "Options.Output.Combo");
     driverCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 624.0F, PanelWidth - 48.0F, 46.0F}, {}, "Options.Driver.Combo");
+        *content_, {24.0F, contentHeight_ - 352.0F, PanelWidth - 48.0F, 46.0F}, {}, "Options.Driver.Combo");
     ConfigureCombo(*middlewareCombo_, 1);
     ConfigureCombo(*outputCombo_, 3);
     ConfigureCombo(*driverCombo_, 3);
@@ -149,6 +128,11 @@ void OptionsPanel::Shutdown() noexcept
     skinLabel_ = nullptr;
     languageCombo_ = nullptr;
     content_ = nullptr;
+    viewport_ = nullptr;
+    tabButtons_ = tabContents_ = {};
+    contentHeights_ = scrollOffsets_ = {};
+    activeTab_ = 0;
+    viewportHeight_ = ContentViewportHeight;
     languageLabel_ = nullptr;
     title_ = nullptr;
     panel_ = nullptr;
@@ -310,6 +294,15 @@ bool OptionsPanel::ProcessAction(const Action &action)
 {
     if (panel_ == nullptr || !targetOpen_)
         return false;
+    if (!CanProcessAction(action.source))
+        return false;
+    if (action.type == ActionType::Clicked)
+        for (std::size_t i = 0; i < tabButtons_.size(); ++i)
+            if (action.source == tabButtons_[i]->Id())
+            {
+                SelectTab(i);
+                return true;
+            }
     if (ProcessFieldAction(action))
         return true;
     if (action.type != ActionType::SelectionChanged)
@@ -411,6 +404,7 @@ void OptionsPanel::RefreshTexts()
     RefreshSongsControls();
     RefreshKeyControls();
     RefreshStatus();
+    RefreshTabs();
     optionRevision_ = options_.Revision();
 }
 
@@ -548,6 +542,7 @@ void OptionsPanel::RefreshStatus()
         texts_.ApplyFont(keyStatus);
     }
     statusLabel_->SetVisible(!value.empty());
+    UpdateContentLayout();
 }
 
 bool OptionsPanel::IsVisible() const noexcept
@@ -563,11 +558,12 @@ void OptionsPanel::ApplyAnimationPosition()
 
 void OptionsPanel::ApplyScrollOffset(Visual2DInputRouter &inputRouter)
 {
-    const float maximum = std::max(contentHeight_ - ContentViewportHeight, 0.0F);
+    const float maximum = std::max(contentHeight_ - viewportHeight_, 0.0F);
     scrollOffset_ = std::clamp(scrollOffset_, 0.0F, maximum);
     if (content_ != nullptr)
     {
-        content_->SetPosition({0.0F, ContentViewportHeight - contentHeight_ + scrollOffset_});
+        content_->SetPosition({0.0F, viewportHeight_ - contentHeight_ + scrollOffset_});
     }
+    scrollOffsets_.at(activeTab_) = scrollOffset_;
     inputRouter.InvalidateHitTest();
 }

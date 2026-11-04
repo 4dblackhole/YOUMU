@@ -1,5 +1,14 @@
 # Presentation regression tests
 
+## Options tabs and explanation languages
+
+`RunOptionsPanelTests.ps1` covers four-tab routing, per-tab scrolling, popup/input
+cleanup, hidden-action rejection, shared visible errors, unchanged device/key/
+resolution persistence and Japanese round trips. `RunLanguageFileTests.ps1`
+checks English captions/value formats, selected EN/KO/JA explanations, complete
+Japanese explanation-key coverage and existing immutable pack/fallback contracts.
+Japanese adds `ja` to the same INI Language field; stored ko/en remain valid.
+
 ## Editor Test round trips
 
 `RunEditorTestSceneTests.ps1 -Configuration Debug` (and Release) uses actual NoSound

@@ -15,8 +15,8 @@
 | 곡 목록·디스크 캐시·비동기 패턴 로딩 | SongCatalogLoader, `YOUMU.Chart/Catalog`, `GameFlow/PlaySessionLoader` | 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
 | 미리듣기 | SongPreviewController | MusicSelectViewTests, 엔진 오디오 계약 |
 | 새 난이도·.osu 가져오기 | NewDifficultyDialog, EditorPatternCreation, EditorOsuImport, OsuImportValidation | RunNewDifficultyTests, RunOsuImportValidationTests |
-| 전역 옵션·Taiko 키·Option.ini | `Client/Presentation/OptionsPanel`, `Client/App/OptionSettings` | RunOptionsPanelTests, OptionTimingTests |
-| 표시 이름·번역·글꼴·공통 색상 | `Client/Texts`, GameIdentity.props, LanguageFile, `Presentation/UiColors.h`, MarqueeTextComponent | RunLanguageFileTests, 해당 화면 표시 회귀 |
+| 전역 옵션·탭·Taiko 키·Option.ini | `Client/Presentation/OptionsPanel`의 OptionsTabs/각 필드, `Client/App/OptionSettings` | RunOptionsPanelTests(탭·스크롤·숨긴 입력·ja 저장), OptionTimingTests |
+| 영어 UI/3언어 설명·글꼴·공통 색상 | `Client/Texts`의 TextCatalog/ExplanationKeys/언어 INI, GameIdentity.props, LanguageFile, `Presentation/UiColors.h`, MarqueeTextComponent | RunLanguageFileTests, 해당 화면 표시 회귀 |
 | 스킨·자산·배포 | SkinManifest, SkinSetSelection, AssetPaths, SkinVisualComponent, `YOUMU.Assets` | RunSkinTests, RunAssetPathTests |
 | 시작·Scene 수명·launch snapshot | `Client/App`, `Client/GameFlow`, 각 Scene 주 파일 | SceneStateTests, ResultPresentationTests |
 | 플레이 시계·Debug 정지·입력 순서 | `GameFlow/Submodules`: GameplaySessionController, GameplayInput, GameplayState; `Rhythm/Time` | RhythmCoreTests, InputOrderingTests, RunGameplayPauseTests |

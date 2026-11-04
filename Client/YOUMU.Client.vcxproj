@@ -353,4 +353,9 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.h" />
   </ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsTabs.cpp" /></ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Texts\Submodules\ExplanationKeys.h" />
+    <None Include="Texts\Languages\ja.ini" />
+  </ItemGroup>
 </Project>

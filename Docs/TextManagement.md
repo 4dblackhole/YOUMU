@@ -2,12 +2,15 @@
 
 게임의 고정 UI 문구는 UTF-8 INI로 관리하며 화면별 문구 계약과 글꼴은 `Client/Texts`가 소유합니다.
 `YOUMUGame`이 하나의 `TextCatalog`를 소유하고 각 View/Presenter에 빌려주므로,
-로고에서 바꾼 언어가 곡 선택·플레이·에디터에도 이어집니다. 기본 언어는 한국어입니다.
+선택한 설명 언어가 곡 선택·플레이·에디터에도 이어집니다. 항목명·버튼·단위·값 형식은 영어이며,
+설명·도움말·오류 안내만 영어/한국어/일본어로 변경합니다. 최초 설정은 Windows 사용자 UI 언어를
+따르고 한국어/일본어 이외의 언어와 확인 불가는 영어로 시작합니다. 저장된 언어는 우선합니다.
 
 ```text
 Client/Texts/
   TextCatalog.*                         언어 목록, 현재 언어, 언어별 글꼴
-  Languages/en.ini, ko.ini              기본 제공 UI 문구의 원본
+  Languages/en.ini, ko.ini, ja.ini      영어 UI와 세 언어 안내문의 원본
+  Submodules/ExplanationKeys.h          설명·도움말·오류 안내 키의 역할 분류
   Submodules/LanguageFile.*             UTF-8 INI 파싱·자리표시자 검증
   GameIdentity.h                        언어와 무관한 제품 표시 이름
   Options/OptionTexts.*                 공통 옵션 패널
@@ -25,21 +28,20 @@ Client/Texts/
 
 ## 언어파일 교체
 
-실제로 읽는 파일은 `<자산 루트>/Languages/ko.ini`, `en.ini`입니다.
+실제로 읽는 파일은 `<자산 루트>/Languages/ko.ini`, `en.ini`, `ja.ini`입니다.
 개발 실행은 `Client/Assets/Languages`, 배포는 EXE 옆 `Asset/Languages`를 사용합니다.
-`Option.ini`의 기존 `General/Language=ko` 또는 `en` 선택을 그대로 사용합니다.
+기존 `General/Language=ko` 또는 `en`을 보존하고 `ja`도 지원합니다. 새 필드를 만들지 않으며
+이 값은 설명 언어를 선택합니다. 기본 `Get(key)`는 ExplanationKeys의 안내 키만 선택 언어로,
+나머지는 영어로 읽습니다. `Get(language,key)`는 특정 원본 팩을 조회하는 명시적 API입니다.
+사용자 곡/제작자/폴더/장치 이름 같은 데이터는 번역하지 않습니다. 기존 사용자 언어 파일은
+덮어쓰지 않으며 해당 영어 팩과 내장 영어를 순서대로 fallback으로 사용합니다.
 파일은 TextCatalog 생성 시 한 번 읽으므로 수정/교체 후 게임을 다시 실행합니다.
 언어 선택 전환과 화면 그리기 중에는 파일을 다시 읽거나 디렉터리를 탐색하지 않습니다.
 
 ```ini
-[Logo]
-Start="게임 시작"
-Editor="에디터"
-Options="옵션"
-Exit="종료"
-
 [Options]
-title="옵션 설정"
+offsetHint="클릭 → 숫자 입력 → Enter\n양수: 노트/효과를 음악보다 늦게 실행"
+saveError="Option.ini를 저장하지 못했습니다."
 ```
 
 메인·옵션·곡 선택·플레이·일시정지·리절트·공통/Taiko 에디터의 고정 라벨/도움말과
@@ -51,7 +53,7 @@ title="옵션 설정"
 누락/잘못된 항목은 **선택 언어 파일 → 외부 en.ini → 실행 파일의 영어 기본 문구** 순서로
 찾습니다. 한국어 C++ 상수로 돌아가는 경로는 없습니다. 영어 기본 문구는 원본
 `Client/Texts/Languages/en.ini`에서 빌드 시 생성해 EXE에 포함하므로 외부 파일이 없어도 유지됩니다.
-빌드는 원본 en/ko를 개발 폴더에 처음 한 번 복사하고 이미 존재하는 편집본은 덮어쓰지 않습니다.
+빌드는 원본 en/ko/ja를 개발 폴더에 처음 한 번 복사하고 이미 존재하는 편집본은 덮어쓰지 않습니다.
 새 번역 기본본을 배포할 때는 원하는 INI를 배포 폴더의 `Asset/Languages`에 직접 넣습니다.
 
 INI는 UTF-8(BOM 선택), LF/CRLF를 지원합니다. 빈 줄과 `;`/`#`로 시작하는 주석을 허용하고,
@@ -85,7 +87,7 @@ EXE TargetName도 같은 속성에서 계산하며 Windows 파일명에 사용�
 ## 언어와 글꼴 추가
 
 `TextCatalog.cpp`의 `LanguageProfile`은 언어 이름과 `TextFont`를 한 쌍으로
-관리합니다. 현재 한국어와 영어는 Windows의 `Segoe UI`를 사용합니다. 시스템
+관리합니다. 현재 세 언어는 Windows의 `Segoe UI`와 시스템 글꼴 fallback을 사용합니다. 시스템
 글꼴은 `TextFontSource::System`, 배포 글꼴 파일은 `TextFontSource::File`로
 지정할 수 있습니다. 파일 글꼴을 배포할 때는 글꼴 파일 옆에 라이선스를 함께 둡니다.
 리절트는 Penpot 지정 글꼴인 내장 Noto Sans KR을 별도로 사용합니다.
@@ -94,7 +96,7 @@ EXE TargetName도 같은 속성에서 계산하며 Windows 파일명에 사용�
 
 언어를 추가할 때는 다음을 함께 변경합니다.
 
-1. 현재 지원 언어는 한국어/영어입니다. 새 언어 지원 시 `Language`, 파일/프로필 목록과
+1. 현재 설명 언어는 한국어/영어/일본어입니다. 새 언어 지원 시 `Language`, 파일/프로필 목록과
    Option.ini의 언어 코드 매핑을 함께 추가합니다.
 2. 해당 언어 INI를 작성합니다. 빠진 키는 영어를 사용합니다. 화면별 C++ 언어 표는 추가하지 않습니다.
 3. `TextCatalog::SetLanguage` 뒤 revision을 보는 View가 표시 문구와 글꼴을
@@ -127,6 +129,11 @@ Visual2D 패널입니다.
   smoothstep으로 들어옵니다.
 - 패널 안에서 휠, 가운데 버튼 드래그, 빈 영역의 왼쪽 버튼 드래그로 세로
   스크롤합니다.
+- General(설명 언어·Songs), Display(스킨·해상도), Audio(출력·글로벌 오프셋), Input(키 설정)의
+  네 탭으로 분류합니다. 탭과 스크롤 위치는 같은 View에서 다시 열 때 유지하며 INI에는 저장하지
+  않습니다. 전환 시 펼친 ComboBox와 입력 대기를 정리하고 숨겨진 탭의 오래된 action은 거절합니다.
+  오류/설정 복구 안내는 탭 바깥의 공통 하단 영역에 표시하며 본문과 같은 clip을 사용하지 않습니다.
+- 모션 속도 설정은 사용자 지시로 폐기했습니다. 속도 필드·단계 선택·직접 입력을 추가하지 않습니다.
 - 언어와 스킨 ComboBox에 오디오 미들웨어·출력 방식·드라이버 ComboBox 3개를
   추가했습니다. 현재 설치된 미들웨어는 FMOD 하나이며 일반(자동)·WASAPI·ASIO를
   선택합니다. 드라이버 목록은 현재 출력 방식이 제공한 실제 장치와 번호만 표시합니다.
@@ -197,7 +204,7 @@ OptionsKeys, OptionsOffset이 각 표시·적용 함수를 분리합니다. Opti
 API에 선택을 전달하며 별도 옵션 Controller나 새로운 오디오 미들웨어는 추가하지 않습니다.
 
 EXE와 같은 폴더에 `Option.ini`가 없으면 처음 실행할 때 생성합니다. UTF-8 형식이며
-`;`/`#`로 시작하는 주석과 UTF-8 BOM을 읽습니다. 기본값과 키 이름은 다음과 같습니다.
+`;`/`#`로 시작하는 주석과 UTF-8 BOM을 읽습니다. 다음은 키와 예시이며 Language의 첫 실행 값은 ko/ja/en입니다.
 
 ```ini
 [General]
@@ -223,7 +230,7 @@ DriverIndex=-1
 DriverName=
 ```
 
-- `Language`: `ko` 또는 `en`.
+- `Language`: 설명 언어 `ko`, `en`, `ja`. 항목명·버튼은 영어를 사용합니다.
 - `GlobalOffsetMs`: signed int32 정수 ms, 기본 0.
 - `SongsPath`: UTF-8 곡 폴더 경로. 빈 값은 기존 개발/배포 자동 경로이며,
   상대경로는 EXE 폴더 기준입니다. 옵션 패널의 폴더 선택 버튼으로 변경하고 기본 폴더 버튼으로

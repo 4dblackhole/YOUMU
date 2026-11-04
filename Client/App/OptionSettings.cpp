@@ -13,6 +13,17 @@
 
 namespace
 {
+    OptionValues DefaultValues()
+    {
+        OptionValues values;
+        switch (PRIMARYLANGID(GetUserDefaultUILanguage()))
+        {
+        case LANG_KOREAN: values.language = Language::Korean; break;
+        case LANG_JAPANESE: values.language = Language::Japanese; break;
+        default: values.language = Language::English; break;
+        }
+        return values;
+    }
     std::string_view Trim(std::string_view value)
     {
         const auto begin = value.find_first_not_of(" \t\r\n");
@@ -88,7 +99,7 @@ namespace
     void Validate(const OptionValues &values)
     {
         if (values.language != Language::Korean &&
-            values.language != Language::English)
+            values.language != Language::English && values.language != Language::Japanese)
             throw std::runtime_error("Invalid language option.");
         if (values.driverIndex < -1 || !IsSingleLine(values.audioMiddleware) ||
             !IsSingleLine(values.driverName) || values.audioMiddleware.empty())
@@ -134,7 +145,8 @@ namespace
             {
                 if (value == "ko") values.language = Language::Korean;
                 else if (value == "en") values.language = Language::English;
-                else throw std::runtime_error("Language must be ko or en.");
+                else if (value == "ja") values.language = Language::Japanese;
+                else throw std::runtime_error("Language must be ko, en or ja.");
             }
             else if (key == "SkinSet") values.skinSet = DecodeUtf8(value);
             else if (key == "GlobalOffsetMs")
@@ -187,7 +199,7 @@ namespace
 
 }
 
-OptionSettings::OptionSettings(std::filesystem::path path) : path_(std::move(path)) {}
+OptionSettings::OptionSettings(std::filesystem::path path) : path_(std::move(path)), values_(DefaultValues()) {}
 
 std::filesystem::path OptionSettings::SongsRoot() const
 {
@@ -208,7 +220,7 @@ bool OptionSettings::Load(std::string &error)
     error.clear();
     try
     {
-        OptionValues candidate;
+        auto candidate = DefaultValues();
         if (!std::filesystem::exists(path_))
         {
             if (!Save(candidate, error))
@@ -249,7 +261,7 @@ bool OptionSettings::Load(std::string &error)
     {
         error = exception.what();
         loadWarning_ = error;
-        values_ = OptionValues{};
+        values_ = DefaultValues();
         ++revision_;
         return false;
     }
@@ -266,7 +278,8 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
         // Allocate the publication candidate before replacing the persisted file.
         OptionValues candidate = values;
         std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
-        file << "[General]\r\nLanguage=" << (values.language == Language::English ? "en" : "ko")
+        const auto language = values.language == Language::Korean ? "ko" : values.language == Language::Japanese ? "ja" : "en";
+        file << "[General]\r\nLanguage=" << language
              << "\r\nSkinSet=" << EncodeUtf8(values.skinSet) << "\r\nGlobalOffsetMs=" << values.globalOffsetMs
              << "\r\nSongsPath=" << EncodeUtf8(values.songsPath.wstring())
              << "\r\n\r\n[Display]\r\nWidth=" << values.windowWidth << "\r\nHeight=" << values.windowHeight

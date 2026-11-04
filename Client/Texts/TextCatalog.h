@@ -13,6 +13,7 @@ enum class Language : std::uint8_t
 {
     Korean,
     English,
+    Japanese,
 };
 
 struct LanguageProfile
@@ -31,7 +32,9 @@ class TextCatalog final
     TextCatalog &operator=(const TextCatalog &) = delete;
     // Strings are immutable for this catalog's lifetime. Views may retain
     // them until the owning game shuts down.
+    // Captions use English; classified explanations use the selected language.
     [[nodiscard]] std::wstring_view Get(std::string_view key) const noexcept;
+    // Explicit reads inspect the original pack, independent of the UI role.
     [[nodiscard]] std::wstring_view Get(Language language, std::string_view key) const noexcept;
     [[nodiscard]] std::span<const std::string> Diagnostics() const noexcept;
     template <typename... Args> std::wstring Format(std::string_view key, Args &&...args) const
@@ -47,8 +50,8 @@ class TextCatalog final
     void ApplyFont(ComboBoxBehaviorComponent &combo) const;
 
   private:
-    std::array<LanguageFile, 2> files_;
-    std::array<LanguageProfile, 2> profiles_;
+    std::array<LanguageFile, 3> files_;
+    std::array<LanguageProfile, 3> profiles_;
     std::vector<std::string> diagnostics_;
     Language language_{Language::Korean};
     std::uint64_t revision_{};

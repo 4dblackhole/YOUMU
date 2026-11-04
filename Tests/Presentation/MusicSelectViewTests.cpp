@@ -145,7 +145,7 @@ namespace
             auto *behavior = sort->GetComponent<ComboBoxBehaviorComponent>();
             if (!behavior) throw std::runtime_error("BPM sort behavior missing.");
             auto &combo = *behavior;
-            Check(combo.Items().size() == 4 && combo.Items()[3] == L"Base BPM순" && combo.MaxVisibleItems() == 4,
+            Check(combo.Items().size() == 4 && combo.Items()[3] == L"BASE BPM" && combo.MaxVisibleItems() == 4,
                   "The Korean sort menu exposes Base BPM alongside existing modes.");
             Check(combo.SelectedIndex() == static_cast<std::size_t>(state.sortMode_),
                   "A newly initialized view reflects its retained sort mode.");
@@ -753,10 +753,10 @@ namespace
             if (!hp) throw std::runtime_error("HP information label missing.");
             auto *value = hp->GetComponent<TextVisualComponent>();
             if (!value) throw std::runtime_error("HP information text missing.");
-            Check(value->Text() == L"HP 난이도  17.25", "Song details show the selected pattern's exact HP level.");
+            Check(value->Text() == L"HP level  17.25", "Song details show the selected pattern's exact HP level.");
             selection.SelectPattern(1);
             view.RefreshSelectionPresentation();
-            Check(value->Text() == L"HP 난이도  9.00", "Unspecified HP displays the existing 9.00 default.");
+            Check(value->Text() == L"HP level  9.00", "Unspecified HP displays the existing 9.00 default.");
             texts.SetLanguage(Language::English);
             InputState input;
             static_cast<void>(view.Update(input, 0));

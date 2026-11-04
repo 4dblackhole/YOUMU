@@ -8,10 +8,11 @@ using namespace options_ui;
 
 void OptionsPanel::CreateSongsControls()
 {
-    songsLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 988, PanelWidth, "Options.Songs.Label");
-    songsField_ = &CreateButton(*content_, {24, contentHeight_ - 1046, PanelWidth - 48, 46}, L"",
+    songsLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 174, PanelWidth, "Options.Songs.Label");
+    songsField_ = &CreateButton(*content_, {24, contentHeight_ - 232, PanelWidth - 48, 46}, L"",
                                                "Options.Songs.Folder");
-    songsDefault_ = &CreateButton(*content_, {24, contentHeight_ - 1090, PanelWidth - 48, 32}, L"",
+    songsField_->SetClipRect({0, 0, PanelWidth - 48, 46});
+    songsDefault_ = &CreateButton(*content_, {24, contentHeight_ - 276, PanelWidth - 48, 32}, L"",
                                                  "Options.Songs.Default");
     for (auto *node : {songsField_, songsDefault_})
     {

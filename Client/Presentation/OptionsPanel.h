@@ -35,6 +35,12 @@ class OptionsPanel final
 
   private:
     void CreateDisplayControls();
+    void CreateTabs();
+    void SelectTab(std::size_t index);
+    void RefreshTabs();
+    void UpdateContentLayout();
+    void CollapseCombos();
+    bool CanProcessAction(NodeId source) const noexcept;
     void RefreshDisplayControls();
     void SelectResolution(std::size_t index);
     void CreateKeyControls();
@@ -67,7 +73,13 @@ class OptionsPanel final
     static constexpr float PanelWidth = 320.0F;
     static constexpr float PanelHeight = 720.0F;
     static constexpr float AnimationSeconds = 0.2F;
-    static constexpr float ContentViewportHeight = 608.0F;
+    static constexpr float ContentViewportHeight = 568.0F;
+    static constexpr std::size_t TabCount = 4;
+    std::array<Visual2DNode *, TabCount> tabButtons_{}, tabContents_{};
+    std::array<float, TabCount> contentHeights_{}, scrollOffsets_{};
+    std::size_t activeTab_{};
+    Visual2DNode *viewport_{};
+    float viewportHeight_{ContentViewportHeight};
     float contentHeight_{};
     struct KeyRow
     {

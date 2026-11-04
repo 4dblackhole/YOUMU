@@ -7,6 +7,11 @@
 #include <fstream>
 #include <iostream>
 
+struct InputStateTestAccess
+{
+    static void Wheel(InputState &input, float delta) { input.Reset(); input.AddMouseWheel(delta, 1); }
+};
+
 namespace
 {
 
@@ -124,6 +129,13 @@ namespace
         action.selectedIndex = index;
         return action;
     }
+    void Tab(OptionsPanel &panel, Visual2DCanvas &canvas, std::string_view name)
+    {
+        Action action;
+        action.type = ActionType::Clicked;
+        action.source = FindNode(canvas.Root(), std::string("Options.Tab.") + std::string(name)).Id();
+        Check(panel.ProcessAction(action), "An options tab click must be consumed.");
+    }
 
     void TestPanelAppearanceAndClosing(OptionsPanel &panel, Visual2DCanvas &canvas,
                                        Visual2DInputRouter &router)
@@ -171,7 +183,7 @@ namespace
         const auto path = folder / L"설정 오류.ini";
         OptionSettings settings(path);
         std::string error;
-        for (const std::string content : {"[General]\nLanguage=ja\n", "missing separator\n",
+        for (const std::string content : {"[General]\nLanguage=zz\n", "missing separator\n",
                                           "[Audio]\nMiddleware=uninstalled\n"})
         {
             auto previous = settings.Values();
@@ -198,6 +210,11 @@ namespace
         OptionSettings settings(folder / "Option.ini");
         Check(settings.Load(error), error.c_str());
         Check(std::filesystem::exists(settings.Path()), "First load must create Option.ini.");
+        const auto systemLanguage = PRIMARYLANGID(GetUserDefaultUILanguage());
+        const auto expectedLanguage = systemLanguage == LANG_KOREAN ? Language::Korean :
+                                      systemLanguage == LANG_JAPANESE ? Language::Japanese : Language::English;
+        Check(settings.Values().language == expectedLanguage,
+              "First-run explanation language must follow supported Windows languages, otherwise English.");
         Check(settings.Values().skinSet == L"Default Skin" && settings.Values().driverIndex == -1 &&
                   settings.Values().audioOutput == AudioOutputBackend::Automatic,
               "First-run settings must use only the current defaults.");
@@ -255,13 +272,14 @@ namespace
         panel.Toggle();
         panel.Update(0.2);
         Check(panel.IsVisible(), "The panel must finish its slide animation.");
-        { std::ofstream file(settings.Path()); file << "[General]\nLanguage=ja\n"; }
+        { std::ofstream file(settings.Path()); file << "[General]\nLanguage=zz\n"; }
         Check(!settings.Load(error), "Invalid language must trigger startup fallback.");
         panel.Update(0);
         Check(FindNode(canvas.Root(), "Options.Status").GetComponent<TextVisualComponent>()->Text().find(L"Using defaults") != std::wstring::npos,
               "The panel must expose the retained startup warning.");
         Check(settings.Save(values, error), "Could not restore the option test fixture.");
         panel.Update(0);
+        Tab(panel, canvas, "Audio");
         Check(Combo(canvas, "Options.Middleware.Combo").Items() == std::vector<std::wstring>{L"FMOD"},
               "Only installed middleware may appear.");
         Check(panel.ProcessAction(Select(canvas, "Options.Driver.Combo", 0)) && backend->lastSetDriver == 0,
@@ -275,8 +293,6 @@ namespace
         backend->rejectAsio = false;
         // Scroll-position geometry: the ASIO popup row overlaps the driver field.
         // Exercise the real hit router so the lower field cannot steal this click.
-        FindNode(canvas.Root(), "Options.Content")
-            .SetPosition({0, 860 - FindNode(canvas.Root(), "Options.Content").NodeSize().height});
         Visual2DInputRouter router;
         auto click = [&](Point position) {
             PointerInput input;
@@ -308,6 +324,7 @@ namespace
               audio.ActiveOutput() == AudioOutputBackend::Asio && audio.ActiveDriverIndex() == 5 &&
               settings.Values().audioOutput == AudioOutputBackend::Asio,
               "Saving failure must restore runtime audio and preserve persisted values.");
+        Tab(panel, canvas, "General");
         Check(panel.ProcessAction(Select(canvas, "Options.Language.Combo", 0)) &&
               texts.CurrentLanguage() == Language::English,
               "Saving failure must preserve the current language.");
@@ -326,6 +343,7 @@ namespace
         Check(!FindNode(canvas.Root(), "Options.Driver.Combo").IsEnabled() &&
               Combo(canvas, "Options.Driver.Combo").Items().size() == 1,
               "An empty device list must be explicit and non-selectable.");
+        Tab(panel, canvas, "Audio");
         TestPanelAppearanceAndClosing(panel, canvas, router);
         panel.Shutdown();
         Check(!panel.ProcessAction(actions.front()), "A closed panel must reject stale Canvas actions.");
@@ -379,6 +397,7 @@ namespace
             action.type = ActionType::Clicked;
             Check(panel.ProcessAction(action), "Option field click is consumed.");
         };
+        Tab(panel, canvas, "Display");
         Check(panel.ProcessAction(Select(canvas, "Options.Resolution.Combo", 1)) && window.size.width == 960 &&
                   settings.Values().windowHeight == 540,
               "Resolution applies and persists immediately.");
@@ -392,6 +411,7 @@ namespace
                   settings.Values().windowWidth == 960,
               "Native resize failure preserves saved size.");
         window.reject = false;
+        Tab(panel, canvas, "Audio");
         click("Options.Offset.Field");
         Check(panel.OwnsKeyboard(), "Offset field captures numeric input.");
         for (const auto key : {'1', '0', '0'})
@@ -408,6 +428,9 @@ namespace
         panel.HandleKey(VK_DELETE, router);
         panel.HandleKey(VK_RETURN, router);
         Check(settings.Values().globalOffsetMs == -5 && panel.OwnsKeyboard(), "Invalid draft preserves saved offset.");
+        Tab(panel, canvas, "Input");
+        Check(!panel.OwnsKeyboard() && settings.Values().globalOffsetMs == -5,
+              "Switching away from an invalid offset draft cancels only its edit state.");
         click("Options.Taiko.OpenKeys");
         canvas.Update(0);
         {
@@ -483,6 +506,79 @@ namespace
               "A loaded native clip must remain usable after output/driver selection.");
         std::cout << "Actual FMOD Automatic -> WASAPI and driver selection passed (loaded clip retained).\n";
     }
+    void TestTabsAndJapanese(const std::filesystem::path &folder)
+    {
+        OptionSettings settings(folder / "Tabs.ini");
+        std::string error;
+        Check(settings.Load(error), "Create tab settings fixture.");
+        AudioSystem audio;
+        Check(audio.Initialize({}, &CreateBackend, &CreateClip, error), "Initialize tab audio fixture.");
+        TextCatalog texts("Client/Texts/Languages");
+        Visual2DCanvas canvas;
+        Visual2DInputRouter router;
+        OptionsPanel panel(texts, settings);
+        panel.Initialize(canvas, audio);
+        panel.Toggle(); panel.Update(.2);
+        Check(FindNode(canvas.Root(), "Options.Content.General").IsVisible() &&
+                  !FindNode(canvas.Root(), "Options.Content.Audio").IsVisible(), "Only the selected General body starts visible.");
+        const auto before = settings.Values().language;
+        Tab(panel, canvas, "Audio");
+        Check(!panel.ProcessAction(Select(canvas, "Options.Language.Combo", 2)) && settings.Values().language == before,
+              "Queued selections from a hidden tab must not change persisted settings.");
+        backend->rejectAsio = true;
+        Check(panel.ProcessAction(Select(canvas, "Options.Output.Combo", 2)), "Produce a recoverable audio error.");
+        auto &audioBody = FindNode(canvas.Root(), "Options.Content.Audio");
+        const auto unscrolled = audioBody.BoundsInCanvas().y;
+        InputState wheel; InputStateTestAccess::Wheel(wheel, -10);
+        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        const auto scrolled = audioBody.BoundsInCanvas().y;
+        Check(scrolled > unscrolled && FindNode(canvas.Root(), "Options.Status").IsVisible(),
+              "An error remains visible outside the scrolling active tab body.");
+        Tab(panel, canvas, "General");
+        Tab(panel, canvas, "Audio");
+        Check(audioBody.BoundsInCanvas().y == scrolled, "Each tab retains its own scroll offset.");
+        backend->rejectAsio = false;
+        Tab(panel, canvas, "General");
+        Check(panel.ProcessAction(Select(canvas, "Options.Language.Combo", 2)) && texts.CurrentLanguage() == Language::Japanese,
+              "Japanese explanations can be selected and persisted.");
+        Check(FindNode(canvas.Root(), "Options.Title").GetComponent<TextVisualComponent>()->Text() == L"OPTIONS" &&
+                  FindNode(canvas.Root(), "Options.Tab.Display").GetComponent<TextVisualComponent>()->Text() == L"Display" &&
+                  FindNode(canvas.Root(), "Options.Offset.Hint").GetComponent<TextVisualComponent>()->Text() ==
+                      texts.Get(Language::Japanese, "Options.offsetHint"),
+              "Japanese changes help copy while captions and tab names remain English.");
+        OptionSettings restored(settings.Path());
+        Check(restored.Load(error) && restored.Values().language == Language::Japanese,
+              "The ja setting survives restart with the existing INI field.");
+        const auto click = [&](std::string_view name)
+        {
+            const auto b = FindNode(canvas.Root(), name).BoundsInCanvas();
+            PointerInput pointer;
+            pointer.available = true;
+            pointer.position = {b.x + b.width / 2, b.y + b.height / 2};
+            pointer.leftButtonDown = pointer.leftButtonPressed = true;
+            router.Process(canvas, pointer);
+            pointer.leftButtonDown = pointer.leftButtonPressed = false;
+            pointer.leftButtonReleased = true;
+            router.Process(canvas, pointer);
+            for (const auto &action : canvas.TakeActions()) static_cast<void>(panel.ProcessAction(action));
+        };
+        click("Options.Language.Combo");
+        Check(Combo(canvas, "Options.Language.Combo").IsExpanded(), "Open the actual General popup.");
+        click("Options.Tab.Display");
+        Check(!Combo(canvas, "Options.Language.Combo").IsExpanded() &&
+                  FindNode(canvas.Root(), "Options.Content.Display").IsVisible(),
+              "A pointer tab switch collapses old popups and activates its body.");
+        const auto skin = FindNode(canvas.Root(), "Options.Skin.Combo").BoundsInCanvas();
+        PointerInput hover;
+        hover.available = true;
+        hover.position = {skin.x + skin.width / 2, skin.y + skin.height / 2};
+        router.Process(canvas, hover);
+        Check(router.HoveredNode() == FindNode(canvas.Root(), "Options.Skin.Combo").Id(),
+              "The next hit test must target the new visible tab rather than the old field at that position.");
+        Tab(panel, canvas, "Input");
+        Check(!FindNode(canvas.Root(), "Options.Content.Display").IsVisible(), "Only Input remains visible.");
+        panel.Shutdown();
+    }
 }
 
 int main()
@@ -496,6 +592,7 @@ int main()
         TestInvalidOptionFallback(folder);
         TestOptions(folder);
         TestExtraOptions(folder);
+        TestTabsAndJapanese(folder);
         TestActualAudio();
         std::filesystem::remove_all(folder);
         std::cout << "Options panel and persistence tests passed.\n";

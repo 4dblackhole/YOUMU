@@ -5,8 +5,8 @@
 using namespace options_ui;
 void OptionsPanel::CreateOffsetControls()
 {
-    offsetLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 822, PanelWidth, "Options.Offset.Label");
-    offsetField_ = &CreateButton(*content_, {24, contentHeight_ - 880, PanelWidth - 48, 46}, L"",
+    offsetLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 422, PanelWidth, "Options.Offset.Label");
+    offsetField_ = &CreateButton(*content_, {24, contentHeight_ - 480, PanelWidth - 48, 46}, L"",
                                                 "Options.Offset.Field");
     VisualStyle style{};
     style.normal = FieldColor;
@@ -17,7 +17,7 @@ void OptionsPanel::CreateOffsetControls()
     auto &field = RequireComponent<TextVisualComponent>(*offsetField_);
     field.SetFontSize(19);
     field.SetTextColor(HeadingColor);
-    offsetHint_ = &CreateLabel(*content_, {24, contentHeight_ - 944, PanelWidth - 48, 54}, L"",
+    offsetHint_ = &CreateLabel(*content_, {24, contentHeight_ - 544, PanelWidth - 48, 54}, L"",
                                               "Options.Offset.Hint");
     auto &hint = RequireComponent<TextVisualComponent>(*offsetHint_);
     hint.SetFontSize(13);

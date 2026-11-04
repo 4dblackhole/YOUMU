@@ -262,4 +262,9 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
   </ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsTabs.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Texts\Submodules\ExplanationKeys.h"><Filter>Texts\Submodules</Filter></ClInclude>
+    <None Include="Texts\Languages\ja.ini"><Filter>Texts\Languages</Filter></None>
+  </ItemGroup>
 </Project>

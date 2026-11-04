@@ -453,19 +453,19 @@ int main(int argc, char** argv)
                                        [&](const auto &packet) { return packet.text && packet.text->value == text; });
         };
         visuals.Render({});
-        Check(hasText(L"파일"), "Editor view must compose the top menu.");
+        Check(hasText(L"File"), "Editor view must compose the English top menu.");
         Check(hasText(std::wstring(state.Document().Dirty() ? Editor(texts).saveDirty
                                                             : Editor(texts).save)),
               "Existing footer Save must remain available.");
-        Check(hasText(L"타임라인") && !hasText(L"음악 FFT 스펙트로그램"),
+        Check(hasText(L"TIMELINE") && !hasText(L"MUSIC FFT SPECTROGRAM"),
               "Pattern tab must show the timeline without the audio analysis "
               "tracks.");
         state.Seek(state.Document().Notes().front().timing.count() / 1000.0 + 1000);
         state.SelectTab(EditorTab::Audio);
         view.Build();
         visuals.Render({});
-        Check(hasText(L"음악 파형") && hasText(L"음악 FFT 스펙트로그램") &&
-                  hasText(L"예상 히트사운드 FFT 스펙트로그램"),
+        Check(hasText(L"MUSIC WAVEFORM") && hasText(L"MUSIC FFT SPECTROGRAM") &&
+                  hasText(L"EXPECTED HIT-SOUND FFT SPECTROGRAM"),
               "Three audio tracks missing");
         const auto coloredIn = [&](float top, float bottom)
         {

@@ -5,8 +5,8 @@
 using namespace options_ui;
 void OptionsPanel::CreateDisplayControls()
 {
-    resolutionLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 694, PanelWidth, "Options.Resolution.Label");
-    resolutionCombo_ = &CreateComboBox(*content_, {24, contentHeight_ - 752, PanelWidth - 48, 46},
+    resolutionLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 174, PanelWidth, "Options.Resolution.Label");
+    resolutionCombo_ = &CreateComboBox(*content_, {24, contentHeight_ - 232, PanelWidth - 48, 46},
                                                       {}, "Options.Resolution.Combo");
     ConfigureCombo(*resolutionCombo_, 4);
     resolutionCombo_->SetZIndex(9);

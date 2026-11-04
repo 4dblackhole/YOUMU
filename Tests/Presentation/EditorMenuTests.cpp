@@ -31,12 +31,12 @@ void TestEditorMenu()
     auto *caption = Find(canvas.Root(), "Editor.Menu.Caption.0");
     if (!bar || !file || !edit || !popup || !caption) throw std::runtime_error("Editor menu nodes are missing.");
     Check(!popup->IsVisible(), "Menus must start closed.");
-    Check(file->GetComponent<TextVisualComponent>()->Text() == L"파일" &&
-          edit->GetComponent<TextVisualComponent>()->Text() == L"편집" &&
-          caption->GetComponent<TextVisualComponent>()->Text() == L"저장하기",
-          "Korean menu labels are missing.");
+    Check(file->GetComponent<TextVisualComponent>()->Text() == L"File" &&
+          edit->GetComponent<TextVisualComponent>()->Text() == L"Edit" &&
+          caption->GetComponent<TextVisualComponent>()->Text() == L"Save",
+          "Menu captions remain English when explanations use Korean.");
     menu.Refresh(true);
-    Check(caption->GetComponent<TextVisualComponent>()->Text() == L"저장하기 *",
+    Check(caption->GetComponent<TextVisualComponent>()->Text() == L"Save *",
           "Dirty state must appear in Save.");
     texts.SetLanguage(Language::English);
     menu.Refresh(false);

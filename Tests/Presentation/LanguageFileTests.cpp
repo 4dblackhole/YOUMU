@@ -3,6 +3,7 @@
 #include "Texts/GameScene/ResultScene/ResultTexts.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 #include "Texts/TextCatalog.h"
+#include "Texts/Submodules/ExplanationKeys.h"
 #include <Windows.h>
 #include <format>
 #include <fstream>
@@ -59,27 +60,28 @@ namespace
                                     "[Unknown]\nkey=ignored\n");
         TextCatalog catalog(directory);
         const auto logo = Logo(catalog);
-        Check(logo.menu[0] == L"직접 시작" && logo.menu[1] == L"Editor" && logo.menu[2] == L"Preferences" &&
-                  logo.menu[3].empty(),
-              "Selected key -> external English -> built-in English must resolve per entry.");
+        const auto original = catalog.Get(Language::Korean, "Logo.Start");
+        Check(logo.menu[0] == L"Game Start" && logo.menu[1] == L"Editor" && logo.menu[2] == L"Preferences" &&
+                  logo.menu[3] == L"Exit" && original == L"직접 시작",
+              "UI uses English while explicit pack reads preserve custom translated entries.");
         Check(Result(catalog).percent == L"{:.6f}%" && catalog.Diagnostics().size() == 2,
               "Incompatible format types and unknown keys must not replace defaults.");
         const int total = 12, done = 5, pending = 7;
-        Check(catalog.Format("Result.noteCounts", total, done, pending) ==
+        Check(std::vformat(catalog.Get(Language::Korean, "Result.noteCounts"), std::make_wformat_args(total, done, pending)) ==
                   L"Pending 7 / total 12 / done 5",
               "Translations may reorder existing arguments by index.");
         const auto revision = catalog.Revision();
         catalog.SetLanguage(Language::English);
         catalog.SetLanguage(Language::English);
         Check(catalog.Revision() == revision + 1 && Logo(catalog).menu[0] == L"Game Start" &&
-                  logo.menu[0] == L"직접 시작",
+                  original == L"직접 시작",
               "Switching languages must retain previous string-view lifetimes.");
         Write(directory / "ko.ini", "[Logo]\nStart=\"다음 실행\"\n");
         catalog.SetLanguage(Language::Korean);
-        Check(Logo(catalog).menu[0] == L"직접 시작",
+        Check(catalog.Get(Language::Korean, "Logo.Start") == L"직접 시작" && Logo(catalog).menu[0] == L"Game Start",
               "File I/O must not occur during text lookup or language switching.");
         const TextCatalog restarted(directory);
-        Check(Logo(restarted).menu[0] == L"다음 실행", "A new catalog must read replaced language files.");
+        Check(restarted.Get(Language::Korean, "Logo.Start") == L"다음 실행", "A new catalog must read replaced language files.");
         Write(directory / "ko.ini", "[Logo]\nStart=\xFF");
         const TextCatalog corrupt(directory);
         Check(Logo(corrupt).menu[0] == L"Game Start", "A corrupt Korean pack must still fall back to English.");
@@ -96,9 +98,22 @@ int main()
             (std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
         std::filesystem::create_directories(directory);
         Catalog(directory);
-        const TextCatalog shipped("Client/Texts/Languages");
-        Check(shipped.Diagnostics().empty() && Logo(shipped).menu[0] == L"게임 시작",
-              "Both shipped language files must parse and preserve the existing Korean translation.");
+        TextCatalog shipped("Client/Texts/Languages");
+        Check(shipped.Diagnostics().empty() && shipped.Languages().size() == 3 && Logo(shipped).menu[0] == L"Game Start",
+              "All three packs parse while UI captions use English.");
+        const auto japanese = ReadLanguageFile("Client/Texts/Languages/ja.ini");
+        for (const auto key : ExplanationTextKeys)
+            Check(japanese.entries.contains(std::string(key)), "Japanese must cover every classified explanation key.");
+        for (const auto language : {Language::Korean, Language::English, Language::Japanese})
+        {
+            shipped.SetLanguage(language);
+            Check(shipped.Get("Options.title") == L"OPTIONS" && shipped.Get("Editor.menuSave") == L"Save" &&
+                      shipped.Get("Result.errorAxis") == L"Error (ms)",
+                  "Titles, action captions and numeric-axis labels must remain English.");
+            Check(shipped.Get("Options.offsetHint") == shipped.Get(language, "Options.offsetHint") &&
+                      shipped.Get("MusicSelect.patternErrorPrefix") == shipped.Get(language, "MusicSelect.patternErrorPrefix"),
+                  "Explanations and error notices use the selected language.");
+        }
         std::cout
             << "UTF-8 language files, English fallback, format validation and immutable catalog ownership passed.\n";
         return 0;

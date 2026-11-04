@@ -1137,7 +1137,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
         state.SetRealtime(true);
         state.Mode().DrawChart(score, state, TestCatalog(Language::Korean));
         Check(std::ranges::any_of(score.labels,
-                                  [](const auto &label) { return label.find(L"6 연타") != std::wstring::npos; }),
+                                  [](const auto &label) { return label.find(L"6 hits") != std::wstring::npos; }),
               "A long-note head must show its required hit count in both views.");
         inspector.Form().hitCount = "0";
         const auto revision = state.Document().Revision();

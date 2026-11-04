@@ -20,7 +20,7 @@ namespace
 } // namespace
 void OptionsPanel::CreateKeyControls()
 {
-    float top = 1148;
+    float top = 38;
     for (const auto &layout : inputLayouts_)
     {
         modeLabels_.push_back(
@@ -32,6 +32,7 @@ void OptionsPanel::CreateKeyControls()
             openKeyPanel_ = &CreateButton(*content_, {24, contentHeight_ - top - 46, PanelWidth - 48, 38},
                                           std::wstring(texts_.Get("Options.taikoKeySettings")), "Options.Taiko.OpenKeys");
             SetPanelColor(*openKeyPanel_, FieldColor);
+            RequireComponent<TextVisualComponent>(*openKeyPanel_).SetTextColor(HeadingColor);
             // Root-level Z order keeps this centered overlay above the options anchor.
             keyPanel_ = &CreatePanel(canvas_->Root(), {-450, -325, 900, 650}, "Options.Taiko.Keys");
             keyPanel_->SetZIndex(200);
