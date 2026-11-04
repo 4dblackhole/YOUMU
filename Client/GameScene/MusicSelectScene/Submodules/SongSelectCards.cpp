@@ -160,7 +160,13 @@ void MusicSelectView::CreateSongCard(const std::size_t visiblePosition,
         }
     }
     const auto createId = IsEditorSongSelect() ? CreateDifficultyButton(button, visiblePosition) : 0;
-    songCards_.push_back({catalogIndex, top, height, &button, &title, &artist, visiblePosition, createId});
+    SongCard card{catalogIndex, top, height, &button, &title, &artist, visiblePosition, createId};
+    card.thumbnail = &CreateSprite(button, {}, {}, "Thumbnail");
+    card.thumbnail->SetVisible(false);
+    const auto patterns = selection_.VisiblePatternIndices(catalogIndex);
+    const auto patternIndex = focused ? selection_.selectedPatternIndex_ : patterns.empty() ? 0 : patterns.front();
+    UpdateSongThumbnail(card, patternIndex < song.patterns.size() ? &song.patterns[patternIndex] : nullptr, focused);
+    songCards_.push_back(std::move(card));
 }
 
 NodeId MusicSelectView::CreateDifficultyButton(Visual2DNode &card,
@@ -186,6 +192,7 @@ NodeId MusicSelectView::CreateDifficultyButton(Visual2DNode &card,
 
 void MusicSelectView::RefreshSelectionPresentation()
 {
+    RefreshSelectedSongThumbnail();
     if (selectedSongLabel_ == nullptr || selectedArtistLabel_ == nullptr ||
         selectedPatternLabel_ == nullptr || selectedCreatorLabel_ == nullptr ||
         selectedDetailsLabel_ == nullptr)

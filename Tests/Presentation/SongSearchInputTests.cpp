@@ -1,5 +1,6 @@
 #include "MusicSelectTestInput.h"
 #include "SongSearchInputTests.h"
+#include "App/AssetPaths.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
 #include "Presentation/ScrollableTextComponent.h"
 #include <Windows.h>
@@ -48,6 +49,7 @@ namespace
             song.patterns[0].noteCount = 100;
             song.patterns[0].pattern.baseBpm = 150;
             song.patterns[0].pattern.mode = "Taiko";
+            song.patterns[0].pattern.backgroundFile = ResolveDefaultSkinAsset(L"Result/Background/Sky.png");
             other.music.names = {"Other song"};
             other.patterns.resize(1);
             other.patterns[0].noteCount = 200;
@@ -319,6 +321,16 @@ namespace
                 Check(scroll && scroll->Text() == L"Angel Dream\n天使の夢\n천사의 꿈" &&
                           scroll->ScrollRange().height > 0,
                       "Real DirectWrite multiline measurement drives the selected title scrollbar.");
+                auto *card = Find(canvas->Root(), "Song.0");
+                auto *thumbnail = card ? Find(*card, "Thumbnail") : nullptr;
+                auto *preview = Find(canvas->Root(), "PreviewImage");
+                if (!thumbnail || !preview) throw std::runtime_error("Rendered thumbnail nodes missing.");
+                const auto *sprite = thumbnail->GetComponent<SpriteVisualComponent>();
+                const auto *previewSprite = preview->GetComponent<SpriteVisualComponent>();
+                Check(sprite && previewSprite && thumbnail->IsVisible() && sprite->Style().normalImage &&
+                          sprite->Style().normalImage.value == previewSprite->Style().normalImage.value &&
+                          visuals_.GetImageSize(sprite->Style().normalImage).width > 0,
+                      "The hidden D3D12 run decodes and renders the selected chart's shared thumbnail image.");
                 report_.measured = true;
             }
             return !report_.rendered;

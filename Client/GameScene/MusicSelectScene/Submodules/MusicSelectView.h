@@ -59,6 +59,8 @@ class MusicSelectView final
         Visual2DNode *artist{};
         std::size_t visiblePosition{};
         NodeId createDifficultyId{};
+        Visual2DNode *thumbnail{};
+        std::filesystem::path thumbnailPath;
     };
 
     void CreateCategoryBar();
@@ -90,6 +92,8 @@ class MusicSelectView final
     void UpdateVisibleSongCards();
     void CreateSongCard(const std::size_t visiblePosition, const std::size_t catalogIndex,
                         const float top, const float height, const bool focused);
+    void UpdateSongThumbnail(SongCard &card, const SongCatalogPattern *pattern, bool focused);
+    void RefreshSelectedSongThumbnail();
     NodeId CreateDifficultyButton(Visual2DNode &card, std::size_t visiblePosition);
     void RefreshSearchPresentation();
     void EnsureFocusedCardVisible();

@@ -790,12 +790,32 @@ namespace
             selection.selectedPatternIndex_ = index;
             view.RefreshSelectionPresentation();
         };
+        const auto thumbnail = [&]() -> Visual2DNode & {
+            auto *card = Find(canvas->Root(), "Song.0");
+            auto *node = card ? Find(*card, "Thumbnail") : nullptr;
+            if (!node) throw std::runtime_error("Song thumbnail missing.");
+            return *node;
+        };
+        const auto checkThumbnail = [&] {
+            auto &node = thumbnail();
+            const auto *artwork = node.GetComponent<SpriteVisualComponent>();
+            if (!artwork) throw std::runtime_error("Thumbnail sprite missing.");
+            Check(node.IsVisible() == image->IsVisible() &&
+                      artwork->Style().normalImage.value == sprite->Style().normalImage.value,
+                  "The song thumbnail follows the selected chart and shares its preview image.");
+            if (node.IsVisible())
+                Check(std::abs(artwork->UvScale().x - sprite->UvScale().x) < .001F &&
+                          std::abs(artwork->UvScale().y - sprite->UvScale().y) < .001F,
+                      "Thumbnail and square preview preserve the same centered image crop.");
+        };
+        checkThumbnail();
         Check(renderer.loaded.size() == 1 && renderer.loaded.back() == options.SongsRoot() / L"BG" / L"preview-wide.jpg",
               "Artwork must load from the selected Songs/BG.");
         Check(pageBackground->IsVisible() && pageSprite->Style().normalImage.value == sprite->Style().normalImage.value,
               "The selected pattern image is shared by the full-screen background and existing preview.");
         select(1);
         tick();
+        checkThumbnail();
         Check(renderer.loaded.size() == 2 && renderer.loaded.back() == options.SongsRoot() / L"BG" / L"preview-portrait.jpg",
               "Changing a difficulty must load the selected pattern from Songs/BG.");
         Check(image->IsVisible() && !empty->IsVisible() && !title->IsVisible() && sprite->Style().normalImage.value,
@@ -805,6 +825,7 @@ namespace
               "Portrait artwork must use a centered aspect-preserving crop.");
         select(0);
         tick();
+        checkThumbnail();
         Check(std::abs(sprite->UvScale().x - .5625F) < .001F && std::abs(sprite->UvScale().y - 1) < .001F,
               "Landscape artwork must retain its original aspect ratio.");
         const auto calls = renderer.loaded.size();
@@ -820,6 +841,17 @@ namespace
             Check(image->NodeSize().width == preview->NodeSize().width &&
                       image->NodeSize().height == preview->NodeSize().height,
                   "Artwork must follow the existing responsive preview bounds.");
+            checkThumbnail();
+            const auto thumb = thumbnail().BoundsInCanvas();
+            auto *card = Find(canvas->Root(), "Song.0");
+            auto *heading = card ? Find(*card, "Title") : nullptr;
+            if (!card || !heading) throw std::runtime_error("Thumbnail card heading missing.");
+            const auto bounds = card->BoundsInCanvas();
+            Check(thumb.x >= bounds.x && thumb.y >= bounds.y &&
+                      thumb.x + thumb.width <= bounds.x + bounds.width &&
+                      thumb.y + thumb.height <= bounds.y + bounds.height &&
+                      heading->BoundsInCanvas().x > thumb.x + thumb.width,
+                  "Responsive thumbnail stays inside its card and leaves a separate title area.");
             const auto bg = pageBackground->BoundsInCanvas();
             const auto size = canvas->LogicalSize();
             Check(bg.x <= -size.width / 2 && bg.x + bg.width >= size.width / 2 &&
@@ -831,6 +863,7 @@ namespace
         }
         select(2);
         tick();
+        checkThumbnail();
         Check(!image->IsVisible() && empty->IsVisible() && !sprite->Style().normalImage.value,
               "An unassigned background must clear the previous image.");
         Check(!pageBackground->IsVisible() && !pageSprite->Style().normalImage,
@@ -839,6 +872,7 @@ namespace
         {
             select(index);
             tick();
+            checkThumbnail();
             Check(!image->IsVisible() && empty->IsVisible(), "Decode/upload errors must preserve NO IMAGE.");
             Check(!pageBackground->IsVisible(), "Failed BG loads also preserve the screen's existing background.");
             const auto failedCalls = renderer.loaded.size();
@@ -854,6 +888,70 @@ namespace
         Check(!pageBackground->IsVisible(), "Empty search results clear the full-screen selected BG.");
         view.Shutdown();
         Check(visuals.CanvasCount() == 0, "Background shutdown must release the Canvas.");
+    }
+    void TestSongThumbnailNavigation(SongSelectPurpose purpose)
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts;
+        OptionSettings options("build/thumbnail-test-unused.ini");
+        SongSelectionState selection;
+        for (const auto *name : {"First", "Second"})
+        {
+            SongCatalogEntry song;
+            song.music.names = {name};
+            song.patterns.resize(2);
+            song.patterns[0].pattern.backgroundFile = "preview-wide.jpg";
+            song.patterns[0].pattern.baseBpm = 90;
+            song.patterns[1].pattern.backgroundFile = "preview-portrait.jpg";
+            song.patterns[1].pattern.baseBpm = 150;
+            selection.catalog_.songs.push_back(std::move(song));
+        }
+        MusicSelectView view(visuals, selection, purpose, texts, options);
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas) throw std::runtime_error("Thumbnail navigation Canvas missing.");
+        const auto thumbnailImage = [&](std::size_t song) {
+            auto *card = Find(canvas->Root(), "Song." + std::to_string(song));
+            auto *node = card ? Find(*card, "Thumbnail") : nullptr;
+            if (!node || !node->GetComponent<SpriteVisualComponent>())
+                throw std::runtime_error("Visible card thumbnail missing.");
+            return node->GetComponent<SpriteVisualComponent>()->Style().normalImage.value;
+        };
+        const auto firstImage = thumbnailImage(0);
+        Check(firstImage && thumbnailImage(1) == firstImage && renderer.loaded.size() == 1,
+              "Visible collapsed cards use the first displayed chart and reuse the path cache.");
+        InputState input;
+        Click(*canvas, *Find(canvas->Root(), "Difficulty.1"));
+        Check(view.Update(input, 0) == SongSelectCommand::Launch && selection.selectedPatternIndex_ == 1,
+              "Clicking another difficulty retains its one-shot launch behavior.");
+        const auto secondImage = thumbnailImage(0);
+        Check(secondImage != firstImage && thumbnailImage(1) == firstImage,
+              "Changing a chart updates only that song's thumbnail to the chosen BG.");
+        Click(*canvas, *Find(canvas->Root(), "Song.1"));
+        Check(view.Update(input, 0) == SongSelectCommand::None && selection.focusedSongPosition_ == 1 &&
+                  selection.selectedPatternIndex_ == 0 && thumbnailImage(0) == firstImage,
+              "Moving to another song uses its first chart and resets the former collapsed card's artwork.");
+        Click(*canvas, *Find(canvas->Root(), "Song.0"));
+        Check(view.Update(input, 0) == SongSelectCommand::None && selection.focusedSongPosition_ == 0 &&
+                  selection.selectedPatternIndex_ == 0 && thumbnailImage(0) == firstImage,
+              "Returning to a song selects its first chart and BG without remembering the former difficulty.");
+        selection.filter_.minimumBpm = 140;
+        view.RebuildVisibleSongs();
+        Check(selection.selectedPatternIndex_ == 1 && thumbnailImage(0) == secondImage && thumbnailImage(1) == secondImage,
+              "A filtered list uses its first displayed chart, preserving original chart indices.");
+        auto *card = Find(canvas->Root(), "Song.0");
+        auto *node = card ? Find(*card, "Thumbnail") : nullptr;
+        if (!node) throw std::runtime_error("Filtered thumbnail missing.");
+        Click(*canvas, *node);
+        Check(view.Update(input, 0) == SongSelectCommand::None && selection.selectedPatternIndex_ == 1,
+              "Clicking a thumbnail selects the card without launching or selecting a hidden chart.");
+        Check(renderer.loaded.size() == 2, "Rebuilt cards and selected previews reuse already loaded images.");
+        view.Shutdown();
     }
     void TestRecordHistoryView()
     {
@@ -1054,6 +1152,8 @@ int main()
         TestRecordHistoryView();
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);
+        TestSongThumbnailNavigation(SongSelectPurpose::Gameplay);
+        TestSongThumbnailNavigation(SongSelectPurpose::Editor);
         SongCatalogLoader loader;
         loader.Refresh(UserSongs());
         const auto first = AwaitCatalog(loader);

@@ -101,6 +101,7 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongPreviewController.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongPreviewController.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectCards.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectThumbnails.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectCreateMenu.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\OsuImportValidation.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
