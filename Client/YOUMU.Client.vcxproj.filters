@@ -242,8 +242,8 @@
   <ItemGroup>
     <ClInclude Include="Presentation\ValueDialog.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\ValueDialog.cpp"><Filter>Presentation</Filter></ClCompile>
-    <ClInclude Include="Presentation\PlayOptionsDialog.h"><Filter>Presentation</Filter></ClInclude>
-    <ClCompile Include="Presentation\PlayOptionsDialog.cpp"><Filter>Presentation</Filter></ClCompile>
+    <ClInclude Include="Presentation\PlayOptionsPanel.h"><Filter>Presentation</Filter></ClInclude>
+    <ClCompile Include="Presentation\PlayOptionsPanel.cpp"><Filter>Presentation</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectRecords.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
@@ -266,5 +266,10 @@
   <ItemGroup>
     <ClInclude Include="Texts\Submodules\ExplanationKeys.h"><Filter>Texts\Submodules</Filter></ClInclude>
     <None Include="Texts\Languages\ja.ini"><Filter>Texts\Languages</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Presentation\PlayOptionsPanel" />
+    <Filter Include="Presentation\PlayOptionsPanel\Submodules" />
+    <ClCompile Include="Presentation\PlayOptionsPanel\Submodules\PlayOptionsLayout.cpp"><Filter>Presentation\PlayOptionsPanel\Submodules</Filter></ClCompile>
   </ItemGroup>
 </Project>

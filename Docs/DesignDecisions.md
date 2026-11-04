@@ -75,6 +75,8 @@
   결과만 게시합니다. GPU/Canvas 등록은 Scene 스레드, 종료 시 작업 정리는 별도 수명 경계입니다.
 - 첫 입력음 준비 전에 플레이 화면을 노출하지 않습니다. 샘플·음악·이미지 준비와 실제 Gameplay
   진입을 기다립니다. 준비 실패는 오류/Pause/Retry로 전달하며 시간만 먼저 진행하지 않습니다.
+- 로딩 BG는 전체 플레이 자원 준비보다 먼저 시작합니다. 선곡에서 등록한 BG는 로딩 씬
+  초기화 중 동일 handle을 연결해 첫 로딩 프레임부터 표시하며, 미등록 BG는 비동기로 준비합니다.
 - 목록 디스크 캐시는 원본에서 재생성합니다. 영속 기록 DB는 같은 방식으로 삭제하지 않습니다.
 
 상세: [ResourceLoading](ResourceLoading.md), [Audio](Gameplay/Audio.md).
@@ -206,7 +208,14 @@ YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/
 Mirror 다음 Random 순서입니다. 앱 실행 중 선택을 유지하고 시작 때 값으로 복사하며,
 Retry는 방금 플레이한 옵션/시드를 다시 사용합니다. 원본 YMM/YMP/YME는 수정하지 않습니다.
 
-상세: [PlayOptions](Gameplay/PlayOptions.md). 검증: PlayOptionsTests, MusicSelectViewTests, GameplayPauseTests.
+사용자 승인에 따라 선곡의 Play options는 아래에서 올라오는 게임 내 세 열 패널입니다.
+Difficulty / Layout / Assist 분류와 하위 설정 펼침·필요 시 단일 본문 스크롤을 사용합니다.
+후속 지시로 Apply를 제외하며 Close/Esc(기존 Enter 확정 포함)에 전체 값을 검증·적용합니다.
+오류 시에는 닫지 않고 마지막 적용값을 유지합니다. Reset은 전체 편집값을 기존 PlayOptions
+기본값으로 복원하고 닫을 때 적용합니다. 별도 취소·파일 저장·새 플레이 옵션은 추가하지 않습니다.
+
+상세: [PlayOptions](Gameplay/PlayOptions.md). 검증: PlayOptionsTests, MusicSelectViewTests의
+PlayOptionsPanelTests(닫기 적용·Reset·오류·모달 격리·실 네이티브 입력), GameplayPauseTests.
 
 ## PAUSE-01 일시정지와 복원
 

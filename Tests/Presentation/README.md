@@ -1,5 +1,15 @@
 # Presentation regression tests
 
+## Play options panel
+
+`RunMusicSelectViewTests.ps1` includes `PlayOptionsPanelTests.cpp`: full option/uint64
+round trips, Close/Esc apply once, complete Reset defaults, invalid/hidden field repair,
+conditional controls, small viewport scrolling, animation/native-input visibility and
+stale action rejection. The actual Win32/engine route verifies footer entry, numeric
+editing, Esc isolation, Reset/Close, preserved selection/search, rendering and cleanup.
+It replaces the removed native PlayOptionsDialog form test; PlayOptions value/range,
+launch snapshots and Retry contracts remain covered by domain/gameplay tests.
+
 ## Options tabs and explanation languages
 
 `RunOptionsPanelTests.ps1` covers four-tab routing, per-tab scrolling, popup/input

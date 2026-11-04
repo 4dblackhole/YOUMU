@@ -11,7 +11,7 @@
 | 선곡 필터·계산 난이도 빈 필드 | SongFilter, SongFilterPanel, SongSelectionState의 패턴 투영; SongCatalogPattern 런타임 메타데이터 | TestSongFilters, RunMusicSelectViewTests(필터 적용/취소·실 native 입력 포함) |
 | 패턴별 즐겨찾기·폴더 탭·JSON 저장 | SongFavorites/Json, SongFavoriteTabs, SongFavoritesPanel, SongSelectFavorites; Scene 진입 로드와 SongSelectionState의 패턴 투영 | SongFavoritesTests, RunMusicSelectViewTests(관리·복수 소속·가로 스크롤·실 이름 입력·모달 격리) |
 | 복수 표기·칸별 스크롤 | `Presentation/ScrollableTextComponent`, SongSelectCards/Panels/Input | RunMusicSelectViewTests, RunSkinTests |
-| 선택 채보 BG의 선곡·플레이·리절트 배경 | SongSelectPanels/Layout, YOUMUGame의 Result context, TaikoResultView; Presentation/BackgroundLayout | MusicSelectViewTests, ResultPresentationTests, GameplayJudgementTests |
+| 선택 채보 BG의 선곡·로딩·플레이·리절트 배경 | SongSelectPanels/Layout, RhythmTestScene의 초기 BG 준비, YOUMUGame의 Result context, TaikoResultView; Presentation/BackgroundLayout | MusicSelectViewTests, GameplayPauseTests(초기화 중 BG 재사용·준비 순서), ResultPresentationTests, GameplayJudgementTests |
 | 곡 목록·디스크 캐시·비동기 패턴 로딩 | SongCatalogLoader, `YOUMU.Chart/Catalog`, `GameFlow/PlaySessionLoader` | 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
 | 미리듣기 | SongPreviewController | MusicSelectViewTests, 엔진 오디오 계약 |
 | 새 난이도·.osu 가져오기 | NewDifficultyDialog, EditorPatternCreation, EditorOsuImport, OsuImportValidation | RunNewDifficultyTests, RunOsuImportValidationTests |
@@ -27,7 +27,7 @@
 | Taiko 노트 종류·사운드 정책 | `YOUMU.Modes/Taiko/Submodules`: TaikoNoteDefinition, SessionBuilder, LongNoteFactory, SoundPolicy, NoteOptions | TaikoModeTests, SoundPolicyTests, EditorModeTests |
 | 판정 난이도·JudgeLevel | `Rhythm/Judgement`, PatternDocument/Parser, TaikoSessionBuilder | RhythmCoreTests, ChartParserTests, NewDifficultyTests |
 | HP 체력·게이지·빈 채보 진입 | `Rhythm/Gauge`, PlaySession/Results, TaikoSessionBuilder, GameplayHpView, PlaySessionLoader | HpGaugeTests, SongCatalogTests, GameplayJudgementTests, GameplayPauseTests |
-| 플레이 옵션·배속·Random·메트로놈 | PlayOptions, TaikoNoteTransform/SessionBuilder, RhythmTimer, GameplayAudioRouter, PlayOptionsDialog | PlayOptionsTests, MusicSelectViewTests, GameplayPauseTests |
+| 플레이 옵션·배속·Random·메트로놈 | PlayOptions, TaikoNoteTransform/SessionBuilder, RhythmTimer, GameplayAudioRouter, PlayOptionsPanel/PlayOptionsLayout | PlayOptionsTests, RunMusicSelectViewTests(PlayOptionsPanelTests 포함), GameplayPauseTests |
 | 영속 기록·조건식·기록 필터·결과 옵션 표시 | `Client/Records`, RecordFilterPanel, SongSelectRecords, `Taiko/Results`, ResultScene | RecordFilterTests, MusicSelectViewTests/SongSearchInputTests, RunResultPresentationTests |
 | 음악/히트사운드·YME 오디오 연결 | `GameFlow/Submodules/GameplayAudio`, `Client/Audio/GameplayAudioRouter`, TaikoChartAudio/AudioPreview | SoundPolicyTests, GameplayPauseTests, AllNotesGameplayTests |
 | Result·통계·그래프·Retry | `Modes/Mode/Results`, `Taiko/Results`, `Client/GameScene/ResultScene` | PlayResultTests, ResultPresentationTests |

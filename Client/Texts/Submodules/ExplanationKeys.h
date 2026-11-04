@@ -22,5 +22,6 @@ inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "Records.loading", "Records.saving", "Records.saved", "Records.saveError", "Records.loadError",
     "SongFilter.hint", "SongFilter.invalidNotes", "SongFilter.invalidBpm", "SongFilter.invalidJudgeLevel",
     "SongFilter.invalidDifficulty", "SongFilter.reversedRange",
-    "Favorites.noPattern", "Favorites.hint", "Favorites.empty", "Favorites.error", "RecordFilter.hint", "RecordFilter.error"
+    "Favorites.noPattern", "Favorites.hint", "Favorites.empty", "Favorites.error", "RecordFilter.hint", "RecordFilter.error",
+    "PlayOptions.closeHint", "PlayOptions.invalidValue"
 });

@@ -1,6 +1,7 @@
 #pragma once
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/PlayOptionsPanel.h"
 #include "SongSelectionState.h"
 #include "SongFilterPanel.h"
 #include "RecordFilterPanel.h"
@@ -35,7 +36,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); recordFilterPanel_.Close(); }
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); recordFilterPanel_.Close(); playOptionsPanel_.Dismiss(); }
         else ++recordRevision_;
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -67,6 +68,7 @@ class MusicSelectView final
     void ShowRecords(const std::vector<PlayRecord> &records);
     void OpenRecordFilter();
     bool ProcessRecordFilterPanel(const InputState &input);
+    bool ProcessPlayOptionsPanel(const InputState &input);
     void LayoutRecordControls();
     void CreateSongInformationPanel();
     void SetBackgroundPreview(const std::filesystem::path &path, double offsetX = 0, double offsetY = 0);
@@ -101,7 +103,7 @@ class MusicSelectView final
     bool ProcessFavoritesPanel(const InputState &input);
     void OpenFavoritesPanel();
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
-    { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || recordFilterPanel_.IsVisible(); }
+    { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || recordFilterPanel_.IsVisible() || playOptionsPanel_.IsVisible(); }
     [[nodiscard]] float VisibleSongBottom() const noexcept;
     void RefreshFilterButton();
     bool ProcessKeyboard(const InputState &input);
@@ -140,6 +142,7 @@ class MusicSelectView final
     TextCatalog &texts_;
     OptionSettings &settings_;
     OptionsPanel options_;
+    PlayOptionsPanel playOptionsPanel_;
     SongFilterPanel filterPanel_;
     RecordFilterPanel recordFilterPanel_;
     RecordFilter recordFilter_;

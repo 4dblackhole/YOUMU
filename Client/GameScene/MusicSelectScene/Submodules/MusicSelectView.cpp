@@ -44,6 +44,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
         searchInput_->SetText(selection_.searchText_);
     }
     filterPanel_.Initialize(*canvas_, texts_, services.windowControl);
+    if (!IsEditorSongSelect()) playOptionsPanel_.Initialize(*canvas_, texts_, services.windowControl);
     favoritesPanel_.Initialize(*canvas_, texts_);
     if (recordPanel_) recordFilterPanel_.Initialize(*canvas_, texts_, services.windowControl);
     ApplyTexts();
@@ -67,6 +68,7 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     }
     UpdateRecords();
     options_.Update(deltaSeconds);
+    playOptionsPanel_.Update(deltaSeconds);
     const bool controlDown =
         input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
     if (!IsSelectionModalVisible() && !options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
@@ -75,7 +77,7 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         options_.Toggle();
     }
     ProcessPointer(input);
-    if (ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input) || ProcessFilterPanel(input))
+    if (ProcessPlayOptionsPanel(input) || ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input) || ProcessFilterPanel(input))
     {
         UpdateSearchInputVisibility();
         return command_;
@@ -114,6 +116,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 
 void MusicSelectView::Shutdown() noexcept
 {
+    playOptionsPanel_.Shutdown();
     recordFilterPanel_.Shutdown();
     filterPanel_.Shutdown();
     favoritesPanel_.Shutdown();
@@ -204,6 +207,17 @@ bool MusicSelectView::ProcessFilterPanel(const InputState &input)
     }
     if (!filterPanel_.IsVisible()) inputRouter_.Reset(*canvas_);
     return true;
+}
+
+bool MusicSelectView::ProcessPlayOptionsPanel(const InputState &input)
+{
+    if (!playOptionsPanel_.IsVisible()) return false;
+    for (const auto &action : canvas_->TakeActions()) playOptionsPanel_.ProcessAction(action);
+    playOptionsPanel_.ProcessInput(input, canvasPointer_);
+    if (auto applied = playOptionsPanel_.TakeApplied()) selection_.playOptions_ = *applied;
+    if (!playOptionsPanel_.IsVisible()) inputRouter_.Reset(*canvas_);
+    else inputRouter_.InvalidateHitTest(); // Expansion/scrolling may have moved controls.
+    return true; // Closing input and queued background actions never reach song selection.
 }
 
 void MusicSelectView::RefreshFilterButton()

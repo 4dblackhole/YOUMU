@@ -11,6 +11,37 @@ GameplayLaunchRequest → PlaySessionOptions → PlaySession/PlayResultSummary�
 Result의 Retry는 현재 선택 화면 값 대신 방금 플레이한 옵션/시드를 다시 사용합니다.
 YMM/YMP/YME 파일은 수정하지 않습니다.
 
+## 플레이 옵션 패널
+
+선곡 하단 Play options는 별도 Windows 대화상자 대신 게임 내 패널을 엽니다.
+패널은 아래에서 올라오며 화면 대부분을 차지합니다. 왼쪽부터 Difficulty(Scroll Speed·
+Accelerate·JudgeLevel), Layout(Mirror·Random), Assist(Ignore scroll effects·Metronome)의
+세 열을 사용합니다. Game mode는 선곡 화면에 남습니다. 탭은 없으며 펼친 내용이 본문보다
+길 때만 본문 전체를 휠로 스크롤합니다. 제목·닫기·하단 안내·Reset은 본문 밖에 유지합니다.
+
+Random을 켜면 시드와 시도 확률, JudgeLevel 덮어쓰기를 켜면 값 입력이 나타납니다.
+Accelerate 제목 행의 +/−로 기존 BGM/HIT 음정 유지 선택을 펼치거나 접습니다.
+접기는 해당 값이나 옵션 활성 상태를 바꾸지 않습니다. 입력에는 기존 단위·범위·파서를
+유지하며 x/BPM 전환 시 입력 숫자를 자동 환산하지 않습니다.
+
+**닫기와 Reset:** Apply 버튼은 없습니다. 오른쪽 위 Close 또는 Esc로 닫는 즉시
+편집한 전체 값을 검증하고 선곡 Scene에 한 번 반영합니다. 기존 Enter 확정도 같은 경로입니다.
+오류는 패널을 열어 둔 채 해당 입력으로 이동·선택하고 표시하며 마지막 적용값을 보존합니다.
+Random을 끈 뒤 숨겨진 입력에 오류가 있으면 Random 자체를 켜지 않고 해당 입력만 다시
+표시해 고칠 수 있습니다. Reset은 편집값 전체를 `PlayOptions{}` 기본값으로 복원하고
+오류·펼침·스크롤을 정리합니다. 복원값도 닫을 때 적용하며 별도 취소 버튼은 없습니다.
+
+기본값은 스크롤 x/1, Accelerate 1.0, Mirror/Random/Ignore scroll effects/Metronome 꺼짐,
+Random 시드 0·시도 확률 100%, BGM/HIT 음정 유지 켜짐, JudgeLevel 덮어쓰기 없음입니다.
+패널을 다시 열면 마지막 적용값을 표시합니다. 실제 숫자 입력은 기존 엔진의 ITextInput을
+사용하며 애니메이션·클립·접힘·단위 목록에 맞춰 네이티브 입력의 표시와 위치도 갱신합니다.
+
+패널을 연 동안 선곡·검색·곡 목록 스크롤·플레이 진입·Ctrl+O는 차단하고 닫힌 프레임의
+Esc/Enter를 선곡 화면에 다시 전달하지 않습니다. 검색어·선택 곡/채보·선곡 스크롤은 보존합니다.
+Scene 숨김/종료는 입력 수명을 정리하며 미완료 편집을 적용하지 않습니다. 옵션을 파일에
+저장하거나 채보·기록 형식을 바꾸지 않습니다. 항목명·버튼은 영어, 안내·오류 접두사는
+EN/KO/JA 설명 언어를 따르고 기존 숫자/도메인 진단 원문은 유지합니다.
+
 - Scroll Speed는 x 또는 BPM을 선택하고 양수를 입력합니다. BPM은 기본 BPM에
   대한 비율로 전체 스크롤 거리를 조절합니다. Ignore scroll effects는 YME의
   Whole/Separate 스크롤 자동화만 무시합니다. 실제 BPM·음악·노트 판정 시각은 유지합니다.
@@ -104,7 +135,9 @@ Random 시드는 uint64 정수 동등 조건입니다. 스크롤속도는 기록
 `GameplayAudioRouter`는 음정 정책과 clip/bus/예약 재생을 맡습니다.
 시계는 에디터 Test를 위해 0.25배속까지 허용하지만 일반 `PlayOptions.accelerate` 검증은
 0.5~2.0을 유지합니다. Test의 가변 배속은 일시 상태이며 결과/설정 파일에 저장하지 않습니다.
-`ValueDialog`와 `PlayOptionsDialog`는 Client 입력 UI,
+`PlayOptionsPanel`은 플레이 옵션 편집·검증·닫기 적용·Reset과 네이티브 입력 수명,
+그 Submodules/PlayOptionsLayout은 세 열·클립·애니메이션 좌표를 소유합니다. `ValueDialog`는
+다른 기존 텍스트 대화상자를 담당합니다.
 `RecordFilter`는 입력 검증과 기존 조건식 조합, `RecordFilterPanel`은 임시 편집/적용/취소 UI,
 `PlayRecordStore`/`RecordCondition`은 SQLite 저장/제한된 조건식,
 `SongSelectRecords`는 비동기 페이지 게시와 기록칸 표현을 맡습니다.

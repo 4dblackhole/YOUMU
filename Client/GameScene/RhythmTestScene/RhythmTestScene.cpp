@@ -42,6 +42,9 @@ void RhythmTestScene::Initialize(const EngineServices &services)
     loadingBackground_ = &CreatePanel(root, {-logical.width * .5F, -logical.height * .5F,
                                               logical.width, logical.height}, "Loading.Background");
     loadingBackground_->GetComponent<SpriteVisualComponent>()->SetTint({.94F, .97F, 1, 1});
+    // Attach the selection's cached BG before the first loading frame, and start
+    // cold BG preparation before the larger gameplay/audio preparation batch.
+    PrepareLoadingBackground();
     auto &plate = CreatePanel(root, {-550, -70, 1100, 155}, "Loading.TitlePlate");
     plate.GetComponent<SpriteVisualComponent>()->SetTint({.97F, .99F, 1, .94F});
     auto &title = CreateLabel(root, {-520, 0, 1040, 65}, launch_.songTitle, "Loading.Song");

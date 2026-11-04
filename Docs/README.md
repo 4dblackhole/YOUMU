@@ -17,7 +17,7 @@
 | 에디터 조작·메뉴·선택·편집 이력·PCM/FFT | [ChartEditor](ChartEditor.md) |
 | YMM/YMP/YME·타이밍·진단 | [ChartFormats](ChartFormats.md) → 해당 형식 |
 | 노트·GOOD 우선 자동 포커스·정확도·POOR·Buzz 틱 | [Rules](Gameplay/Rules.md) |
-| 배속·스크롤·Random·로컬 기록·조건식 | [PlayOptions](Gameplay/PlayOptions.md) |
+| 플레이 옵션 패널·배속·스크롤·Random·로컬 기록·조건식 | [PlayOptions](Gameplay/PlayOptions.md) |
 | 노트·Lane·키빔·판정 표시·진행바·콤보·점수·누적 판정 | [Presentation](Gameplay/Presentation.md) |
 | Clip·사운드 정책·공통 PCM·DSP 예약 | [Audio](Gameplay/Audio.md) |
 | ESC 메뉴·재개·되감기·Retire | [Pause](Gameplay/Pause.md) |

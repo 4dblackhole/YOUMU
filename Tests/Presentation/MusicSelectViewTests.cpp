@@ -16,7 +16,7 @@
 #include <memory>
 #include <thread>
 #include <atomic>
-#include "Presentation/PlayOptionsDialog.h"
+void TestPlayOptionsPanel();
 
 namespace
 {
@@ -1015,52 +1015,6 @@ namespace
         selection.selectedPatternIndex_=1;view.RefreshSelectionPresentation();static_cast<void>(view.Update(input,0));wait(0);
         view.Shutdown();
     }
-    void TestPlayOptionsForm()
-    {
-        TextCatalog texts("Client/Texts/Languages");
-        PlayOptions options;
-        for (const bool cancel : {false,true})
-        {
-            struct Driver { bool cancel{}; std::atomic_bool handled{}; } driver;
-            driver.cancel=cancel;
-            const auto threadId=GetCurrentThreadId();
-            std::jthread input([&](std::stop_token stop) {
-                while(!stop.stop_requested()&&!driver.handled)
-                {
-                    EnumThreadWindows(threadId,[](HWND window,LPARAM parameter)->BOOL {
-                        auto &d=*reinterpret_cast<Driver *>(parameter);
-                        wchar_t name[32]{};GetClassNameW(window,name,32);
-                        if(std::wstring_view(name)!=L"#32770"||!GetDlgItem(window,112))return TRUE;
-                        ShowWindow(window,SW_HIDE);
-                        if(d.cancel)
-                        {
-                            SetDlgItemTextW(window,108,L"2.0");
-                            PostMessageW(window,WM_COMMAND,IDCANCEL,0);
-                        }
-                        else
-                        {
-                            SendDlgItemMessageW(window,100,CB_SETCURSEL,1,0);
-                            SetDlgItemTextW(window,101,L"240");
-                            for(const auto id:{102,103,104,105,110,111})SendDlgItemMessageW(window,id,BM_SETCHECK,BST_CHECKED,0);
-                            SendDlgItemMessageW(window,109,BM_SETCHECK,BST_UNCHECKED,0);
-                            SetDlgItemTextW(window,106,L"18446744073709551615");
-                            SetDlgItemTextW(window,107,L"35");SetDlgItemTextW(window,108,L"1.5");SetDlgItemTextW(window,112,L"60.00");
-                            PostMessageW(window,WM_COMMAND,IDOK,0);
-                        }
-                        d.handled=true;return FALSE;
-                    },reinterpret_cast<LPARAM>(&driver));
-                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
-                }
-            });
-            const bool accepted=EditPlayOptions(options,texts);
-            input.request_stop();input.join();
-            Check(driver.handled&&accepted!=cancel,"Native form accepts all fields and supports Cancel.");
-            Check(options.scrollUnit==PlayOptions::ScrollUnit::Bpm&&options.scrollSpeed==240&&options.ignoreScrollEffects&&
-                options.metronome&&options.mirror&&options.random&&options.randomSeed==UINT64_MAX&&options.randomAttemptProbability==.35&&
-                options.accelerate==1.5&&!options.preserveMusicPitch&&options.preserveHitSoundPitch&&options.judgeLevel==JudgeLevel{60},
-                "Play form independently captures BPM, seed/probability, pitch flags and hundredth JudgeLevel; Cancel preserves them.");
-        }
-    }
     void TestOptionsToggle(MusicSelectView &view, Visual2DCanvas &canvas)
     {
         auto *button = Find(canvas.Root(), "OptionSelect");
@@ -1093,7 +1047,6 @@ int main()
     try
     {
         TestConverterProcess();
-        TestPlayOptionsForm();
         {
             Visual2DCanvas canvas;
             auto &label = CreateLabel(canvas.Root(), {0, 0, 100, 30}, L"");
@@ -1260,6 +1213,7 @@ int main()
               "Convert .osu must issue only the import command.");
         editor.Shutdown();
         TestNativeSongSearch();
+        TestPlayOptionsPanel();
         std::cout << "Music selection viewport, catalog worker and native Unicode search tests passed.\n";
         return 0;
     }

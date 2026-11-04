@@ -58,6 +58,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     UpdateFooterLayout();
     UpdateSearchInputLayout();
     filterPanel_.SetViewport(width_, height_);
+    playOptionsPanel_.SetViewport(height_);
     recordFilterPanel_.SetViewport(height_);
     favoritesPanel_.SetViewport();
 }

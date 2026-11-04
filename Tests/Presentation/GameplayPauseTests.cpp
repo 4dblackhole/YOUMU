@@ -471,7 +471,15 @@ namespace
                 : inner_(inner), shown_(shown), intro_(intro), introImage_(introImage), resumesBefore_(musicResumes) {}
             ImageHandle LoadImage(const std::filesystem::path &path) override { return inner_.LoadImage(path); }
             bool PrepareImages(std::span<const std::filesystem::path> paths, std::string &error) override
-            { return inner_.PrepareImages(paths, error); }
+            {
+                if (firstPreparation_)
+                {
+                    firstPreparation_ = false;
+                    Check(paths.size() == 1 && paths.front().filename() == L"Sky.png",
+                          "The loading BG must be prepared before the bulk gameplay images.");
+                }
+                return inner_.PrepareImages(paths, error);
+            }
             Size GetImageSize(ImageHandle image) const noexcept override { return inner_.GetImageSize(image); }
             void SubmitScreen(const Visual2DCanvas &canvas, const RenderContext &ctx, Point origin, std::uint32_t z) override
             {
@@ -513,6 +521,7 @@ namespace
             bool &intro_;
             bool &introImage_;
             std::size_t resumesBefore_{};
+            bool firstPreparation_{true};
         };
       public:
         explicit ColdStartClient(bool &verified, bool accelerated=false) : verified_(verified), accelerated_(accelerated) {}
@@ -538,12 +547,19 @@ namespace
             request.backgroundPath = ResolveDefaultSkinAsset(L"Result/Background/Sky.png");
             request.backgroundOffsetX = 80;
             request.backgroundOffsetY = -20;
+            // The selection view has already registered this same BG in the shared manager.
+            const auto selectedBackground = visuals_.RegisterImage(request.backgroundPath);
             store->SetValidated(request, std::move(loaded.session));
             scene_ = std::make_unique<RhythmTestScene>(store, playback_, visuals_, false, texts_, result_);
             sampleDelayMs = 400;
             const EngineServices wrapped{services.meshRendering, services.textRendering, *rendering_, services.audio,
                 services.windowWidth, services.windowHeight};
             scene_->Initialize(wrapped);
+            const auto *loading = visuals_.FindCanvas(1);
+            const auto *background = loading ? Find(loading->Root(), "Loading.Background") : nullptr;
+            const auto *sprite = background ? background->GetComponent<SpriteVisualComponent>() : nullptr;
+            Check(sprite && sprite->Style().normalImage.value == selectedBackground.value,
+                  "The cached selection BG must be attached during Initialize, before the first Update/render.");
             sampleDelayMs = 0;
             scene_->BeginScene();
         }

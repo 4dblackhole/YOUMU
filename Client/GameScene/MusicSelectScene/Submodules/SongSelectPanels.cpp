@@ -510,6 +510,7 @@ void MusicSelectView::ApplyTexts()
         ++recordRevision_;
     }
     options_.RefreshTexts();
+    playOptionsPanel_.RefreshTexts();
     filterPanel_.RefreshTexts();
     recordFilterPanel_.RefreshTexts();
     recordFilterPanel_.SetViewport(height_);

@@ -333,8 +333,8 @@
   <ItemGroup>
     <ClInclude Include="Presentation\ValueDialog.h" />
     <ClCompile Include="Presentation\ValueDialog.cpp" />
-    <ClInclude Include="Presentation\PlayOptionsDialog.h" />
-    <ClCompile Include="Presentation\PlayOptionsDialog.cpp" />
+    <ClInclude Include="Presentation\PlayOptionsPanel.h" />
+    <ClCompile Include="Presentation\PlayOptionsPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectRecords.cpp" />
@@ -358,4 +358,5 @@
     <ClInclude Include="Texts\Submodules\ExplanationKeys.h" />
     <None Include="Texts\Languages\ja.ini" />
   </ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\PlayOptionsPanel\Submodules\PlayOptionsLayout.cpp" /></ItemGroup>
 </Project>

@@ -1,6 +1,5 @@
 #include "MusicSelectView.h"
 #include "Presentation/ScrollableTextComponent.h"
-#include "Presentation/PlayOptionsDialog.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
@@ -61,7 +60,11 @@ bool MusicSelectView::ProcessActions()
         {
             SetSearchFocus(false);
             if (IsEditorSongSelect()) options_.Toggle();
-            else static_cast<void>(EditPlayOptions(selection_.playOptions_, texts_));
+            else if (!options_.IsVisible())
+            {
+                CloseAdditionMenu();
+                playOptionsPanel_.Open(selection_.playOptions_);
+            }
             inputRouter_.Reset(*canvas_);
             return true;
         }
