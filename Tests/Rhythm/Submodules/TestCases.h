@@ -14,6 +14,7 @@ namespace tests
     void TestHpSessionReplayAndClear();
     void TestHpLongRuntime();
     void TestEmptyHpEligibility();
+    void TestHpDeactivationAndHistory();
 
     void TestAcceleratedClockAndWindows();
     void TestTaikoPlayOptions();

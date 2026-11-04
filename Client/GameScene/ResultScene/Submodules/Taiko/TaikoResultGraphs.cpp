@@ -72,6 +72,64 @@ namespace taiko_result_ui
             }
         }
     } // namespace
+    std::vector<RectanglePrimitive> BuildHpCurve(const PlayResultSummary &result, Rect plot)
+    {
+        std::vector<RectanglePrimitive> rectangles;
+        if (!result.hpHistory || result.hpGauges.empty() || !result.hpGauges.front().applicable ||
+            plot.width <= 0 || plot.height <= 0)
+            return rectangles;
+        const auto firstControl = std::ranges::find_if(result.controls, [](const auto &control)
+            { return control.pauseMenuShown || control.type == PlayControlType::Rewind; });
+        const double stopped = static_cast<double>((firstControl == result.controls.end()
+            ? result.endTime : firstControl->from).count());
+        double first = std::min(static_cast<double>(result.initialTime.count()), stopped);
+        double last = std::max(static_cast<double>(result.endTime.count()), stopped);
+        for (const auto &point : *result.hpHistory)
+        {
+            first = std::min(first, static_cast<double>(point.time.count()));
+            last = std::max(last, static_cast<double>(point.time.count()));
+        }
+        last = std::max(first + 1'000.0, last);
+        const auto position = [&](double time, double percent)
+        {
+            return Point{plot.x + static_cast<float>(std::clamp((time - first) / (last - first), 0.0, 1.0)) * plot.width,
+                         plot.y + static_cast<float>(std::clamp(percent / 100.0, 0.0, 1.0)) * plot.height};
+        };
+        const auto segment = [&](Point from, Point to)
+        {
+            const auto parts = static_cast<unsigned>(std::max(1.0F, std::ceil(to.x - from.x)));
+            for (unsigned part = 0; part < parts; ++part)
+            {
+                const float a = static_cast<float>(part) / static_cast<float>(parts);
+                const float b = static_cast<float>(part + 1) / static_cast<float>(parts);
+                const float x = from.x + (to.x - from.x) * a;
+                const float y0 = from.y + (to.y - from.y) * a;
+                const float y1 = from.y + (to.y - from.y) * b;
+                const float thickness = std::min(2.0F, plot.height);
+                const float left = std::clamp(x, plot.x, plot.x + std::max(plot.width - 1, 0.0F));
+                const float bottom = std::clamp(std::min(y0, y1), plot.y, plot.y + plot.height - thickness);
+                rectangles.push_back({{left, bottom, std::min(std::max((to.x - from.x) / static_cast<float>(parts), 1.0F),
+                                                                           plot.x + plot.width - left),
+                                      std::min(std::max(std::abs(y1 - y0), thickness), plot.y + plot.height - bottom)},
+                                      layout::Accent, 0});
+            }
+        };
+        Point previous = position(first, 0);
+        double percent = 0;
+        for (const auto &point : *result.hpHistory)
+        {
+            if (!std::isfinite(point.percent) || static_cast<double>(point.time.count()) > stopped)
+                continue;
+            const auto next = position(static_cast<double>(point.time.count()), point.percent);
+            if (next.x < previous.x) continue;
+            segment(previous, next);
+            previous = next;
+            percent = point.percent;
+        }
+        segment(previous, position(stopped, percent));
+        return rectangles;
+    }
+
     GraphData BuildGraphs(const TaikoPlayResult &result, Rect scatter, Rect histogram,
                           float minimumBarWidth)
     {

@@ -18,6 +18,7 @@ class BasicHpGauge final : public IHpGauge
     void Reset() noexcept override;
     void Consume(const NoteProcessResult &result, bool keyPressed) override;
     HpGaugeState State() const noexcept override;
+    std::optional<std::span<const HpHistoryPoint>> History() const noexcept override { return std::span{history_}; }
 
   private:
     struct NoteStateData
@@ -34,4 +35,5 @@ class BasicHpGauge final : public IHpGauge
     std::map<NoteId, NoteStateData> notes_;
     HpLevel level_;
     double increment_{}, percent_{};
+    std::vector<HpHistoryPoint> history_;
 };

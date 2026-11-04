@@ -84,7 +84,7 @@ class PlaySession final
     void RecordControl(PlayControlEvent event);
     bool CanUseHp() const noexcept
     {
-        return !pauseMenuUsed_ && PlayableNoteCount() != 0;
+        return !hpDisabled_ && PlayableNoteCount() != 0;
     }
     void SetResultCollector(std::unique_ptr<IPlayResultCollector> collector);
     void SetResultInitialTime(RhythmTime time) noexcept;
@@ -102,13 +102,14 @@ class PlaySession final
         std::optional<RhythmInputEvent> input;
         std::vector<PhysicalKey> heldKeys;
     };
-    void ResetNoteState() noexcept;
+    void ResetNoteState(bool resetHp = true) noexcept;
     void ApplyPhysicalInput(PhysicalKey key, InputEdge edge);
     void ResolveHeldActions(std::span<const PhysicalKey> keys);
     void RefreshHeldActions();
     std::vector<JudgementStep> judgementHistory_;
     std::vector<PhysicalKey> lastRecordedHeldKeys_;
     bool pauseMenuUsed_{};
+    bool hpDisabled_{};
     void AccumulateAccuracy(const NoteProcessResult &result, bool keyPressed = false);
     void ResolveSoundOverrides(NoteProcessResult &result) const;
     [[nodiscard]] static double Interpolate(const CompiledEffectCommand &command,

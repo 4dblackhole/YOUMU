@@ -22,6 +22,7 @@ BasicHpGauge::BasicHpGauge(HpLevel level, std::span<const HpNoteDefinition> note
 void BasicHpGauge::Reset() noexcept
 {
     percent_ = 0;
+    history_.clear();
     for (auto &[id, state] : notes_)
     {
         std::ranges::fill(state.hits, -level_.Value());
@@ -71,7 +72,11 @@ void BasicHpGauge::Consume(const NoteProcessResult &result, bool keyPressed)
 {
     for (const auto &event : result.events)
         if (auto found = notes_.find(event.noteId); found != notes_.end() && !found->second.finalized)
+        {
             ConsumeEvent(found->second, event, keyPressed);
+            if (history_.empty() || history_.back().percent != percent_)
+                history_.push_back({event.eventTime, percent_});
+        }
 }
 
 void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bool keyPressed)

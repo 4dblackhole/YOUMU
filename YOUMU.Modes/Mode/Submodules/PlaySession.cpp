@@ -318,10 +318,12 @@ void PlaySession::Reset() noexcept
     judgementHistory_.clear();
     lastRecordedHeldKeys_.clear();
     pauseMenuUsed_ = false;
+    hpDisabled_ = false;
 }
-void PlaySession::ResetNoteState() noexcept
+void PlaySession::ResetNoteState(bool resetHp) noexcept
 {
-    for (auto *gauge : hpGauges_) gauge->Reset();
+    if (resetHp)
+        for (auto *gauge : hpGauges_) gauge->Reset();
     gear_.Reset();
     heldPhysicalKeys_.clear();
     heldActions_.clear();
@@ -342,7 +344,8 @@ bool PlaySession::IsKiaiActive(RhythmTime time) const
 
 void PlaySession::AccumulateAccuracy(const NoteProcessResult &result, bool keyPressed)
 {
-    for (auto *gauge : hpGauges_) gauge->Consume(result, keyPressed);
+    if (!hpDisabled_)
+        for (auto *gauge : hpGauges_) gauge->Consume(result, keyPressed);
     if (resultCollector_) resultCollector_->Consume(result, keyPressed);
     for (const NoteAccuracy &accuracy : result.finalizedAccuracies)
     {
@@ -388,7 +391,11 @@ std::unique_ptr<IPlayResult> PlaySession::TakeResult(PlayEndReason reason, Rhyth
     std::vector<HpGaugeState> hp;
     hp.reserve(hpGauges_.size());
     for (const auto *gauge : hpGauges_) hp.push_back(gauge->State());
-    return resultCollector_->TakeResult(reason, time, std::move(hp));
+    std::optional<std::vector<HpHistoryPoint>> history;
+    if (!hpGauges_.empty())
+        if (const auto points = hpGauges_.front()->History())
+            history.emplace(points->begin(), points->end());
+    return resultCollector_->TakeResult(reason, time, std::move(hp), std::move(history));
 }
 
 const std::optional<NoteAccuracy> &PlaySession::LastNoteAccuracy() const noexcept

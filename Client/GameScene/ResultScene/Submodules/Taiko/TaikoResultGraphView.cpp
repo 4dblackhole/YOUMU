@@ -43,6 +43,8 @@ void TaikoResultView::BuildGraphs(Visual2DNode &root)
     const float pixelsPerUnit = std::min(static_cast<float>(width_) / Width, static_cast<float>(height_) / Height);
     auto data = taiko_result_ui::BuildGraphs(result_, Bounds(Scatter), Bounds(Histogram),
                                              pixelsPerUnit > 0 ? 1.0F / pixelsPerUnit : 1.0F);
+    const auto hp = taiko_result_ui::BuildHpCurve(result_.summary, Bounds(HpPlot));
+    data.rectangles.insert(data.rectangles.end(), hp.begin(), hp.end());
     for (const float portion : {.25F, .5F, .75F})
     {
         Panel(root, {Histogram.x, Histogram.y + Histogram.height * portion, Histogram.width, 1}, Keyline, 0);

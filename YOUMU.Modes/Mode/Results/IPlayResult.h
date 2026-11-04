@@ -41,9 +41,11 @@ struct PlayResultSummary
     RhythmDuration globalOffset{}; // Reproduce the compiled timing in a future replay.
     bool pauseMenuUsed{};
     std::vector<HpGaugeState> hpGauges;
+    std::optional<std::vector<HpHistoryPoint>> hpHistory;
     bool CanUseHp() const noexcept
     {
-        return !pauseMenuUsed && totalNotes != 0;
+        return !pauseMenuUsed && totalNotes != 0 &&
+            !std::ranges::any_of(controls, [](const auto &control) { return control.type == PlayControlType::Rewind; });
     }
     bool IsCleared() const noexcept
     {

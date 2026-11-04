@@ -133,6 +133,101 @@ namespace
         }
         return value;
     }
+    void TestControlUsageOverlay()
+    {
+        for (unsigned mask = 0; mask < 5; ++mask)
+        {
+            NullRenderer renderer;
+            ScreenVisual2DManager visuals;
+            visuals.Initialize(renderer, {1920, 1080});
+            MeshRenderSystem meshes;
+            TextRenderSystem textRendering;
+            AudioSystem audio;
+            TextCatalog texts("Client/Texts/Languages");
+            TaikoPlayResult result;
+            result.summary.pauseMenuUsed = (mask & 1U) != 0;
+            result.summary.endTime = RhythmTime{4'000'000};
+            result.summary.hpGauges = {{60, true, true}};
+            result.summary.hpHistory = std::vector<HpHistoryPoint>{{RhythmTime{500'000}, 30}, {RhythmTime{1'000'000}, 60}};
+            if ((mask & 1U) != 0)
+                result.summary.controls.push_back({PlayControlType::Pause, RhythmTime{1'500'000}, RhythmTime{1'500'000}, 0, true});
+            if ((mask & 2U) != 0)
+                result.summary.controls.push_back({PlayControlType::Rewind, RhythmTime{2'000'000}, {}});
+            if (mask == 4)
+            {
+                result.summary.controls.push_back({PlayControlType::Pause, {}, {}, 0, false});
+                result.summary.controls.push_back({PlayControlType::Resume, RhythmTime{1'000'000}, {}});
+            }
+            auto view = CreateResultView(result, visuals, texts);
+            view->Initialize({meshes, textRendering, renderer, audio, 1920, 1080});
+            auto *canvas = visuals.FindCanvas(1);
+            if (!canvas) throw std::runtime_error("Usage-overlay Canvas missing.");
+            for (const auto language : {Language::Korean, Language::English})
+            {
+                texts.SetLanguage(language);
+                InputState input;
+                static_cast<void>(view->Update(input));
+                const auto *overlay = FindNode(canvas->Root(), "Result.ControlUsage");
+                Check((overlay != nullptr) == (mask > 0 && mask < 4),
+                      "Only actual menu pause or Rewind adds an overlay; Debug pause and Resume do not.");
+                Check(HasText(*canvas, texts.Get("Result.hpGraph")),
+                      "Adding usage must preserve the existing HP graph area and title.");
+                Check(!HasText(*canvas, texts.Get("Result.noHpData")) &&
+                          !taiko_result_ui::BuildHpCurve(result.summary, {122, 806, 426, 104}).empty(),
+                      "The actual HP curve remains visible with and without usage overlays.");
+                if (!overlay) continue;
+                std::wstring expected;
+                if ((mask & 1U) != 0) expected = texts.Get("Result.pauseUsed");
+                if ((mask & 2U) != 0)
+                {
+                    if (!expected.empty()) expected += L" · ";
+                    expected += texts.Get("Result.rewindUsed");
+                }
+                const auto *text = overlay->GetComponent<TextVisualComponent>();
+                if (!text) throw std::runtime_error("Usage-overlay text missing.");
+                Check(text->Text() == expected && overlay->ZIndex() > 0,
+                      "Used actions appear together in the selected language above graph content.");
+                const auto bounds = overlay->Bounds();
+                Check(bounds.x >= 122 && bounds.x + bounds.width <= 548 &&
+                          bounds.y >= 806 && bounds.y + bounds.height <= 910,
+                      "Usage stays inside the original HP plot rather than replacing or moving it.");
+            }
+            view->Shutdown();
+        }
+    }
+    void TestHpCurveGeometry()
+    {
+        PlayResultSummary summary;
+        summary.endTime = RhythmTime{4'000'000};
+        summary.hpGauges = {{75, true, true}};
+        const Rect plot{10, 20, 400, 100};
+        Check(taiko_result_ui::BuildHpCurve(summary, plot).empty(), "Unavailable HP history is never invented.");
+        summary.hpHistory.emplace();
+        Check(!taiko_result_ui::BuildHpCurve(summary, plot).empty(), "An empty recording has a valid zero-start curve.");
+        *summary.hpHistory = {{RhythmTime{1'000'000}, 25}, {RhythmTime{2'000'000}, 75}};
+        auto curve = taiko_result_ui::BuildHpCurve(summary, plot);
+        const auto right = [](const auto &rectangles)
+        {
+            float result = 0;
+            for (const auto &rectangle : rectangles)
+                result = std::max(result, rectangle.bounds.x + rectangle.bounds.width);
+            return result;
+        };
+        Check(std::abs(right(curve) - 410) < .01F, "Active HP continues to normal play end.");
+        summary.controls.push_back({PlayControlType::Pause, RhythmTime{2'500'000}, RhythmTime{2'500'000}, 0, true});
+        summary.controls.push_back({PlayControlType::Rewind, RhythmTime{2'500'000}, RhythmTime{500'000}});
+        curve = taiko_result_ui::BuildHpCurve(summary, plot);
+        Check(std::abs(right(curve) - 260) < 1.01F, "HP history ends at deactivation and survives Rewind.");
+        for (const auto &rectangle : curve)
+        {
+            const auto b = rectangle.bounds;
+            Check(std::isfinite(b.x) && std::isfinite(b.y) && b.width > 0 && b.height > 0 &&
+                      b.x >= plot.x && b.y >= plot.y && b.x + b.width <= 410.01F && b.y + b.height <= 120.01F,
+                  "HP geometry stays finite and inside the original plot.");
+        }
+        summary.hpGauges.front().applicable = false;
+        Check(taiko_result_ui::BuildHpCurve(summary, plot).empty(), "Empty/editor-only charts have no HP curve.");
+    }
     void TestChartBackground()
     {
         for (const auto &path : std::array<std::filesystem::path, 5>{
@@ -701,6 +796,8 @@ int main()
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestResultRecordSaving();
+        TestControlUsageOverlay();
+        TestHpCurveGeometry();
         TestChartBackground();
         TestAccuracyRanks();
         TestMillisecondHistogram();

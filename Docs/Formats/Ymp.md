@@ -118,11 +118,13 @@ HP 감소를 반영합니다. 노트 처리 전까지 기다리는 이유는 배
 세션은 비소유 포인터로 판정 결과를 순서대로 전달하고, Presenter는 현재 HP만 표시합니다.
 표시는 최신 Penpot의 회색 트랙(#CBD5E1)·청록 채움(#32CBE0) 사각형 두 개입니다.
 1920×1080 기준 (231,251), 620×20 배치를 높이 기준으로 맞추며 숫자나 장식은 없습니다.
-Resume은 HP를 보존하고 Retry는 0%로 초기화합니다. Rewind/Debug 뒤로 탐색은 대상 시각보다
-엄격히 앞선 판정 작업만 원래 실행 순서대로 재적용하므로 상·하한에 버려진 변화량도 복원합니다.
-재적용 중 오디오/화면 피드백은 다시 내보내지 않습니다. ESC 메뉴 사용 시 해당 시도의
-HP/클리어 자격은 유지되지 않으며, 마지막 판정 후 종료 HP와 자격으로 기존 cleared 기록을 결정합니다.
-HP 그래프·추가 게이지·등급 순서·결과 화면의 HP 그래프 표시는 아직 구현하지 않았습니다.
+일시정지 메뉴 또는 Rewind를 사용하면 해당 시도의 HP 시스템을 비활성화합니다. 기존 HP 값과
+이력은 보존하며 이후 판정·Resume·Rewind·Retire로 HP를 변경하거나 자격을 복구하지 않습니다.
+Retry만 HP 0%·빈 이력·활성 상태로 시작합니다. 기존 Debug 전용 정지 예외는 유지하며,
+HP가 활성인 Debug 뒤로 탐색은 대상 이전의 작업을 재적용해 값과 이력을 복원합니다.
+마지막 판정 후 종료 HP와 자격으로 기존 cleared 기록을 결정합니다.
+실제 HP 곡선과 사용 요약은 [리절트](../Gameplay/Results.md#hp-곡선과-사용-요약)에 표시합니다.
+추가 게이지·등급 순서는 아직 미정입니다.
 
 검증: `Tests/Rhythm/Submodules/HpGaugeTests.cpp`, `SongCatalogTests.cpp`,
 `Tests/Presentation/GameplayJudgementTests.cpp`, `GameplayPauseTests.cpp`.

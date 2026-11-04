@@ -7,7 +7,6 @@ ResultTextSet Result(const TextCatalog &texts)
             texts.Get("Result.noteCounts"),
             {texts.Get("Result.groups.0"), texts.Get("Result.groups.1"), texts.Get("Result.groups.2")},
             texts.Get("Result.hpGraph"),
-            texts.Get("Result.hpFuture"),
             texts.Get("Result.noHpData"),
             texts.Get("Result.timeAxis"),
             texts.Get("Result.start"),
@@ -36,5 +35,7 @@ ResultTextSet Result(const TextCatalog &texts)
             texts.Get("Result.retry"),
             texts.Get("Result.back"),
             texts.Get("Result.backShortcut"),
-            texts.Get("Result.artist")};
+            texts.Get("Result.artist"),
+            texts.Get("Result.pauseUsed"),
+            texts.Get("Result.rewindUsed")};
 }

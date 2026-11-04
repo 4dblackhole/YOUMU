@@ -46,6 +46,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestHpSessionReplayAndClear", TestHpSessionReplayAndClear},
         {"TestHpLongRuntime", TestHpLongRuntime},
         {"TestEmptyHpEligibility", TestEmptyHpEligibility},
+        {"TestHpDeactivationAndHistory", TestHpDeactivationAndHistory},
 
         {"TestAcceleratedClockAndWindows", TestAcceleratedClockAndWindows},
         {"TestTaikoPlayOptions", TestTaikoPlayOptions},

@@ -99,7 +99,10 @@ Ready일 때 새 QPC/DSP 기준으로 시작합니다. 파일 로딩 실패도 �
 
 **기본 HP 런타임은 구현되어 있고 리플레이 재생/파일 저장은 미구현입니다.**
 [SQLite 성적 기록](PlayOptions.md#로컬-기록)은 구현되어 있으며 아래 자격·통계 계약을 따릅니다.
-HP는 Resume 보존, Retry 초기화, Rewind의 이전 작업 재적용을 통해 같은 계약을 따릅니다.
+일시정지 메뉴 또는 Rewind를 처음 사용한 시점부터 해당 시도의 HP 시스템을 비활성화합니다.
+현재 HP 값과 이전 이력은 보존하고 Resume·Rewind·Retire에서도 HP를 누적하거나 재계산하지
+않습니다. Retry는 HP 0%·빈 이력·활성 상태로 시작합니다. 결과는
+[HP 곡선과 사용 요약](Results.md#hp-곡선과-사용-요약)을 유지합니다.
 
 - 메뉴가 한 번이라도 나타나면 해당 시도의 `pauseMenuUsed`는 계속 true입니다.
   마지막까지 처리해 Completed로 끝나도 `PlayResultSummary::IsCleared()`는 false입니다.

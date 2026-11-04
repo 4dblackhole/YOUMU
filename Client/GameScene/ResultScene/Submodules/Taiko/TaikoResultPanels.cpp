@@ -31,20 +31,37 @@ void TaikoResultView::BuildHpGraph(Visual2DNode &root)
 {
     const auto &text = Result(texts_);
     Label(root, {76, 124, 310, 30}, std::wstring(text.hpGraph), 20, 700);
-    Panel(root, {438, 128, 110, 26}, Plot, 13, 1, Keyline);
-    Label(root, {438, 128, 110, 26}, std::wstring(text.hpFuture), 11, 600, TextAlignment::Center, Muted);
-    Panel(root, {122, 170, 426, 104}, Plot, 6);
+    Panel(root, HpPlot, Plot, 6);
     for (const float y : {196.0F, 222.0F, 248.0F})
         Panel(root, {122, y, 426, 1}, Keyline, 0);
     for (const float x : {228.5F, 335.0F, 441.5F})
         Panel(root, {x, 170, 1, 104}, Keyline, 0);
     Panel(root, {121, 170, 1, 105}, ResultColor(0x5783A0, .6F), 0);
     Panel(root, {122, 274, 426, 1}, ResultColor(0x5783A0, .6F), 0);
-    Label(root, {76, 161, 38, 20}, std::wstring(texts_.Get("Result.hp")), 12, 600, TextAlignment::Leading, Muted);
-    Label(root, {154, 205, 362, 30}, std::wstring(text.noHpData), 14, 500, TextAlignment::Center, Muted);
+    Label(root, {76, 153, 38, 16}, std::wstring(texts_.Get("Result.hp")), 11, 600, TextAlignment::Leading, Muted);
+    for (const auto &[y, percent] : std::array<std::pair<float, std::wstring_view>, 3>{{{169.0F, L"100%"}, {213.0F, L"50%"}, {257.0F, L"0%"}}})
+        Label(root, {76, y, 38, 18}, std::wstring(percent), 10, 500, TextAlignment::Leading, Muted);
+    if (!result_.summary.hpHistory || result_.summary.hpGauges.empty() || !result_.summary.hpGauges.front().applicable)
+        Label(root, {154, 205, 362, 30}, std::wstring(text.noHpData), 14, 500, TextAlignment::Center, Muted);
     Label(root, {122, 284, 90, 22}, std::wstring(text.start), 11, 500, TextAlignment::Leading, Muted);
     Label(root, {245, 284, 180, 22}, std::wstring(text.timeAxis), 11, 500, TextAlignment::Center, Muted);
     Label(root, {458, 284, 90, 22}, std::wstring(text.end), 11, 500, TextAlignment::Trailing, Muted);
+    std::wstring usage;
+    if (result_.summary.pauseMenuUsed)
+        usage = text.pauseUsed;
+    if (std::ranges::any_of(result_.summary.controls, [](const auto &control)
+                           { return control.type == PlayControlType::Rewind; }))
+    {
+        if (!usage.empty()) usage += L" · ";
+        usage += text.rewindUsed;
+    }
+    if (!usage.empty())
+    {
+        auto &label = Label(root, {130, 178, 410, 22}, std::move(usage), 12, 700,
+                            TextAlignment::Leading, Ink);
+        label.SetName("Result.ControlUsage");
+        label.SetZIndex(5);
+    }
 }
 void TaikoResultView::BuildJudgements(Visual2DNode &root)
 {

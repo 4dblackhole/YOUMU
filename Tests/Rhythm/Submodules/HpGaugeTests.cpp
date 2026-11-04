@@ -229,6 +229,56 @@ namespace tests
         Require(Near(gauge.State().percent, head), "Retirement preserves a settled Buzz head.");
     }
 
+    void TestHpDeactivationAndHistory()
+    {
+        PatternDocument pattern;
+        pattern.mode = "Taiko";
+        pattern.baseBpm = 120;
+        for (std::int64_t i = 0; i < 4; ++i)
+            pattern.notes.push_back({{0, {i, 4}}, 1});
+        auto loaded = TaikoMode{}.CreateSession(pattern);
+        Require(loaded.Succeeded(), "HP deactivation fixture must load.");
+        auto &session = *loaded.session;
+        auto gauge = GaugeFor(session);
+        Bind(session, gauge);
+        session.SetResultInitialTime(RhythmTime{-2'000'000});
+        for (const auto time : {0, 500'000})
+            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{time}));
+        Require(Near(gauge.State().percent, 60) && gauge.History() && !gauge.History()->empty(),
+                "The gauge records real HP changes before deactivation.");
+        const auto points = gauge.History()->size();
+        session.RecordControl({PlayControlType::Pause, RhythmTime{750'000}, RhythmTime{750'000}, 0, true});
+        session.RewindJudgements(RhythmTime{500'000});
+        session.RecordControl({PlayControlType::Rewind, RhythmTime{750'000}, RhythmTime{500'000}});
+        session.RecordControl({PlayControlType::Resume, RhythmTime{750'000}, RhythmTime{250'000}});
+        for (const auto time : {500'000, 1'000'000})
+            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{time}));
+        session.RetireRemaining(RhythmTime{1'100'000});
+        Require(!session.CanUseHp() && Near(gauge.State().percent, 60) && gauge.History()->size() == points,
+                "Pause/Rewind freeze HP/history through replay, Resume and retirement.");
+        auto result = session.TakeResult(PlayEndReason::Interrupted, RhythmTime{1'100'000});
+        Require(!result->Summary().CanUseHp() && !result->Summary().IsCleared() &&
+                    result->Summary().hpHistory && result->Summary().hpHistory->size() == points,
+                "Results preserve the pre-pause HP curve without clear eligibility.");
+        loaded.session.reset();
+        gauge.Reset();
+        Require(result->Summary().hpHistory->size() == points, "Result history owns its values.");
+        loaded = TaikoMode{}.CreateSession(pattern);
+        auto &retry = *loaded.session;
+        auto retryGauge = GaugeFor(retry);
+        Bind(retry, retryGauge);
+        retry.RecordControl({PlayControlType::Pause, {}, {}, 0, true});
+        retry.Reset();
+        Require(retry.CanUseHp() && Near(retryGauge.State().percent, 0) && retryGauge.History()->empty(),
+                "Retry re-enables HP and clears the old history.");
+        retry.RecordControl({PlayControlType::Pause, {}, {}, 0, false});
+        static_cast<void>(retry.ProcessInput('F', InputEdge::Pressed, {}));
+        Require(retry.CanUseHp() && Near(retryGauge.State().percent, 30), "Debug pause retains its existing exception.");
+        retry.RecordControl({PlayControlType::Rewind, RhythmTime{250'000}, {}});
+        retry.RewindJudgements({});
+        static_cast<void>(retry.Update(RhythmTime{2'000'000}));
+        Require(!retry.CanUseHp() && Near(retryGauge.State().percent, 30), "Rewind alone disables HP without clearing its value.");
+    }
     void TestEmptyHpEligibility()
     {
         PatternDocument pattern;

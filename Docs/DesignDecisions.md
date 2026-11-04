@@ -222,6 +222,8 @@ Retry는 방금 플레이한 옵션/시드를 다시 사용합니다. 원본 YMM
   준비 완료 후 음악/시계를 같은 새 QPC/DSP 기준으로 시작합니다.
 - ESC 메뉴 사용은 그 시도의 연습/클리어·HP 자격에 남으며 Resume/Rewind로 복구하지 않습니다.
   CanUseHp는 자격 정보이며 실제 종료 HP 합격 여부와 함께 클리어를 결정합니다.
+- 일시정지 메뉴 또는 Rewind 사용 시 HP 처리를 비활성화하고 이전 값·이력은 보존합니다.
+  Resume·Rewind·Retire는 이후 HP를 누적/재계산하지 않으며 Retry만 0%로 다시 활성화합니다.
 
 상세: [Pause](Gameplay/Pause.md), [Audio](Gameplay/Audio.md).
 검증: PlayPauseTests, GameplayPauseTests, ResultPresentationTests.
@@ -395,10 +397,12 @@ Retry는 방금 플레이한 옵션/시드를 다시 사용합니다. 원본 YMM
   두 자리 고정 출력이며 누락 시 기본 9.00입니다. osu→YMP는 9.00을 출력합니다.
 - 유효 논리 노트 N=0은 일반 플레이 진입을 차단합니다. 에디터 미리보기/테스트에서는
   허용하되 HP 판정에서 제외합니다.
-- Resume은 상태 보존, Retry는 0% 초기화, Rewind/Debug 역방향 탐색은 대상 시각보다
-  앞선 작업을 원래 실행 순서로 다시 계산합니다. ESC 메뉴 사용 시 HP/클리어 자격을 잃습니다.
+- 일시정지 메뉴 또는 Rewind가 HP를 비활성화합니다. 이전 값·곡선은 남기고 Resume·Rewind·
+  Retire에서는 HP를 누적/재계산하지 않습니다. Retry만 0%·빈 이력·활성 상태로 시작합니다.
+  기존 Debug 전용 예외는 유지하며 활성 HP의 Debug 역방향 탐색만 값·이력을 다시 계산합니다.
 - 마지막 판정 이후 종료 HP로 클리어를 결정하며 기존 기록의 cleared 값을 사용합니다.
-  HP 그래프·추가 게이지의 규칙과 등급 순서는 여전히 미정입니다.
+  HP 그래프는 실제 이력을 표시하고 사용한 조작만 내부에 요약으로 겹쳐 표시합니다.
+  곡선은 비활성화 이후에도 유지합니다. 추가 게이지의 규칙과 등급 순서는 여전히 미정입니다.
 
 상세: [YMP](Formats/Ymp.md#hp-게이지). 검증: HpGaugeTests, GameplayJudgementTests, GameplayPauseTests.
 
@@ -409,7 +413,7 @@ Retry는 방금 플레이한 옵션/시드를 다시 사용합니다. 원본 YMM
 | 항목 | 상태 |
 | --- | --- |
 | HP 기본 규칙·YMP HP 필드 | 기본 게이지 구현, 추가 플로팅 게이지는 미정 |
-| HP 구조 | Scene 소유·세션의 판정 전달·화면 상태 조회 구현. HP 그래프·추가 게이지 미구현 |
+| HP 구조 | Scene 소유·세션 판정 전달·상태/이력 조회와 결과 곡선 구현. 일시정지/Rewind는 비활성화, 추가 게이지는 미정 |
 | SCORE 계산 규칙 | 구현. 현재/최종 정확도 × 100,000,000, 같은 정수 단위를 직접 표시 |
 | 리플레이 재생/파일 저장 | 미구현. 기존 메모리 입력/제어 로그와 영속 성적 DB는 구현 |
 | 랭크 콘텐츠·서버/라이선스 인증·공용 미디어 ID/BGA | RankedContentProposal의 검토 제안, 미구현 |

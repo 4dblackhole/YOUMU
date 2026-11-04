@@ -23,7 +23,8 @@
   [Debugging](Gameplay/Debugging.md)이 기준입니다.
 - 기본 HP 게이지와 YMP `HP:` 필드는 구현되어 있습니다. 기본값·가중치·빈 채보·
   세션 수명과 되감기 계약은 [YMP의 HP](Formats/Ymp.md#hp-게이지)를 따릅니다.
-  추가 게이지·HP 그래프·등급 순서는 미정입니다.
+  실제 HP 곡선·사용 요약은 구현돼 있습니다. 일시정지 메뉴/Rewind 이후 HP는 비활성화하며
+  이전 곡선은 보존합니다. 추가 게이지·등급 순서는 미정입니다.
 - [랭크 콘텐츠 제안](RankedContentProposal.md)은 미구현 제안입니다.
   SCORE는 정확도 × 100,000,000으로 구현됐으며 리플레이 재생은 미구현입니다. 실제 제한은
   [Results](Gameplay/Results.md)를 따릅니다. 제안은 추가 구현 지시가 아닙니다.

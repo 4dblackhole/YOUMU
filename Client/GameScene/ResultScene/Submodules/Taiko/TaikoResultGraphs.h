@@ -12,4 +12,5 @@ namespace taiko_result_ui
     };
     GraphData BuildGraphs(const TaikoPlayResult &result, Rect scatter,
                           Rect histogram, float minimumBarWidth = 1.0F);
+    std::vector<RectanglePrimitive> BuildHpCurve(const PlayResultSummary &result, Rect plot);
 } // namespace taiko_result_ui

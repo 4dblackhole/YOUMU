@@ -4,6 +4,7 @@
 void PlaySession::RecordControl(PlayControlEvent event)
 {
     pauseMenuUsed_ |= event.pauseMenuShown;
+    hpDisabled_ |= event.pauseMenuShown || event.type == PlayControlType::Rewind;
     if (resultCollector_)
         resultCollector_->RecordControl(event);
 }
@@ -15,7 +16,7 @@ void PlaySession::RewindJudgements(RhythmTime target)
     // Resume may have preserved state while moving the clock backwards, so
     // history is deliberately not assumed to be sorted by chart time.
     std::erase_if(judgementHistory_, [target](const auto &step) { return step.time >= target; });
-    ResetNoteState();
+    ResetNoteState(!hpDisabled_);
     if (resultCollector_)
         resultCollector_->ResetJudgements();
     lastRecordedHeldKeys_.clear();
@@ -51,7 +52,8 @@ void PlaySession::RetireRemaining(RhythmTime time)
             if (note->Accuracy().finalized)
                 continue;
             const auto result = note->MarkMissed(time);
-            for (auto *gauge : hpGauges_) gauge->Consume(result, false);
+            if (!hpDisabled_)
+                for (auto *gauge : hpGauges_) gauge->Consume(result, false);
             for (const auto &accuracy : result.finalizedAccuracies)
             {
                 if (resultCollector_)

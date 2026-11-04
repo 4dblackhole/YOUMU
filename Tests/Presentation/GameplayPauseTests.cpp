@@ -417,7 +417,8 @@ namespace
         {
         }
         std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time,
-                                              std::vector<HpGaugeState> hp = {}) override
+                                              std::vector<HpGaugeState> hp = {},
+                                              std::optional<std::vector<HpHistoryPoint>> = std::nullopt) override
         {
             auto result = std::make_unique<ProbeResult>();
             result->summary = summary_;

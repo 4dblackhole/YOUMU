@@ -233,13 +233,15 @@ void TaikoResultCollector::Summarize()
     }
 }
 std::unique_ptr<IPlayResult> TaikoResultCollector::TakeResult(PlayEndReason reason, RhythmTime time,
-                                                           std::vector<HpGaugeState> hp)
+                                                           std::vector<HpGaugeState> hp,
+                                                           std::optional<std::vector<HpHistoryPoint>> hpHistory)
 {
     if (!result_)
         throw std::logic_error("The play result was already transferred.");
     result_->summary.endReason = reason;
     result_->summary.endTime = time;
     result_->summary.hpGauges = std::move(hp);
+    result_->summary.hpHistory = std::move(hpHistory);
     Summarize();
     return std::move(result_);
 }
