@@ -41,11 +41,12 @@ checks search hiding and modal Escape/options-key isolation. Persistence, malfor
 JSON/Unicode, failed atomic replacement and chart preservation are tested in the logic suite.
 Selected BG coverage checks both song-select purposes for full-screen image reuse,
 aspect/offset framing across resize, same-path offset changes and clearing/fallback.
-Song-card thumbnails share the selected chart's image and centered crop with the square
-preview. Both selection purposes check difficulty-click updates, returning to the first
-displayed chart after changing songs, collapsed-card artwork, filtered original indices,
-thumbnail clicks, responsive title separation, absent/failed image clearing and cache reuse.
-The hidden D3D12 run also decodes and renders a real thumbnail shared with the preview.
+Song-list regressions verify no thumbnail nodes or BG requests for collapsed cards,
+full-width title/artist fields and unchanged selected-chart preview rendering.
+Main-panel tests inspect the generated draw geometry after narrow/normal/wide resize:
+exactly one alpha-blended image fill at 90% covers the interior, the opaque border leaves that interior empty,
+and child buttons/text remain opaque. Skin tests check the same opacity on panel PNGs
+and restoration of procedural fills/outlines when returning to the default skin.
 ResultPresentationTests checks the BG value snapshot, reference-height offset conversion,
 resize/language rebuild, image failure fallback and actual D3D12 retention after gameplay destruction.
 GameplayJudgementTests retains its existing full-screen BG/offset regression.

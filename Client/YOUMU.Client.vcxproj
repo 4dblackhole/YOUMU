@@ -184,7 +184,6 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongPreviewController.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongPreviewController.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectCards.cpp" />
-    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectThumbnails.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectCreateMenu.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\OsuImportValidation.cpp" />

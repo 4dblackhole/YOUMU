@@ -322,15 +322,11 @@ namespace
                           scroll->ScrollRange().height > 0,
                       "Real DirectWrite multiline measurement drives the selected title scrollbar.");
                 auto *card = Find(canvas->Root(), "Song.0");
-                auto *thumbnail = card ? Find(*card, "Thumbnail") : nullptr;
+                Check(card && !Find(*card, "Thumbnail"), "The real renderer must not create song-list artwork.");
                 auto *preview = Find(canvas->Root(), "PreviewImage");
-                if (!thumbnail || !preview) throw std::runtime_error("Rendered thumbnail nodes missing.");
-                const auto *sprite = thumbnail->GetComponent<SpriteVisualComponent>();
-                const auto *previewSprite = preview->GetComponent<SpriteVisualComponent>();
-                Check(sprite && previewSprite && thumbnail->IsVisible() && sprite->Style().normalImage &&
-                          sprite->Style().normalImage.value == previewSprite->Style().normalImage.value &&
-                          visuals_.GetImageSize(sprite->Style().normalImage).width > 0,
-                      "The hidden D3D12 run decodes and renders the selected chart's shared thumbnail image.");
+                const auto *sprite = preview ? preview->GetComponent<SpriteVisualComponent>() : nullptr;
+                Check(sprite && sprite->Style().normalImage && visuals_.GetImageSize(sprite->Style().normalImage).width > 0,
+                      "Removing list artwork retains the selected chart preview in the real renderer.");
                 report_.measured = true;
             }
             return !report_.rendered;

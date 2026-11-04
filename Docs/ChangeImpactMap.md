@@ -7,7 +7,7 @@
 
 | 작업 | 소유 코드 | 관련 회귀 |
 | --- | --- | --- |
-| 곡 카드·검색·정렬·이동·배경/메타데이터 | `MusicSelectScene/Submodules`: MusicSelectView, SongSelectLayout/Cards/Thumbnails/Panels/Input/Search, SongSelectionState | SceneStateTests, RunMusicSelectViewTests(SongSearchInputTests 포함) |
+| 곡 카드·검색·정렬·이동·배경/메타데이터 | `MusicSelectScene/Submodules`: MusicSelectView, SongSelectLayout/Cards/Panels/Input/Search, SongSelectionState | SceneStateTests, RunMusicSelectViewTests(SongSearchInputTests 포함) |
 | 선곡 필터·계산 난이도 빈 필드 | SongFilter, SongFilterPanel, SongSelectionState의 패턴 투영; SongCatalogPattern 런타임 메타데이터 | TestSongFilters, RunMusicSelectViewTests(필터 적용/취소·실 native 입력 포함) |
 | 패턴별 즐겨찾기·폴더 탭·JSON 저장 | SongFavorites/Json, SongFavoriteTabs, SongFavoritesPanel, SongSelectFavorites; Scene 진입 로드와 SongSelectionState의 패턴 투영 | SongFavoritesTests, RunMusicSelectViewTests(관리·복수 소속·가로 스크롤·실 이름 입력·모달 격리) |
 | 복수 표기·칸별 스크롤 | `Presentation/ScrollableTextComponent`, SongSelectCards/Panels/Input | RunMusicSelectViewTests, RunSkinTests |

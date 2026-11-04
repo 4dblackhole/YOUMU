@@ -8,6 +8,70 @@
 
 using namespace song_select;
 
+namespace
+{
+    // Outline geometry leaves the interior empty, so the panel's 90% fill blends
+    // directly with the chart BG instead of an opaque border-colored rectangle.
+    class SongPanelBorder final : public Visual2DComponent
+    {
+      public:
+        SongPanelBorder(float width, float radius, Color color) : width_(width), radius_(radius), color_(color) {}
+        void AppendDrawPackets(std::vector<DrawPacket> &output) const override
+        {
+            const auto *parent = Owner().Parent();
+            if (!parent) return;
+            const auto size = parent->NodeSize();
+            if (!rectangles_ || size.width != size_.width || size.height != size_.height)
+            {
+                size_ = size;
+                auto rectangles = std::make_shared<std::vector<RectanglePrimitive>>();
+                const float radius = std::min({radius_, size.width / 2, size.height / 2});
+                const float border = std::min(width_, radius);
+                const auto add = [&](float x, float y, float width, float height) {
+                    if (width > 0 && height > 0)
+                        rectangles->push_back({{x - width_, y - width_, width, height}, color_, 0});
+                };
+                add(0, radius, border, size.height - radius * 2);
+                add(size.width - border, radius, border, size.height - radius * 2);
+                constexpr float step = .5F;
+                for (float y = 0; y < radius; y += step)
+                {
+                    const float height = std::min(step, radius - y);
+                    const float middle = y + height / 2;
+                    const float outside = radius - std::sqrt(std::max(0.0F, radius * radius -
+                        (radius - middle) * (radius - middle)));
+                    if (middle < border)
+                    {
+                        add(outside, y, size.width - 2 * outside, height);
+                        add(outside, size.height - y - height, size.width - 2 * outside, height);
+                    }
+                    else
+                    {
+                        const float innerRadius = radius - border;
+                        const float inside = radius - std::sqrt(std::max(0.0F, innerRadius * innerRadius -
+                            (radius - middle) * (radius - middle)));
+                        for (const auto row : {y, size.height - y - height})
+                        {
+                            add(outside, row, inside - outside, height);
+                            add(size.width - inside, row, inside - outside, height);
+                        }
+                    }
+                }
+                rectangles_ = std::move(rectangles);
+            }
+            DrawPacket packet;
+            packet.type = DrawPacketType::RectangleBatch;
+            packet.rectangles = rectangles_;
+            output.push_back(std::move(packet));
+        }
+      private:
+        float width_, radius_;
+        Color color_;
+        mutable Size size_{};
+        mutable std::shared_ptr<const std::vector<RectanglePrimitive>> rectangles_;
+    };
+}
+
 void MusicSelectView::CreateCategoryBar()
 {
     const auto &text = MusicSelect(texts_);
@@ -325,12 +389,30 @@ Visual2DNode &MusicSelectView::AddBorderedPanel(
     const Color fill, const Color border,
     const float penpotBorderWidth, const float penpotCornerRadius, std::string name)
 {
-    auto &outer = AddPanel(parent, penpotBounds, border, std::move(name), penpotCornerRadius);
-    AddPanel(outer,
+    const bool translucent = name == "RecordPanel" || name == "SongInformation" || name == "SongBrowser";
+    Color background = translucent ? fill : border;
+    if (translucent) background.alpha = .9F;
+    auto &outer = AddPanel(parent, penpotBounds, background, std::move(name), penpotCornerRadius);
+    auto innerFill = fill;
+    if (translucent) innerFill.alpha = 0;
+    auto &surface = AddPanel(outer,
              {penpotBorderWidth, penpotBorderWidth,
               std::max(penpotBounds.width - penpotBorderWidth * 2.0F, 0.0F),
               std::max(penpotBounds.height - penpotBorderWidth * 2.0F, 0.0F)},
-             fill, "Surface", std::max(penpotCornerRadius - penpotBorderWidth, 0.0F));
+             innerFill, "Surface", std::max(penpotCornerRadius - penpotBorderWidth, 0.0F));
+    if (translucent)
+    {
+        // Screen rectangles use the engine's opaque material. A white image
+        // selects its existing alpha-blended image material without tinting RGB.
+        const auto image = screenVisuals_.RegisterImage(
+            ResolveBuiltInAsset(L"assets/skins/Default Skin/MusicSelect/PanelFill.png"));
+        VisualStyle style{};
+        style.normal = style.hovered = style.pressed = style.disabled = background;
+        style.normalImage = style.hoveredImage = style.pressedImage = style.disabledImage = image;
+        SetSkinBaseStyle(outer, style);
+        surface.AddComponent<SongPanelBorder>(penpotBorderWidth * DesignToCanvasScale,
+                                              penpotCornerRadius * DesignToCanvasScale, border);
+    }
     BindSkinImage(outer, screenVisuals_, "MusicSelect", outer.Name(), "Surface");
     return outer;
 }

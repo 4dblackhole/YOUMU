@@ -168,6 +168,9 @@ namespace
         Check(Image(record) && !Find(record, "Surface").IsVisible() && Image(back) &&
                   !Find(back, "Back.Fill").IsVisible(),
               "Procedural fills must not obscure panel/button images.");
+        Check(record.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==.9F &&
+                  back.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==1,
+              "A skinned panel uses 90 percent opacity while its controls retain their authored opacity.");
         auto &card = Find(musicRoot, "Song.0");
         Check(Image(card) && !Find(card, "Surface").IsVisible(), "Virtualized song cards must accept skin images.");
         const auto loads = renderer.loaded.size();
@@ -182,9 +185,13 @@ namespace
         Check(selection.Select(L"Default Skin", error), error.c_str());
         visuals.Update(0);
         static_cast<void>(logo.Update(InputState{}, 0));
-        Check(!Image(start) && !Image(record) && Find(record, "Surface").IsVisible() &&
+        Check(!Image(start) && Image(record).value==visuals.RegisterImage(ResolveBuiltInAsset(
+                  L"assets/skins/Default Skin/MusicSelect/PanelFill.png")).value && Find(record, "Surface").IsVisible() &&
                   Find(back, "Back.Fill").IsVisible() && Find(logoRoot, "YOUMU.LogoStrip").IsVisible(),
               "Returning to the default skin must restore all procedural designs and logo panels.");
+        Check(record.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==.9F &&
+                  Find(record,"Surface").GetComponent<SpriteVisualComponent>()->Style().normal.alpha==0,
+              "Restoring procedural panels must not reintroduce an opaque interior below the translucent fill.");
         Check(selection.Select(L"Test Skin", error), error.c_str());
         Check(selection.Image("InGame", "note") == defaults / "InGame/note.png",
               "Re-selecting must reload edited configuration and use per-element fallback.");
