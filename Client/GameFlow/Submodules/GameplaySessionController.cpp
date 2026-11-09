@@ -151,7 +151,13 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
     if (!exitTicks && timer_.CurrentState() == RhythmTimer::State::Running)
         ScheduleMetronome();
     if (exitTicks)
-        PauseAt(*exitTicks, true);
+    {
+        if (!launchRequest_.editorTestStart && IsPatternComplete())
+            EnterEnding(PlayEndReason::Completed);
+        else
+            PauseAt(*exitTicks, true);
+        return;
+    }
     if (launchRequest_.editorTestStart && !pauseMenuOpen_ &&
         timer_.CurrentState() == RhythmTimer::State::Running && time_ >= testEndTime_ && IsPatternComplete())
         EnterEnding(PlayEndReason::Completed);

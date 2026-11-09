@@ -69,7 +69,7 @@ void GameplayStatisticsView::Update(const PlaySession &session)
 {
     const auto statistics = session.Statistics();
     combo_.SetValue(statistics.combo);
-    score_.SetValue(session.Accuracy().value_or(AccuracyScore{}).Units());
+    score_.SetValue(session.Score());
     for (std::size_t i = 0; i < statistics.judgements.size(); ++i)
         counts_[i].SetValue(statistics.judgements[i]);
     counts_[6].SetValue(statistics.okCount);

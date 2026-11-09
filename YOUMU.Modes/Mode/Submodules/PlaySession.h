@@ -91,6 +91,7 @@ class PlaySession final
     std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time);
     [[nodiscard]] std::optional<double> AccuracyRate() const noexcept;
     [[nodiscard]] std::optional<AccuracyScore> Accuracy() const noexcept;
+    [[nodiscard]] std::uint32_t Score() const noexcept;
     [[nodiscard]] PlayStatistics Statistics() const noexcept;
     [[nodiscard]] std::size_t FinalizedNoteCount() const noexcept;
     [[nodiscard]] const std::optional<NoteAccuracy> &LastNoteAccuracy() const noexcept;

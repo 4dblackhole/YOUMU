@@ -866,9 +866,9 @@ namespace
                       "Combo must fit beneath the existing key faces.");
         hit('F', 0);
         presenter.UpdatePresentation({});
-        Check(Number(root, "Hud.Score") == "100000000" && Number(root, "Hud.Combo") == "1" &&
+        Check(Number(root, "Hud.Score") == "33333333" && Number(root, "Hud.Combo") == "1" &&
                   Number(root, "Hud.JudgementCount0") == "1",
-              "A perfect first note displays 100 million points, one combo and one MAX.");
+              "One perfect note out of three earns one third of the maximum score, one combo and one MAX.");
         hit('D', 500'000);
         hit('F', 500'000);
         static_cast<void>(loaded.session->Update(RhythmTime{1'200'000}));
@@ -878,7 +878,7 @@ namespace
               "POOR and automatic MISS update exact score/counts and break combo.");
         loaded.session->RewindJudgements(RhythmTime{500'000});
         presenter.UpdatePresentation(RhythmTime{500'000});
-        Check(Number(root, "Hud.Score") == "100000000" && Number(root, "Hud.Combo") == "1" &&
+        Check(Number(root, "Hud.Score") == "33333333" && Number(root, "Hud.Combo") == "1" &&
                   Number(root, "Hud.JudgementCount5") == "0" && Number(root, "Hud.JudgementCount7") == "0",
               "Rewind immediately restores all visible HUD values.");
         for (const auto width : {405U, 1280U, 1920U})

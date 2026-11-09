@@ -3,7 +3,9 @@
 설계 기준: [PAUSE-01](../DesignDecisions.md#pause-01-일시정지와-복원).
 Space 디버그 정지는 [DEBUG-01](../DesignDecisions.md#debug-01-디버그-조작)과 구분합니다.
 
-ESC는 해당 Raw Input QPC 시각에 타이머·오디오를 멈추고 일시정지 메뉴를 엽니다.
+플레이 중 ESC는 해당 Raw Input QPC 시각까지 판정한 뒤 타이머와 오디오를 멈춥니다.
+모든 레인의 다음 타겟 노트가 비어 있으면 즉시 정상 종료 결과로 이동합니다.
+타겟이 남아 있으면 일시정지 메뉴를 엽니다.
 사용자 지정으로 화면에서 이 메뉴를 여는 별도 버튼은 구현하지 않습니다.
 그 프레임에서 ESC보다 늦은 게임 입력은 판정하지 않습니다. 메뉴에서는 ↑↓로 선택하고
 ←→로 값을 조절하며 Enter 또는 버튼 클릭으로 실행합니다.
@@ -62,7 +64,7 @@ Taiko의 노트 규칙이나 결과 형식에 상태 전환을 구현하지 않�
 | 상태 | 반복 작업 / 전환 |
 | --- | --- |
 | Loading | Scene의 PNG 준비 후 오디오 Clip과 음악 seek 완료를 확인. 준비 후 Gameplay. Retry도 이 경로를 사용하되 로드한 자산은 재사용 |
-| Gameplay | QPC 타이머·timestamp 입력·노트·YME 갱신. ESC→Pause, 전체 처리 후 3초→Ending |
+| Gameplay | QPC 타이머·timestamp 입력·노트·YME 갱신. ESC→남은 타겟에 따라 Pause 또는 Ending, 전체 처리 후 3초→Ending |
 | Pause | 게임 시각 고정, 메뉴 명령 접수, 필요 범위의 판정/점수 복원. 음악 탐색·시작 예약까지 완료한 뒤 Gameplay |
 | Ending | 입력/판정·오디오 중단, 모드 결과를 한 번 확정. Result에 소유권을 이동한 뒤 Scene Shutdown에서 자원 정리 |
 

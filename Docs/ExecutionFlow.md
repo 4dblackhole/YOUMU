@@ -120,8 +120,9 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 - Logo와 Lobby는 `KeepAlive`, gameplay route는 `DestroyOnExit`입니다.
   gameplay 등록 시에는 factory만 보관하고 곡 선택 후 `ChangeScene`이 호출될
   때 해당 모드의 객체를 동적으로 생성합니다.
-- gameplay에서 Escape는 [일시정지 메뉴](Gameplay/Pause.md)를 엽니다. Retire 또는
-  모든 노트 처리 후 3초에 Result 전환을 요청합니다. update가 끝난 다음 `EndScene → Shutdown → delete` 순서로
+- gameplay에서 Escape는 타겟이 남아 있으면 [일시정지 메뉴](Gameplay/Pause.md)를 열고,
+  모든 레인이 끝났으면 즉시 Result 전환을 요청합니다. Retire 또는 모든 노트 처리 후 3초에도
+  Result로 이동합니다. update가 끝난 다음 `EndScene → Shutdown → delete` 순서로
   gameplay 객체가 파기되므로 다음 곡이나 모드의 상태가 남지 않습니다.
 - `YOUMUGame`의 대기 슬롯으로 결과 unique_ptr를 이동하고 Result factory가 이를
   소비합니다. Result도 `DestroyOnExit`이며 `IResultView`가 모드별 표시를 맡습니다.

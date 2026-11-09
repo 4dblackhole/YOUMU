@@ -367,6 +367,11 @@ std::optional<AccuracyScore> PlaySession::Accuracy() const noexcept
         : std::optional{AccuracyScore::Average(accuracySum_, finalizedNoteCount_)};
 }
 
+std::uint32_t PlaySession::Score() const noexcept
+{
+    return AccuracyScore::Average(accuracySum_, PlayableNoteCount()).Units();
+}
+
 PlayStatistics PlaySession::Statistics() const noexcept
 {
     return resultCollector_ ? resultCollector_->Statistics() : PlayStatistics{};
@@ -395,7 +400,7 @@ std::unique_ptr<IPlayResult> PlaySession::TakeResult(PlayEndReason reason, Rhyth
     if (!hpGauges_.empty())
         if (const auto points = hpGauges_.front()->History())
             history.emplace(points->begin(), points->end());
-    return resultCollector_->TakeResult(reason, time, std::move(hp), std::move(history));
+    return resultCollector_->TakeResult(reason, time, Score(), std::move(hp), std::move(history));
 }
 
 const std::optional<NoteAccuracy> &PlaySession::LastNoteAccuracy() const noexcept

@@ -24,6 +24,7 @@ struct PlayResultSummary
     std::filesystem::path patternPath;
     std::string patternName;
     AccuracyScore accuracy;
+    std::uint32_t score{};
     std::size_t totalNotes{};
     std::size_t processedNotes{};
     std::size_t unprocessedNotes{};

@@ -518,6 +518,8 @@ namespace
         auto *taiko = dynamic_cast<TaikoPlayResult *>(result.get());
         if (!taiko)
             throw std::runtime_error("Taiko result must retain its concrete data.");
+        // Give the view a score distinct from accuracy to catch accidental recomputation.
+        taiko->summary.score = 12'345'678;
         const Rect scatter{0, 0, 500, 150}, histogram{550, 0, 500, 150};
         auto data = taiko_result_ui::BuildGraphs(*taiko, scatter, histogram);
         Check(data.maximumBinCount == 1 && data.halfRangeMilliseconds == 100 && data.startSeconds == -2 &&
@@ -553,9 +555,9 @@ namespace
         Check(FindNode(canvas->Root(), "Result.Score") != nullptr &&
                   FindNode(canvas->Root(), "Result.MaximumCombo") != nullptr &&
                   HasText(*canvas, texts.Get("Result.maximumCombo")) &&
-                  Number(canvas->Root(), "Result.Score") == std::to_string(taiko->summary.accuracy.Units()) &&
+                  Number(canvas->Root(), "Result.Score") == "12345678" &&
                   Number(canvas->Root(), "Result.MaximumCombo") == std::to_string(taiko->summary.maximumCombo),
-              "The result must display the actual score and maximum combo with numeric sprites.");
+              "The result must display the carried score and maximum combo with numeric sprites.");
         for(const auto key:{"scrollSpeed","metronome","mirror","random","accelerate","judgeLevel"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
         Check(HasText(*canvas, L"Accuracy") && HasText(*canvas, L"Recorded song") &&

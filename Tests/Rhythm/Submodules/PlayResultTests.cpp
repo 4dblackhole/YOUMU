@@ -20,11 +20,12 @@ namespace tests
             static_cast<void>(session.ProcessInput(key, InputEdge::Pressed, RhythmTime{time}));
             static_cast<void>(session.ProcessInput(key, InputEdge::Released, RhythmTime{time}));
         };
-        Require(!session.Accuracy() && session.Statistics().combo == 0,
+        Require(!session.Accuracy() && session.Score() == 0 && session.Statistics().combo == 0,
                 "A new attempt has no accuracy sample and zero statistics.");
         hit('F', 0);
-        Require(session.Accuracy()->Units() == 100'000'000 && session.Statistics().combo == 1,
-                "100 percent current accuracy is exactly one hundred million points, without progress weighting.");
+        Require(session.Accuracy()->Units() == 100'000'000 && session.Score() == 16'666'666 &&
+                    session.Statistics().combo == 1,
+                "A first MAX keeps current accuracy at 100 percent and earns one sixth of the full score.");
         hit('F', 500'000);
         Require(session.Statistics().combo == 1, "The first half of a big note is not another combo.");
         hit('J', 500'000);
@@ -35,7 +36,8 @@ namespace tests
         static_cast<void>(session.Update(RhythmTime{1'500'000}));
         auto statistics = session.Statistics();
         Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.okCount == 1 &&
-                    statistics.judgements[0] == 3 && session.Accuracy()->Units() == 100'000'000,
+                    statistics.judgements[0] == 3 && session.Accuracy()->Units() == 100'000'000 &&
+                    session.Score() == 50'000'000,
                 "A successful roll adds one OK/combo; live counts share the result collector.");
         hit('D', 2'070'000);
         Require(session.Statistics().combo == 0 && session.Statistics().judgements[4] == 1,
@@ -51,14 +53,15 @@ namespace tests
         statistics = session.Statistics();
         Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.poorCount == 0 &&
                     statistics.judgements[4] == 0 && statistics.okCount == 1 &&
-                    session.Accuracy()->Units() == 100'000'000,
+                    session.Accuracy()->Units() == 100'000'000 && session.Score() == 50'000'000,
                 "Rewind rebuilds score, combo, maximum and all counts from retained judgement history.");
         session.RetireRemaining(RhythmTime{2'000'000});
         Require(session.Statistics().combo == 0 && session.Statistics().judgements[5] == 3,
                 "Retirement applies remaining logical misses to live counts and combo.");
         auto result = session.TakeResult(PlayEndReason::Interrupted, RhythmTime{2'000'000});
-        Require(result->Summary().maximumCombo == 3 && result->Summary().accuracy.Units() == 50'000'000,
-                "Final score is the same accuracy multiplier and maximum combo survives result transfer.");
+        Require(result->Summary().maximumCombo == 3 && session.Score() == 50'000'000 &&
+                    result->Summary().score == session.Score() && result->Summary().accuracy.Units() == 50'000'000,
+                "Retire preserves earned points and maximum combo, and the result shows the same score.");
     }
 
     void TestComboEventOrder()

@@ -27,6 +27,7 @@ class IPlayResultCollector
     virtual void ResetJudgements() noexcept = 0;
     virtual PlayStatistics Statistics() const noexcept = 0;
     virtual std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time,
+                                                  std::uint32_t score,
                                                   std::vector<HpGaugeState> hp = {},
                                                   std::optional<std::vector<HpHistoryPoint>> hpHistory = std::nullopt) = 0;
 };

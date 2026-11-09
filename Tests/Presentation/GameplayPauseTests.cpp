@@ -417,6 +417,7 @@ namespace
         {
         }
         std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time,
+                                              std::uint32_t score,
                                               std::vector<HpGaugeState> hp = {},
                                               std::optional<std::vector<HpHistoryPoint>> = std::nullopt) override
         {
@@ -424,6 +425,7 @@ namespace
             result->summary = summary_;
             result->summary.endReason = reason;
             result->summary.endTime = time;
+            result->summary.score = score;
             result->summary.hpGauges = std::move(hp);
             return result;
         }
@@ -457,6 +459,8 @@ namespace
             session->SetTimeline(MusicalTimeline(pattern));
             session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
                 1, RhythmTime{}, std::make_shared<const AccuracyRange>(), std::make_unique<TapInputRule>(1)));
+            session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
+                2, RhythmTime{500'000}, std::make_shared<const AccuracyRange>(), std::make_unique<TapInputRule>(1)));
             session->Gear().Finalize();
             session->SetResultCollector(std::make_unique<ProbeCollector>());
             return {std::move(session), {}};
@@ -703,6 +707,7 @@ namespace
                 CheckAutomaticFocus(ctx);
                 CheckDebugTimeline(ctx);
                 CheckSharedLifecycle(ctx);
+                CheckCompletionEscape(ctx);
                 CheckTransientVoices(ctx);
                 controller_->OpenPauseMenu(ctx);
                 controller_->RetryFromPause(ctx);
@@ -1091,6 +1096,42 @@ namespace
                   "Ending must preserve a mode-specific polymorphic result.");
             common->Update(ctx);
             Check(!common->ShouldShowResult() && !common->TakeResult(), "Ending must never generate a second result.");
+        }
+        void CheckCompletionEscape(const UpdateContext &ctx)
+        {
+            for (const bool expireLastNote : {false, true})
+            {
+                auto created = ProbeMode{}.CreateSession({}, {});
+                GameplaySessionController controller(
+                    {"probe.ymp", {}, "probe-music.mp3", "Probe"}, playback_, false,
+                    std::move(created.session));
+                controller.InitializeSession();
+                controller.Start(*services_, RhythmTime{300'000});
+                WaitForGameplay(controller, ctx);
+                const auto &gear = controller.Session().Gear();
+                const auto *last = gear.FindLane(1)->CurrentNote();
+                Check(gear.FindLane(0)->CurrentNote() == nullptr && last,
+                      "Only the second lane must still have a target before Escape.");
+                if (expireLastNote)
+                    std::this_thread::sleep_for(last->ExpireTime() - controller.Time() + RhythmDuration{10'000});
+
+                InputState escape;
+                InputStateTestAccess::Press(escape, VK_ESCAPE, ctx.audio.CaptureClockSnapshot().performanceCounterTicks);
+                controller.Update({0, ctx.totalSeconds, ctx.updateIndex, escape, ctx.audio, {}});
+                if (expireLastNote)
+                {
+                    Check(controller.ShouldShowResult() && !controller.PauseMenuOpen() &&
+                              controller.Session().CanUseHp() && controller.Session().FinalizedNoteCount() == 2,
+                          "Escape must finalize the expired last target and end immediately without using pause.");
+                    auto result = controller.TakeResult();
+                    Check(result && result->Summary().endReason == PlayEndReason::Completed &&
+                              result->Summary().controls.empty() && result->Summary().endTime == controller.Time(),
+                          "The immediate result must be a normal completion at the Escape time.");
+                }
+                else
+                    Check(controller.PauseMenuOpen() && !controller.ShouldShowResult(),
+                          "Escape must open pause while any lane still has a target.");
+            }
         }
         void CheckConfirmedRewindExample(const UpdateContext &ctx)
         {

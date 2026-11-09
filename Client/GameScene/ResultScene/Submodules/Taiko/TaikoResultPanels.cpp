@@ -126,7 +126,7 @@ void TaikoResultView::BuildSummary(Visual2DNode &root)
     SpriteNumber score;
     score.Initialize(root, atlas, "Result.Score");
     score.SetLayout(Bounds({76, 358, 472, 58}), TextAlignment::Leading);
-    score.SetValue(result_.summary.accuracy.Units());
+    score.SetValue(result_.summary.score);
     Label(root, {76, 418, 248, 20}, std::wstring(texts_.Get("Result.maximumCombo")), 14, 600,
           TextAlignment::Leading, Muted);
     SpriteNumber maximumCombo;
