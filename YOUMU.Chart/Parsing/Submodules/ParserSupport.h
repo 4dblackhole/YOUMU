@@ -1,4 +1,5 @@
 #pragma once
+#include "Parsing/ChartWhitespace.h"
 #include "Parsing/ChartParser.h"
 #include <algorithm>
 #include <charconv>
@@ -24,19 +25,6 @@
     if (stream.bad())
         throw std::runtime_error("Unable to finish reading chart file.");
     return text;
-}
-
-[[nodiscard]] inline std::string_view Trim(std::string_view value) noexcept
-{
-    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front())) != 0)
-    {
-        value.remove_prefix(1);
-    }
-    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back())) != 0)
-    {
-        value.remove_suffix(1);
-    }
-    return value;
 }
 
 [[nodiscard]] inline std::vector<std::string_view> Split(std::string_view value,

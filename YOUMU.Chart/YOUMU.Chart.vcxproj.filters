@@ -27,6 +27,7 @@
     <ClCompile Include="Parsing\Submodules\MusicalPositionParser.cpp"><Filter>Parsing\Submodules</Filter></ClCompile>
     <ClCompile Include="Parsing\Submodules\MusicParser.cpp"><Filter>Parsing\Submodules</Filter></ClCompile>
     <ClInclude Include="Parsing\Submodules\ParserSupport.h"><Filter>Parsing\Submodules</Filter></ClInclude>
+    <ClInclude Include="Parsing\ChartWhitespace.h"><Filter>Parsing</Filter></ClInclude>
     <ClCompile Include="Parsing\Submodules\PatternParser.cpp"><Filter>Parsing\Submodules</Filter></ClCompile>
     <ClInclude Include="Parsing\Submodules\PatternTiming.h"><Filter>Parsing\Submodules</Filter></ClInclude>
     <ClCompile Include="Timing\MusicalTimeline.cpp"><Filter>Timing</Filter></ClCompile>

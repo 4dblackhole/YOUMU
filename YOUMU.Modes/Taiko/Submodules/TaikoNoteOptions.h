@@ -1,23 +1,11 @@
 #pragma once
+#include "Parsing/ChartWhitespace.h"
 #include "Model/Submodules/PatternDocument.h"
 #include "TaikoInputBinding.h"
 #include "TaikoSoundIds.h"
 #include <algorithm>
 #include <cctype>
 #include <charconv>
-
-[[nodiscard]] inline std::string_view Trim(std::string_view value) noexcept
-{
-    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front())) != 0)
-    {
-        value.remove_prefix(1);
-    }
-    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back())) != 0)
-    {
-        value.remove_suffix(1);
-    }
-    return value;
-}
 
 [[nodiscard]] inline bool EqualsInsensitive(const std::string_view left, const std::string_view right) noexcept
 {

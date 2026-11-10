@@ -3,7 +3,6 @@
 
 void PlaySession::RecordControl(PlayControlEvent event)
 {
-    pauseMenuUsed_ |= event.pauseMenuShown;
     hpDisabled_ |= event.pauseMenuShown || event.type == PlayControlType::Rewind;
     if (resultCollector_)
         resultCollector_->RecordControl(event);

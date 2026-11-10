@@ -317,7 +317,6 @@ void PlaySession::Reset() noexcept
         resultCollector_->Reset();
     judgementHistory_.clear();
     lastRecordedHeldKeys_.clear();
-    pauseMenuUsed_ = false;
     hpDisabled_ = false;
 }
 void PlaySession::ResetNoteState(bool resetHp) noexcept

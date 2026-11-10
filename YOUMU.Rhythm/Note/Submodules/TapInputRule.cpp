@@ -54,14 +54,7 @@ void TapInputRule::Update(const NoteRuleContext &, const NoteUpdateContext &,
 void TapInputRule::MarkMissed(const NoteRuleContext &context, const RhythmTime time,
                               NoteProcessResult &output)
 {
-    if (IsTerminal(state_))
-    {
-        return;
-    }
-    const NoteState before = state_;
-    state_ = NoteState::Missed;
-    output.events.push_back(MakeEvent(context, NoteEventType::Missed, before, state_,
-                                      MissJudgement(context, time), time));
+    MarkRuleMissed(context, time, state_, output);
 }
 
 RhythmTime TapInputRule::ExpireTime(const NoteRuleContext &context) const noexcept

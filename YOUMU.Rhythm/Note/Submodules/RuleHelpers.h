@@ -24,6 +24,18 @@
     return state == NoteState::Completed || state == NoteState::Missed;
 }
 
+inline void MarkRuleMissed(const NoteRuleContext &context, const RhythmTime time,
+                           NoteState &state, NoteProcessResult &output,
+                           std::size_t hitIndex = 0, std::size_t tickIndex = 0)
+{
+    if (IsTerminal(state))
+        return;
+    const NoteState before = state;
+    state = NoteState::Missed;
+    output.events.push_back(MakeEvent(context, NoteEventType::Missed, before, state,
+                                      MissJudgement(context, time), time, hitIndex, tickIndex));
+}
+
 #if defined(_DEBUG)
 [[nodiscard]] inline std::wstring_view StateName(const NoteState state) noexcept
 {

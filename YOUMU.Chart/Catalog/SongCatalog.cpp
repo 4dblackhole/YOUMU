@@ -104,7 +104,10 @@ namespace
                 noteCount = parsed.document.notes.size();
                 if (parsed.Succeeded())
                     try { bpmRange = MusicalTimeline(parsed.document).BpmRange(); }
-                    catch (const std::exception &) {}
+                    catch (const std::exception &)
+                    {
+                        // Keep the parsed entry available when only its BPM summary fails.
+                    }
                 if (metadataOnly)
                 {
                     decltype(parsed.document.notes){}.swap(parsed.document.notes);

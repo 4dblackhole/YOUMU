@@ -96,7 +96,10 @@ void RhythmTestScene::PrepareLoadingBackground()
         loadingBackgroundSize_ = size;
         UpdateLoadingBackgroundLayout();
     }
-    catch (const std::exception &) {}
+    catch (const std::exception &)
+    {
+        // The loading Canvas already has a solid-color fallback.
+    }
     loadingBackgroundReady_ = true;
 }
 void RhythmTestScene::UpdateLoadingBackgroundLayout()

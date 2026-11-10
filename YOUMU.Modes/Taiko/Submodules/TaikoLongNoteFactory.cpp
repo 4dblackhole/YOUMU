@@ -6,6 +6,11 @@
 #include "TaikoBuildSupport.h"
 #include "TaikoSessionBuilder.h"
 
+namespace
+{
+    constexpr int DefaultLongNoteSubdivision = 12;
+}
+
 void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
                                       const CompiledPatternNote &compiledTail,
                                       const MusicalTimeline &timeline,
@@ -36,7 +41,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
     case TaikoNoteType::Roll:
     case TaikoNoteType::BigRoll: {
         const auto hitCount = ReadHitCount(
-            head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, 12)),
+            head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision)),
             diagnostics);
         if (!hitCount.has_value())
         {
@@ -62,7 +67,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
         break;
     case TaikoNoteType::Balloon:
         if (const auto hitCount = ReadHitCount(
-                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, 12)),
+                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision)),
                 diagnostics))
         {
             rule = std::make_unique<TimedSequenceInputRule>(
@@ -72,7 +77,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
         break;
     case TaikoNoteType::DengDeng:
         if (const auto hitCount = ReadHitCount(
-                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, 12)),
+                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision)),
                 diagnostics))
         {
             rule = std::make_unique<TimedSequenceInputRule>(

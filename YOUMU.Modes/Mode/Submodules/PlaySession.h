@@ -109,7 +109,6 @@ class PlaySession final
     void RefreshHeldActions();
     std::vector<JudgementStep> judgementHistory_;
     std::vector<PhysicalKey> lastRecordedHeldKeys_;
-    bool pauseMenuUsed_{};
     bool hpDisabled_{};
     void AccumulateAccuracy(const NoteProcessResult &result, bool keyPressed = false);
     void ResolveSoundOverrides(NoteProcessResult &result) const;

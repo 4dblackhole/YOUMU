@@ -30,6 +30,7 @@
     <ClCompile Include="Parsing\Submodules\MusicalPositionParser.cpp" />
     <ClCompile Include="Parsing\Submodules\MusicParser.cpp" />
     <ClInclude Include="Parsing\Submodules\ParserSupport.h" />
+    <ClInclude Include="Parsing\ChartWhitespace.h" />
     <ClCompile Include="Parsing\Submodules\PatternParser.cpp" />
     <ClInclude Include="Parsing\Submodules\PatternTiming.h" />
     <ClCompile Include="Timing\MusicalTimeline.cpp" />

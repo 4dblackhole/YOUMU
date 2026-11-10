@@ -99,14 +99,7 @@ void TickRollInputRule::Update(const NoteRuleContext &context, const NoteUpdateC
 void TickRollInputRule::MarkMissed(const NoteRuleContext &context, const RhythmTime time,
                                    NoteProcessResult &output)
 {
-    if (IsTerminal(state_))
-    {
-        return;
-    }
-    const NoteState before = state_;
-    state_ = NoteState::Missed;
-    output.events.push_back(MakeEvent(context, NoteEventType::Missed, before, state_,
-                                      MissJudgement(context, time), time, 0, nextTickIndex_));
+    MarkRuleMissed(context, time, state_, output, 0, nextTickIndex_);
 }
 
 RhythmTime TickRollInputRule::ExpireTime(const NoteRuleContext &) const noexcept
