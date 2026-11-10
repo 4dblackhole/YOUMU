@@ -455,13 +455,13 @@ namespace
                                            const EffectDocument &) const override
         {
             auto session = std::make_unique<PlaySession>();
-            session->SetInputLayout(InputLayout());
             session->SetTimeline(MusicalTimeline(pattern));
             session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
                 1, RhythmTime{}, std::make_shared<const AccuracyRange>(), std::make_unique<TapInputRule>(1)));
             session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
                 2, RhythmTime{500'000}, std::make_shared<const AccuracyRange>(), std::make_unique<TapInputRule>(1)));
             session->Gear().Finalize();
+            session->SetInputLayout(InputLayout());
             session->SetResultCollector(std::make_unique<ProbeCollector>());
             return {std::move(session), {}};
         }

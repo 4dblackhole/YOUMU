@@ -28,10 +28,8 @@ class PlaySession final
     void SetTimeline(MusicalTimeline timeline);
     std::vector<MetronomeBeat> metronomeBeats;
     [[nodiscard]] const MusicalTimeline &Timeline() const;
-    void SetInputLayout(ModeInputLayout layout)
-    {
-        inputLayout_ = std::move(layout);
-    }
+    // Set the layout after creating its lanes.
+    void SetInputLayout(ModeInputLayout layout);
     const ModeInputLayout &InputLayout() const noexcept
     {
         return inputLayout_;
@@ -107,6 +105,7 @@ class PlaySession final
     void ApplyPhysicalInput(PhysicalKey key, InputEdge edge);
     void ResolveHeldActions(std::span<const PhysicalKey> keys);
     void RefreshHeldActions();
+    NoteProcessResult RouteLaneInput(const RhythmInputEvent &input);
     std::vector<JudgementStep> judgementHistory_;
     std::vector<PhysicalKey> lastRecordedHeldKeys_;
     bool hpDisabled_{};
@@ -121,6 +120,7 @@ class PlaySession final
     std::vector<IHpGauge *> hpGauges_; // Borrowed from the owning Scene.
     double scrollMultiplier_{1.0};
     ModeInputLayout inputLayout_;
+    std::map<NoteAction, std::size_t> actionLanes_;
     ScrollGear gear_;
     std::optional<MusicalTimeline> timeline_;
     std::map<PhysicalKey, NoteAction> inputMapping_;

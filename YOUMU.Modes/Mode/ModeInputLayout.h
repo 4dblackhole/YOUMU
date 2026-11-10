@@ -1,6 +1,7 @@
 #pragma once
 #include "Common/RhythmTypes.h"
 #include "Mode/PlayOptions.h"
+#include <cstddef>
 #include <map>
 #include <optional>
 #include <string>
@@ -13,6 +14,7 @@ struct ModeInputBinding
     std::string id, displayName;
     NoteAction action{};
     std::vector<PhysicalKey> keys;
+    std::size_t laneIndex{};
 };
 using InputKeyOverrides = std::map<std::string, std::vector<PhysicalKey>>;
 struct ModeInputLayout

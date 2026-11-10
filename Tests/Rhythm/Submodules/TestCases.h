@@ -42,6 +42,8 @@ namespace tests
     void TestLaneFocusRules();
     void TestExpiredInputOrdering();
     void TestAuthoritativeHeldInputs();
+    void TestMappedLaneInput();
+    void TestInvalidLaneMapping();
     void TestLargeNoteSoundState();
     void TestHoldTicksAreExactlyOnce();
     void TestLongNoteRemainsInScrollSnapshotUntilItsTail();

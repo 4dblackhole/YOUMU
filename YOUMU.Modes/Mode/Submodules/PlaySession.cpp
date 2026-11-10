@@ -44,8 +44,29 @@ const MusicalTimeline &PlaySession::Timeline() const
     return *timeline_;
 }
 
+void PlaySession::SetInputLayout(ModeInputLayout layout)
+{
+    std::map<NoteAction, std::size_t> actionLanes;
+    for (const auto &binding : layout.bindings)
+    {
+        if (gear_.FindLane(binding.laneIndex) == nullptr)
+            throw std::invalid_argument("Input binding refers to a missing lane: " + binding.id);
+        const auto [existing, inserted] = actionLanes.emplace(binding.action, binding.laneIndex);
+        if (!inserted && existing->second != binding.laneIndex)
+            throw std::invalid_argument("An input action cannot target multiple lanes: " + binding.id);
+    }
+    for (const auto &[key, action] : inputMapping_)
+        if (!actionLanes.empty() && !actionLanes.contains(action))
+            throw std::invalid_argument("An input key has no matching action in the mode layout.");
+    inputLayout_ = std::move(layout);
+    actionLanes_ = std::move(actionLanes);
+}
+
 void PlaySession::SetInputMapping(std::map<PhysicalKey, NoteAction> mapping)
 {
+    for (const auto &[key, action] : mapping)
+        if (!actionLanes_.empty() && !actionLanes_.contains(action))
+            throw std::invalid_argument("An input key has no matching action in the mode layout.");
     heldActions_.reserve(mapping.size());
     heldPhysicalKeys_.reserve(mapping.size());
     lastRecordedHeldKeys_.reserve(mapping.size());
@@ -178,7 +199,7 @@ NoteProcessResult PlaySession::ProcessInput(const PhysicalKey physicalKey,
     const RhythmInputEvent input{time, mapping->second, physicalKey, edge, actionHeld};
     judgementHistory_.push_back({time, input, {}});
     if (resultCollector_) resultCollector_->RecordInput(input);
-    result = gear_.Lanes().front()->ProcessInput(input, heldActions_);
+    result = RouteLaneInput(input);
     RefreshHeldActions();
     AccumulateAccuracy(result, edge == InputEdge::Pressed);
 
@@ -203,6 +224,16 @@ NoteProcessResult PlaySession::ProcessInput(const PhysicalKey physicalKey,
     }
     ResolveSoundOverrides(result);
     return result;
+}
+
+NoteProcessResult PlaySession::RouteLaneInput(const RhythmInputEvent &input)
+{
+    // Sessions assembled directly without a mode layout retain their single-lane route.
+    const std::size_t laneIndex = actionLanes_.empty() ? 0 : actionLanes_.at(input.action);
+    auto *lane = gear_.FindLane(laneIndex);
+    if (lane == nullptr)
+        throw std::logic_error("The mapped input lane is no longer present.");
+    return lane->ProcessInput(input, heldActions_);
 }
 
 NoteProcessResult PlaySession::Update(

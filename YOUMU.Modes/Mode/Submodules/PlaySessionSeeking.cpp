@@ -24,7 +24,7 @@ void PlaySession::RewindJudgements(RhythmTime target)
         NoteProcessResult result;
         if (step.input)
         {
-            result = gear_.Lanes().front()->ProcessInput(*step.input, heldActions_);
+            result = RouteLaneInput(*step.input);
             ApplyPhysicalInput(step.input->physicalKey, step.input->edge);
             RefreshHeldActions();
         }

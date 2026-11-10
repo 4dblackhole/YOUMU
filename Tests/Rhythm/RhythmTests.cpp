@@ -73,6 +73,8 @@ int main(const int argumentCount, char *arguments[])
         {"TestLaneFocusRules", TestLaneFocusRules},
         {"TestExpiredInputOrdering", TestExpiredInputOrdering},
         {"TestAuthoritativeHeldInputs", TestAuthoritativeHeldInputs},
+        {"TestMappedLaneInput", TestMappedLaneInput},
+        {"TestInvalidLaneMapping", TestInvalidLaneMapping},
         {"TestLargeNoteSoundState", TestLargeNoteSoundState},
         {"TestHoldTicksAreExactlyOnce", TestHoldTicksAreExactlyOnce},
         {"TestLongNoteRemainsInScrollSnapshotUntilItsTail", TestLongNoteRemainsInScrollSnapshotUntilItsTail},
