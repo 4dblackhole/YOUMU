@@ -1,4 +1,5 @@
 #include "OptionsPanelStyle.h"
+#include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
 #include "App/SkinSetSelection.h"
 #include <algorithm>
@@ -26,7 +27,8 @@ void OptionsPanel::CreateKeyControls()
         modeLabels_.push_back(
             &CreateFieldLabel(*content_, contentHeight_ - top, PanelWidth, "Options.Keys." + layout.modeId));
         top += 52;
-        if (layout.modeId == "Taiko")
+        const auto *presentation = FindModePresentation(layout.modeId);
+        if (presentation && presentation->keyPanel == ModeKeyPanel::TaikoOverlay)
         {
             // The settings list keeps one entry; the editor itself is a centered overlay.
             openKeyPanel_ = &CreateButton(*content_, {24, contentHeight_ - top - 46, PanelWidth - 48, 38},
@@ -104,7 +106,7 @@ void OptionsPanel::CreateKeyControls()
                 }
             }
             keyPanel_->SetVisible(false);
-            top += 84;
+            top += presentation->keyPanelHeight;
             continue;
         }
         for (const auto &binding : layout.bindings)

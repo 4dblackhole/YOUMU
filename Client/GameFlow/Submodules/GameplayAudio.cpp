@@ -1,5 +1,6 @@
 #include "App/AssetPaths.h"
 #include "GameFlow/GameplaySessionController.h"
+#include "Presentation/ModePresentation.h"
 #include "Taiko/Submodules/TaikoSoundIds.h"
 #include <array>
 #include <map>
@@ -19,7 +20,8 @@ void GameplaySessionController::InitializeAudio(AudioSystem &audio)
     }
 
     std::string hitSoundError;
-    if (session_->InputLayout().modeId == "Taiko")
+    const auto *presentation = FindModePresentation(session_->InputLayout().modeId);
+    if (presentation && presentation->hitSounds == ModeHitSounds::Taiko)
         RegisterTaikoSounds(audioRouter_, hitSoundError);
     audioRouter_.PrepareAutomation(session_->Effects());
 

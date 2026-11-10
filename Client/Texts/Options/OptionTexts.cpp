@@ -1,17 +1,15 @@
 #include "OptionTexts.h"
+#include "Presentation/ModePresentation.h"
 
 std::wstring_view InputBindingName(const TextCatalog &texts, std::string_view mode, std::string_view id) noexcept
 {
-    if (mode != "Taiko")
-        return {};
-    if (id == "LeftKat")
-        return texts.Get("Bindings.LeftKat");
-    if (id == "LeftDon")
-        return texts.Get("Bindings.LeftDon");
-    if (id == "RightDon")
-        return texts.Get("Bindings.RightDon");
-    if (id == "RightKat")
-        return texts.Get("Bindings.RightKat");
+    if (const auto *presentation = FindModePresentation(mode))
+    {
+        const auto captions = presentation->bindingCaptions;
+        const auto caption = std::ranges::find(captions, id, &ModeBindingCaption::id);
+        if (caption != captions.end())
+            return texts.Get(caption->textKey);
+    }
     return {};
 }
 OptionTextSet Options(const TextCatalog &texts)

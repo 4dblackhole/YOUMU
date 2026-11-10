@@ -1,4 +1,5 @@
 #include "OptionsPanelStyle.h"
+#include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
 #include <algorithm>
 
@@ -14,7 +15,9 @@ void OptionsPanel::CreateTabs()
     for (const auto &layout : inputLayouts_)
     {
         inputHeight += 52;
-        if (layout.modeId == "Taiko") inputHeight += 84;
+        if (const auto *presentation = FindModePresentation(layout.modeId);
+            presentation && presentation->keyPanel != ModeKeyPanel::InlineRows)
+            inputHeight += presentation->keyPanelHeight;
         else for (const auto &binding : layout.bindings)
             inputHeight += 84 * static_cast<float>(binding.keys.size());
     }
