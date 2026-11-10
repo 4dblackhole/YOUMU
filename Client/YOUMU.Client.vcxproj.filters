@@ -123,7 +123,9 @@
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionText.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongBackgroundPreview.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectPanels.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongBackgroundPreview.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectPurpose.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\RhythmTestScene\RhythmTestScene.cpp"><Filter>GameScene\RhythmTestScene</Filter></ClCompile>
     <ClInclude Include="GameScene\RhythmTestScene\RhythmTestScene.h"><Filter>GameScene\RhythmTestScene</Filter></ClInclude>

@@ -206,7 +206,9 @@
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionText.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectLayout.h" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongBackgroundPreview.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectPanels.cpp" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongBackgroundPreview.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectPurpose.h" />
     <ClCompile Include="GameScene\RhythmTestScene\RhythmTestScene.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\RhythmTestScene.h" />

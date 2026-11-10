@@ -24,8 +24,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     board_->SetPosition({0.0F, 0.0F});
 
     background_ = &AddPanel(*board_, layout::DesignBoard, CanvasBlue, "Background");
-    chartBackground_ = &CreateSprite(*board_, {}, {}, "SongBackground");
-    chartBackground_->SetVisible(false);
+    artwork_.CreateBackground(*board_);
     CreateCategoryBar();
     if (!IsEditorSongSelect())
     {
@@ -163,12 +162,7 @@ void MusicSelectView::Shutdown() noexcept
     creatorHeading_ = nullptr;
     difficultyHeading_ = nullptr;
     difficultyInformation_ = nullptr;
-    previewPath_.clear();
-    previewImageSize_ = {};
-    previewImage_ = nullptr;
-    previewEmpty_ = nullptr;
-    previewTitle_ = nullptr;
-    preview_ = nullptr;
+    artwork_.Reset();
     informationPanel_ = nullptr;
     emptyRecordMessage_ = nullptr;
     recordSelector_ = nullptr;
@@ -178,8 +172,6 @@ void MusicSelectView::Shutdown() noexcept
     categoryBar_ = nullptr;
     categoryLabel_ = nullptr;
     background_ = nullptr;
-    chartBackground_ = nullptr;
-    chartBackgroundOffset_ = {};
     board_ = nullptr;
     canvas_ = nullptr;
     canvasHandle_.Reset();

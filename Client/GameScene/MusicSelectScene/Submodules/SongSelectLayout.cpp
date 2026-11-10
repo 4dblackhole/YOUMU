@@ -20,7 +20,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     board_->SetSize(canvasSize);
     board_->SetPosition({0.0F, 0.0F});
     background_->SetBounds(responsive.background);
-    UpdateChartBackgroundLayout();
+    artwork_.LayoutBackground(canvasSize);
 
     ResizeBorderedPanel(*categoryBar_, responsive.category, 3.0F);
     if (recordPanel_ != nullptr)
@@ -82,8 +82,7 @@ void MusicSelectView::UpdateRecordPanelLayout()
 
 void MusicSelectView::UpdateSongInformationLayout()
 {
-    if (informationPanel_ == nullptr || preview_ == nullptr || previewTitle_ == nullptr ||
-        previewEmpty_ == nullptr || selectedSongLabel_ == nullptr ||
+    if (informationPanel_ == nullptr || selectedSongLabel_ == nullptr ||
         selectedArtistLabel_ == nullptr || difficultyInformation_ == nullptr ||
         difficultyHeading_ == nullptr || creatorHeading_ == nullptr ||
         selectedPatternLabel_ == nullptr || selectedCreatorLabel_ == nullptr ||
@@ -93,28 +92,8 @@ void MusicSelectView::UpdateSongInformationLayout()
     }
 
     const float panelWidth = informationPanel_->NodeSize().width / DesignToCanvasScale;
-    const bool showPreview = panelWidth >= 500.0F;
-    preview_->SetVisible(showPreview);
-
-    float detailsX = 24.0F;
-    if (showPreview)
-    {
-        const float previewWidth =
-            std::clamp(layout::Preview.width * panelWidth / layout::InformationPanel.width, 160.0F,
-                       layout::Preview.width);
-        preview_->SetBounds(ScaleTopLeftBounds({24.0F, 24.0F, previewWidth, previewWidth},
-                                               informationPanel_->NodeSize().height));
-        previewTitle_->SetBounds(ScaleTopLeftBounds(
-            {20.0F, layout::PreviewTitle.y * previewWidth / layout::Preview.width,
-             std::max(previewWidth - 40.0F, 1.0F), layout::PreviewTitle.height},
-            preview_->NodeSize().height));
-        previewEmpty_->SetBounds(ScaleTopLeftBounds(
-            {20.0F, layout::PreviewEmpty.y * previewWidth / layout::Preview.width,
-             std::max(previewWidth - 40.0F, 1.0F), layout::PreviewEmpty.height},
-            preview_->NodeSize().height));
-        UpdateBackgroundPreviewLayout();
-        detailsX += previewWidth + 20.0F;
-    }
+    const float previewWidth = artwork_.LayoutPreview(panelWidth, informationPanel_->NodeSize().height);
+    const float detailsX = previewWidth > 0.0F ? 24.0F + (previewWidth + 20.0F) : 24.0F;
 
     const float detailsWidth = std::max(panelWidth - detailsX - 24.0F, 1.0F);
     selectedSongLabel_->SetBounds(ScaleTopLeftBounds(

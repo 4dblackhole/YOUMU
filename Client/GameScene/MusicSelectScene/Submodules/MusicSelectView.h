@@ -8,6 +8,7 @@
 #include "SongFavoriteTabs.h"
 #include "SongFavoritesPanel.h"
 #include "SongSelectPurpose.h"
+#include "SongBackgroundPreview.h"
 #include "Texts/TextCatalog.h"
 #include <filesystem>
 #include <array>
@@ -30,7 +31,8 @@ class MusicSelectView final
                     SongSelectPurpose purpose, TextCatalog &texts,
                     OptionSettings &options, std::filesystem::path recordDatabase = {})
         : selection_(state), purpose_(purpose), screenVisuals_(visuals), texts_(texts),
-          settings_(options), options_(texts, options, &visuals), recordDatabase_(std::move(recordDatabase))
+          settings_(options), options_(texts, options, &visuals), recordDatabase_(std::move(recordDatabase)),
+          artwork_(visuals)
     {
     }
     void SetVisible(bool visible)
@@ -71,9 +73,6 @@ class MusicSelectView final
     bool ProcessPlayOptionsPanel(const InputState &input);
     void LayoutRecordControls();
     void CreateSongInformationPanel();
-    void SetBackgroundPreview(const std::filesystem::path &path, double offsetX = 0, double offsetY = 0);
-    void UpdateBackgroundPreviewLayout();
-    void UpdateChartBackgroundLayout();
     void CreateSongBrowser();
     void CreateFooter();
     void CreateAdditionMenu();
@@ -149,9 +148,7 @@ class MusicSelectView final
     SongFavoriteTabs favoriteTabs_;
     SongFavoritesPanel favoritesPanel_;
     std::filesystem::path recordDatabase_;
-    std::filesystem::path previewPath_;
-    Size previewImageSize_{};
-    Point chartBackgroundOffset_{};
+    SongBackgroundPreview artwork_;
     std::uint64_t textRevision_{};
     std::vector<SongCard> songCards_;
     std::vector<SongCard> songRows_;
@@ -173,7 +170,6 @@ class MusicSelectView final
     std::optional<Point> canvasPointer_;
     Visual2DNode *board_{};
     Visual2DNode *background_{};
-    Visual2DNode *chartBackground_{};
     Visual2DNode *categoryBar_{};
     Visual2DNode *categoryLabel_{};
     std::future<std::vector<PlayRecord>> recordJob_;
@@ -188,10 +184,6 @@ class MusicSelectView final
     Visual2DNode *recordSelector_{};
     Visual2DNode *emptyRecordMessage_{};
     Visual2DNode *informationPanel_{};
-    Visual2DNode *preview_{};
-    Visual2DNode *previewImage_{};
-    Visual2DNode *previewTitle_{};
-    Visual2DNode *previewEmpty_{};
     Visual2DNode *difficultyInformation_{};
     Visual2DNode *difficultyHeading_{};
     Visual2DNode *creatorHeading_{};

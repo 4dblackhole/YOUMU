@@ -1,6 +1,5 @@
 #include "MusicSelectView.h"
 #include "Presentation/ScrollableTextComponent.h"
-#include "Presentation/BackgroundLayout.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
@@ -128,15 +127,15 @@ void MusicSelectView::CreateSongInformationPanel()
     informationPanel_ = &panel;
     auto &preview = AddPanel(panel, layout::Preview, {0.765F, 0.906F, 0.980F, 1.0F},
                              "BackgroundPreview", 12.0F);
-    preview_ = &preview;
-    previewImage_ = &preview.CreateChild("PreviewImage");
-    previewImage_->AddComponent<SpriteVisualComponent>();
-    SetCornerRadius(*previewImage_, 12.0F);
-    previewImage_->SetVisible(false);
-    previewTitle_ = &AddLabel(preview, layout::PreviewTitle, std::wstring(text.backgroundPreview), 13.0F,
-                              MutedBlue, "PreviewTitle", TextAlignment::Center);
-    previewEmpty_ = &AddLabel(preview, layout::PreviewEmpty, std::wstring(text.noImage), 10.0F, SoftTextBlue,
-                              "PreviewEmpty", TextAlignment::Center);
+    auto &previewImage = preview.CreateChild("PreviewImage");
+    previewImage.AddComponent<SpriteVisualComponent>();
+    SetCornerRadius(previewImage, 12.0F);
+    previewImage.SetVisible(false);
+    auto &previewTitle = AddLabel(preview, layout::PreviewTitle, std::wstring(text.backgroundPreview), 13.0F,
+                                  MutedBlue, "PreviewTitle", TextAlignment::Center);
+    auto &previewEmpty = AddLabel(preview, layout::PreviewEmpty, std::wstring(text.noImage), 10.0F, SoftTextBlue,
+                                  "PreviewEmpty", TextAlignment::Center);
+    artwork_.BindPreview(preview, previewImage, previewTitle, previewEmpty);
 
     selectedSongLabel_ = &AddScrollableLabel(panel, layout::SelectedSong, std::wstring(text.noSongSelected), 28.0F,
                                    DeepBlue, "SelectedSong");
@@ -163,77 +162,6 @@ void MusicSelectView::CreateSongInformationPanel()
         extraDetailsLabels_[i] = &AddLabel(information,
             {16.0F, layout::ExtraDetails.y + 24.0F * static_cast<float>(i), 299.43F, 22.0F},
             L"", 15.0F, DeepBlue, "ExtraDetails" + std::to_string(i));
-}
-
-void MusicSelectView::SetBackgroundPreview(const std::filesystem::path &path, double offsetX, double offsetY)
-{
-    chartBackgroundOffset_ = {static_cast<float>(offsetX), static_cast<float>(offsetY)};
-    if (previewPath_ == path)
-    {
-        UpdateChartBackgroundLayout();
-        return;
-    }
-    previewPath_ = path;
-    previewImageSize_ = {};
-    previewImage_->SetVisible(false);
-    RequireComponent<SpriteVisualComponent>(*previewImage_).SetImage({});
-    chartBackground_->SetVisible(false);
-    RequireComponent<SpriteVisualComponent>(*chartBackground_).SetImage({});
-    previewTitle_->SetVisible(true);
-    previewEmpty_->SetVisible(true);
-    if (path.empty())
-        return;
-    try
-    {
-        const auto image = screenVisuals_.RegisterImage(previewPath_);
-        const auto size = screenVisuals_.GetImageSize(image);
-        if (image.value == 0 || size.width <= 0 || size.height <= 0)
-            return;
-        previewImageSize_ = size;
-        auto &sprite = RequireComponent<SpriteVisualComponent>(*previewImage_);
-        sprite.SetImage(image);
-        sprite.SetTint(PureWhite);
-        auto &background = RequireComponent<SpriteVisualComponent>(*chartBackground_);
-        background.SetImage(image);
-        background.SetTint(PureWhite);
-        UpdateChartBackgroundLayout();
-        chartBackground_->SetVisible(true);
-        UpdateBackgroundPreviewLayout();
-        previewImage_->SetVisible(true);
-        previewTitle_->SetVisible(false);
-        previewEmpty_->SetVisible(false);
-    }
-    catch (const std::exception &)
-    {
-        // Missing/corrupt artwork keeps NO IMAGE until the selected path changes.
-    }
-}
-
-void MusicSelectView::UpdateChartBackgroundLayout()
-{
-    if (!chartBackground_ || !canvas_) return;
-    const auto viewport = canvas_->LogicalSize();
-    auto bounds = ChartBackgroundBounds(viewport, previewImageSize_, chartBackgroundOffset_);
-    // The board's children use its lower-left origin, while gameplay/result use Centre.
-    bounds.x += viewport.width / 2;
-    bounds.y += viewport.height / 2;
-    chartBackground_->SetBounds(bounds);
-}
-
-void MusicSelectView::UpdateBackgroundPreviewLayout()
-{
-    if (previewImage_ == nullptr)
-        return;
-    const auto size = preview_->NodeSize();
-    previewImage_->SetBounds({0, 0, size.width, size.height});
-    if (previewImageSize_.width <= 0 || previewImageSize_.height <= 0)
-        return;
-    const auto scale = std::max(size.width / previewImageSize_.width,
-                                size.height / previewImageSize_.height);
-    const DirectX::XMFLOAT2 uvScale{size.width / (previewImageSize_.width * scale),
-                                   size.height / (previewImageSize_.height * scale)};
-    RequireComponent<SpriteVisualComponent>(*previewImage_).SetUvTransform(
-        uvScale, {(1 - uvScale.x) * .5F, (1 - uvScale.y) * .5F});
 }
 
 void MusicSelectView::CreateSongBrowser()
@@ -458,8 +386,7 @@ void MusicSelectView::ApplyTexts()
 
     setLabel(categoryLabel_, text.all);
     setLabel(emptyRecordMessage_, text.noRecords);
-    setLabel(previewTitle_, text.backgroundPreview);
-    setLabel(previewEmpty_, text.noImage);
+    artwork_.ApplyTexts(texts_);
     setLabel(difficultyHeading_, text.difficulty);
     setLabel(creatorHeading_, text.creator);
     for (auto *node : {selectedSongLabel_, selectedArtistLabel_, selectedCreatorLabel_})

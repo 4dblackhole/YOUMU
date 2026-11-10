@@ -202,7 +202,7 @@ void MusicSelectView::RefreshSelectionPresentation()
         if (label) RequireComponent<TextVisualComponent>(*label).SetText(L"");
     if (selection_.visibleSongIndices_.empty())
     {
-        SetBackgroundPreview({});
+        artwork_.SetImage({}, canvas_->LogicalSize());
         songText.SetText(std::wstring(text.noSongSelected));
         artistText.SetText(L"");
         RequireComponent<TextVisualComponent>(*selectedPatternLabel_).SetText(L"—");
@@ -220,7 +220,7 @@ void MusicSelectView::RefreshSelectionPresentation()
     artistText.SetText(DisplayLines(song.music.artists));
     if (song.patterns.empty())
     {
-        SetBackgroundPreview({});
+        artwork_.SetImage({}, canvas_->LogicalSize());
         RequireComponent<TextVisualComponent>(*selectedPatternLabel_)
             .SetText(std::wstring(text.noDifficulty));
         creatorText.SetText(L"—");
@@ -232,10 +232,11 @@ void MusicSelectView::RefreshSelectionPresentation()
     selection_.selectedPatternIndex_ =
         std::min(selection_.selectedPatternIndex_, song.patterns.size() - 1);
     const auto &selected = song.patterns[selection_.selectedPatternIndex_];
-    SetBackgroundPreview(selected.pattern.backgroundFile.empty()
-                             ? std::filesystem::path{}
-                             : settings_.SongsRoot() / L"BG" / selected.pattern.backgroundFile,
-                         selected.pattern.backgroundOffsetX, selected.pattern.backgroundOffsetY);
+    artwork_.SetImage(selected.pattern.backgroundFile.empty()
+                          ? std::filesystem::path{}
+                          : settings_.SongsRoot() / L"BG" / selected.pattern.backgroundFile,
+                      canvas_->LogicalSize(), selected.pattern.backgroundOffsetX,
+                      selected.pattern.backgroundOffsetY);
     RequireComponent<TextVisualComponent>(*selectedPatternLabel_)
         .SetText(PatternName(selected));
     creatorText.SetText(DisplayLines(selected.pattern.makers));
