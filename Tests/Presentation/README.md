@@ -193,7 +193,7 @@ MISS feedback. GameplayJudgementTests checks the signed Debug timer in us/ms,
 frozen time and 1ms changes, and the absence of that label in Release.
 The native controller also runs with no key events until a late-Bad note is
 automatically missed in favour of the next Good note, in both configurations.
-A test-only second mode uses the same IPlaySessionController lifecycle and polymorphic result;
+A test-only second mode uses the same GameplaySessionController lifecycle and polymorphic result;
 Ending transfers its result exactly once. A separate real FMOD NoSound MP3 test repeats
 source-zero/positive/near-end seeks and checks the actual source end.
 PlayPauseTests also covers rewind inside Buzz, repeated cancellation, preserved input traces,

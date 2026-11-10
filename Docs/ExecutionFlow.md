@@ -6,7 +6,7 @@
 곡 목록은 Scene이 소유한 SongCatalogLoader worker에서 준비하고 완료 결과만 게시합니다.
 플레이 진입에서는 Session을 worker에서 받은 뒤 PNG와 오디오를 함께 비동기 준비합니다.
 Canvas를 구성한 후에도 실제 Gameplay 시작 전에는 플레이 화면을 표시하지 않습니다.
-공통 IPlaySessionController의 Loading→Gameplay→Pause→Ending 상태로 실행합니다.
+공통 GameplaySessionController의 Loading→Gameplay→Pause→Ending 상태로 실행합니다.
 Clip/음악 탐색 준비가 끝나면 Controller가 같은 미래 QPC/DSP 시점에 타이머와 음악을 시작합니다.
 Pause는 살아 있는 음악 Voice를 유지하고 복귀 시 위치를 재정렬합니다. transient 샘플은 정지하며
 Ending은 모든 세션 음성을 정리하고 모드별 결과 소유권을 한 번 넘깁니다.

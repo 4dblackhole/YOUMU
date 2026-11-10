@@ -54,8 +54,8 @@ Sprite/Transform으로 구성하고 기존 `skin.ini`의 PausePanel/PauseResume/
 
 ## 모든 모드의 실행 상태
 
-`Client/GameFlow/IPlaySessionController.h`는 Loading / Gameplay / Pause / Ending 네 상태와
-조회·일시정지·재개·종료·결과 이동 계약입니다. Scene은 이 인터페이스를 소유합니다.
+`Client/GameFlow/GameplaySessionController.h`는 Loading / Gameplay / Pause / Ending 네 상태와
+조회·일시정지·재개·종료·결과 이동 계약을 제공합니다. Scene은 구체 컨트롤러를 직접 소유합니다.
 공통 `GameplaySessionController`와 `GameFlow/Submodules/GameplayState`가 전환을 실행하며,
 Taiko의 노트 규칙이나 결과 형식에 상태 전환을 구현하지 않습니다. `IPlayGameMode`는
 채보→PlaySession 생성, `IPlayResult`는 모드별 결과를 맡고 실행 상태 계약과 분리합니다.
