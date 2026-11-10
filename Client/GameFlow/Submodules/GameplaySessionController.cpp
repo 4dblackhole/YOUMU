@@ -29,9 +29,9 @@ void GameplaySessionController::InitializeSession()
 {
     if (sessionInitialized_)
         return;
-    PrepareDebugLaunchRequest();
+    GameplaySessionFactory::PrepareDebugLaunchRequest(launchRequest_, debugMode_);
     if (!session_)
-        session_ = CreateSession();
+        session_ = GameplaySessionFactory::Create(launchRequest_, debugMode_);
     if (!launchRequest_.editorTestStart && !session_->CanEnterGameplay())
         throw std::runtime_error("A chart with no playable notes is available only in editor preview/test.");
     heldKeys_.reserve(session_->InputMapping().size());
@@ -53,15 +53,9 @@ bool GameplaySessionController::PrepareSession()
         InitializeSession();
         return true;
     }
-    if (!sessionLoader_.Busy())
-        sessionLoader_.Start(launchRequest_);
-    auto loaded = sessionLoader_.Poll();
-    if (!loaded)
+    session_ = sessionFactory_.Poll(launchRequest_);
+    if (!session_)
         return false;
-    if (!loaded->Succeeded())
-        throw std::runtime_error("Failed to load the selected pattern: " +
-            (loaded->diagnostics.empty() ? std::string{"Unknown chart error."} : loaded->diagnostics.front().message));
-    session_ = std::move(loaded->session);
     InitializeSession();
     return true;
 }
@@ -90,8 +84,7 @@ void GameplaySessionController::Start(const EngineServices &services,
     static_cast<void>(PrepareAudioResources(services.audio));
     time_ = initialTime_;
     audioInitialized_ = true;
-    resourcesReady_ = false;
-    resourceLoadFailed_ = false;
+    resourcePreparation_ = AudioPreparationState::Loading;
     playbackRequested_ = state_ == PlayState::Loading;
     nextAudioPreparationPoll_ = 0;
 }
@@ -181,7 +174,8 @@ void GameplaySessionController::Shutdown() noexcept
     state_ = PlayState::Ending;
     result_.reset();
     playbackStart_.reset();
-    audioInitialized_ = resourcesReady_ = playbackRequested_ = false;
+    audioInitialized_ = playbackRequested_ = false;
+    resourcePreparation_ = AudioPreparationState::Loading;
     nextAudioPreparationPoll_ = 0;
     audioRouter_.Shutdown();
     session_.reset();

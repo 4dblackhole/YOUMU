@@ -1,5 +1,5 @@
 #include "App/AssetPaths.h"
-#include "GameFlow/GameplaySessionController.h"
+#include "GameplaySessionFactory.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Taiko/TaikoMode.h"
 #include <stdexcept>
@@ -20,29 +20,40 @@ namespace
         pattern.notes.push_back(std::move(note));
     }
 
+    std::unique_ptr<PlaySession> TakeLoadedSession(ModeLoadResult loaded)
+    {
+        if (!loaded.Succeeded())
+        {
+            const std::string detail =
+                loaded.diagnostics.empty() ? "Unknown chart error." : loaded.diagnostics.front().message;
+            throw std::runtime_error("Failed to load the selected pattern: " + detail);
+        }
+        return std::move(loaded.session);
+    }
 } // namespace
 
-std::unique_ptr<PlaySession> GameplaySessionController::CreateSession()
+std::unique_ptr<PlaySession> GameplaySessionFactory::Create(const GameplayLaunchRequest &request, bool debugMode)
 {
-    if (!launchRequest_.IsValid())
+    if (!request.IsValid())
     {
-        return debugMode_ ? CreateLongNoteDebugSession() : CreateDemoSession();
+        return debugMode ? CreateLongNoteDebugSession() : CreateDemoSession();
     }
     auto mode = CreatePlayGameMode(
-        launchRequest_.mode,
-        {RhythmDuration{static_cast<std::int64_t>(launchRequest_.globalOffsetMs) * 1000},
-         launchRequest_.inputKeys, launchRequest_.playOptions, launchRequest_.editorTestStart});
-    ModeLoadResult loaded = mode->LoadSession(launchRequest_.patternPath, launchRequest_.effectPath);
-    if (!loaded.Succeeded())
-    {
-        const std::string detail =
-            loaded.diagnostics.empty() ? "Unknown chart error." : loaded.diagnostics.front().message;
-        throw std::runtime_error("Failed to load the selected pattern: " + detail);
-    }
-    return std::move(loaded.session);
+        request.mode,
+        {RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000},
+         request.inputKeys, request.playOptions, request.editorTestStart});
+    return TakeLoadedSession(mode->LoadSession(request.patternPath, request.effectPath));
 }
 
-std::unique_ptr<PlaySession> GameplaySessionController::CreateDemoSession()
+std::unique_ptr<PlaySession> GameplaySessionFactory::Poll(const GameplayLaunchRequest &request)
+{
+    if (!loader_.Busy())
+        loader_.Start(request);
+    auto loaded = loader_.Poll();
+    return loaded ? TakeLoadedSession(std::move(*loaded)) : nullptr;
+}
+
+std::unique_ptr<PlaySession> GameplaySessionFactory::CreateDemoSession()
 {
     PatternDocument pattern;
     pattern.name = "Architecture test";
@@ -70,7 +81,7 @@ std::unique_ptr<PlaySession> GameplaySessionController::CreateDemoSession()
     return std::move(result.session);
 }
 
-std::unique_ptr<PlaySession> GameplaySessionController::CreateLongNoteDebugSession()
+std::unique_ptr<PlaySession> GameplaySessionFactory::CreateLongNoteDebugSession()
 {
     PatternDocument pattern;
     pattern.name = "Long Notes Debug";
@@ -106,14 +117,14 @@ std::unique_ptr<PlaySession> GameplaySessionController::CreateLongNoteDebugSessi
     return std::move(result.session);
 }
 
-void GameplaySessionController::PrepareDebugLaunchRequest()
+void GameplaySessionFactory::PrepareDebugLaunchRequest(GameplayLaunchRequest &request, bool debugMode)
 {
-    if (!debugMode_ || launchRequest_.IsValid())
+    if (!debugMode || request.IsValid())
     {
         return;
     }
     const std::filesystem::path songs =
-        launchRequest_.songsRoot.empty() ? UserSongs() : launchRequest_.songsRoot;
+        request.songsRoot.empty() ? UserSongs() : request.songsRoot;
     const std::filesystem::path patternPath =
         songs / L"Patterns\\angeldream\\Long Notes Debug\\angeldream [long notes test].ymp";
     const std::filesystem::path musicPath = songs / L"Music\\Angeldream\\angel dream hand shaking.mp3";
@@ -121,7 +132,7 @@ void GameplaySessionController::PrepareDebugLaunchRequest()
     {
         return;
     }
-    launchRequest_.patternPath = patternPath;
-    launchRequest_.musicPath = musicPath;
-    launchRequest_.mode = "Taiko";
+    request.patternPath = patternPath;
+    request.musicPath = musicPath;
+    request.mode = "Taiko";
 }

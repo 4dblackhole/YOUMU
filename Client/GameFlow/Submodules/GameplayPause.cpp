@@ -74,10 +74,10 @@ void GameplaySessionController::RetryFromPause(const UpdateContext &context)
 {
     if (state_ == PlayState::Pause)
     {
-        if (resourceLoadFailed_)
+        if (resourcePreparation_ == AudioPreparationState::Failed)
         {
             InitializeAudio(context.audio);
-            resourceLoadFailed_ = resourcesReady_ = false;
+            resourcePreparation_ = AudioPreparationState::Loading;
         }
         ResetTimeline();
     }

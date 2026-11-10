@@ -33,9 +33,9 @@ void GameplaySessionController::SetEditorTestRate(double rate, const UpdateConte
 
 bool GameplaySessionController::PrepareResources(const UpdateContext &context)
 {
-    if (resourcesReady_)
+    if (resourcePreparation_ == AudioPreparationState::Ready)
         return true;
-    if (resourceLoadFailed_)
+    if (resourcePreparation_ == AudioPreparationState::Failed)
         return false;
     if (!audioInitialized_ || context.totalSeconds < nextAudioPreparationPoll_)
         return false;
@@ -43,14 +43,14 @@ bool GameplaySessionController::PrepareResources(const UpdateContext &context)
     const auto prepared = audioRouter_.PrepareResources();
     if (prepared == AudioPreparationState::Failed || !initializationError_.empty())
     {
-        resourceLoadFailed_ = true;
+        resourcePreparation_ = AudioPreparationState::Failed;
         FailPlaybackPreparation();
         return false;
     }
-    resourcesReady_ = prepared == AudioPreparationState::Ready;
-    if (resourcesReady_ && launchRequest_.editorTestStart)
+    resourcePreparation_ = prepared;
+    if (resourcePreparation_ == AudioPreparationState::Ready && launchRequest_.editorTestStart)
         testEndTime_ = std::max(testEndTime_, audioRouter_.MusicDuration().value_or(RhythmTime{}));
-    return resourcesReady_;
+    return resourcePreparation_ == AudioPreparationState::Ready;
 }
 
 void GameplaySessionController::UpdateLoading(const UpdateContext &context)

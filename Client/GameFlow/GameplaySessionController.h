@@ -3,7 +3,7 @@
 #include "GameFlow/GameplayLaunchRequest.h"
 #include "GameFlow/GameplayFeedback.h"
 #include "Mode/Submodules/PlaySession.h"
-#include "GameFlow/PlaySessionLoader.h"
+#include "GameFlow/Submodules/GameplaySessionFactory.h"
 #include "PhantomCore.h"
 #include "Time/RhythmTimer.h"
 #include <memory>
@@ -57,7 +57,7 @@ class GameplaySessionController final
     }
     bool CanContinue() const noexcept
     {
-        return state_ == PlayState::Pause && resourcesReady_ && !playbackRequested_;
+        return state_ == PlayState::Pause && resourcePreparation_ == AudioPreparationState::Ready && !playbackRequested_;
     }
     void Shutdown() noexcept;
     const PlaySession &Session() const
@@ -88,10 +88,6 @@ class GameplaySessionController final
     static constexpr bool ReferenceTimeDebug = false;
 #endif
     std::vector<PhysicalKey> heldKeys_;
-    std::unique_ptr<PlaySession> CreateSession();
-    std::unique_ptr<PlaySession> CreateDemoSession();
-    std::unique_ptr<PlaySession> CreateLongNoteDebugSession();
-    void PrepareDebugLaunchRequest();
     void InitializeAudio(AudioSystem &audio);
     void ScheduleMetronome();
     std::size_t metronomeCursor_{};
@@ -120,7 +116,7 @@ class GameplaySessionController final
     void ConsumeResult(NoteProcessResult result, bool pressed = false);
     GameplayLaunchRequest launchRequest_;
     std::unique_ptr<PlaySession> session_;
-    PlaySessionLoader sessionLoader_;
+    GameplaySessionFactory sessionFactory_;
     bool sessionInitialized_{};
     RhythmTimer timer_;
     GameplayAudioRouter audioRouter_;
@@ -136,8 +132,8 @@ class GameplaySessionController final
     double playbackRate_{1.0};
     RhythmTime testEndTime_{};
     bool musicRegistered_{};
-    bool audioInitialized_{}, resourcesReady_{}, playbackRequested_{};
-    bool resourceLoadFailed_{};
+    bool audioInitialized_{}, playbackRequested_{};
+    AudioPreparationState resourcePreparation_{AudioPreparationState::Loading};
     double nextAudioPreparationPoll_{};
     bool debugMode_{};
     bool pauseMenuOpen_{};
