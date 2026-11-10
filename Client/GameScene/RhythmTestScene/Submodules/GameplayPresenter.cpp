@@ -32,25 +32,7 @@ void GameplayPresenter::OnResize(const std::uint32_t width, const std::uint32_t 
 
 RhythmTime GameplayPresenter::InitialTimelineTime() const
 {
-    using Time = RhythmTime;
-    const Time latest{-2'000'000};
-    if (session_->ScrollDistance(latest, {}) <= firstVisibilityDistance_)
-        return latest;
-    // Invert the monotone cumulative distance only at entry. A slow future
-    // object must not lengthen the lead-in of every ordinary note.
-    const long double bound = std::floor(firstVisibilityDistance_ / session_->MinimumScrollMultiplier());
-    auto low =
-        static_cast<Time::rep>(std::max(bound, static_cast<long double>(std::numeric_limits<Time::rep>::lowest())));
-    auto high = latest.count();
-    while (low < high - 1)
-    {
-        const auto middle = std::midpoint(low, high);
-        if (session_->ScrollDistance(Time{middle}, {}) <= firstVisibilityDistance_)
-            low = middle;
-        else
-            high = middle;
-    }
-    return Time{low};
+    return visibility_.InitialTimelineTime(*session_);
 }
 
 float GameplayPresenter::TravelPixels(const RhythmDuration duration,
@@ -85,15 +67,10 @@ void GameplayPresenter::Shutdown() noexcept
     hpView_.Shutdown();
     statisticsView_.Shutdown();
     noteVisuals_.clear();
-    noteModels_.clear();
+    visibility_.Reset();
     noteImages_.clear();
     preparingImages_.clear();
-    visibleNoteModels_.clear();
-    noteVisibility_.Assign({});
-    measureVisibility_.Assign({});
-    visibilityRevision_ = 0;
     presentationGeneration_ = 0;
-    firstVisibilityDistance_ = 0;
     presentedNoteIds_.clear();
     completionEffects_.clear();
     measureLineVisuals_.clear();
@@ -144,8 +121,8 @@ void GameplayPresenter::ApplyFeedback(const GameplayFeedback &feedback)
             continue;
         }
         if (!noteVisuals_.contains(event.noteId))
-            if (const auto model = noteModels_.find(event.noteId); model != noteModels_.end())
-                CreateNoteVisual(*model->second);
+            if (const auto *model = visibility_.Find(event.noteId))
+                CreateNoteVisual(*model);
         const auto visual = noteVisuals_.find(event.noteId);
         if (visual != noteVisuals_.end() && visual->second.focusType != FocusNoteType::None)
         {

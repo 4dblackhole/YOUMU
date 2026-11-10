@@ -8,7 +8,7 @@
 #include "Mode/PlayGameMode.h"
 #include "Presentation/LaneKeyBeam.h"
 #include "Texts/TextCatalog.h"
-#include "Utility/IntervalIndex.h"
+#include "GameplayNoteVisibility.h"
 #include <array>
 #include <unordered_map>
 
@@ -116,7 +116,6 @@ class GameplayPresenter final
                                                           float multiplier) const;
     void HideTransientNoteVisuals();
     void RemoveUnusedNoteVisuals();
-    void RebuildVisibilityIndices();
     void PresentHitCounter(NoteVisualLayers &layers,
                              const NoteProgress &progress,
                              const float visualHeight);
@@ -142,17 +141,12 @@ class GameplayPresenter final
     GameplayHpView hpView_;
     GameplayStatisticsView statisticsView_;
     std::unordered_map<NoteId, NoteVisualLayers> noteVisuals_;
-    std::unordered_map<NoteId, const INote *> noteModels_;
+    GameplayNoteVisibility visibility_;
     std::map<std::wstring, ImageHandle, std::less<>> noteImages_;
     std::vector<std::filesystem::path> preparingImages_;
     float largestHeadRadius_{};
     std::vector<NoteId> presentedNoteIds_;
-    IntervalIndex<long double, NoteId> noteVisibility_;
-    IntervalIndex<long double, std::size_t> measureVisibility_;
-    std::vector<const INote *> visibleNoteModels_;
-    std::uint64_t visibilityRevision_{};
     std::uint64_t presentationGeneration_{};
-    long double firstVisibilityDistance_{};
     std::unordered_map<NoteId, RhythmTime>
         completionEffects_;
     std::vector<TimedVisual> measureLineVisuals_;

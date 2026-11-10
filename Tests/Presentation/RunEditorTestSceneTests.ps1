@@ -5,7 +5,7 @@ $runtime=if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MD'
 [xml]$project=Get-Content Client/YOUMU.Client.vcxproj
 $units=@('Pch','GameplaySessionController','GameplaySessionFactory','GameplayInput','GameplayAudio','GameplayState','GameplayPause',
     'GameplayPauseMenu','GameplayPauseLayout','PauseTexts','GameplayAudioRouter','TextCatalog','LanguageFile','SkinSetSelection',
-    'SkinManifest','SkinVisualComponent','RhythmTestScene','EditorTestControls','GameplayPresenter','GameplayLayout','GameplayNoteVisuals',
+    'SkinManifest','SkinVisualComponent','RhythmTestScene','EditorTestControls','GameplayPresenter','GameplayLayout','GameplayNoteVisuals', 'GameplayNoteVisibility',
     'GameplayFeedbackVisuals','GameplayKeys','GameplayJudgementView','GameplayProgressView','GameplayHpView','GameplayStatisticsView','LaneKeyBeam','GameplayTexts')
 $units+=@($project.Project.ItemGroup.ClCompile | Where-Object { $_.Include -match '^(EditorScene\\|Texts\\EditorScene\\)' } |
     ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.Include) })

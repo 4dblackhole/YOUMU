@@ -134,6 +134,8 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayKeys.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayLayout.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayNoteVisuals.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayNoteVisibility.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
+    <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayNoteVisibility.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayPresenter.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayPresenter.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameFlow\Submodules\GameplayState.cpp"><Filter>GameFlow\Submodules</Filter></ClCompile>

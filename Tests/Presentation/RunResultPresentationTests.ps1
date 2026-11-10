@@ -9,7 +9,7 @@ $units = @('Pch', 'TaikoResultOptions', 'ResultScene', 'ResultViewFactory', 'Tai
     'TaikoResultPanels', 'TaikoResultGraphView',
     'RhythmTestScene', 'EditorTestControls', 'GameplaySessionController', 'GameplaySessionFactory', 'GameplayInput', 'GameplayAudio',
     'GameplayState', 'GameplayPause', 'GameplayPauseMenu', 'GameplayPauseLayout', 'PauseTexts',
-    'GameplayPresenter', 'GameplayLayout', 'GameplayNoteVisuals', 'GameplayFeedbackVisuals', 'GameplayKeys',
+    'GameplayPresenter', 'GameplayLayout', 'GameplayNoteVisuals', 'GameplayNoteVisibility', 'GameplayFeedbackVisuals', 'GameplayKeys',
     'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'GameplayAudioRouter')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Rhythm', 'Chart', 'Modes', 'ClientLogic', 'Assets') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }

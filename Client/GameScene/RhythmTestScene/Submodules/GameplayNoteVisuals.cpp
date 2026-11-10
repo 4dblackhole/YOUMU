@@ -84,7 +84,7 @@ void GameplayPresenter::UpdateMeasureLines(RhythmTime time, bool enabled)
     const auto &lines = session_->MeasureLines();
     std::size_t used = 0;
     const auto distance = session_->ScrollDistance(time, {});
-    measureVisibility_.Visit(distance, distance,
+    visibility_.VisitMeasureLines(distance,
                              [&](std::size_t index)
                              {
                                  const auto it = lines.begin() + static_cast<std::ptrdiff_t>(index);
@@ -170,9 +170,7 @@ void GameplayPresenter::CreateNoteVisuals()
         largestHeadRadius_ = std::max(largestHeadRadius_, ScaledImageSize(screenVisuals_, NoteImage(file)).width * .5F);
     if (!laneRoot_)
         throw std::logic_error("Note visuals require a Lane root.");
-    for (const auto &lane : session_->Gear().Lanes())
-        for (const auto &note : lane->Notes())
-            noteModels_.emplace(note->Id(), note.get());
+    visibility_.Bind(session_->Gear());
 }
 
 void GameplayPresenter::CreateNoteVisual(const INote &source)
@@ -398,26 +396,13 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
     UpdateDebugPresentation(time);
 #endif
     using Duration = RhythmDuration;
-    if (visibilityRevision_ != session_->PresentationRevision())
-        RebuildVisibilityIndices();
-    visibleNoteModels_.clear();
+    if (!visibility_.Matches(session_->PresentationRevision()))
+        visibility_.Rebuild(*session_, pixelsPerWholeNote_, noteTravelDistance_);
     const auto distance = session_->ScrollDistance(time, {});
-    noteVisibility_.Visit(distance, distance,
-                          [&](NoteId id)
-                          {
-                              const auto *model = noteModels_.at(id);
-                              if (time <= model->ExpireTime() + MissedTravelDuration)
-                                  visibleNoteModels_.push_back(model);
-                          });
-    std::ranges::sort(visibleNoteModels_, [](const auto *left, const auto *right)
-                      {
-                          if (left->Timing() != right->Timing())
-                              return left->Timing() < right->Timing();
-                          return left->Id() < right->Id();
-                      });
-    if (visibleNoteModels_.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+    const auto visibleNotes = visibility_.VisibleNotes(distance, time, MissedTravelDuration);
+    if (visibleNotes.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
         throw std::length_error("Too many visible notes to order.");
-    int noteZIndex = static_cast<int>(visibleNoteModels_.size());
+    int noteZIndex = static_cast<int>(visibleNotes.size());
     ++presentationGeneration_;
     HideTransientNoteVisuals();
     bool showMeasureLines = true;
@@ -426,7 +411,7 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
             showMeasureLines = value.value >= 0.5;
     UpdateMeasureLines(time, showMeasureLines);
     bool focusClaimed{};
-    for (const auto *model : visibleNoteModels_)
+    for (const auto *model : visibleNotes)
     {
         const ScrollNoteSnapshot note{.noteId = model->Id(),
                                                            .timing = model->Timing(),
@@ -528,39 +513,4 @@ void GameplayPresenter::RemoveUnusedNoteVisuals()
                 static_cast<void>(canvas_->RemoveNode(node->Id()));
         it = noteVisuals_.erase(it);
     }
-}
-
-void GameplayPresenter::RebuildVisibilityIndices()
-{
-    using NoteIndex = IntervalIndex<long double, NoteId>;
-    using MeasureIndex = IntervalIndex<long double, std::size_t>;
-    std::vector<NoteIndex::Entry> notes;
-    std::vector<MeasureIndex::Entry> lines;
-    notes.reserve(noteModels_.size());
-    firstVisibilityDistance_ = std::numeric_limits<long double>::infinity();
-    const long double scale = session_->Timeline().BaseBpm() / 240'000'000.0L * pixelsPerWholeNote_;
-    for (const auto &[id, model] : noteModels_)
-    {
-        const auto *info = session_->FindNotePresentation(id);
-        const double speed = info ? info->scrollMultiplier : 1;
-        const auto start = session_->ScrollDistance(model->Timing(), {});
-        const auto endTime =
-            info && info->hasEndTime ? std::max(info->endTime, model->ExpireTime()) : model->ExpireTime();
-        const auto end = session_->ScrollDistance(endTime, {});
-        const auto margin = noteTravelDistance_ / (scale * speed);
-        notes.push_back({start - margin, end + margin, id});
-        firstVisibilityDistance_ = std::min(firstVisibilityDistance_, start - margin);
-    }
-    const auto &measures = session_->MeasureLines();
-    lines.reserve(measures.size());
-    for (std::size_t i = 0; i < measures.size(); ++i)
-    {
-        const auto distance = session_->ScrollDistance(measures[i].timing, {});
-        const auto margin = noteTravelDistance_ / (scale * measures[i].scrollMultiplier);
-        lines.push_back({distance - margin, distance + margin, i});
-        firstVisibilityDistance_ = std::min(firstVisibilityDistance_, distance - margin);
-    }
-    noteVisibility_.Assign(std::move(notes));
-    measureVisibility_.Assign(std::move(lines));
-    visibilityRevision_ = session_->PresentationRevision();
 }
