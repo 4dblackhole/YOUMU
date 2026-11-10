@@ -11,8 +11,8 @@
 | 선곡 필터·계산 난이도 빈 필드 | SongFilter, SongFilterPanel, SongSelectionState의 패턴 투영; SongCatalogPattern 런타임 메타데이터 | TestSongFilters, RunMusicSelectViewTests(필터 적용/취소·실 native 입력 포함) |
 | 패턴별 즐겨찾기·폴더 탭·JSON 저장 | SongFavorites/Json, SongFavoriteTabs, SongFavoritesPanel, SongSelectFavorites; Scene 진입 로드와 SongSelectionState의 패턴 투영 | SongFavoritesTests, RunMusicSelectViewTests(관리·복수 소속·가로 스크롤·실 이름 입력·모달 격리) |
 | 복수 표기·칸별 스크롤 | `Presentation/ScrollableTextComponent`, SongSelectCards/Panels/Input | RunMusicSelectViewTests, RunSkinTests |
-| 선택 채보 BG의 선곡·로딩·플레이·리절트 배경 | SongSelectPanels/Layout, RhythmTestScene의 초기 BG 준비, YOUMUGame의 Result context, TaikoResultView; Presentation/BackgroundLayout | MusicSelectViewTests, GameplayPauseTests(초기화 중 BG 재사용·준비 순서), ResultPresentationTests, GameplayJudgementTests |
-| 곡 목록·디스크 캐시·비동기 패턴 로딩 | SongCatalogLoader, `YOUMU.Chart/Catalog`, `GameFlow/PlaySessionLoader` | 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
+| 선택 채보 BG의 선곡·로딩·플레이·리절트 배경 | SongBackgroundPreview, RhythmTestScene의 초기 BG 준비, YOUMUGame의 Result context, TaikoResultView; Presentation/BackgroundLayout | MusicSelectViewTests, GameplayPauseTests(초기화 중 BG 재사용·준비 순서), ResultPresentationTests, GameplayJudgementTests |
+| 곡 목록·디스크 캐시·비동기 패턴 로딩 | SongCatalogLoader, `YOUMU.Chart/Catalog`, PlaySessionLoader, GameplaySessionFactory | 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
 | 미리듣기 | SongPreviewController | MusicSelectViewTests, 엔진 오디오 계약 |
 | 새 난이도·.osu 가져오기 | NewDifficultyDialog, EditorPatternCreation, EditorOsuImport, OsuImportValidation | RunNewDifficultyTests, RunOsuImportValidationTests |
 | 전역 옵션·탭·Taiko 키·Option.ini | `Client/Presentation/OptionsPanel`의 OptionsTabs/각 필드, `Client/App/OptionSettings` | RunOptionsPanelTests(탭·스크롤·숨긴 입력·ja 저장), OptionTimingTests |
@@ -21,7 +21,7 @@
 | 시작·Scene 수명·launch snapshot | `Client/App`, `Client/GameFlow`, 각 Scene 주 파일 | SceneStateTests, ResultPresentationTests |
 | 플레이 시계·Debug 정지·입력 순서 | `GameFlow/Submodules`: GameplaySessionController, GameplayInput, GameplayState; `Rhythm/Time` | RhythmCoreTests, InputOrderingTests, RunGameplayPauseTests |
 | ESC·재개·되감기·Retire | GameplayPause, GameplayPauseMenu/Layout, PlaySessionSeeking | PlayPauseTests, GameplayPauseTests, ResultPresentationTests |
-| Lane·노트/롱노트·마디선·키빔·진행바 | `RhythmTestScene/Submodules`: GameplayPresenter/Layout/NoteVisuals/Keys/ProgressView; LaneKeyBeam | RunGameplayJudgementTests, RunAllNotesGameplayTests |
+| Lane·노트/롱노트·마디선·키빔·진행바 | `RhythmTestScene/Submodules`: GameplayPresenter/Layout/NoteVisuals/Keys/ProgressView, GameplayNoteVisibility; LaneKeyBeam | RunGameplayJudgementTests, RunAllNotesGameplayTests |
 | 판정 인디케이터·링·문구 | GameplayJudgementView, GameplayFeedbackVisuals | GameplayJudgementTests |
 | 정확도·POOR·Buzz·물리 키 유지 | `YOUMU.Rhythm/Note`, Judgement, Lane; `Modes/Mode/Submodules/PlaySession` | AccuracyTests, InputOrderingTests, BuzzReplayTests, PlayPauseTests |
 | Taiko 노트 종류·사운드 정책 | `YOUMU.Modes/Taiko/Submodules`: TaikoNoteDefinition, SessionBuilder, LongNoteFactory, SoundPolicy, NoteOptions | TaikoModeTests, SoundPolicyTests, EditorModeTests |
