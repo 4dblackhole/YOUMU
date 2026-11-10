@@ -10,6 +10,26 @@ permissions:
   contents: read
 
 jobs:
+  architecture:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Ensure ripgrep is available
+        shell: pwsh
+        run: |
+          if (!(Get-Command rg -ErrorAction SilentlyContinue)) {
+            choco install ripgrep --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          rg --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check architecture
+        shell: pwsh
+        run: ./Scripts/CheckArchitecture.ps1 -AllowMissingConverter
   domain:
     runs-on: windows-2022
     timeout-minutes: 20

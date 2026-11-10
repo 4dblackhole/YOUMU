@@ -1,14 +1,17 @@
-param()
+param([switch]$AllowMissingConverter)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $problems = [System.Collections.Generic.List[string]]::new()
 $projectPaths = @(& rg --files $repoRoot -g '*.vcxproj' -g '!Dependencies/**' -g '!build/**' -g '!bin/**' |
     Where-Object { $_ -notmatch '[\\/]Dependencies[\\/]' })
 $converterRoot = Join-Path (Split-Path -Parent $repoRoot) 'OsuTaikoConverter'
+$converterRoot = [IO.Path]::GetFullPath($converterRoot)
+$allowAbsentConverter = $AllowMissingConverter -and !(Test-Path -LiteralPath $converterRoot)
 $domainTestsRoot = Join-Path $repoRoot 'Tests\Rhythm'
 foreach ($name in 'OsuTaikoConverter.Core', 'OsuTaikoConverter', 'OsuTaikoConverter.Tests') {
     $projectPath = Join-Path $converterRoot "$name.vcxproj"
     if (Test-Path -LiteralPath $projectPath) { $projectPaths += $projectPath }
+    elseif ($allowAbsentConverter) { Write-Warning "Missing converter project: $projectPath (allowed without sibling repository)." }
     else { $problems.Add("Missing converter project: $projectPath (clone the sibling repository).") }
 }
 $edges = @{}
@@ -37,7 +40,13 @@ foreach ($projectPath in $projectPaths) {
         [IO.Path]::GetFullPath([IO.Path]::Combine($directory, $_.Include.Replace('$(YOUMURoot)', ($repoRoot + '\'))))
     })
     foreach ($reference in $edges[[IO.Path]::GetFullPath($projectPath)]) {
-        if (!(Test-Path -LiteralPath $reference)) { $problems.Add("Missing project reference: $reference") }
+        if (!(Test-Path -LiteralPath $reference)) {
+            if ($allowAbsentConverter -and $reference.StartsWith(
+                    $converterRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+                Write-Warning "Missing converter project reference: $reference (allowed without sibling repository)."
+            }
+            else { $problems.Add("Missing project reference: $reference") }
+        }
         if ($directory -match 'YOUMU\.(Rhythm|Chart|Modes|Editor)$' -and $reference -match '[\\/](Client|Dependencies)[\\/]') {
             $problems.Add("Domain depends on Client/engine: $projectPath -> $reference")
         }
