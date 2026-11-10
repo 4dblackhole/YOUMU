@@ -226,7 +226,6 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayPauseLayout.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayPauseMenu.h" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayPauseAction.h" />
-    <ClInclude Include="GameFlow\IPlaySessionController.h" />
     <ClInclude Include="GameFlow\GameplaySessionController.h" />
     <ClInclude Include="GameFlow\PlaySessionLoader.h" />
     <ClCompile Include="GameFlow\Submodules\GameplaySessionFactory.cpp" />

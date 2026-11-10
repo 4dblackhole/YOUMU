@@ -200,7 +200,7 @@ namespace
         bool music{};
         std::chrono::steady_clock::time_point readyAt{};
     };
-    void WaitForGameplay(IPlaySessionController &controller, const UpdateContext &ctx)
+    void WaitForGameplay(GameplaySessionController &controller, const UpdateContext &ctx)
     {
         const auto target = controller.Time();
         const auto start = std::chrono::steady_clock::now();
@@ -1066,7 +1066,7 @@ namespace
         void CheckSharedLifecycle(const UpdateContext &ctx)
         {
             auto created = ProbeMode{}.CreateSession({}, {});
-            std::unique_ptr<IPlaySessionController> common = std::make_unique<GameplaySessionController>(
+            std::unique_ptr<GameplaySessionController> common = std::make_unique<GameplaySessionController>(
                 GameplayLaunchRequest{"probe.ymp", {}, "probe-music.mp3", "Probe"}, playback_, false,
                 std::move(created.session));
             common->InitializeSession();

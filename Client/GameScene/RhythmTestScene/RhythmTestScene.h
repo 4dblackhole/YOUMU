@@ -5,7 +5,7 @@
 #include "Mode/Results/IPlayResult.h"
 #include <memory>
 
-class IPlaySessionController;
+class GameplaySessionController;
 class GameplayPresenter;
 class GameplayPauseMenu;
 class EditorTestControls;
@@ -39,7 +39,7 @@ class RhythmTestScene final : public GameScene
     void UpdateLoadingBackgroundLayout();
     std::unique_ptr<IPlayResult> &pendingResult_;
     std::vector<std::unique_ptr<IHpGauge>> hpGauges_;
-    std::unique_ptr<IPlaySessionController> controller_;
+    std::unique_ptr<GameplaySessionController> controller_;
     std::unique_ptr<GameplayPresenter> view_;
     std::unique_ptr<GameplayPauseMenu> pauseMenu_;
     std::unique_ptr<EditorTestControls> testControls_;

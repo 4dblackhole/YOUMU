@@ -1,15 +1,26 @@
 #pragma once
 #include "Audio/GameplayAudioRouter.h"
 #include "GameFlow/GameplayLaunchRequest.h"
-#include "GameFlow/IPlaySessionController.h"
+#include "GameFlow/GameplayFeedback.h"
+#include "Mode/Submodules/PlaySession.h"
 #include "GameFlow/PlaySessionLoader.h"
 #include "PhantomCore.h"
 #include "Time/RhythmTimer.h"
 #include <memory>
 #include <span>
+#include <string_view>
 #include <vector>
 
-class GameplaySessionController final : public IPlaySessionController
+// Every gameplay Scene uses the same lifecycle, independent of its note rules.
+enum class PlayState
+{
+    Loading,
+    Gameplay,
+    Pause,
+    Ending
+};
+
+class GameplaySessionController final
 {
   public:
     GameplaySessionController(GameplayLaunchRequest request, AudioPlaybackManager &playback,
@@ -17,55 +28,58 @@ class GameplaySessionController final : public IPlaySessionController
         : launchRequest_(std::move(request)), session_(std::move(prepared)), audioRouter_(playback), debugMode_(debug)
     {
     }
-    ~GameplaySessionController() override
+    ~GameplaySessionController()
     {
         Shutdown();
     }
-    void InitializeSession() override;
-    bool PrepareSession() override;
-    bool SessionReady() const noexcept override { return sessionInitialized_; }
-    AudioPreparationState PrepareAudioResources(AudioSystem &audio) override;
-    void Start(const EngineServices &services, RhythmTime initialTime) override;
-    void Update(const UpdateContext &context) override;
-    double PlaybackRate() const noexcept override { return playbackRate_; }
-    void SetEditorTestRate(double rate, const UpdateContext &context) override;
-    PlayState CurrentState() const noexcept override
+    void InitializeSession();
+    bool PrepareSession();
+    bool SessionReady() const noexcept { return sessionInitialized_; }
+    AudioPreparationState PrepareAudioResources(AudioSystem &audio);
+    void Start(const EngineServices &services, RhythmTime initialTime);
+    void Update(const UpdateContext &context);
+    double PlaybackRate() const noexcept { return playbackRate_; }
+    void SetEditorTestRate(double rate, const UpdateContext &context);
+    PlayState CurrentState() const noexcept
     {
         return state_;
     }
-    void OpenPauseMenu(const UpdateContext &context) override;
-    bool ResumeFromPause(const UpdateContext &context, RhythmDuration leadIn) override;
-    bool RewindFromPause(const UpdateContext &context, std::size_t measures) override;
-    void RetryFromPause(const UpdateContext &context) override;
-    void RetireFromPause() override;
-    bool PauseMenuOpen() const noexcept override
+    void OpenPauseMenu(const UpdateContext &context);
+    // true means the command was accepted once. CurrentState remains Pause
+    // until background-music preparation and the shared start deadline finish.
+    bool ResumeFromPause(const UpdateContext &context, RhythmDuration leadIn);
+    bool RewindFromPause(const UpdateContext &context, std::size_t measures);
+    void RetryFromPause(const UpdateContext &context);
+    void RetireFromPause();
+    bool PauseMenuOpen() const noexcept
     {
         return pauseMenuOpen_;
     }
-    bool CanContinue() const noexcept override
+    bool CanContinue() const noexcept
     {
         return state_ == PlayState::Pause && resourcesReady_ && !playbackRequested_;
     }
-    void Shutdown() noexcept override;
-    const PlaySession &Session() const override
+    void Shutdown() noexcept;
+    const PlaySession &Session() const
     {
         return *session_;
     }
-    void SetHpGauges(std::span<IHpGauge *const> gauges) override { session_->SetHpGauges(gauges); }
-    RhythmTime Time() const noexcept override
+    void SetHpGauges(std::span<IHpGauge *const> gauges) { session_->SetHpGauges(gauges); }
+    RhythmTime Time() const noexcept
     {
         return time_;
     }
-    std::span<const GameplayFeedback> Feedback() const noexcept override
+    std::span<const GameplayFeedback> Feedback() const noexcept
     {
         return feedback_;
     }
-    std::string_view ErrorMessage() const noexcept override;
-    bool ShouldShowResult() const noexcept override
+    std::string_view ErrorMessage() const noexcept;
+    bool ShouldShowResult() const noexcept
     {
         return state_ == PlayState::Ending && result_ != nullptr;
     }
-    std::unique_ptr<IPlayResult> TakeResult() override;
+    // Transfer an already finalized Ending result once; never retain play objects.
+    std::unique_ptr<IPlayResult> TakeResult();
 
   private:
 #if defined(_DEBUG)
