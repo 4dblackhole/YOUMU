@@ -21,6 +21,7 @@ struct ModeInputLayout
 {
     std::string modeId;
     std::vector<ModeInputBinding> bindings;
+    bool allowUnassignedAuxiliaryKeys{};
 };
 struct PlaySessionOptions
 {

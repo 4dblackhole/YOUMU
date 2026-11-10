@@ -184,7 +184,7 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
     const auto &pattern = song.patterns[selection_->selectedPatternIndex_];
 
     // Validate both entry routes before a Scene factory can reject the request.
-    if (pattern.pattern.mode != "Taiko")
+    if (!IsSupportedPlayGameMode(pattern.pattern.mode))
     {
         selection_->SetLaunchError(SongSelectionState::LaunchErrorKind::UnsupportedMode,
                                    pattern.pattern.mode);

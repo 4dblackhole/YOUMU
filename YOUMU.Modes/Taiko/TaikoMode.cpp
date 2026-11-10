@@ -8,7 +8,7 @@ ModeInputLayout TaikoMode::InputLayout() const
 {
     static constexpr std::array ids{"LeftKat", "LeftDon", "RightDon", "RightKat"};
     static constexpr std::array names{"Left Kat", "Left Don", "Right Don", "Right Kat"};
-    ModeInputLayout layout{"Taiko", {}};
+    ModeInputLayout layout{"Taiko", {}, true};
     for (std::size_t i = 0; i < TaikoInputBindings.size(); ++i)
     {
         const auto &source = TaikoInputBindings[i];

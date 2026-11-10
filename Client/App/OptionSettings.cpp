@@ -118,20 +118,23 @@ namespace
         if (!values.windowWidth || !values.windowHeight || values.windowWidth > 16384 ||
             values.windowHeight > 16384)
             throw std::runtime_error("Window dimensions must be within 1..16384 pixels.");
+        const auto layouts = AvailableInputLayouts();
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             if (!IsIdentifier(mode))
                 throw std::runtime_error("Invalid mode identifier.");
+            const auto layout = std::ranges::find(layouts, mode, &ModeInputLayout::modeId);
+            const bool allowUnassigned = layout != layouts.end() && layout->allowUnassignedAuxiliaryKeys;
             for (const auto &[id, keys] : bindings)
             {
                 if (!IsIdentifier(id) || keys.empty() ||
-                    std::ranges::any_of(keys, [&mode](auto key) {
-                        return (key != 0 || mode != "Taiko") && (key < 8 || key > 254);
+                    std::ranges::any_of(keys, [allowUnassigned](auto key) {
+                        return (key != 0 || !allowUnassigned) && (key < 8 || key > 254);
                     }))
                     throw std::runtime_error("Invalid mode input keys.");
             }
         }
-        for (auto layout : AvailableInputLayouts())
+        for (auto layout : layouts)
             if (const auto saved = values.modeKeys.find(layout.modeId); saved != values.modeKeys.end())
                 static_cast<void>(ResolveInputLayout(std::move(layout), saved->second));
     }
