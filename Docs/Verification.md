@@ -75,11 +75,18 @@ clang-analyzer/bugprone/performance 규칙이 있습니다. 일괄 서식 변경
 
 `.github/workflows/domain-tests.yml`은 Windows Debug/Release에서
 `Tests/Rhythm/YOUMU.Rhythm.Tests.vcxproj`와 기본곡 카탈로그를 검사합니다.
-엔진 checkout/FMOD SDK는 필요하지 않으며 다음 명령으로 같은 경계를 빌드할 수 있습니다.
+도메인 빌드 작업에는 엔진 checkout/FMOD SDK가 필요하지 않으며 다음 명령으로 같은 경계를 빌드할 수 있습니다.
 
 ```powershell
 msbuild Tests/Rhythm/YOUMU.Rhythm.Tests.vcxproj /m /t:Rebuild /p:Configuration=Debug /p:Platform=x64
 ```
+
+별도 `architecture` 작업은 엔진 서브모듈을 checkout하고 `rg`를 확인한 뒤
+`Scripts/CheckArchitecture.ps1 -AllowMissingConverter`를 실행합니다. 엔진을 빌드하거나
+FMOD를 설치하지 않습니다. 변환기 형제 저장소가 없을 때만 변환기 프로젝트 세 개와
+그 저장소 아래의 누락 참조를 경고로 낮춥니다. 다른 누락 참조·도메인 경계·순환 참조·
+소스/filter 검사는 유지합니다. 변환기 저장소가 일부만 있거나 로컬에서 스위치를
+생략하면 누락은 계속 오류입니다.
 
 도메인 CI는 전체 Client·presentation·smoke·실제 장치 검증을 대체하지 않습니다.
 smoke는 초기화/실행/정리 검사입니다. 시각 지정 replay·자동 UI 입력·PCM/mixer 검사는
