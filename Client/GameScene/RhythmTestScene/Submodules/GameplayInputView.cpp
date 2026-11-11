@@ -1,10 +1,13 @@
-#include "GameplayPresenter.h"
+#include "GameplayInputView.h"
 #include "GameplaySupport.h"
 
 using namespace PhantomCore;
 
-void GameplayPresenter::CreateKeyIndicators(Visual2DNode &inputPanel)
+void GameplayInputView::Initialize(
+    ScreenVisual2DManager& visuals, Visual2DNode& inputPanel)
 {
+    Shutdown();
+    const Size inputPanelSize = inputPanel.NodeSize();
     struct KeySpec
     {
         Rect bounds;
@@ -18,16 +21,16 @@ void GameplayPresenter::CreateKeyIndicators(Visual2DNode &inputPanel)
         {{172.0F, 68.0F, 39.0F, 70.0F}, InputKeyBaseColors[3], L"KeyButtonRightKat"},
     }};
 
-    strongKeyLightImage_ = screenVisuals_.RegisterImage(InGameSkinAssetPath(L"KeyLightStrong"));
-    weakKeyLightImage_ = screenVisuals_.RegisterImage(InGameSkinAssetPath(L"KeyLightWeak"));
-    keyPressFlashImage_ = screenVisuals_.RegisterImage(InGameSkinAssetPath(L"KeyPressFlash"));
-    const auto lightSize = ScaledImageSize(screenVisuals_, strongKeyLightImage_);
-    const auto pressFlashSize = ScaledImageSize(screenVisuals_, keyPressFlashImage_);
+    strongKeyLightImage_ = visuals.RegisterImage(InGameSkinAssetPath(L"KeyLightStrong"));
+    weakKeyLightImage_ = visuals.RegisterImage(InGameSkinAssetPath(L"KeyLightWeak"));
+    keyPressFlashImage_ = visuals.RegisterImage(InGameSkinAssetPath(L"KeyPressFlash"));
+    const auto lightSize = ScaledImageSize(visuals, strongKeyLightImage_);
+    const auto pressFlashSize = ScaledImageSize(visuals, keyPressFlashImage_);
     for (std::size_t index = 0; index < keys.size(); ++index)
     {
         const Rect bounds{
             keys[index].bounds.x * InGameAssetScale,
-            inputPanelSize_.height - (keys[index].bounds.y + keys[index].bounds.height) * InGameAssetScale,
+            inputPanelSize.height - (keys[index].bounds.y + keys[index].bounds.height) * InGameAssetScale,
             keys[index].bounds.width * InGameAssetScale, keys[index].bounds.height * InGameAssetScale};
         auto &glow = CreateSprite(inputPanel,
                                                  {bounds.x - (lightSize.width - bounds.width) * 0.5F,
@@ -39,7 +42,7 @@ void GameplayPresenter::CreateKeyIndicators(Visual2DNode &inputPanel)
         glow.SetZIndex(1);
         keyGlows_[index] = &glow;
 
-        const auto keyImage = screenVisuals_.RegisterImage(InGameSkinAssetPath(keys[index].image));
+        const auto keyImage = visuals.RegisterImage(InGameSkinAssetPath(keys[index].image));
         auto &face = CreateSprite(inputPanel, bounds, keyImage, "Input.Key.Face");
         RequireComponent<SpriteVisualComponent>(face).SetTint(keys[index].baseColor);
         face.SetZIndex(2);
@@ -57,11 +60,12 @@ void GameplayPresenter::CreateKeyIndicators(Visual2DNode &inputPanel)
     }
 }
 
-void GameplayPresenter::UpdateInputPresentation(const InputState &input, const double deltaSeconds)
+void GameplayInputView::Update(
+    const ModeInputLayout& layout, const InputState &input, const double deltaSeconds)
 {
     for (std::size_t index = 0; index < keyIndicators_.size(); ++index)
     {
-        const auto &bindings = session_->InputLayout().bindings;
+        const auto &bindings = layout.bindings;
         if (index >= bindings.size() || bindings[index].keys.empty())
             continue;
         const auto &keys = bindings[index].keys;
@@ -103,4 +107,15 @@ void GameplayPresenter::UpdateInputPresentation(const InputState &input, const d
             keyPressFlashes_[index]->SetVisible(remaining > 0.0);
         }
     }
+}
+
+void GameplayInputView::Shutdown() noexcept
+{
+    keyIndicators_.fill(nullptr);
+    keyGlows_.fill(nullptr);
+    keyPressFlashes_.fill(nullptr);
+    keyPressFlashRemainingSeconds_.fill(0.0);
+    strongKeyLightImage_ = {};
+    weakKeyLightImage_ = {};
+    keyPressFlashImage_ = {};
 }

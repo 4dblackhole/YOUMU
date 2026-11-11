@@ -9,6 +9,7 @@
 #include "Presentation/LaneKeyBeam.h"
 #include "Texts/TextCatalog.h"
 #include "GameplayNoteVisibility.h"
+#include "GameplayInputView.h"
 #include <array>
 #include <unordered_map>
 
@@ -98,7 +99,6 @@ class GameplayPresenter final
     void CreateLaneVisuals(PhantomCore::Visual2DNode &gearRoot);
     void CreateLaneSurface();
     void UpdateLaneSurfaceLayout(const float laneLength);
-    void CreateKeyIndicators(PhantomCore::Visual2DNode &inputPanel);
     void CreateNoteVisuals();
     void CreateNoteVisual(const INote &);
     PhantomCore::ImageHandle NoteImage(std::wstring_view);
@@ -150,10 +150,7 @@ class GameplayPresenter final
     std::unordered_map<NoteId, RhythmTime>
         completionEffects_;
     std::vector<TimedVisual> measureLineVisuals_;
-    std::array<PhantomCore::Visual2DNode *, 4> keyIndicators_{};
-    std::array<PhantomCore::Visual2DNode *, 4> keyGlows_{};
-    std::array<PhantomCore::Visual2DNode *, 4> keyPressFlashes_{};
-    std::array<double, 4> keyPressFlashRemainingSeconds_{};
+    GameplayInputView inputView_;
     PhantomCore::Visual2DNode *background_{};
     PhantomCore::Visual2DNode *scrollGearRoot_{};
     PhantomCore::Visual2DNode *scrollGearBorder_{};
@@ -164,9 +161,6 @@ class GameplayPresenter final
     PhantomCore::Visual2DNode *noteRoot_{};
     std::vector<PhantomCore::Visual2DNode *> laneTiles_;
     PhantomCore::ImageHandle laneImage_{};
-    PhantomCore::ImageHandle strongKeyLightImage_{};
-    PhantomCore::ImageHandle weakKeyLightImage_{};
-    PhantomCore::ImageHandle keyPressFlashImage_{};
     PhantomCore::Visual2DNode *accuracyIndicator_{};
 #if defined(_DEBUG)
     PhantomCore::Visual2DNode *noteDebugLabel_{};

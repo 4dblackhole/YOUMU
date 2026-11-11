@@ -76,10 +76,7 @@ void GameplayPresenter::Shutdown() noexcept
     presentedNoteIds_.clear();
     completionEffects_.clear();
     measureLineVisuals_.clear();
-    keyIndicators_.fill(nullptr);
-    keyGlows_.fill(nullptr);
-    keyPressFlashes_.fill(nullptr);
-    keyPressFlashRemainingSeconds_.fill(0.0);
+    inputView_.Shutdown();
     background_ = nullptr;
     scrollGearRoot_ = nullptr;
     scrollGearBorder_ = nullptr;
@@ -92,9 +89,6 @@ void GameplayPresenter::Shutdown() noexcept
     pixelsPerWholeNote_ = 1.0F;
     laneTiles_.clear();
     laneImage_ = {};
-    strongKeyLightImage_ = {};
-    weakKeyLightImage_ = {};
-    keyPressFlashImage_ = {};
     accuracyIndicator_ = nullptr;
 #if defined(_DEBUG)
     noteDebugLabel_ = nullptr;
@@ -137,4 +131,9 @@ void GameplayPresenter::SetDebugVisible([[maybe_unused]] bool visible)
 #if defined(_DEBUG)
     if (noteDebugLabel_) noteDebugLabel_->SetVisible(visible);
 #endif
+}
+
+void GameplayPresenter::UpdateInputPresentation(const InputState& input, const double deltaSeconds)
+{
+    inputView_.Update(session_->InputLayout(), input, deltaSeconds);
 }

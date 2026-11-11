@@ -85,7 +85,7 @@ void GameplayPresenter::CreatePresentation()
         *inputPresentationRoot_, {0.0F, 0.0F, inputPanelSize_.width, inputPanelSize_.height},
         inputPanelImage, "Input.Panel");
     inputPanel_->SetZIndex(0);
-    CreateKeyIndicators(*inputPanel_);
+    inputView_.Initialize(screenVisuals_, *inputPanel_);
     statisticsView_.Initialize(screenVisuals_, root, *inputPanel_, texts_);
 
     UpdatePresentationLayout();
