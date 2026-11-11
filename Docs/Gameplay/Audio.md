@@ -23,6 +23,9 @@ Gameplay가 시작한 뒤 플레이 화면을 표시합니다. 소유권과 캐�
 [자원 로딩](../ResourceLoading.md)을 참고합니다.
 Controller는 2ms 주기로 Loading/Ready/Failed를 확인하며, 준비가 끝난 시점에 QPC/DSP를 고정하고
 음악을 예약합니다. 종료 Clip은 엔진 RetireClip으로 안전한 해제를 기다립니다.
+라우터 종료는 공유 참조 수가 아닌 등록 별칭의 마지막 소유를 기준으로 Clip을 한 번 퇴역시킵니다.
+Stop 실패나 예외로 전역 재생 관리자가 Voice를 보유하더라도 퇴역 등록은 생략하지 않습니다.
+종료된 Voice를 수거한 뒤에도 준비 중인 Clip은 오디오 서비스가 보관하고 Ready/Failed 뒤 해제합니다.
 히트사운드/음악 로딩 실패는 시작·재개를 막고 오류와 ESC 메뉴를 표시합니다.
 실패 후 Retry는 파일을 다시 로드하고 새 시도를 시작하며, 정상 Retry는 기존 자산을 재사용합니다.
 라우터는 성공한 자동화 값이 같으면 native setter를 반복하지 않고, Voice 종료 확인은

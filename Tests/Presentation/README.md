@@ -461,3 +461,11 @@ shared domain libraries, checks JSON/file references and actual session note cou
 and verifies existing files survive rejection. For an actual converter output, run
 `OsuImportValidationTests.exe <result.json> <Songs>`; playability verification belongs
 to the Client rather than the converter project.
+
+## Gameplay audio retirement
+
+`RunGameplayAudioRetirementTests.ps1 -Configuration Debug` (and Release) links the
+production router object with the public SDK. FMOD uses NoSound; injected test
+clips/voices exercise successful, failed and throwing Stop calls. After the last
+router alias and voice release a Loading clip, it must remain retired until Ready
+and then release exactly once. No production audio backend is added.
