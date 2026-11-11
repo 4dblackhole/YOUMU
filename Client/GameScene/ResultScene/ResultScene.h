@@ -7,18 +7,18 @@
 #include <memory>
 #include <future>
 class IResultView;
-class ResultScene final : public GameScene
+class ResultScene final : public PhantomCore::GameScene
 {
   public:
-    using RetryHandler = std::function<bool(SceneManager &)>;
-    ResultScene(std::unique_ptr<IPlayResult> result, ScreenVisual2DManager &visuals,
+    using RetryHandler = std::function<bool(PhantomCore::SceneManager &)>;
+    ResultScene(std::unique_ptr<IPlayResult> result, PhantomCore::ScreenVisual2DManager &visuals,
                 TextCatalog &texts, ResultViewContext context = {}, RetryHandler retry = {});
     ~ResultScene() override;
-    void Initialize(const EngineServices &services) override;
+    void Initialize(const PhantomCore::EngineServices &services) override;
     void BeginScene() override;
     void EndScene() noexcept override;
-    void Update(const UpdateContext &context, SceneManager &scenes) override;
-    void Render(const RenderContext &context) override;
+    void Update(const PhantomCore::UpdateContext &context, PhantomCore::SceneManager &scenes) override;
+    void Render(const PhantomCore::RenderContext &context) override;
     void OnResize(std::uint32_t width, std::uint32_t height) override;
     void Shutdown() noexcept override;
 
@@ -28,9 +28,9 @@ class ResultScene final : public GameScene
     std::unique_ptr<IResultView> view_;
     RetryHandler retry_;
     std::future<std::string> recordWrite_;
-    ScreenVisual2DManager &visuals_;
+    PhantomCore::ScreenVisual2DManager &visuals_;
     TextCatalog &texts_;
-    ScreenCanvasHandle recordStatusCanvas_;
-    Visual2DNode *recordStatus_{};
+    PhantomCore::ScreenCanvasHandle recordStatusCanvas_;
+    PhantomCore::Visual2DNode *recordStatus_{};
     std::string recordError_;
 };

@@ -16,11 +16,11 @@ class IEditorModeCanvas
     virtual ~IEditorModeCanvas() = default;
     // Device pixels per local drawing unit, including the editor's layout scale.
     virtual float PixelScale() const noexcept { return 1; }
-    virtual void Box(Rect, Color, float radius = 0) = 0;
-    virtual void Text(Rect, std::wstring, float size = 20,
-                      Color color = {.17F, .34F, .47F, 1}) = 0;
-    virtual void Image(Rect, const std::filesystem::path &, Color) = 0;
-    virtual void Button(Rect, std::wstring, std::function<void()>, bool selected = false) = 0;
+    virtual void Box(PhantomCore::Rect, PhantomCore::Color, float radius = 0) = 0;
+    virtual void Text(PhantomCore::Rect, std::wstring, float size = 20,
+                      PhantomCore::Color color = {.17F, .34F, .47F, 1}) = 0;
+    virtual void Image(PhantomCore::Rect, const std::filesystem::path &, PhantomCore::Color) = 0;
+    virtual void Button(PhantomCore::Rect, std::wstring, std::function<void()>, bool selected = false) = 0;
 };
 
 struct EditorSoundChoice
@@ -38,24 +38,24 @@ class IEditorMode : public IEditorAudioSource
     virtual std::unique_ptr<IEditorDocument> OpenDocument(
         const GameplayLaunchRequest &) const = 0;
     virtual void SelectTool(int) = 0;
-    virtual void HandleToolKeys(IEditorContext &, const InputState &)
+    virtual void HandleToolKeys(IEditorContext &, const PhantomCore::InputState &)
     {
     }
     virtual void PlaceNote(IEditorContext &, MusicalPosition) = 0;
     virtual bool HasPendingPlacement() const noexcept = 0;
     virtual bool CancelInteraction() noexcept = 0;
     virtual void CloseToolMenu() noexcept = 0;
-    virtual bool OpenToolMenu(Point) = 0;
+    virtual bool OpenToolMenu(PhantomCore::Point) = 0;
     virtual void DrawTools(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) = 0;
     virtual void DrawChart(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) = 0;
     virtual void DrawToolMenu(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) = 0;
-    virtual void EditScore(IEditorContext &, Point, bool erase) = 0;
+    virtual void EditScore(IEditorContext &, PhantomCore::Point, bool erase) = 0;
     virtual void ScrollScore(IEditorContext &, int direction) = 0;
-    virtual bool BeginScoreSelection(IEditorContext &, Point)
+    virtual bool BeginScoreSelection(IEditorContext &, PhantomCore::Point)
     {
         return false;
     }
-    virtual bool UpdateScoreSelection(IEditorContext &, Point, bool)
+    virtual bool UpdateScoreSelection(IEditorContext &, PhantomCore::Point, bool)
     {
         return false;
     }

@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <utility>
 
+using namespace PhantomCore;
+
 SkinVisualComponent::SkinVisualComponent(ScreenVisual2DManager &visuals, std::string scene, std::string key,
                                          VisualStyle base, float radius)
     : visuals_(visuals), scene_(std::move(scene)), key_(std::move(key)), base_(base), radius_(radius)

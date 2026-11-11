@@ -8,6 +8,8 @@
 #include <mutex>
 #include <thread>
 
+using namespace PhantomCore;
+
 struct EditorAnalysisJob
 {
     std::stop_source cancellation;

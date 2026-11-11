@@ -20,7 +20,7 @@ struct LanguageProfile
 {
     Language language{};
     std::wstring_view displayName;
-    TextFont font;
+    PhantomCore::TextFont font;
 };
 
 class TextCatalog final
@@ -46,8 +46,8 @@ class TextCatalog final
     [[nodiscard]] const LanguageProfile &CurrentProfile() const noexcept;
     [[nodiscard]] std::span<const LanguageProfile> Languages() const noexcept;
     void SetLanguage(Language language) noexcept;
-    void ApplyFont(TextVisualComponent &text) const;
-    void ApplyFont(ComboBoxBehaviorComponent &combo) const;
+    void ApplyFont(PhantomCore::TextVisualComponent &text) const;
+    void ApplyFont(PhantomCore::ComboBoxBehaviorComponent &combo) const;
 
   private:
     std::array<LanguageFile, 3> files_;

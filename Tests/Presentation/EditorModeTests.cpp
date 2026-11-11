@@ -14,6 +14,8 @@
 #include <stdexcept>
 #include <thread>
 
+using namespace PhantomCore;
+
 namespace
 {
     const TextCatalog &TestCatalog(Language language)

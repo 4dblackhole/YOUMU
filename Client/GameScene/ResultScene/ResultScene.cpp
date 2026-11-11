@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include "Records/PlayRecordStore.h"
 #include "Presentation/UiColors.h"
+using namespace PhantomCore;
+
 ResultScene::ResultScene(std::unique_ptr<IPlayResult> result,
                          ScreenVisual2DManager &visuals, TextCatalog &texts,
                          ResultViewContext context, RetryHandler retry)

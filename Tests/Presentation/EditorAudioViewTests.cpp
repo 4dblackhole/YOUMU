@@ -16,6 +16,10 @@
 #include <fstream>
 #include <thread>
 
+using namespace PhantomCore;
+
+namespace PhantomCore
+{
 struct InputStateTestAccess
 {
     static void Wheel(InputState &input, float delta)
@@ -36,6 +40,8 @@ struct InputStateTestAccess
         input.SetMouseButton(MouseButton::Left, true, 1);
     }
 };
+} // namespace PhantomCore
+
 
 namespace
 {

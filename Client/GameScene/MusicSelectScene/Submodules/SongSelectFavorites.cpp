@@ -1,6 +1,8 @@
 #include "MusicSelectView.h"
 #include "SongSelectionText.h"
 
+using namespace PhantomCore;
+
 void MusicSelectView::OpenFavoritesPanel()
 {
     SetSearchFocus(false);

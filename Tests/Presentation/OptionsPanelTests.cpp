@@ -7,10 +7,16 @@
 #include <fstream>
 #include <iostream>
 
+using namespace PhantomCore;
+
+namespace PhantomCore
+{
 struct InputStateTestAccess
 {
     static void Wheel(InputState &input, float delta) { input.Reset(); input.AddMouseWheel(delta, 1); }
 };
+} // namespace PhantomCore
+
 
 namespace
 {

@@ -16,13 +16,13 @@
 class LogoView final
 {
   public:
-    LogoView(ScreenVisual2DManager &screenVisuals,
+    LogoView(PhantomCore::ScreenVisual2DManager &screenVisuals,
              TextCatalog &texts, OptionSettings &options) noexcept;
 
-    void Initialize(const EngineServices &services);
+    void Initialize(const PhantomCore::EngineServices &services);
     void BeginScene();
     void EndScene() noexcept;
-    std::optional<std::size_t> Update(const InputState &input,
+    std::optional<std::size_t> Update(const PhantomCore::InputState &input,
                                       double deltaSeconds);
     void OnResize(std::uint32_t width, std::uint32_t height);
     void Shutdown() noexcept;
@@ -34,34 +34,34 @@ class LogoView final
     void ApplyTexts();
     void UpdateLogoStripLayout();
     void RefreshSkinImages();
-    void ProcessPointer(const InputState &input);
-    void UpdateSelectionFromPointer(const InputState &input);
-    void HandleKeyboard(const InputState &input);
+    void ProcessPointer(const PhantomCore::InputState &input);
+    void UpdateSelectionFromPointer(const PhantomCore::InputState &input);
+    void HandleKeyboard(const PhantomCore::InputState &input);
     [[nodiscard]] bool ApplyMenuActions();
     void SetSelectedMenuItem(std::size_t index);
     void ActivateMenuItem(std::size_t index);
-    [[nodiscard]] static bool HasPointerActivity(const InputState &input) noexcept;
+    [[nodiscard]] static bool HasPointerActivity(const PhantomCore::InputState &input) noexcept;
     [[nodiscard]] static std::int64_t LatestPointerTimestamp(
-        const InputState &input) noexcept;
+        const PhantomCore::InputState &input) noexcept;
 
     std::uint32_t width_{1280};
     std::uint32_t height_{720};
-    ScreenVisual2DManager &screenVisuals_;
+    PhantomCore::ScreenVisual2DManager &screenVisuals_;
     TextCatalog &texts_;
     OptionsPanel options_;
     std::uint64_t textRevision_{};
     std::uint64_t skinRevision_{};
-    ScreenCanvasHandle canvasHandle_;
-    Visual2DCanvas *canvas_{};
-    Visual2DInputRouter inputRouter_;
-    std::optional<Point> canvasPointer_;
-    Visual2DNode *logoStrip_{};
-    Visual2DNode *background_{};
-    Visual2DNode *leftFade_{};
-    Visual2DNode *centerLogo_{};
-    Visual2DNode *rightFade_{};
-    std::array<Visual2DNode *, 4> menuButtons_{};
-    std::array<NodeId, 4> menuButtonIds_{};
-    Visual2DNode *selectionCursor_{};
+    PhantomCore::ScreenCanvasHandle canvasHandle_;
+    PhantomCore::Visual2DCanvas *canvas_{};
+    PhantomCore::Visual2DInputRouter inputRouter_;
+    std::optional<PhantomCore::Point> canvasPointer_;
+    PhantomCore::Visual2DNode *logoStrip_{};
+    PhantomCore::Visual2DNode *background_{};
+    PhantomCore::Visual2DNode *leftFade_{};
+    PhantomCore::Visual2DNode *centerLogo_{};
+    PhantomCore::Visual2DNode *rightFade_{};
+    std::array<PhantomCore::Visual2DNode *, 4> menuButtons_{};
+    std::array<PhantomCore::NodeId, 4> menuButtonIds_{};
+    PhantomCore::Visual2DNode *selectionCursor_{};
     std::size_t selectedMenuIndex_{};
 };

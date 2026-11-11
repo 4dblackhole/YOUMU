@@ -3,6 +3,8 @@
 #include <limits>
 #include <numeric>
 
+using namespace PhantomCore;
+
 void GameplayPresenter::Initialize(const EngineServices &services,
                                    const PlaySession &session)
 {

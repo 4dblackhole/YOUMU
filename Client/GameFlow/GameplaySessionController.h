@@ -23,7 +23,7 @@ enum class PlayState
 class GameplaySessionController final
 {
   public:
-    GameplaySessionController(GameplayLaunchRequest request, AudioPlaybackManager &playback,
+    GameplaySessionController(GameplayLaunchRequest request, PhantomCore::AudioPlaybackManager &playback,
                               bool debug, std::unique_ptr<PlaySession> prepared = {})
         : launchRequest_(std::move(request)), session_(std::move(prepared)), audioRouter_(playback), debugMode_(debug)
     {
@@ -35,21 +35,21 @@ class GameplaySessionController final
     void InitializeSession();
     bool PrepareSession();
     bool SessionReady() const noexcept { return sessionInitialized_; }
-    AudioPreparationState PrepareAudioResources(AudioSystem &audio);
-    void Start(const EngineServices &services, RhythmTime initialTime);
-    void Update(const UpdateContext &context);
+    PhantomCore::AudioPreparationState PrepareAudioResources(PhantomCore::AudioSystem &audio);
+    void Start(const PhantomCore::EngineServices &services, RhythmTime initialTime);
+    void Update(const PhantomCore::UpdateContext &context);
     double PlaybackRate() const noexcept { return playbackRate_; }
-    void SetEditorTestRate(double rate, const UpdateContext &context);
+    void SetEditorTestRate(double rate, const PhantomCore::UpdateContext &context);
     PlayState CurrentState() const noexcept
     {
         return state_;
     }
-    void OpenPauseMenu(const UpdateContext &context);
+    void OpenPauseMenu(const PhantomCore::UpdateContext &context);
     // true means the command was accepted once. CurrentState remains Pause
     // until background-music preparation and the shared start deadline finish.
-    bool ResumeFromPause(const UpdateContext &context, RhythmDuration leadIn);
-    bool RewindFromPause(const UpdateContext &context, std::size_t measures);
-    void RetryFromPause(const UpdateContext &context);
+    bool ResumeFromPause(const PhantomCore::UpdateContext &context, RhythmDuration leadIn);
+    bool RewindFromPause(const PhantomCore::UpdateContext &context, std::size_t measures);
+    void RetryFromPause(const PhantomCore::UpdateContext &context);
     void RetireFromPause();
     bool PauseMenuOpen() const noexcept
     {
@@ -57,7 +57,7 @@ class GameplaySessionController final
     }
     bool CanContinue() const noexcept
     {
-        return state_ == PlayState::Pause && resourcePreparation_ == AudioPreparationState::Ready && !playbackRequested_;
+        return state_ == PlayState::Pause && resourcePreparation_ == PhantomCore::AudioPreparationState::Ready && !playbackRequested_;
     }
     void Shutdown() noexcept;
     const PlaySession &Session() const
@@ -88,29 +88,29 @@ class GameplaySessionController final
     static constexpr bool ReferenceTimeDebug = false;
 #endif
     std::vector<PhysicalKey> heldKeys_;
-    void InitializeAudio(AudioSystem &audio);
+    void InitializeAudio(PhantomCore::AudioSystem &audio);
     void ScheduleMetronome();
     std::size_t metronomeCursor_{};
-    void UpdateLoading(const UpdateContext &context);
-    void UpdateGameplay(const UpdateContext &context);
-    void UpdatePause(const UpdateContext &context);
-    bool PrepareResources(const UpdateContext &context);
-    void PrepareGameplay(const UpdateContext &context);
-    void ScheduleGameplay(const UpdateContext &context);
+    void UpdateLoading(const PhantomCore::UpdateContext &context);
+    void UpdateGameplay(const PhantomCore::UpdateContext &context);
+    void UpdatePause(const PhantomCore::UpdateContext &context);
+    bool PrepareResources(const PhantomCore::UpdateContext &context);
+    void PrepareGameplay(const PhantomCore::UpdateContext &context);
+    void ScheduleGameplay(const PhantomCore::UpdateContext &context);
     void FailPlaybackPreparation();
     void EnterEnding(PlayEndReason reason);
     void PauseAt(std::int64_t ticks, bool menuShown);
-    bool ContinueAt(const UpdateContext &context, RhythmTime target,
+    bool ContinueAt(const PhantomCore::UpdateContext &context, RhythmTime target,
                     PlayControlType action);
     void ResetTimeline();
-    void ProcessControlKeys(const UpdateContext &context);
-    void ToggleDebugTimeline(const UpdateContext &context, std::int64_t ticks);
-    void ProcessDebugTimeline(const InputState &input, const AudioClockSnapshot &clock,
+    void ProcessControlKeys(const PhantomCore::UpdateContext &context);
+    void ToggleDebugTimeline(const PhantomCore::UpdateContext &context, std::int64_t ticks);
+    void ProcessDebugTimeline(const PhantomCore::InputState &input, const PhantomCore::AudioClockSnapshot &clock,
                               const double deltaSeconds);
-    void ProcessRhythmInput(const UpdateContext &context, std::optional<std::int64_t> exitTicks);
-    void UpdateBeforeInput(const InputState &input, std::size_t eventIndex,
+    void ProcessRhythmInput(const PhantomCore::UpdateContext &context, std::optional<std::int64_t> exitTicks);
+    void UpdateBeforeInput(const PhantomCore::InputState &input, std::size_t eventIndex,
                            RhythmTime time);
-    void UpdateSession(const InputState &input, const RhythmTime time,
+    void UpdateSession(const PhantomCore::InputState &input, const RhythmTime time,
                        bool beforeExit = false);
     bool IsPatternComplete() const noexcept;
     void ConsumeResult(NoteProcessResult result, bool pressed = false);
@@ -125,7 +125,7 @@ class GameplaySessionController final
     RhythmTime initialTime_{-2'000'000};
     PlayState state_{PlayState::Loading};
     std::unique_ptr<IPlayResult> result_;
-    std::optional<AudioClockSnapshot> playbackStart_;
+    std::optional<PhantomCore::AudioClockSnapshot> playbackStart_;
     std::int64_t gameplayStartTicks_{};
     std::string initializationError_;
     double completedElapsedSeconds_{};
@@ -133,7 +133,7 @@ class GameplaySessionController final
     RhythmTime testEndTime_{};
     bool musicRegistered_{};
     bool audioInitialized_{}, playbackRequested_{};
-    AudioPreparationState resourcePreparation_{AudioPreparationState::Loading};
+    PhantomCore::AudioPreparationState resourcePreparation_{PhantomCore::AudioPreparationState::Loading};
     double nextAudioPreparationPoll_{};
     bool debugMode_{};
     bool pauseMenuOpen_{};

@@ -13,11 +13,11 @@ class SongSelectionState;
 class MusicSelectView;
 class SongPreviewController;
 
-class MusicSelectScene final : public GameScene
+class MusicSelectScene final : public PhantomCore::GameScene
 {
   public:
-    explicit MusicSelectScene(ScreenVisual2DManager &screenVisuals,
-                              AudioPlaybackManager &audioPlayback,
+    explicit MusicSelectScene(PhantomCore::ScreenVisual2DManager &screenVisuals,
+                              PhantomCore::AudioPlaybackManager &audioPlayback,
                               std::shared_ptr<GameplayLaunchStore> launchRequest,
                               SongSelectPurpose purpose,
                               TextCatalog &texts,
@@ -25,21 +25,21 @@ class MusicSelectScene final : public GameScene
 
     ~MusicSelectScene() override;
 
-    void Initialize(const EngineServices &services) override;
+    void Initialize(const PhantomCore::EngineServices &services) override;
     void BeginScene() override;
     void EndScene() noexcept override;
-    void Update(const UpdateContext &context, SceneManager &scenes) override;
-    void Render(const RenderContext &context) override;
+    void Update(const PhantomCore::UpdateContext &context, PhantomCore::SceneManager &scenes) override;
+    void Render(const PhantomCore::RenderContext &context) override;
     void OnResize(std::uint32_t width, std::uint32_t height) override;
     void Shutdown() noexcept override;
 
   private:
-    bool StartSelectedPattern(SceneManager &scenes);
-    void CreateDifficulty(SceneManager &scenes);
+    bool StartSelectedPattern(PhantomCore::SceneManager &scenes);
+    void CreateDifficulty(PhantomCore::SceneManager &scenes);
     void ConvertOsu();
     void PollOsuImport();
     void RefreshCatalog();
-    void PollPatternLoad(SceneManager &scenes);
+    void PollPatternLoad(PhantomCore::SceneManager &scenes);
     std::shared_ptr<GameplayLaunchStore> launchRequest_;
     SongSelectPurpose purpose_;
     OptionSettings &options_;

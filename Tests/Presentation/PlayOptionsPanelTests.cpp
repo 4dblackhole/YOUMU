@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
+using namespace PhantomCore;
+
 namespace
 {
     void Check(bool value, const char *message)

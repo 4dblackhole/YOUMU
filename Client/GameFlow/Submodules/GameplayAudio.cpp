@@ -4,6 +4,8 @@
 #include "Taiko/Submodules/TaikoSoundIds.h"
 #include <array>
 #include <map>
+using namespace PhantomCore;
+
 namespace
 {
     void RegisterTaikoSounds(GameplayAudioRouter &router, std::string &errorMessage);

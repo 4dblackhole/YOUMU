@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <utility>
 
+using namespace PhantomCore;
+
 MarqueeTextComponent::MarqueeTextComponent(std::wstring text, const double secondsPerCharacter)
     : text_(std::move(text)), secondsPerCharacter_(std::max(secondsPerCharacter, 0.05))
 {

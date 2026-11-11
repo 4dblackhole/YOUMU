@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cmath>
 
+using namespace PhantomCore;
+
 void PlayOptionsPanel::SetViewport(std::uint32_t height)
 {
     height_ = height;

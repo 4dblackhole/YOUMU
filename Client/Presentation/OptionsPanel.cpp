@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+using namespace PhantomCore;
+
 using namespace options_ui;
 
 void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio,

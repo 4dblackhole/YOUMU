@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
+using namespace PhantomCore;
+
 using namespace editor_ui;
 
 namespace

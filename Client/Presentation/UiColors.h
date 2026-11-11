@@ -5,29 +5,29 @@
 // note/judgement colors remain owned by their gameplay presentation policy.
 namespace ui_colors
 {
-    constexpr Color Rgb(unsigned rgb, float alpha = 1)
+    constexpr PhantomCore::Color Rgb(unsigned rgb, float alpha = 1)
     {
         return {static_cast<float>((rgb >> 16) & 255) / 255, static_cast<float>((rgb >> 8) & 255) / 255,
                 static_cast<float>(rgb & 255) / 255, alpha};
     }
-    inline constexpr Color White{1, 1, 1, 1}, Ink{.08F, .28F, .52F, 1}, Error{.75F, .17F, .21F, 1};
+    inline constexpr PhantomCore::Color White{1, 1, 1, 1}, Ink{.08F, .28F, .52F, 1}, Error{.75F, .17F, .21F, 1};
     inline constexpr auto ClearBackground = Rgb(0xF0F8FF);
     namespace sky
     {
-        inline constexpr Color Background{.918F, .965F, 1, 1}, Surface{.976F, .992F, 1, .98F};
-        inline constexpr Color Accent{.310F, .624F, .878F, 1}, AccentHover{.365F, .690F, .930F, 1};
-        inline constexpr Color Border{.569F, .769F, .890F, 1}, PaleBorder{.725F, .851F, .929F, 1};
-        inline constexpr Color Pale{.937F, .973F, .996F, 1}, Viewport{.933F, .973F, .992F, .62F};
-        inline constexpr Color Focus{.906F, .965F, 1, 1}, Row{.929F, .973F, .996F, 1};
-        inline constexpr Color Ink{.157F, .325F, .455F, 1}, Muted{.290F, .471F, .592F, 1};
-        inline constexpr Color SoftText{.455F, .659F, .784F, 1}, Disabled{.70F, .78F, .84F, .55F};
+        inline constexpr PhantomCore::Color Background{.918F, .965F, 1, 1}, Surface{.976F, .992F, 1, .98F};
+        inline constexpr PhantomCore::Color Accent{.310F, .624F, .878F, 1}, AccentHover{.365F, .690F, .930F, 1};
+        inline constexpr PhantomCore::Color Border{.569F, .769F, .890F, 1}, PaleBorder{.725F, .851F, .929F, 1};
+        inline constexpr PhantomCore::Color Pale{.937F, .973F, .996F, 1}, Viewport{.933F, .973F, .992F, .62F};
+        inline constexpr PhantomCore::Color Focus{.906F, .965F, 1, 1}, Row{.929F, .973F, .996F, 1};
+        inline constexpr PhantomCore::Color Ink{.157F, .325F, .455F, 1}, Muted{.290F, .471F, .592F, 1};
+        inline constexpr PhantomCore::Color SoftText{.455F, .659F, .784F, 1}, Disabled{.70F, .78F, .84F, .55F};
     } // namespace sky
     namespace logo
     {
-        inline constexpr Color Selected{.22F, .56F, .88F, .94F}, SelectedHover{.30F, .66F, .96F, 1};
-        inline constexpr Color SelectedPressed{.12F, .39F, .72F, 1}, SelectedDisabled{.20F, .35F, .52F, .55F};
-        inline constexpr Color Button{.78F, .89F, .98F, .88F}, Pressed{.20F, .48F, .78F, 1};
-        inline constexpr Color Disabled{.55F, .64F, .72F, .50F};
+        inline constexpr PhantomCore::Color Selected{.22F, .56F, .88F, .94F}, SelectedHover{.30F, .66F, .96F, 1};
+        inline constexpr PhantomCore::Color SelectedPressed{.12F, .39F, .72F, 1}, SelectedDisabled{.20F, .35F, .52F, .55F};
+        inline constexpr PhantomCore::Color Button{.78F, .89F, .98F, .88F}, Pressed{.20F, .48F, .78F, 1};
+        inline constexpr PhantomCore::Color Disabled{.55F, .64F, .72F, .50F};
     } // namespace logo
     namespace options
     {
@@ -38,8 +38,8 @@ namespace ui_colors
     } // namespace options
     namespace editor
     {
-        inline constexpr Color Background{.914F, .961F, 1, 1}, Paper{.973F, .988F, 1, 1};
-        inline constexpr Color Ink{.17F, .34F, .47F, 1}, Accent{.31F, .62F, .88F, 1}, Pale{.82F, .91F, .96F, 1};
+        inline constexpr PhantomCore::Color Background{.914F, .961F, 1, 1}, Paper{.973F, .988F, 1, 1};
+        inline constexpr PhantomCore::Color Ink{.17F, .34F, .47F, 1}, Accent{.31F, .62F, .88F, 1}, Pale{.82F, .91F, .96F, 1};
     } // namespace editor
     namespace result
     {

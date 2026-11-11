@@ -15,14 +15,14 @@
 class GameplayPresenter final
 {
   public:
-    GameplayPresenter(ScreenVisual2DManager &visuals,
+    GameplayPresenter(PhantomCore::ScreenVisual2DManager &visuals,
                       TextCatalog &texts)
         : screenVisuals_(visuals), texts_(texts)
     {
     }
-    void Initialize(const EngineServices &services,
+    void Initialize(const PhantomCore::EngineServices &services,
                     const PlaySession &session);
-    bool PrepareAssets(const EngineServices &services);
+    bool PrepareAssets(const PhantomCore::EngineServices &services);
     void ConfigureBackground(std::filesystem::path path, double x, double y)
     {
         backgroundPath_ = std::move(path);
@@ -45,12 +45,12 @@ class GameplayPresenter final
     void UpdateHp(double percent) { hpView_.Update(percent); }
     void SetDebugVisible(bool visible);
     [[nodiscard]] RhythmTime InitialTimelineTime() const;
-    void UpdateInputPresentation(const InputState &input, const double deltaSeconds);
+    void UpdateInputPresentation(const PhantomCore::InputState &input, const double deltaSeconds);
 
   private:
-    ImageHandle backgroundImage_{};
-    Size backgroundSize_{};
-    Point backgroundOffset_{};
+    PhantomCore::ImageHandle backgroundImage_{};
+    PhantomCore::Size backgroundSize_{};
+    PhantomCore::Point backgroundOffset_{};
     std::filesystem::path backgroundPath_;
     std::string backgroundWarning_;
     enum class FocusNoteType : std::uint8_t
@@ -63,30 +63,30 @@ class GameplayPresenter final
     struct TimedVisual
     {
         RhythmTime timing{};
-        Visual2DNode *node{};
+        PhantomCore::Visual2DNode *node{};
     };
 
     struct NoteVisualLayers
     {
-        Visual2DNode *root{};
-        Visual2DNode *ambient{};
-        Visual2DNode *overlay{};
-        Visual2DNode *body{};
-        Visual2DNode *bodyOverlay{};
-        Visual2DNode *tail{};
-        Visual2DNode *tailOverlay{};
-        Visual2DNode *processing{};
-        Visual2DNode *success{};
-        Visual2DNode *counter{};
-        Visual2DNode *counterText{};
+        PhantomCore::Visual2DNode *root{};
+        PhantomCore::Visual2DNode *ambient{};
+        PhantomCore::Visual2DNode *overlay{};
+        PhantomCore::Visual2DNode *body{};
+        PhantomCore::Visual2DNode *bodyOverlay{};
+        PhantomCore::Visual2DNode *tail{};
+        PhantomCore::Visual2DNode *tailOverlay{};
+        PhantomCore::Visual2DNode *processing{};
+        PhantomCore::Visual2DNode *success{};
+        PhantomCore::Visual2DNode *counter{};
+        PhantomCore::Visual2DNode *counterText{};
         std::vector<TimedVisual> ticks;
-        ImageHandle tickImage{};
-        Size tickSize{};
+        PhantomCore::ImageHandle tickImage{};
+        PhantomCore::Size tickSize{};
         RhythmTime timing{};
         RhythmTime endTime{};
         FocusNoteType focusType{FocusNoteType::None};
-        Size processingSize{};
-        Size successSize{};
+        PhantomCore::Size processingSize{};
+        PhantomCore::Size successSize{};
         float diameter{};
         float bodyWidth{};
         float tailWidth{};
@@ -95,13 +95,13 @@ class GameplayPresenter final
     };
 
     void CreatePresentation();
-    void CreateLaneVisuals(Visual2DNode &gearRoot);
+    void CreateLaneVisuals(PhantomCore::Visual2DNode &gearRoot);
     void CreateLaneSurface();
     void UpdateLaneSurfaceLayout(const float laneLength);
-    void CreateKeyIndicators(Visual2DNode &inputPanel);
+    void CreateKeyIndicators(PhantomCore::Visual2DNode &inputPanel);
     void CreateNoteVisuals();
     void CreateNoteVisual(const INote &);
-    ImageHandle NoteImage(std::wstring_view);
+    PhantomCore::ImageHandle NoteImage(std::wstring_view);
     void UpdateMeasureLines(RhythmTime, bool);
     void UpdateTickVisuals(NoteVisualLayers &, const NotePresentationInfo &,
                            RhythmTime, RhythmTime, std::size_t);
@@ -111,7 +111,7 @@ class GameplayPresenter final
                                      float multiplier = 1.0F) const noexcept;
     float TravelPixelsAt(RhythmTime target, RhythmTime current,
                          float multiplier = 1) const;
-    [[nodiscard]] Point LaneObjectPosition(RhythmTime target,
+    [[nodiscard]] PhantomCore::Point LaneObjectPosition(RhythmTime target,
                                                           RhythmTime current,
                                                           float multiplier) const;
     void HideTransientNoteVisuals();
@@ -130,10 +130,10 @@ class GameplayPresenter final
     void PresentJudgementFeedback(const GameplayFeedback &feedback);
     std::uint32_t width_{1280};
     std::uint32_t height_{720};
-    ScreenVisual2DManager &screenVisuals_;
+    PhantomCore::ScreenVisual2DManager &screenVisuals_;
     TextCatalog &texts_;
-    ScreenCanvasHandle canvasHandle_;
-    Visual2DCanvas *canvas_{};
+    PhantomCore::ScreenCanvasHandle canvasHandle_;
+    PhantomCore::Visual2DCanvas *canvas_{};
     const PlaySession *session_{};
     LaneKeyBeam keyBeam_;
     GameplayJudgementView judgementView_;
@@ -142,7 +142,7 @@ class GameplayPresenter final
     GameplayStatisticsView statisticsView_;
     std::unordered_map<NoteId, NoteVisualLayers> noteVisuals_;
     GameplayNoteVisibility visibility_;
-    std::map<std::wstring, ImageHandle, std::less<>> noteImages_;
+    std::map<std::wstring, PhantomCore::ImageHandle, std::less<>> noteImages_;
     std::vector<std::filesystem::path> preparingImages_;
     float largestHeadRadius_{};
     std::vector<NoteId> presentedNoteIds_;
@@ -150,32 +150,32 @@ class GameplayPresenter final
     std::unordered_map<NoteId, RhythmTime>
         completionEffects_;
     std::vector<TimedVisual> measureLineVisuals_;
-    std::array<Visual2DNode *, 4> keyIndicators_{};
-    std::array<Visual2DNode *, 4> keyGlows_{};
-    std::array<Visual2DNode *, 4> keyPressFlashes_{};
+    std::array<PhantomCore::Visual2DNode *, 4> keyIndicators_{};
+    std::array<PhantomCore::Visual2DNode *, 4> keyGlows_{};
+    std::array<PhantomCore::Visual2DNode *, 4> keyPressFlashes_{};
     std::array<double, 4> keyPressFlashRemainingSeconds_{};
-    Visual2DNode *background_{};
-    Visual2DNode *scrollGearRoot_{};
-    Visual2DNode *scrollGearBorder_{};
-    Visual2DNode *scrollGearSurface_{};
-    Visual2DNode *inputPresentationRoot_{};
-    Visual2DNode *inputPanel_{};
-    Visual2DNode *laneRoot_{};
-    Visual2DNode *noteRoot_{};
-    std::vector<Visual2DNode *> laneTiles_;
-    ImageHandle laneImage_{};
-    ImageHandle strongKeyLightImage_{};
-    ImageHandle weakKeyLightImage_{};
-    ImageHandle keyPressFlashImage_{};
-    Visual2DNode *accuracyIndicator_{};
+    PhantomCore::Visual2DNode *background_{};
+    PhantomCore::Visual2DNode *scrollGearRoot_{};
+    PhantomCore::Visual2DNode *scrollGearBorder_{};
+    PhantomCore::Visual2DNode *scrollGearSurface_{};
+    PhantomCore::Visual2DNode *inputPresentationRoot_{};
+    PhantomCore::Visual2DNode *inputPanel_{};
+    PhantomCore::Visual2DNode *laneRoot_{};
+    PhantomCore::Visual2DNode *noteRoot_{};
+    std::vector<PhantomCore::Visual2DNode *> laneTiles_;
+    PhantomCore::ImageHandle laneImage_{};
+    PhantomCore::ImageHandle strongKeyLightImage_{};
+    PhantomCore::ImageHandle weakKeyLightImage_{};
+    PhantomCore::ImageHandle keyPressFlashImage_{};
+    PhantomCore::Visual2DNode *accuracyIndicator_{};
 #if defined(_DEBUG)
-    Visual2DNode *noteDebugLabel_{};
+    PhantomCore::Visual2DNode *noteDebugLabel_{};
 #endif
-    Visual2DNode *errorLabel_{};
+    PhantomCore::Visual2DNode *errorLabel_{};
     float laneWidth_{152.0F};
     float laneTileLength_{42.0F};
     float judgementLocalY_{76.0F};
     float noteTravelDistance_{1.0F};
     float pixelsPerWholeNote_{1.0F};
-    Size inputPanelSize_{152.0F, 152.0F};
+    PhantomCore::Size inputPanelSize_{152.0F, 152.0F};
 };

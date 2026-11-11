@@ -12,7 +12,7 @@ namespace options_ui
     constexpr auto HeadingColor = ui_colors::Ink, LabelColor = ui_colors::options::Label;
     constexpr auto FieldColor = ui_colors::options::Field, FieldHoverColor = ui_colors::options::Hover;
 
-    template <typename Component> [[nodiscard]] Component &RequireComponent(Visual2DNode &node)
+    template <typename Component> [[nodiscard]] Component &RequireComponent(PhantomCore::Visual2DNode &node)
     {
         Component *component = node.GetComponent<Component>();
         if (component == nullptr)
@@ -22,23 +22,23 @@ namespace options_ui
         return *component;
     }
 
-    inline void SetPanelColor(Visual2DNode &node, const Color color)
+    inline void SetPanelColor(PhantomCore::Visual2DNode &node, const PhantomCore::Color color)
     {
-        VisualStyle style{};
+        PhantomCore::VisualStyle style{};
         style.normal = style.hovered = style.pressed = style.disabled = color;
-        RequireComponent<SpriteVisualComponent>(node).SetStyle(style);
+        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetStyle(style);
     }
 
-    inline void ConfigureCombo(Visual2DNode &node, const std::size_t visibleItems)
+    inline void ConfigureCombo(PhantomCore::Visual2DNode &node, const std::size_t visibleItems)
     {
         node.SetZIndex(10);
-        VisualStyle style{};
+        PhantomCore::VisualStyle style{};
         style.normal = FieldColor;
         style.hovered = FieldHoverColor;
         style.pressed = ui_colors::options::Pressed;
         style.disabled = ui_colors::options::Disabled;
-        RequireComponent<SpriteVisualComponent>(node).SetStyle(style);
-        auto &combo = RequireComponent<ComboBoxBehaviorComponent>(node);
+        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetStyle(style);
+        auto &combo = RequireComponent<PhantomCore::ComboBoxBehaviorComponent>(node);
         combo.SetMaxVisibleItems(visibleItems);
         combo.SetItemHeight(42.0F);
         combo.SetFontSize(19.0F);
@@ -58,32 +58,32 @@ namespace options_ui
         return result;
     }
 
-    inline Visual2DNode &CreateFieldLabel(Visual2DNode &parent, float y, float width,
+    inline PhantomCore::Visual2DNode &CreateFieldLabel(PhantomCore::Visual2DNode &parent, float y, float width,
                                                          std::string name)
     {
-        auto &node = CreateLabel(parent, {24.0F, y, width - 48.0F, 28.0F}, L"", std::move(name));
-        auto &text = RequireComponent<TextVisualComponent>(node);
+        auto &node = PhantomCore::CreateLabel(parent, {24.0F, y, width - 48.0F, 28.0F}, L"", std::move(name));
+        auto &text = RequireComponent<PhantomCore::TextVisualComponent>(node);
         text.SetFontSize(18.0F);
         text.SetTextColor(LabelColor);
         return node;
     }
 
-    inline std::wstring OutputName(AudioOutputBackend output, const OptionTextSet &text)
+    inline std::wstring OutputName(PhantomCore::AudioOutputBackend output, const OptionTextSet &text)
     {
 
         switch (output)
         {
-        case AudioOutputBackend::Automatic:
+        case PhantomCore::AudioOutputBackend::Automatic:
             return std::wstring(text.automatic);
-        case AudioOutputBackend::Wasapi:
+        case PhantomCore::AudioOutputBackend::Wasapi:
             return std::wstring(text.outputWasapi);
-        case AudioOutputBackend::Asio:
+        case PhantomCore::AudioOutputBackend::Asio:
             return std::wstring(text.outputAsio);
         default:
             return std::wstring(text.noSound);
         }
     }
 
-    constexpr std::array Outputs{AudioOutputBackend::Automatic, AudioOutputBackend::Wasapi,
-                                 AudioOutputBackend::Asio};
+    constexpr std::array Outputs{PhantomCore::AudioOutputBackend::Automatic, PhantomCore::AudioOutputBackend::Wasapi,
+                                 PhantomCore::AudioOutputBackend::Asio};
 } // namespace options_ui

@@ -3,6 +3,6 @@
 #include "Texts/TextCatalog.h"
 #include <functional>
 
-void TestEditorModes(ScreenVisual2DManager &, const EngineServices &,
+void TestEditorModes(PhantomCore::ScreenVisual2DManager &, const PhantomCore::EngineServices &,
                      TextCatalog &,
-                     const std::function<const std::vector<DrawPacket> &()> &);
+                     const std::function<const std::vector<PhantomCore::DrawPacket> &()> &);

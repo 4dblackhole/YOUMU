@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cmath>
 
+using namespace PhantomCore;
+
 namespace
 {
     constexpr double MinimumRate = GameplayLaunchRequest::EditorTestMinimumRate,

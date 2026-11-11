@@ -54,38 +54,38 @@ namespace song_select
 
     namespace layout
     {
-        constexpr Size CanvasSize{1280.0F, 720.0F};
-        constexpr Rect DesignBoard{0.0F, 0.0F, 1920.0F, 1080.0F};
+        constexpr PhantomCore::Size CanvasSize{1280.0F, 720.0F};
+        constexpr PhantomCore::Rect DesignBoard{0.0F, 0.0F, 1920.0F, 1080.0F};
 
-        constexpr Rect CategoryBar{54.0F, 20.0F, 1285.71F, 56.0F};
-        constexpr Rect AllCategory{16.0F, 9.0F, 86.0F, 38.0F};
+        constexpr PhantomCore::Rect CategoryBar{54.0F, 20.0F, 1285.71F, 56.0F};
+        constexpr PhantomCore::Rect AllCategory{16.0F, 9.0F, 86.0F, 38.0F};
 
-        constexpr Rect RecordPanel{54.0F, 94.0F, 506.29F, 852.0F};
-        constexpr Rect RecordSelector{22.0F, 22.0F, 462.29F, 44.0F};
-        constexpr Rect EmptyRecordMessage{22.0F, 400.0F, 462.29F, 54.0F};
+        constexpr PhantomCore::Rect RecordPanel{54.0F, 94.0F, 506.29F, 852.0F};
+        constexpr PhantomCore::Rect RecordSelector{22.0F, 22.0F, 462.29F, 44.0F};
+        constexpr PhantomCore::Rect EmptyRecordMessage{22.0F, 400.0F, 462.29F, 54.0F};
 
-        constexpr Rect InformationPanel{580.29F, 94.0F, 759.43F, 852.0F};
-        constexpr Rect Preview{24.0F, 24.0F, 360.0F, 360.0F};
-        constexpr Rect PreviewTitle{54.0F, 190.0F, 300.0F, 28.0F};
-        constexpr Rect PreviewEmpty{54.0F, 224.0F, 300.0F, 20.0F};
-        constexpr Rect SelectedSong{404.0F, 38.0F, 331.43F, 96.0F};
-        constexpr Rect SelectedArtist{404.0F, 146.0F, 331.43F, 66.0F};
-        constexpr Rect DifficultyInformation{404.0F, 236.0F, 331.43F, 264.0F};
-        constexpr Rect DifficultyHeading{16.0F, 14.0F, 145.0F, 16.0F};
-        constexpr Rect CreatorHeading{169.71F, 14.0F, 145.0F, 16.0F};
-        constexpr Rect SelectedDifficulty{16.0F, 32.0F, 145.0F, 28.0F};
-        constexpr Rect SelectedCreator{169.71F, 32.0F, 145.0F, 72.0F};
-        constexpr Rect InformationDivider{16.0F, 114.0F, 299.43F, 1.0F};
-        constexpr Rect SelectedDetails{16.0F, 130.0F, 299.43F, 22.0F};
-        constexpr Rect ExtraDetails{16.0F, 156.0F, 299.43F, 96.0F};
+        constexpr PhantomCore::Rect InformationPanel{580.29F, 94.0F, 759.43F, 852.0F};
+        constexpr PhantomCore::Rect Preview{24.0F, 24.0F, 360.0F, 360.0F};
+        constexpr PhantomCore::Rect PreviewTitle{54.0F, 190.0F, 300.0F, 28.0F};
+        constexpr PhantomCore::Rect PreviewEmpty{54.0F, 224.0F, 300.0F, 20.0F};
+        constexpr PhantomCore::Rect SelectedSong{404.0F, 38.0F, 331.43F, 96.0F};
+        constexpr PhantomCore::Rect SelectedArtist{404.0F, 146.0F, 331.43F, 66.0F};
+        constexpr PhantomCore::Rect DifficultyInformation{404.0F, 236.0F, 331.43F, 264.0F};
+        constexpr PhantomCore::Rect DifficultyHeading{16.0F, 14.0F, 145.0F, 16.0F};
+        constexpr PhantomCore::Rect CreatorHeading{169.71F, 14.0F, 145.0F, 16.0F};
+        constexpr PhantomCore::Rect SelectedDifficulty{16.0F, 32.0F, 145.0F, 28.0F};
+        constexpr PhantomCore::Rect SelectedCreator{169.71F, 32.0F, 145.0F, 72.0F};
+        constexpr PhantomCore::Rect InformationDivider{16.0F, 114.0F, 299.43F, 1.0F};
+        constexpr PhantomCore::Rect SelectedDetails{16.0F, 130.0F, 299.43F, 22.0F};
+        constexpr PhantomCore::Rect ExtraDetails{16.0F, 156.0F, 299.43F, 96.0F};
 
-        constexpr Rect BrowserPanel{1359.71F, 20.0F, 506.29F, 926.0F};
-        constexpr Rect SearchField{14.0F, 22.0F, 478.29F, 54.0F};
-        constexpr Rect SearchCount{365.0F, 0.0F, 96.0F, 54.0F};
-        constexpr Rect SortSelector{14.0F, 88.0F, 478.29F, 42.0F};
-        constexpr Rect SongViewport{14.0F, 142.0F, 478.29F, 734.0F};
-        constexpr Rect EmptySongMessage{28.0F, 320.0F, 422.29F, 46.0F};
-        constexpr Rect BrowserHint{18.0F, 884.0F, 470.29F, 22.0F};
+        constexpr PhantomCore::Rect BrowserPanel{1359.71F, 20.0F, 506.29F, 926.0F};
+        constexpr PhantomCore::Rect SearchField{14.0F, 22.0F, 478.29F, 54.0F};
+        constexpr PhantomCore::Rect SearchCount{365.0F, 0.0F, 96.0F, 54.0F};
+        constexpr PhantomCore::Rect SortSelector{14.0F, 88.0F, 478.29F, 42.0F};
+        constexpr PhantomCore::Rect SongViewport{14.0F, 142.0F, 478.29F, 734.0F};
+        constexpr PhantomCore::Rect EmptySongMessage{28.0F, 320.0F, 422.29F, 46.0F};
+        constexpr PhantomCore::Rect BrowserHint{18.0F, 884.0F, 470.29F, 22.0F};
 
         constexpr float ContentLeft = 8.0F;
         constexpr float ContentTop = 14.0F;
@@ -97,28 +97,28 @@ namespace song_select
         constexpr float DifficultyRowHeight = 34.0F;
         constexpr float DifficultyRowStep = 42.0F;
         constexpr float ScrollStep = 84.0F;
-        constexpr Rect ScrollbarTrack{469.29F, 14.0F, 5.0F, 706.0F};
+        constexpr PhantomCore::Rect ScrollbarTrack{469.29F, 14.0F, 5.0F, 706.0F};
 
-        constexpr Rect OptionButton{612.0F, 972.0F, 696.0F, 60.0F};
-        constexpr Rect BackButton{-24.0F, 1006.0F, 280.0F, 82.0F};
-        constexpr Rect BackLabel{34.0F, 10.0F, 210.0F, 44.0F};
-        constexpr Rect GoButton{1664.0F, 1006.0F, 280.0F, 82.0F};
-        constexpr Rect GoLabel{36.0F, 10.0F, 208.0F, 44.0F};
+        constexpr PhantomCore::Rect OptionButton{612.0F, 972.0F, 696.0F, 60.0F};
+        constexpr PhantomCore::Rect BackButton{-24.0F, 1006.0F, 280.0F, 82.0F};
+        constexpr PhantomCore::Rect BackLabel{34.0F, 10.0F, 210.0F, 44.0F};
+        constexpr PhantomCore::Rect GoButton{1664.0F, 1006.0F, 280.0F, 82.0F};
+        constexpr PhantomCore::Rect GoLabel{36.0F, 10.0F, 208.0F, 44.0F};
     } // namespace layout
 
     struct ResponsiveSongSelectLayout
     {
-        Rect background;
-        Rect category;
-        Rect record;
-        Rect information;
-        Rect browser;
-        Rect option;
-        Rect back;
-        Rect go;
+        PhantomCore::Rect background;
+        PhantomCore::Rect category;
+        PhantomCore::Rect record;
+        PhantomCore::Rect information;
+        PhantomCore::Rect browser;
+        PhantomCore::Rect option;
+        PhantomCore::Rect back;
+        PhantomCore::Rect go;
     };
 
-    [[nodiscard]] constexpr Rect CanvasTopLeftBounds(const float x, const float top,
+    [[nodiscard]] constexpr PhantomCore::Rect CanvasTopLeftBounds(const float x, const float top,
                                                                     const float width,
                                                                     const float height) noexcept
     {
@@ -210,7 +210,7 @@ namespace song_select
     static_assert(EditorReferenceLayout.information.x + EditorReferenceLayout.information.width <
                   EditorReferenceLayout.browser.x);
 
-    [[nodiscard]] inline Rect ScaleTopLeftBounds(const Rect bounds,
+    [[nodiscard]] inline PhantomCore::Rect ScaleTopLeftBounds(const PhantomCore::Rect bounds,
                                                                 const float parentHeight) noexcept
     {
         const float scaledHeight = bounds.height * DesignToCanvasScale;
@@ -234,7 +234,7 @@ namespace song_select
     }
 
     template <typename ComponentType>
-    [[nodiscard]] inline ComponentType &RequireComponent(Visual2DNode &node)
+    [[nodiscard]] inline ComponentType &RequireComponent(PhantomCore::Visual2DNode &node)
     {
         ComponentType *const component = node.GetComponent<ComponentType>();
         if (component == nullptr)
@@ -245,9 +245,9 @@ namespace song_select
         return *component;
     }
 
-    inline void ApplyFlatStyle(Visual2DNode &node, const Color color)
+    inline void ApplyFlatStyle(PhantomCore::Visual2DNode &node, const PhantomCore::Color color)
     {
-        VisualStyle style{};
+        PhantomCore::VisualStyle style{};
         style.normal = color;
         style.hovered = color;
         style.pressed = color;
@@ -255,11 +255,11 @@ namespace song_select
         SetSkinBaseStyle(node, style);
     }
 
-    inline void ApplySpriteStyle(Visual2DNode &node,
-                                 const Color normal,
-                                 const Color hovered)
+    inline void ApplySpriteStyle(PhantomCore::Visual2DNode &node,
+                                 const PhantomCore::Color normal,
+                                 const PhantomCore::Color hovered)
     {
-        VisualStyle style{};
+        PhantomCore::VisualStyle style{};
         style.normal = normal;
         style.hovered = hovered;
         style.pressed = AccentBlue;
@@ -267,30 +267,30 @@ namespace song_select
         SetSkinBaseStyle(node, style);
     }
 
-    inline void ApplyButtonStyle(Visual2DNode &node,
-                                 const Color normal,
-                                 const Color hovered,
-                                 const Color textColor)
+    inline void ApplyButtonStyle(PhantomCore::Visual2DNode &node,
+                                 const PhantomCore::Color normal,
+                                 const PhantomCore::Color hovered,
+                                 const PhantomCore::Color textColor)
     {
         ApplySpriteStyle(node, normal, hovered);
-        RequireComponent<TextVisualComponent>(node).SetTextColor(textColor);
+        RequireComponent<PhantomCore::TextVisualComponent>(node).SetTextColor(textColor);
     }
 
-    inline void SetCornerRadius(Visual2DNode &node, const float penpotRadius)
+    inline void SetCornerRadius(PhantomCore::Visual2DNode &node, const float penpotRadius)
     {
-        RequireComponent<SpriteVisualComponent>(node).SetCornerRadius(
+        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetCornerRadius(
             penpotRadius * DesignToCanvasScale);
     }
 
     [[nodiscard]] inline std::int64_t LatestPointerTimestamp(
-        const InputState &input) noexcept
+        const PhantomCore::InputState &input) noexcept
     {
         std::int64_t result{};
-        for (const InputEvent &event : input.Events())
+        for (const PhantomCore::InputEvent &event : input.Events())
         {
-            if (event.type == InputEventType::MouseMoved ||
-                event.type == InputEventType::MouseButtonPressed ||
-                event.type == InputEventType::MouseButtonReleased)
+            if (event.type == PhantomCore::InputEventType::MouseMoved ||
+                event.type == PhantomCore::InputEventType::MouseButtonPressed ||
+                event.type == PhantomCore::InputEventType::MouseButtonReleased)
             {
                 result = event.performanceCounterTicks;
             }

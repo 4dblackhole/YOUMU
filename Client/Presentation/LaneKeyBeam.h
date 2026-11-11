@@ -7,17 +7,17 @@
 class LaneKeyBeam final
 {
   public:
-    void Initialize(Visual2DNode &lane, ImageHandle image,
-                    Size imageSize);
+    void Initialize(PhantomCore::Visual2DNode &lane, PhantomCore::ImageHandle image,
+                    PhantomCore::Size imageSize);
     void SetLayout(float laneWidth, float laneLength);
     void OnKeyPressed(const NoteProcessResult &result);
     void Update(double deltaSeconds);
     void Reset() noexcept;
     void Shutdown() noexcept;
 
-    [[nodiscard]] static Color InputColor(
+    [[nodiscard]] static PhantomCore::Color InputColor(
         const NoteProcessResult &result) noexcept;
-    [[nodiscard]] static Color GradeColor(
+    [[nodiscard]] static PhantomCore::Color GradeColor(
         JudgementGrade grade) noexcept;
     [[nodiscard]] static bool IsWrongInput(const NoteEvent &event) noexcept;
     // Returned observer is valid only while result is alive and unchanged.
@@ -25,8 +25,8 @@ class LaneKeyBeam final
         const NoteProcessResult &result) noexcept;
 
   private:
-    Visual2DNode *node_{};
-    Color color_{1, 1, 1, 1};
+    PhantomCore::Visual2DNode *node_{};
+    PhantomCore::Color color_{1, 1, 1, 1};
     float aspectRatio_{1};
     double elapsedSeconds_{0.2};
 };

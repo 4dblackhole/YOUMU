@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <utility>
 
+using namespace PhantomCore;
+
 using namespace song_select;
 namespace
 {

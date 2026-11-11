@@ -1,6 +1,8 @@
 #include "TaikoResultLayout.h"
 #include "TaikoResultView.h"
 #include <format>
+using namespace PhantomCore;
+
 using namespace taiko_result_ui::layout;
 void TaikoResultView::BuildOptions(Visual2DNode &root)
 {

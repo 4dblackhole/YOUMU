@@ -22,6 +22,8 @@
 #include <string_view>
 #include <utility>
 
+using namespace PhantomCore;
+
 namespace
 {
     void EnableCrtMemoryLeakChecks() noexcept

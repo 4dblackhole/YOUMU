@@ -1,6 +1,8 @@
 #include "App/AssetPaths.h"
 #include "LogoStyle.h"
 #include "LogoView.h"
+using namespace PhantomCore;
+
 using namespace logo_ui;
 
 void LogoView::ProcessPointer(const InputState &input)

@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <tuple>
 
+using namespace PhantomCore;
+
 namespace
 {
     using namespace editor_ui;

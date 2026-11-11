@@ -6,6 +6,8 @@
 #include <format>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 namespace
 {
 

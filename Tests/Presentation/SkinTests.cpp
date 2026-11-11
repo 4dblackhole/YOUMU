@@ -7,6 +7,8 @@
 #include <iostream>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 namespace
 {
     namespace fs = std::filesystem;

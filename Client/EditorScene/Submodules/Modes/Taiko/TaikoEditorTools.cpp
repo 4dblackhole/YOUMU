@@ -4,6 +4,8 @@
 #include "TaikoEditorTool.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
 #include <algorithm>
+using namespace PhantomCore;
+
 using namespace editor_ui;
 
 namespace

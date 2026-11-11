@@ -15,28 +15,28 @@ class EditorWorkspaceStore;
 
 // The Client root for YOUMU.  The Engine owns the platform loop while
 // this class selects the game window policy and registers game-owned Scenes.
-class YOUMUGame final : public SceneGameClient
+class YOUMUGame final : public PhantomCore::SceneGameClient
 {
   public:
     YOUMUGame(bool smokeTest, std::string initialSceneId,
                    bool rhythmDebugMode = false);
 
-    [[nodiscard]] EngineConfig GetEngineConfig() const override;
+    [[nodiscard]] PhantomCore::EngineConfig GetEngineConfig() const override;
 
   protected:
-    void RegisterScenes(SceneManager &scenes) override;
+    void RegisterScenes(PhantomCore::SceneManager &scenes) override;
     [[nodiscard]] std::string_view InitialSceneId() const noexcept override;
-    void OnClientInitialized(const EngineServices &services) override;
-    void OnClientUpdated(const UpdateContext &context) override;
-    void OnClientRendered(const RenderContext &context) override;
+    void OnClientInitialized(const PhantomCore::EngineServices &services) override;
+    void OnClientUpdated(const PhantomCore::UpdateContext &context) override;
+    void OnClientRendered(const PhantomCore::RenderContext &context) override;
     void OnClientShuttingDown() noexcept override;
 
   private:
-    void RefreshPerformanceText(const PerformanceStatistics &performance);
-    std::unique_ptr<GameScene> CreateResultScene();
-    void RestoreSavedAudioDriver(AudioSystem &audio);
-    static void SubmitPerformanceLine(TextRenderSystem &textRendering,
-                                      std::wstring_view text, const FontHandle &font,
+    void RefreshPerformanceText(const PhantomCore::PerformanceStatistics &performance);
+    std::unique_ptr<PhantomCore::GameScene> CreateResultScene();
+    void RestoreSavedAudioDriver(PhantomCore::AudioSystem &audio);
+    static void SubmitPerformanceLine(PhantomCore::TextRenderSystem &textRendering,
+                                      std::wstring_view text, const PhantomCore::FontHandle &font,
                                       float layoutY, float viewportWidth);
 
     bool smokeTest_{};
@@ -48,7 +48,7 @@ class YOUMUGame final : public SceneGameClient
     std::unique_ptr<IPlayResult> pendingResult_;
     TextCatalog texts_;
     OptionSettings optionSettings_;
-    FontHandle performanceFont_;
+    PhantomCore::FontHandle performanceFont_;
     std::uint64_t lastPerformanceMeasurementIndex_{};
     std::wstring framesPerSecondText_;
     std::wstring updatesPerSecondText_;

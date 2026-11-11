@@ -2,6 +2,8 @@
 #include "SongSelectLayout.h"
 #include <algorithm>
 
+using namespace PhantomCore;
+
 using namespace song_select;
 
 void SongFavoriteTabs::Initialize(Visual2DNode &parent, TextCatalog &texts)

@@ -3,6 +3,8 @@
 #include "LogoStyle.h"
 #include "Texts/GameScene/YOUMULogoScene/LogoTexts.h"
 #include <limits>
+using namespace PhantomCore;
+
 using namespace logo_ui;
 
 LogoView::LogoView(ScreenVisual2DManager &screenVisuals,

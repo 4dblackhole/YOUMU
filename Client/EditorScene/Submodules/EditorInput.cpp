@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <format>
 #include <sstream>
+using namespace PhantomCore;
+
 using namespace editor_ui;
 
 void EditorView::UpdateSliders(const UpdateContext &context)

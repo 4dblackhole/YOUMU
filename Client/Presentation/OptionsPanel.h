@@ -13,19 +13,19 @@
 class OptionsPanel final
 {
   public:
-    OptionsPanel(TextCatalog &texts, OptionSettings &options, ScreenVisual2DManager *visuals = nullptr) noexcept
+    OptionsPanel(TextCatalog &texts, OptionSettings &options, PhantomCore::ScreenVisual2DManager *visuals = nullptr) noexcept
         : texts_(texts), options_(options), visuals_(visuals) {}
 
-    void Initialize(Visual2DCanvas &canvas, AudioSystem &audio,
-                    IWindowControl *window = nullptr);
+    void Initialize(PhantomCore::Visual2DCanvas &canvas, PhantomCore::AudioSystem &audio,
+                    PhantomCore::IWindowControl *window = nullptr);
     void Shutdown() noexcept;
     void Toggle();
     void Update(double deltaSeconds);
     // True consumes a panel keyboard command, including the closing frame.
-    bool ProcessInput(const InputState &input, std::optional<Point> canvasPointer,
-                      NodeId hoveredNode, Visual2DInputRouter &inputRouter);
-    bool HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inputRouter);
-    [[nodiscard]] bool ProcessAction(const Action &action);
+    bool ProcessInput(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
+                      PhantomCore::NodeId hoveredNode, PhantomCore::Visual2DInputRouter &inputRouter);
+    bool HandleKey(std::uint16_t virtualKey, PhantomCore::Visual2DInputRouter &inputRouter);
+    [[nodiscard]] bool ProcessAction(const PhantomCore::Action &action);
     void RefreshTexts();
     [[nodiscard]] bool OwnsKeyboard() const noexcept
     {
@@ -40,7 +40,7 @@ class OptionsPanel final
     void RefreshTabs();
     void UpdateContentLayout();
     void CollapseCombos();
-    bool CanProcessAction(NodeId source) const noexcept;
+    bool CanProcessAction(PhantomCore::NodeId source) const noexcept;
     void RefreshDisplayControls();
     void SelectResolution(std::size_t index);
     void CreateKeyControls();
@@ -55,9 +55,9 @@ class OptionsPanel final
     void EditOffset(std::uint16_t key);
     void ApplyOffset();
     void CancelKeyboardEdit();
-    bool ProcessFieldAction(const Action &action);
+    bool ProcessFieldAction(const PhantomCore::Action &action);
     void ApplyAnimationPosition();
-    void ApplyScrollOffset(Visual2DInputRouter &inputRouter);
+    void ApplyScrollOffset(PhantomCore::Visual2DInputRouter &inputRouter);
     void CreateLanguageControls();
     void CreateSkinControls();
     void CreateAudioControls();
@@ -65,9 +65,9 @@ class OptionsPanel final
     void RefreshStatus();
     void RefreshSkinSets();
     bool SaveOptions(const OptionValues &candidate);
-    void SelectOutput(AudioOutputBackend output);
+    void SelectOutput(PhantomCore::AudioOutputBackend output);
     void SelectDriver(int index);
-    void RestoreAudio(AudioOutputBackend output, int driver, std::string &error);
+    void RestoreAudio(PhantomCore::AudioOutputBackend output, int driver, std::string &error);
     [[nodiscard]] std::string DriverName(int index) const;
 
     static constexpr float PanelWidth = 320.0F;
@@ -75,36 +75,36 @@ class OptionsPanel final
     static constexpr float AnimationSeconds = 0.2F;
     static constexpr float ContentViewportHeight = 568.0F;
     static constexpr std::size_t TabCount = 4;
-    std::array<Visual2DNode *, TabCount> tabButtons_{}, tabContents_{};
+    std::array<PhantomCore::Visual2DNode *, TabCount> tabButtons_{}, tabContents_{};
     std::array<float, TabCount> contentHeights_{}, scrollOffsets_{};
     std::size_t activeTab_{};
-    Visual2DNode *viewport_{};
+    PhantomCore::Visual2DNode *viewport_{};
     float viewportHeight_{ContentViewportHeight};
     float contentHeight_{};
     struct KeyRow
     {
         std::string mode, binding, displayName;
         std::size_t slot{};
-        Visual2DNode *label{}, *button{};
-        Visual2DNode *clear{};
+        PhantomCore::Visual2DNode *label{}, *button{};
+        PhantomCore::Visual2DNode *clear{};
     };
     std::vector<ModeInputLayout> inputLayouts_;
     std::vector<KeyRow> keyRows_;
-    std::vector<Visual2DNode *> modeLabels_;
-    std::vector<WindowResolution> resolutions_;
-    IWindowControl *window_{};
-    Visual2DNode *resolutionLabel_{}, *resolutionCombo_{};
-    Visual2DNode *offsetLabel_{}, *offsetField_{}, *offsetHint_{};
-    Visual2DNode *songsLabel_{}, *songsField_{}, *songsDefault_{};
+    std::vector<PhantomCore::Visual2DNode *> modeLabels_;
+    std::vector<PhantomCore::WindowResolution> resolutions_;
+    PhantomCore::IWindowControl *window_{};
+    PhantomCore::Visual2DNode *resolutionLabel_{}, *resolutionCombo_{};
+    PhantomCore::Visual2DNode *offsetLabel_{}, *offsetField_{}, *offsetHint_{};
+    PhantomCore::Visual2DNode *songsLabel_{}, *songsField_{}, *songsDefault_{};
     std::optional<std::size_t> captureRow_;
     std::wstring offsetDraft_;
     bool editingOffset_{}, replaceOffsetDraft_{};
 
     TextCatalog &texts_;
     OptionSettings &options_;
-    ScreenVisual2DManager *visuals_{};
-    AudioSystem *audio_{};
-    Visual2DCanvas *canvas_{};
+    PhantomCore::ScreenVisual2DManager *visuals_{};
+    PhantomCore::AudioSystem *audio_{};
+    PhantomCore::Visual2DCanvas *canvas_{};
     enum class Status
     {
         None,
@@ -115,32 +115,32 @@ class OptionsPanel final
     };
     Status status_{};
     std::string statusDetail_;
-    Visual2DNode *panel_{};
-    Visual2DNode *keyPanel_{}, *openKeyPanel_{}, *closeKeyPanel_{}, *keyPanelStatus_{};
-    Visual2DNode *keyPanelImage_{};
-    Visual2DNode *keyPanelTitle_{};
-    std::array<Visual2DNode *, 4> keyFaceImages_{};
-    Visual2DNode *title_{};
-    Visual2DNode *languageLabel_{};
-    Visual2DNode *skinLabel_{};
-    Visual2DNode *statusLabel_{};
-    Visual2DNode *middlewareLabel_{};
-    Visual2DNode *outputLabel_{};
-    Visual2DNode *driverLabel_{};
-    Visual2DNode *content_{};
-    Visual2DNode *languageCombo_{};
-    Visual2DNode *skinCombo_{};
-    Visual2DNode *middlewareCombo_{};
-    Visual2DNode *outputCombo_{};
-    Visual2DNode *driverCombo_{};
-    NodeId panelId_{};
-    NodeId languageComboId_{};
-    NodeId skinComboId_{};
-    NodeId outputComboId_{};
-    NodeId driverComboId_{};
+    PhantomCore::Visual2DNode *panel_{};
+    PhantomCore::Visual2DNode *keyPanel_{}, *openKeyPanel_{}, *closeKeyPanel_{}, *keyPanelStatus_{};
+    PhantomCore::Visual2DNode *keyPanelImage_{};
+    PhantomCore::Visual2DNode *keyPanelTitle_{};
+    std::array<PhantomCore::Visual2DNode *, 4> keyFaceImages_{};
+    PhantomCore::Visual2DNode *title_{};
+    PhantomCore::Visual2DNode *languageLabel_{};
+    PhantomCore::Visual2DNode *skinLabel_{};
+    PhantomCore::Visual2DNode *statusLabel_{};
+    PhantomCore::Visual2DNode *middlewareLabel_{};
+    PhantomCore::Visual2DNode *outputLabel_{};
+    PhantomCore::Visual2DNode *driverLabel_{};
+    PhantomCore::Visual2DNode *content_{};
+    PhantomCore::Visual2DNode *languageCombo_{};
+    PhantomCore::Visual2DNode *skinCombo_{};
+    PhantomCore::Visual2DNode *middlewareCombo_{};
+    PhantomCore::Visual2DNode *outputCombo_{};
+    PhantomCore::Visual2DNode *driverCombo_{};
+    PhantomCore::NodeId panelId_{};
+    PhantomCore::NodeId languageComboId_{};
+    PhantomCore::NodeId skinComboId_{};
+    PhantomCore::NodeId outputComboId_{};
+    PhantomCore::NodeId driverComboId_{};
     std::vector<int> driverIndices_;
     std::vector<std::wstring> skinNames_;
-    std::optional<Point> previousDragPoint_;
+    std::optional<PhantomCore::Point> previousDragPoint_;
     float animationProgress_{};
     float scrollOffset_{};
     bool targetOpen_{};

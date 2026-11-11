@@ -1,5 +1,7 @@
 #include "GameFlow/GameplaySessionController.h"
 #include <algorithm>
+using namespace PhantomCore;
+
 namespace
 {
     bool IsKeyDownBeforeExit(const InputState &input, std::uint16_t key, bool beforeExit)

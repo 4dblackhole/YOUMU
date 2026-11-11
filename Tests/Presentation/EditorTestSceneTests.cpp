@@ -12,6 +12,10 @@
 #include <fstream>
 #include <thread>
 
+using namespace PhantomCore;
+
+namespace PhantomCore
+{
 struct InputStateTestAccess
 {
     static void Key(InputState &input, std::uint16_t key)
@@ -39,6 +43,8 @@ struct InputStateTestAccess
         input.SetKey('Z', true, ticks.QuadPart);
     }
 };
+} // namespace PhantomCore
+
 namespace
 {
     void Check(bool value, const char *message) { if (!value) throw std::runtime_error(message); }

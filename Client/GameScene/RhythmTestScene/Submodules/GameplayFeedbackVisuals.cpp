@@ -3,6 +3,8 @@
 #include "Texts/GameScene/RhythmTestScene/GameplayTexts.h"
 #include <format>
 
+using namespace PhantomCore;
+
 void GameplayPresenter::PresentJudgementFeedback(const GameplayFeedback &feedback)
 {
 

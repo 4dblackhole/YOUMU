@@ -1,6 +1,8 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
 
+using namespace PhantomCore;
+
 void GameplayPresenter::CreateKeyIndicators(Visual2DNode &inputPanel)
 {
     struct KeySpec

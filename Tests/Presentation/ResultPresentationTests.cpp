@@ -18,6 +18,8 @@
 #include <map>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 namespace
 {
 

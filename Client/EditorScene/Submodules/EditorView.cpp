@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <format>
 #include <sstream>
+using namespace PhantomCore;
+
 using namespace editor_ui;
 
 void EditorView::Initialize(const EngineServices &services)

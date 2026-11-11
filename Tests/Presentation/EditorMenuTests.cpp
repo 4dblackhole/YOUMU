@@ -3,6 +3,8 @@
 #include <array>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 namespace
 {
     void Check(bool value, const char *message)

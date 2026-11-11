@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <string>
 
+using namespace PhantomCore;
+
 namespace
 {
 

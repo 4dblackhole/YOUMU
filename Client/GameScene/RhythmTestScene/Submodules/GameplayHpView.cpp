@@ -1,6 +1,8 @@
 #include "GameplayHpView.h"
 #include <algorithm>
 
+using namespace PhantomCore;
+
 void GameplayHpView::Initialize(Visual2DNode &parent)
 {
     track_ = &CreatePanel(parent, {}, "Hud.HP.Track");

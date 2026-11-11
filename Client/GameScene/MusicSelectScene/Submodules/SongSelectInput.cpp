@@ -4,6 +4,8 @@
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 
+using namespace PhantomCore;
+
 using namespace song_select;
 
 void MusicSelectView::ProcessPointer(const InputState &input)

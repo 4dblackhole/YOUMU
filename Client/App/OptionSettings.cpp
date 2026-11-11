@@ -11,6 +11,8 @@
 #include <string_view>
 #include <utility>
 
+using namespace PhantomCore;
+
 namespace
 {
     OptionValues DefaultValues()

@@ -4,6 +4,8 @@
 #include "App/SkinSetSelection.h"
 #include <algorithm>
 
+using namespace PhantomCore;
+
 using namespace options_ui;
 namespace
 {

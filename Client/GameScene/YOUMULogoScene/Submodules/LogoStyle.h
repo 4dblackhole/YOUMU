@@ -7,17 +7,17 @@
 
 namespace logo_ui
 {
-    constexpr Size LeftFadeSourceSize{1680.0F, 1280.0F};
-    constexpr Size CenterLogoSourceSize{2400.0F, 1280.0F};
-    constexpr Size RightFadeSourceSize{1680.0F, 1280.0F};
+    constexpr PhantomCore::Size LeftFadeSourceSize{1680.0F, 1280.0F};
+    constexpr PhantomCore::Size CenterLogoSourceSize{2400.0F, 1280.0F};
+    constexpr PhantomCore::Size RightFadeSourceSize{1680.0F, 1280.0F};
     constexpr float StripSourceHeight = 1280.0F;
-    constexpr Size MenuSize{360.0F, 280.0F};
+    constexpr PhantomCore::Size MenuSize{360.0F, 280.0F};
     constexpr float MenuCenterOffsetY = -190.0F;
     constexpr float ButtonLeft = 60.0F;
     constexpr float ButtonWidth = 300.0F;
     constexpr float ButtonHeight = 52.0F;
     constexpr float ButtonVerticalStep = 76.0F;
-    constexpr Size CursorSize{48.0F, 48.0F};
+    constexpr PhantomCore::Size CursorSize{48.0F, 48.0F};
     constexpr float CursorCenterX = 28.0F;
     constexpr std::size_t GameStartIndex = 0;
     constexpr std::size_t EditorIndex = 1;
@@ -25,7 +25,7 @@ namespace logo_ui
     constexpr std::size_t ExitIndex = 3;
 
     template <typename ComponentType>
-    [[nodiscard]] inline ComponentType &RequireComponent(Visual2DNode &node)
+    [[nodiscard]] inline ComponentType &RequireComponent(PhantomCore::Visual2DNode &node)
     {
         ComponentType *component = node.GetComponent<ComponentType>();
         if (component == nullptr)
@@ -35,18 +35,18 @@ namespace logo_ui
         return *component;
     }
 
-    inline void SetCenteredImageLayout(Visual2DNode &node, const float centerX,
-                                       const float centerY, const Size size)
+    inline void SetCenteredImageLayout(PhantomCore::Visual2DNode &node, const float centerX,
+                                       const float centerY, const PhantomCore::Size size)
     {
         node.SetPivot({0.5F, 0.5F});
         node.SetSize(size);
         node.SetPosition({centerX, centerY});
     }
 
-    inline void ApplyButtonSelectionStyle(Visual2DNode &button, const bool selected)
+    inline void ApplyButtonSelectionStyle(PhantomCore::Visual2DNode &button, const bool selected)
     {
 
-        VisualStyle style{};
+        PhantomCore::VisualStyle style{};
         if (selected)
         {
             style.normal = ui_colors::logo::Selected;
@@ -63,7 +63,7 @@ namespace logo_ui
         }
 
         SetSkinBaseStyle(button, style);
-        RequireComponent<TextVisualComponent>(button).SetTextColor(selected ? ui_colors::White
+        RequireComponent<PhantomCore::TextVisualComponent>(button).SetTextColor(selected ? ui_colors::White
                                                                                            : ui_colors::Ink);
     }
 } // namespace logo_ui

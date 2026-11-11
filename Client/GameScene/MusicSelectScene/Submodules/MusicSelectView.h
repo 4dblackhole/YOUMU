@@ -27,7 +27,7 @@ enum class SongSelectCommand
 class MusicSelectView final
 {
   public:
-    MusicSelectView(ScreenVisual2DManager &visuals, SongSelectionState &state,
+    MusicSelectView(PhantomCore::ScreenVisual2DManager &visuals, SongSelectionState &state,
                     SongSelectPurpose purpose, TextCatalog &texts,
                     OptionSettings &options, std::filesystem::path recordDatabase = {})
         : selection_(state), purpose_(purpose), screenVisuals_(visuals), texts_(texts),
@@ -43,8 +43,8 @@ class MusicSelectView final
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
     }
-    void Initialize(const EngineServices &services);
-    SongSelectCommand Update(const InputState &input, double deltaSeconds);
+    void Initialize(const PhantomCore::EngineServices &services);
+    SongSelectCommand Update(const PhantomCore::InputState &input, double deltaSeconds);
     void OnResize(const std::uint32_t width, const std::uint32_t height);
     void Shutdown() noexcept;
     void RebuildVisibleSongs();
@@ -57,11 +57,11 @@ class MusicSelectView final
         std::size_t catalogIndex{};
         float top{};
         float height{};
-        Visual2DNode *button{};
-        Visual2DNode *title{};
-        Visual2DNode *artist{};
+        PhantomCore::Visual2DNode *button{};
+        PhantomCore::Visual2DNode *title{};
+        PhantomCore::Visual2DNode *artist{};
         std::size_t visiblePosition{};
-        NodeId createDifficultyId{};
+        PhantomCore::NodeId createDifficultyId{};
     };
 
     void CreateCategoryBar();
@@ -69,44 +69,44 @@ class MusicSelectView final
     void UpdateRecords();
     void ShowRecords(const std::vector<PlayRecord> &records);
     void OpenRecordFilter();
-    bool ProcessRecordFilterPanel(const InputState &input);
-    bool ProcessPlayOptionsPanel(const InputState &input);
+    bool ProcessRecordFilterPanel(const PhantomCore::InputState &input);
+    bool ProcessPlayOptionsPanel(const PhantomCore::InputState &input);
     void LayoutRecordControls();
     void CreateSongInformationPanel();
     void CreateSongBrowser();
     void CreateFooter();
     void CreateAdditionMenu();
-    void OpenAdditionMenu(Rect anchor);
+    void OpenAdditionMenu(PhantomCore::Rect anchor);
     void CloseAdditionMenu();
-    bool ProcessAdditionMenu(const InputState &input);
+    bool ProcessAdditionMenu(const PhantomCore::InputState &input);
     void ApplyTexts();
     void UpdateResponsiveLayout();
     void UpdateRecordPanelLayout();
     void UpdateSongInformationLayout();
     void UpdateSongBrowserLayout();
     void UpdateFooterLayout();
-    void ResizeBorderedPanel(Visual2DNode &panel, const Rect bounds,
+    void ResizeBorderedPanel(PhantomCore::Visual2DNode &panel, const PhantomCore::Rect bounds,
                              const float penpotBorderWidth);
     void RebuildSongCards();
     void UpdateVisibleSongCards();
     void CreateSongCard(const std::size_t visiblePosition, const std::size_t catalogIndex,
                         const float top, const float height, const bool focused);
-    NodeId CreateDifficultyButton(Visual2DNode &card, std::size_t visiblePosition);
+    PhantomCore::NodeId CreateDifficultyButton(PhantomCore::Visual2DNode &card, std::size_t visiblePosition);
     void RefreshSearchPresentation();
     void EnsureFocusedCardVisible();
     void ApplyScrollOffset();
     void UpdateScrollbar();
-    void ProcessPointer(const InputState &input);
+    void ProcessPointer(const PhantomCore::InputState &input);
     bool ProcessActions();
-    bool ProcessFilterPanel(const InputState &input);
-    bool ProcessFavoritesPanel(const InputState &input);
+    bool ProcessFilterPanel(const PhantomCore::InputState &input);
+    bool ProcessFavoritesPanel(const PhantomCore::InputState &input);
     void OpenFavoritesPanel();
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
     { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || recordFilterPanel_.IsVisible() || playOptionsPanel_.IsVisible(); }
     [[nodiscard]] float VisibleSongBottom() const noexcept;
     void RefreshFilterButton();
-    bool ProcessKeyboard(const InputState &input);
-    bool ProcessSearchKeyboard(const InputState &input);
+    bool ProcessKeyboard(const PhantomCore::InputState &input);
+    bool ProcessSearchKeyboard(const PhantomCore::InputState &input);
     void SetSearchFocus(bool focused, bool selectAll = false);
     void SynchronizeSearchText();
     void UpdateSearchInputLayout();
@@ -116,28 +116,28 @@ class MusicSelectView final
     void SelectVisibleSong(const std::size_t visiblePosition);
     void SelectPattern(const std::size_t index);
     bool IsEditorSongSelect() const noexcept;
-    Visual2DNode &AddPanel(Visual2DNode &parent,
-                                          const Rect penpotBounds,
-                                          const Color color, std::string name,
+    PhantomCore::Visual2DNode &AddPanel(PhantomCore::Visual2DNode &parent,
+                                          const PhantomCore::Rect penpotBounds,
+                                          const PhantomCore::Color color, std::string name,
                                           const float penpotCornerRadius = 0.0F);
-    Visual2DNode &AddBorderedPanel(Visual2DNode &parent,
-                                                  const Rect penpotBounds,
-                                                  const Color fill,
-                                                  const Color border,
+    PhantomCore::Visual2DNode &AddBorderedPanel(PhantomCore::Visual2DNode &parent,
+                                                  const PhantomCore::Rect penpotBounds,
+                                                  const PhantomCore::Color fill,
+                                                  const PhantomCore::Color border,
                                                   const float penpotBorderWidth,
                                                   const float penpotCornerRadius, std::string name);
-    Visual2DNode &AddLabel(
-        Visual2DNode &parent, const Rect penpotBounds,
-        std::wstring text, const float penpotFontSize, const Color color,
+    PhantomCore::Visual2DNode &AddLabel(
+        PhantomCore::Visual2DNode &parent, const PhantomCore::Rect penpotBounds,
+        std::wstring text, const float penpotFontSize, const PhantomCore::Color color,
         std::string name,
-        const TextAlignment alignment = TextAlignment::Leading);
-    Visual2DNode &AddScrollableLabel(Visual2DNode &parent, Rect penpotBounds, std::wstring text,
-                                    float penpotFontSize, Color color, std::string name);
+        const PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading);
+    PhantomCore::Visual2DNode &AddScrollableLabel(PhantomCore::Visual2DNode &parent, PhantomCore::Rect penpotBounds, std::wstring text,
+                                    float penpotFontSize, PhantomCore::Color color, std::string name);
     void RefreshSelection();
     SongSelectionState &selection_;
     SongSelectPurpose purpose_;
     SongSelectCommand command_{};
-    ScreenVisual2DManager &screenVisuals_;
+    PhantomCore::ScreenVisual2DManager &screenVisuals_;
     TextCatalog &texts_;
     OptionSettings &settings_;
     OptionsPanel options_;
@@ -154,7 +154,7 @@ class MusicSelectView final
     std::vector<SongCard> songRows_;
     std::size_t firstVisibleRow_{}, lastVisibleRow_{};
     bool songCardsDirty_{true};
-    std::vector<std::pair<NodeId, std::size_t>> difficultyButtonIds_;
+    std::vector<std::pair<PhantomCore::NodeId, std::size_t>> difficultyButtonIds_;
     float scrollOffset_{};
     float contentHeight_{};
     float songContentWidth_{454.29F};
@@ -162,62 +162,62 @@ class MusicSelectView final
     std::uint32_t height_{720};
     bool searchFocused_{};
     bool visible_{true};
-    std::unique_ptr<ITextInput> searchInput_;
-    Visual2DNode *additionMenu_{}, *newDifficultyItem_{}, *convertOsuItem_{};
-    ScreenCanvasHandle canvasHandle_;
-    Visual2DCanvas *canvas_{};
-    Visual2DInputRouter inputRouter_;
-    std::optional<Point> canvasPointer_;
-    Visual2DNode *board_{};
-    Visual2DNode *background_{};
-    Visual2DNode *categoryBar_{};
-    Visual2DNode *categoryLabel_{};
+    std::unique_ptr<PhantomCore::ITextInput> searchInput_;
+    PhantomCore::Visual2DNode *additionMenu_{}, *newDifficultyItem_{}, *convertOsuItem_{};
+    PhantomCore::ScreenCanvasHandle canvasHandle_;
+    PhantomCore::Visual2DCanvas *canvas_{};
+    PhantomCore::Visual2DInputRouter inputRouter_;
+    std::optional<PhantomCore::Point> canvasPointer_;
+    PhantomCore::Visual2DNode *board_{};
+    PhantomCore::Visual2DNode *background_{};
+    PhantomCore::Visual2DNode *categoryBar_{};
+    PhantomCore::Visual2DNode *categoryLabel_{};
     std::future<std::vector<PlayRecord>> recordJob_;
     std::filesystem::path recordPattern_;
     std::string recordMode_, recordQuery_;
     std::size_t recordOffset_{};
     std::uint64_t recordRevision_{1}, recordJobRevision_{}, recordDisplayRevision_{};
     bool recordNext_{};
-    Visual2DNode *recordQueryButton_{}, *recordPreviousButton_{}, *recordNextButton_{};
-    Visual2DNode *recordRows_{};
-    Visual2DNode *recordPanel_{};
-    Visual2DNode *recordSelector_{};
-    Visual2DNode *emptyRecordMessage_{};
-    Visual2DNode *informationPanel_{};
-    Visual2DNode *difficultyInformation_{};
-    Visual2DNode *difficultyHeading_{};
-    Visual2DNode *creatorHeading_{};
-    Visual2DNode *informationDivider_{};
-    Visual2DNode *browserPanel_{};
-    Visual2DNode *songViewport_{};
-    Visual2DNode *songContent_{};
-    Visual2DNode *scrollbarTrack_{};
-    Visual2DNode *scrollbarHandle_{};
-    Visual2DNode *searchField_{};
-    Visual2DNode *searchCountLabel_{};
-    Visual2DNode *sortSelector_{};
-    Visual2DNode *filterButton_{};
-    Visual2DNode *browserHint_{};
-    Visual2DNode *selectedSongLabel_{};
-    Visual2DNode *selectedArtistLabel_{};
-    Visual2DNode *selectedPatternLabel_{};
-    Visual2DNode *selectedCreatorLabel_{};
-    Visual2DNode *selectedDetailsLabel_{};
-    std::array<Visual2DNode *, 4> extraDetailsLabels_{};
-    Visual2DNode *modeSelector_{};
-    NodeId modeSelectorId_{};
-    Visual2DNode *optionButton_{};
-    Visual2DNode *optionLabel_{};
-    Visual2DNode *backButton_{};
-    Visual2DNode *backFill_{};
-    Visual2DNode *backLabel_{};
-    Visual2DNode *goButton_{};
-    Visual2DNode *goFill_{};
-    Visual2DNode *goLabel_{};
-    NodeId recordSelectorId_{};
-    NodeId sortSelectorId_{};
-    NodeId searchFieldId_{};
-    NodeId backButtonId_{};
-    NodeId optionButtonId_{};
-    NodeId goButtonId_{};
+    PhantomCore::Visual2DNode *recordQueryButton_{}, *recordPreviousButton_{}, *recordNextButton_{};
+    PhantomCore::Visual2DNode *recordRows_{};
+    PhantomCore::Visual2DNode *recordPanel_{};
+    PhantomCore::Visual2DNode *recordSelector_{};
+    PhantomCore::Visual2DNode *emptyRecordMessage_{};
+    PhantomCore::Visual2DNode *informationPanel_{};
+    PhantomCore::Visual2DNode *difficultyInformation_{};
+    PhantomCore::Visual2DNode *difficultyHeading_{};
+    PhantomCore::Visual2DNode *creatorHeading_{};
+    PhantomCore::Visual2DNode *informationDivider_{};
+    PhantomCore::Visual2DNode *browserPanel_{};
+    PhantomCore::Visual2DNode *songViewport_{};
+    PhantomCore::Visual2DNode *songContent_{};
+    PhantomCore::Visual2DNode *scrollbarTrack_{};
+    PhantomCore::Visual2DNode *scrollbarHandle_{};
+    PhantomCore::Visual2DNode *searchField_{};
+    PhantomCore::Visual2DNode *searchCountLabel_{};
+    PhantomCore::Visual2DNode *sortSelector_{};
+    PhantomCore::Visual2DNode *filterButton_{};
+    PhantomCore::Visual2DNode *browserHint_{};
+    PhantomCore::Visual2DNode *selectedSongLabel_{};
+    PhantomCore::Visual2DNode *selectedArtistLabel_{};
+    PhantomCore::Visual2DNode *selectedPatternLabel_{};
+    PhantomCore::Visual2DNode *selectedCreatorLabel_{};
+    PhantomCore::Visual2DNode *selectedDetailsLabel_{};
+    std::array<PhantomCore::Visual2DNode *, 4> extraDetailsLabels_{};
+    PhantomCore::Visual2DNode *modeSelector_{};
+    PhantomCore::NodeId modeSelectorId_{};
+    PhantomCore::Visual2DNode *optionButton_{};
+    PhantomCore::Visual2DNode *optionLabel_{};
+    PhantomCore::Visual2DNode *backButton_{};
+    PhantomCore::Visual2DNode *backFill_{};
+    PhantomCore::Visual2DNode *backLabel_{};
+    PhantomCore::Visual2DNode *goButton_{};
+    PhantomCore::Visual2DNode *goFill_{};
+    PhantomCore::Visual2DNode *goLabel_{};
+    PhantomCore::NodeId recordSelectorId_{};
+    PhantomCore::NodeId sortSelectorId_{};
+    PhantomCore::NodeId searchFieldId_{};
+    PhantomCore::NodeId backButtonId_{};
+    PhantomCore::NodeId optionButtonId_{};
+    PhantomCore::NodeId goButtonId_{};
 };

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <string>
 
+using namespace PhantomCore;
+
 using namespace editor_ui;
 
 void EditorView::InitializeAudioSelection()

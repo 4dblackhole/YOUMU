@@ -2,6 +2,8 @@
 #include "Presentation/OptionsPanel.h"
 #include <algorithm>
 
+using namespace PhantomCore;
+
 using namespace options_ui;
 void OptionsPanel::CreateDisplayControls()
 {

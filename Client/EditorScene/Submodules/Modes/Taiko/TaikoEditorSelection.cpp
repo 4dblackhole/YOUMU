@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+using namespace PhantomCore;
+
 using namespace taiko_editor_layout;
 
 std::optional<MusicalPosition> TaikoEditorMode::SnapPosition(IEditorContext &state, Point point) const

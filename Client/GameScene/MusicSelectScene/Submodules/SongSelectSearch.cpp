@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cmath>
 
+using namespace PhantomCore;
+
 using namespace song_select;
 
 namespace

@@ -4,6 +4,8 @@
 #include <memory>
 #include <wrl/client.h>
 
+using namespace PhantomCore;
+
 using namespace options_ui;
 
 void OptionsPanel::CreateSongsControls()

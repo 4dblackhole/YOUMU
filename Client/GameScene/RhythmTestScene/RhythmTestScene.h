@@ -9,32 +9,32 @@ class GameplaySessionController;
 class GameplayPresenter;
 class GameplayPauseMenu;
 class EditorTestControls;
-class RhythmTestScene final : public GameScene
+class RhythmTestScene final : public PhantomCore::GameScene
 {
   public:
     explicit RhythmTestScene(std::shared_ptr<GameplayLaunchStore> launchRequest,
-                             AudioPlaybackManager &playback,
-                             ScreenVisual2DManager &screenVisuals,
+                             PhantomCore::AudioPlaybackManager &playback,
+                             PhantomCore::ScreenVisual2DManager &screenVisuals,
                              bool debugMode,
                              TextCatalog &texts,
                              std::unique_ptr<IPlayResult> &pendingResult);
 
     ~RhythmTestScene() override;
 
-    void Initialize(const EngineServices &services) override;
+    void Initialize(const PhantomCore::EngineServices &services) override;
     void BeginScene() override;
     void EndScene() noexcept override;
-    void Update(const UpdateContext &context, SceneManager &scenes) override;
-    void Render(const RenderContext &context) override;
+    void Update(const PhantomCore::UpdateContext &context, PhantomCore::SceneManager &scenes) override;
+    void Render(const PhantomCore::RenderContext &context) override;
     void OnResize(std::uint32_t width, std::uint32_t height) override;
     void Shutdown() noexcept override;
 
   private:
-    void ShowResult(SceneManager &scenes);
-    void UpdatePauseMenu(const UpdateContext &context, SceneManager &scenes);
+    void ShowResult(PhantomCore::SceneManager &scenes);
+    void UpdatePauseMenu(const PhantomCore::UpdateContext &context, PhantomCore::SceneManager &scenes);
     bool PreparePresentation();
     bool TryPreparePresentation();
-    void ReturnToEditor(SceneManager &scenes);
+    void ReturnToEditor(PhantomCore::SceneManager &scenes);
     void PrepareLoadingBackground();
     void UpdateLoadingBackgroundLayout();
     std::unique_ptr<IPlayResult> &pendingResult_;
@@ -43,16 +43,16 @@ class RhythmTestScene final : public GameScene
     std::unique_ptr<GameplayPresenter> view_;
     std::unique_ptr<GameplayPauseMenu> pauseMenu_;
     std::unique_ptr<EditorTestControls> testControls_;
-    ScreenVisual2DManager &visuals_;
+    PhantomCore::ScreenVisual2DManager &visuals_;
     TextCatalog &texts_;
     GameplayLaunchRequest launch_;
     std::shared_ptr<GameplayLaunchStore> launchStore_;
     bool testPreparationFailed_{};
-    ScreenCanvasHandle loadingCanvas_;
-    Visual2DNode *loadingBackground_{};
-    Size loadingBackgroundSize_{};
+    PhantomCore::ScreenCanvasHandle loadingCanvas_;
+    PhantomCore::Visual2DNode *loadingBackground_{};
+    PhantomCore::Size loadingBackgroundSize_{};
     bool loadingBackgroundReady_{};
-    std::optional<EngineServices> services_;
+    std::optional<PhantomCore::EngineServices> services_;
     bool presentationReady_{};
     double nextPreparationPoll_{};
 };

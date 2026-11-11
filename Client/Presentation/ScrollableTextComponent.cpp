@@ -4,6 +4,8 @@
 #include <cmath>
 #include <utility>
 
+using namespace PhantomCore;
+
 namespace
 {
     Visual2DNode &Bar(Visual2DNode &parent, const char *name, Color color)

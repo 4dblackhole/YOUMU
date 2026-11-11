@@ -1,6 +1,8 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
 
+using namespace PhantomCore;
+
 namespace
 {
     constexpr std::wstring_view NoteImageKeys[]{L"note",

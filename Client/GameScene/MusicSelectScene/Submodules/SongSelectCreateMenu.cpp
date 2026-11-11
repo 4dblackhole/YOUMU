@@ -2,6 +2,8 @@
 #include "SongSelectLayout.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 
+using namespace PhantomCore;
+
 using namespace song_select;
 
 void MusicSelectView::CreateAdditionMenu()

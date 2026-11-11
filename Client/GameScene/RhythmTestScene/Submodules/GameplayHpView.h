@@ -5,7 +5,7 @@
 class GameplayHpView final
 {
   public:
-    void Initialize(Visual2DNode &parent);
+    void Initialize(PhantomCore::Visual2DNode &parent);
     void SetLayout(float logicalWidth);
     void Update(double percent);
     void Shutdown() noexcept
@@ -15,6 +15,6 @@ class GameplayHpView final
     }
 
   private:
-    Visual2DNode *track_{}, *fill_{};
+    PhantomCore::Visual2DNode *track_{}, *fill_{};
     float fraction_{};
 };

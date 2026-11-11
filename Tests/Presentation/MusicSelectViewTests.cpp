@@ -16,6 +16,8 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+using namespace PhantomCore;
+
 void TestPlayOptionsPanel();
 
 namespace

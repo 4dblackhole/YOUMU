@@ -20,7 +20,7 @@ class EditorPlayback final
     {
         Shutdown();
     }
-    void Initialize(AudioSystem &audio) noexcept
+    void Initialize(PhantomCore::AudioSystem &audio) noexcept
     {
         audio_ = &audio;
     }
@@ -51,10 +51,10 @@ class EditorPlayback final
   private:
     struct SoundTrack
     {
-        std::shared_ptr<AudioClip> clip;
+        std::shared_ptr<PhantomCore::AudioClip> clip;
         std::vector<RhythmTime> times;
         std::size_t cursor{};
-        AudioPlaybackId voice{};
+        PhantomCore::AudioPlaybackId voice{};
         std::optional<std::uint64_t> scheduledDspClock;
     };
     void LoadSources(const std::map<std::string, std::filesystem::path> &files, std::uint64_t revision);
@@ -70,10 +70,10 @@ class EditorPlayback final
     void PauseVoices();
     void ClearSources() noexcept;
 
-    AudioSystem *audio_{};
-    AudioPlaybackManager voices_;
-    std::shared_ptr<AudioClip> music_;
-    AudioPlaybackId musicVoice_{};
+    PhantomCore::AudioSystem *audio_{};
+    PhantomCore::AudioPlaybackManager voices_;
+    std::shared_ptr<PhantomCore::AudioClip> music_;
+    PhantomCore::AudioPlaybackId musicVoice_{};
     std::map<std::filesystem::path, SoundTrack> tracks_;
     std::map<std::string, std::filesystem::path> soundPaths_;
     std::optional<std::uint64_t> filesRevision_, cueRevision_;

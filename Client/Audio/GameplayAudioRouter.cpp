@@ -5,6 +5,8 @@
 #include <cmath>
 #include <utility>
 
+using namespace PhantomCore;
+
 GameplayAudioRouter::GameplayAudioRouter(
     AudioPlaybackManager& playback) noexcept
     : playback_(playback)

@@ -5,6 +5,8 @@
 #include <format>
 #include <utility>
 
+using namespace PhantomCore;
+
 namespace
 {
     constexpr std::array FieldKeys{"scrollSpeed", "accelerate", "judgeLevel", "seed", "probability"};

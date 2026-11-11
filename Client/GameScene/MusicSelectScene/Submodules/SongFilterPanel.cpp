@@ -6,6 +6,8 @@
 #include <set>
 #include <utility>
 
+using namespace PhantomCore;
+
 namespace
 {
     template<class T> T &Component(Visual2DNode &node)

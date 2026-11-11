@@ -4,5 +4,5 @@
 #include "Texts/TextCatalog.h"
 #include <memory>
 std::unique_ptr<IResultView> CreateResultView(const IPlayResult &result,
-                                              ScreenVisual2DManager &visuals,
+                                              PhantomCore::ScreenVisual2DManager &visuals,
                                               TextCatalog &texts, ResultViewContext context = {});

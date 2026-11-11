@@ -9,34 +9,34 @@
 #include <limits>
 #include <stdexcept>
 
-constexpr Color DonRed{0.95F, 0.25F, 0.29F, 1.0F};
-constexpr Color KatBlue{0.18F, 0.58F, 0.95F, 1.0F};
-constexpr Color RollGold{1.0F, 0.64F, 0.12F, 1.0F};
-constexpr std::array<Color, 4> InputKeyBaseColors{{
+constexpr PhantomCore::Color DonRed{0.95F, 0.25F, 0.29F, 1.0F};
+constexpr PhantomCore::Color KatBlue{0.18F, 0.58F, 0.95F, 1.0F};
+constexpr PhantomCore::Color RollGold{1.0F, 0.64F, 0.12F, 1.0F};
+constexpr std::array<PhantomCore::Color, 4> InputKeyBaseColors{{
     {0.04F, 0.57F, 0.81F, 1.0F},
     {0.92F, 0.07F, 0.11F, 1.0F},
     {0.92F, 0.07F, 0.11F, 1.0F},
     {0.04F, 0.57F, 0.81F, 1.0F},
 }};
-constexpr std::array<Color, 4> InputKeyWeakColors{{
+constexpr std::array<PhantomCore::Color, 4> InputKeyWeakColors{{
     {0.17F, 0.72F, 0.96F, 1.0F},
     {1.0F, 0.18F, 0.25F, 1.0F},
     {1.0F, 0.18F, 0.25F, 1.0F},
     {0.17F, 0.72F, 0.96F, 1.0F},
 }};
-constexpr std::array<Color, 4> InputKeyStrongColors{{
+constexpr std::array<PhantomCore::Color, 4> InputKeyStrongColors{{
     {0.56F, 0.90F, 1.0F, 1.0F},
     {1.0F, 0.45F, 0.49F, 1.0F},
     {1.0F, 0.45F, 0.49F, 1.0F},
     {0.56F, 0.90F, 1.0F, 1.0F},
 }};
-constexpr std::array<Color, 4> InputKeyWeakGlowColors{{
+constexpr std::array<PhantomCore::Color, 4> InputKeyWeakGlowColors{{
     {KatBlue.red, KatBlue.green, KatBlue.blue, 0.45F},
     {DonRed.red, DonRed.green, DonRed.blue, 0.45F},
     {DonRed.red, DonRed.green, DonRed.blue, 0.45F},
     {KatBlue.red, KatBlue.green, KatBlue.blue, 0.45F},
 }};
-constexpr std::array<Color, 4> InputKeyStrongGlowColors{{
+constexpr std::array<PhantomCore::Color, 4> InputKeyStrongGlowColors{{
     {0.02F, 0.52F, 1.0F, 1.0F},
     {1.0F, 0.06F, 0.12F, 1.0F},
     {1.0F, 0.06F, 0.12F, 1.0F},
@@ -55,11 +55,11 @@ constexpr RhythmDuration MissedTravelDuration{220'000};
 constexpr RhythmDuration FocusSuccessDuration{200'000};
 constexpr float TwoPi = 6.28318530717958647692F;
 
-[[nodiscard]] inline Size ScaledImageSize(
-    const ScreenVisual2DManager &rendering,
-    const ImageHandle image)
+[[nodiscard]] inline PhantomCore::Size ScaledImageSize(
+    const PhantomCore::ScreenVisual2DManager &rendering,
+    const PhantomCore::ImageHandle image)
 {
-    const Size imageSize = rendering.GetImageSize(image);
+    const PhantomCore::Size imageSize = rendering.GetImageSize(image);
     if (imageSize.width <= 0.0F || imageSize.height <= 0.0F)
     {
         throw std::logic_error("An in-game skin image must have a non-zero native size.");
@@ -68,7 +68,7 @@ constexpr float TwoPi = 6.28318530717958647692F;
 }
 
 template <typename ComponentType>
-[[nodiscard]] inline ComponentType &RequireComponent(Visual2DNode &node)
+[[nodiscard]] inline ComponentType &RequireComponent(PhantomCore::Visual2DNode &node)
 {
     ComponentType *const component = node.GetComponent<ComponentType>();
     if (component == nullptr)
@@ -78,14 +78,14 @@ template <typename ComponentType>
     return *component;
 }
 
-inline void SetColor(Visual2DNode &node, const Color color)
+inline void SetColor(PhantomCore::Visual2DNode &node, const PhantomCore::Color color)
 {
-    VisualStyle style{};
+    PhantomCore::VisualStyle style{};
     style.normal = color;
     style.hovered = color;
     style.pressed = color;
     style.disabled = {color.red, color.green, color.blue, 0.25F};
-    RequireComponent<SpriteVisualComponent>(node).SetStyle(style);
+    RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetStyle(style);
 }
 
 [[nodiscard]] inline std::filesystem::path InGameSkinAssetPath(
@@ -134,7 +134,7 @@ inline void SetColor(Visual2DNode &node, const Color color)
            visualKind == NoteVisualKind::KatBuzz;
 }
 
-[[nodiscard]] inline Color AmbientColor(
+[[nodiscard]] inline PhantomCore::Color AmbientColor(
     const NoteVisualKind visualKind) noexcept
 {
     if (visualKind == NoteVisualKind::Purple)

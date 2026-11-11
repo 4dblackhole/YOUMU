@@ -3,6 +3,8 @@
 #include "GameFlow/YOUMUSceneIds.h"
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 YOUMULogoScene::YOUMULogoScene(ScreenVisual2DManager &visuals,
                                          TextCatalog &texts,
                                          OptionSettings &options)

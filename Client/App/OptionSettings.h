@@ -13,7 +13,7 @@ struct OptionValues
     Language language{Language::Korean};
     std::wstring skinSet{L"Default Skin"};
     std::string audioMiddleware{"FMOD"};
-    AudioOutputBackend audioOutput{AudioOutputBackend::Automatic};
+    PhantomCore::AudioOutputBackend audioOutput{PhantomCore::AudioOutputBackend::Automatic};
     int driverIndex{-1};
     std::string driverName;
     std::uint32_t windowWidth{1280}, windowHeight{720};

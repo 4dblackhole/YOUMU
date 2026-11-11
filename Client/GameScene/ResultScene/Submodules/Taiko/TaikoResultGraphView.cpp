@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 
+using namespace PhantomCore;
+
 using namespace taiko_result_ui::layout;
 namespace
 {

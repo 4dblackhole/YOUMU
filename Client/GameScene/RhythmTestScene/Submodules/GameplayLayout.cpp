@@ -1,6 +1,8 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
 
+using namespace PhantomCore;
+
 void GameplayPresenter::CreatePresentation()
 {
     auto &root = canvas_->Root();

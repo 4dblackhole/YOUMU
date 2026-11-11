@@ -11,20 +11,20 @@
 class SpriteNumber final
 {
   public:
-    void Initialize(Visual2DNode &parent, ImageHandle atlas, std::string name)
+    void Initialize(PhantomCore::Visual2DNode &parent, PhantomCore::ImageHandle atlas, std::string name)
     {
         Reset();
         root_ = &parent.CreateChild(std::move(name));
         root_->SetZIndex(5);
         for (std::size_t i = 0; i < digits_.size(); ++i)
         {
-            digits_[i] = &CreateSprite(*root_, {}, atlas, "Number.Digit" + std::to_string(i));
+            digits_[i] = &PhantomCore::CreateSprite(*root_, {}, atlas, "Number.Digit" + std::to_string(i));
             digits_[i]->SetVisible(false);
         }
         SetValue(0);
     }
     void Reset() noexcept { *this = SpriteNumber{}; }
-    void SetLayout(Rect bounds, TextAlignment alignment = TextAlignment::Trailing)
+    void SetLayout(PhantomCore::Rect bounds, PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Trailing)
     {
         bounds_ = bounds;
         alignment_ = alignment;
@@ -51,8 +51,8 @@ class SpriteNumber final
         const float units = 1 + static_cast<float>(count_ - 1) * Advance;
         const float height = std::max(0.0F, std::min(bounds_.height, bounds_.width / units));
         const float width = height * units;
-        const float left = alignment_ == TextAlignment::Center ? (bounds_.width - width) * .5F
-                         : alignment_ == TextAlignment::Trailing ? bounds_.width - width : 0;
+        const float left = alignment_ == PhantomCore::TextAlignment::Center ? (bounds_.width - width) * .5F
+                         : alignment_ == PhantomCore::TextAlignment::Trailing ? bounds_.width - width : 0;
         for (std::size_t i = 0; i < digits_.size(); ++i)
         {
             auto &node = *digits_[i];
@@ -62,16 +62,16 @@ class SpriteNumber final
             node.SetBounds({left + static_cast<float>(i) * height * Advance,
                             (bounds_.height - height) * .5F, height, height});
             const auto digit = static_cast<unsigned>(characters_[i] - '0');
-            node.GetComponent<SpriteVisualComponent>()->SetUvTransform(
+            node.GetComponent<PhantomCore::SpriteVisualComponent>()->SetUvTransform(
                 {.2F, .5F}, {static_cast<float>(digit % 5) * .2F, static_cast<float>(digit / 5) * .5F});
         }
     }
-    Visual2DNode *root_{};
-    std::array<Visual2DNode *, 20> digits_{};
+    PhantomCore::Visual2DNode *root_{};
+    std::array<PhantomCore::Visual2DNode *, 20> digits_{};
     std::array<char, 20> characters_{};
     std::size_t count_{};
     std::uint64_t value_{};
     bool hasValue_{};
-    Rect bounds_{};
-    TextAlignment alignment_{TextAlignment::Trailing};
+    PhantomCore::Rect bounds_{};
+    PhantomCore::TextAlignment alignment_{PhantomCore::TextAlignment::Trailing};
 };

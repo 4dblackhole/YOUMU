@@ -5,6 +5,8 @@
 #include <array>
 #include <cmath>
 #include <map>
+using namespace PhantomCore;
+
 namespace taiko_result_ui
 {
 

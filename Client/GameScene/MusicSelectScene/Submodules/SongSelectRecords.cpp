@@ -3,6 +3,8 @@
 #include "SongSelectionText.h"
 #include <chrono>
 #include <format>
+using namespace PhantomCore;
+
 using namespace song_select;
 
 void MusicSelectView::LayoutRecordControls()

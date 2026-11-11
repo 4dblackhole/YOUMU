@@ -10,8 +10,8 @@
 class GameplayJudgementView final
 {
   public:
-    void Initialize(ScreenVisual2DManager &visuals, Visual2DCanvas &canvas,
-                    Visual2DNode &judgementCircle, const AccuracyRange &baseRange,
+    void Initialize(PhantomCore::ScreenVisual2DManager &visuals, PhantomCore::Visual2DCanvas &canvas,
+                    PhantomCore::Visual2DNode &judgementCircle, const AccuracyRange &baseRange,
                     TextCatalog &texts);
     void OnResize(float logicalWidth);
     void Present(const NoteEvent &event);
@@ -22,15 +22,15 @@ class GameplayJudgementView final
 
   private:
     static constexpr double FeedbackSeconds = 0.2;
-    void CreateTimingGuide(Visual2DNode &root, TextCatalog &texts);
+    void CreateTimingGuide(PhantomCore::Visual2DNode &root, TextCatalog &texts);
     void CreateTimingBands();
     void CreateTimingCaptions(TextCatalog &texts);
     void CreateTimingMarker();
-    void CreateJudgementImages(ScreenVisual2DManager &visuals,
-                               Visual2DNode &judgementCircle);
+    void CreateJudgementImages(PhantomCore::ScreenVisual2DManager &visuals,
+                               PhantomCore::Visual2DNode &judgementCircle);
     struct TimingMarker
     {
-        Visual2DNode *node{}, *fill{};
+        PhantomCore::Visual2DNode *node{}, *fill{};
         RhythmDuration error{};
         double fadeElapsed{FeedbackSeconds};
     };
@@ -43,15 +43,15 @@ class GameplayJudgementView final
     std::array<RhythmDuration, AccuracyRange::BandCount> halfWindows_{};
     RhythmDuration displayHalfWindow_{};
     float pixelsPerMicrosecond_{};
-    Visual2DNode *guide_{};
-    Visual2DNode *margin_{};
-    std::array<Visual2DNode *, AccuracyRange::BandCount> bands_{};
-    std::array<Visual2DNode *, 3> labels_{};
+    PhantomCore::Visual2DNode *guide_{};
+    PhantomCore::Visual2DNode *margin_{};
+    std::array<PhantomCore::Visual2DNode *, AccuracyRange::BandCount> bands_{};
+    std::array<PhantomCore::Visual2DNode *, 3> labels_{};
     // Fixed circular buffers: 32 retained hits plus at most 8 retiring hits.
     std::array<TimingMarker, 32> markers_{};
     std::array<TimingMarker, 8> retiringMarkers_{};
     std::size_t nextMarker_{}, markerCount_{}, nextRetiring_{};
-    std::array<Visual2DNode *, 8> judgementImages_{};
-    Visual2DNode *activeJudgement_{};
+    std::array<PhantomCore::Visual2DNode *, 8> judgementImages_{};
+    PhantomCore::Visual2DNode *activeJudgement_{};
     double judgementElapsedSeconds_{FeedbackSeconds};
 };

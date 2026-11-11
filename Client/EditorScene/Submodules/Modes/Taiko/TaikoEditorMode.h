@@ -17,7 +17,7 @@ class TaikoEditorMode final : public IEditorMode
     std::unique_ptr<IEditorDocument> OpenDocument(
         const GameplayLaunchRequest &) const override;
     void SelectTool(int) override;
-    void HandleToolKeys(IEditorContext &, const InputState &) override;
+    void HandleToolKeys(IEditorContext &, const PhantomCore::InputState &) override;
     bool HandleToolKey(IEditorContext &, std::uint16_t);
     void PlaceNote(IEditorContext &, MusicalPosition) override;
     bool HasPendingPlacement() const noexcept override
@@ -31,14 +31,14 @@ class TaikoEditorMode final : public IEditorMode
         selectionAnchor_.reset();
         selecting_ = false;
     }
-    bool OpenToolMenu(Point) override;
+    bool OpenToolMenu(PhantomCore::Point) override;
     void DrawTools(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     void DrawChart(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     void DrawToolMenu(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
-    void EditScore(IEditorContext &, Point, bool erase) override;
+    void EditScore(IEditorContext &, PhantomCore::Point, bool erase) override;
     void ScrollScore(IEditorContext &, int direction) override;
-    bool BeginScoreSelection(IEditorContext &, Point) override;
-    bool UpdateScoreSelection(IEditorContext &, Point, bool released) override;
+    bool BeginScoreSelection(IEditorContext &, PhantomCore::Point) override;
+    bool UpdateScoreSelection(IEditorContext &, PhantomCore::Point, bool released) override;
     void DrawMetadata(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     std::vector<EditorSoundChoice> SoundChoices(const TextCatalog &) const override;
     std::wstring_view SoundEffectHelp(const TextCatalog &) const override;
@@ -47,9 +47,9 @@ class TaikoEditorMode final : public IEditorMode
     std::vector<AudioMarker> AudioMarkers(const IEditorDocument &) const override;
 
   private:
-    std::optional<MusicalPosition> SnapPosition(IEditorContext &, Point) const;
+    std::optional<MusicalPosition> SnapPosition(IEditorContext &, PhantomCore::Point) const;
     std::optional<MusicalPosition> selectionAnchor_;
-    Point selectionStart_{};
+    PhantomCore::Point selectionStart_{};
     bool selecting_{};
     void DrawOverview(IEditorModeCanvas &, IEditorContext &, const TextCatalog &);
     void DrawRealtime(IEditorModeCanvas &, IEditorContext &, const TextCatalog &);
@@ -63,18 +63,18 @@ class TaikoEditorMode final : public IEditorMode
                                  const TaikoEditorTextSet &) const;
     struct NoteHit
     {
-        Point point;
+        PhantomCore::Point point;
         std::size_t order;
     };
     struct NoteBodyHit
     {
-        Rect bounds;
+        PhantomCore::Rect bounds;
         std::size_t order;
     };
     std::vector<NoteBodyHit> bodyHits_;
     TaikoEditorNoteInspector inspector_;
     std::vector<NoteHit> noteHits_;
-    std::vector<std::pair<Point, MusicalPosition>> overviewGrid_;
+    std::vector<std::pair<PhantomCore::Point, MusicalPosition>> overviewGrid_;
     std::vector<std::pair<float, MusicalPosition>> realtimeGrid_;
     std::optional<MusicalPosition> pending_;
     int tool_{0}, popup_{-1};

@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cmath>
 
+using namespace PhantomCore;
+
 void GameplaySessionController::ResetTimeline()
 {
     feedback_.push_back({true});

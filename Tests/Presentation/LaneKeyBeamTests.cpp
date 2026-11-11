@@ -4,6 +4,8 @@
 #include <iostream>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 void Check(bool condition, const char* message)
 {
     if (!condition) throw std::runtime_error(message);

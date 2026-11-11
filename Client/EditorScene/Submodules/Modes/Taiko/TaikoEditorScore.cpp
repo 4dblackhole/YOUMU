@@ -11,6 +11,8 @@
 #include <limits>
 #include <locale>
 #include <sstream>
+using namespace PhantomCore;
+
 using namespace editor_ui;
 using namespace taiko_editor_layout;
 

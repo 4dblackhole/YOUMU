@@ -8,8 +8,8 @@ class SongPreviewController final
 {
     struct PreviewSlot
     {
-        std::shared_ptr<AudioClip> clip;
-        AudioPlaybackId playbackId{InvalidAudioPlaybackId};
+        std::shared_ptr<PhantomCore::AudioClip> clip;
+        PhantomCore::AudioPlaybackId playbackId{PhantomCore::InvalidAudioPlaybackId};
         std::optional<std::size_t> catalogIndex;
         std::optional<std::uint64_t> durationMicroseconds;
         float volume{};
@@ -17,7 +17,7 @@ class SongPreviewController final
     };
 
   public:
-    explicit SongPreviewController(AudioPlaybackManager &playback)
+    explicit SongPreviewController(PhantomCore::AudioPlaybackManager &playback)
         : audioPlayback_(playback)
     {
     }
@@ -25,7 +25,7 @@ class SongPreviewController final
     {
         StopPreviewAudio();
     }
-    void Initialize(AudioSystem &audio)
+    void Initialize(PhantomCore::AudioSystem &audio)
     {
         audioSystem_ = &audio;
     }
@@ -39,12 +39,12 @@ class SongPreviewController final
   private:
     void PollRetiredClips();
     void PlayPendingPreview(std::size_t slotIndex);
-    AudioPlaybackManager &audioPlayback_;
-    AudioSystem *audioSystem_{};
+    PhantomCore::AudioPlaybackManager &audioPlayback_;
+    PhantomCore::AudioSystem *audioSystem_{};
     std::array<PreviewSlot, 2> previewSlots_{};
     std::optional<std::size_t> currentPreviewSlot_;
     // A failed file is retried on another selection/scene entry, never every Update.
     std::optional<std::size_t> failedPreviewIndex_;
     std::optional<std::size_t> pendingPreviewSlot_;
-    std::vector<std::shared_ptr<AudioClip>> retiredClips_;
+    std::vector<std::shared_ptr<PhantomCore::AudioClip>> retiredClips_;
 };

@@ -21,6 +21,8 @@
 #include <string>
 #include <utility>
 
+using namespace PhantomCore;
+
 YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId,
                                const bool rhythmDebugMode)
     : smokeTest_(smokeTest), showPerformanceOverlay_(smokeTest), rhythmDebugMode_(rhythmDebugMode),

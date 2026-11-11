@@ -15,12 +15,18 @@
 #include <stdexcept>
 #include <thread>
 
+using namespace PhantomCore;
+
+namespace PhantomCore
+{
 struct InputStateTestAccess
 {
     static void Begin(InputState &input) { input.BeginUpdate(); }
     static void Press(InputState &input, std::uint16_t key, std::int64_t ticks) { input.SetKey(key, true, ticks); }
     static void Release(InputState &input, std::uint16_t key, std::int64_t ticks) { input.SetKey(key, false, ticks); }
 };
+} // namespace PhantomCore
+
 
 namespace
 {

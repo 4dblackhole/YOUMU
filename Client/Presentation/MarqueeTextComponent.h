@@ -8,7 +8,7 @@
 
 // Keeps the complete Unicode string and moves its prepared glyphs inside
 // a fixed clip. The engine supplies measured width and a shared second copy.
-class MarqueeTextComponent final : public Visual2DComponent
+class MarqueeTextComponent final : public PhantomCore::Visual2DComponent
 {
   public:
     explicit MarqueeTextComponent(std::wstring text = {}, double secondsPerCharacter = 0.28);
@@ -20,7 +20,7 @@ class MarqueeTextComponent final : public Visual2DComponent
   private:
     void RefreshDisplayedText();
     [[nodiscard]] std::size_t CharacterCount() const noexcept;
-    [[nodiscard]] TextVisualComponent &Visual();
+    [[nodiscard]] PhantomCore::TextVisualComponent &Visual();
 
     static constexpr std::size_t GapCharacters = 5;
     static constexpr double EndPauseSeconds = 1.0;

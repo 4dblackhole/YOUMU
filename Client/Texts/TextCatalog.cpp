@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 namespace
 {
     const TranslationEntries &EnglishDefaults()

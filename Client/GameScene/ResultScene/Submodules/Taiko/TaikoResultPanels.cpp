@@ -8,6 +8,8 @@
 #include <climits>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 using namespace taiko_result_ui::layout;
 namespace
 {

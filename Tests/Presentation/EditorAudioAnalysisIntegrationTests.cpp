@@ -3,6 +3,8 @@
 #include "../Rhythm/Submodules/TestSupport.h"
 #include <numbers>
 
+using namespace PhantomCore;
+
 namespace
 {
     using tests::Require;

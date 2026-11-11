@@ -3,6 +3,8 @@
 #include "LogoView.h"
 #include "Presentation/SkinVisualComponent.h"
 #include "Texts/GameScene/YOUMULogoScene/LogoTexts.h"
+using namespace PhantomCore;
+
 using namespace logo_ui;
 
 void LogoView::CreateLogoStrip()

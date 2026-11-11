@@ -5,6 +5,8 @@
 #include <cmath>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 namespace
 {
     constexpr double FadeSeconds = 0.2;

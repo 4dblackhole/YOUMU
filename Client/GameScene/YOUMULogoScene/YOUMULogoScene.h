@@ -13,19 +13,19 @@
 // centered at every viewport aspect ratio, while one Canvas tree owns the
 // mouse/keyboard menu and its movable selection cursor.
 class LogoView;
-class YOUMULogoScene final : public GameScene
+class YOUMULogoScene final : public PhantomCore::GameScene
 {
   public:
-    YOUMULogoScene(ScreenVisual2DManager &screenVisuals,
+    YOUMULogoScene(PhantomCore::ScreenVisual2DManager &screenVisuals,
                         TextCatalog &texts,
                         OptionSettings &options);
 
     ~YOUMULogoScene() override;
-    void Initialize(const EngineServices &services) override;
+    void Initialize(const PhantomCore::EngineServices &services) override;
     void BeginScene() override;
     void EndScene() noexcept override;
-    void Update(const UpdateContext &context, SceneManager &scenes) override;
-    void Render(const RenderContext &context) override;
+    void Update(const PhantomCore::UpdateContext &context, PhantomCore::SceneManager &scenes) override;
+    void Render(const PhantomCore::RenderContext &context) override;
     void OnResize(std::uint32_t width, std::uint32_t height) override;
     void Shutdown() noexcept override;
 

@@ -1,5 +1,7 @@
 #include "SongPreviewController.h"
 #include <algorithm>
+using namespace PhantomCore;
+
 namespace
 {
     constexpr double PreviewFadeSeconds = 0.2;

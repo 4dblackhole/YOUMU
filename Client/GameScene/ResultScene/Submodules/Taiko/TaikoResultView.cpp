@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <string_view>
 
+using namespace PhantomCore;
+
 using namespace taiko_result_ui::layout;
 
 namespace

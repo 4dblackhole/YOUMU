@@ -9,6 +9,8 @@
 #include <cmath>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
                                  AudioPlaybackManager &playback,
                                  ScreenVisual2DManager &visuals, bool debug,

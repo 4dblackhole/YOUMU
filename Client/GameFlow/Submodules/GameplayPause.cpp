@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 void GameplaySessionController::OpenPauseMenu(const UpdateContext &context)
 {
     if (pauseMenuOpen_ || state_ == PlayState::Ending)

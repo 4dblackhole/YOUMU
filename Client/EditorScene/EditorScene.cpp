@@ -5,6 +5,8 @@
 #include "Submodules/EditorWorkspaceStore.h"
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 EditorScene::EditorScene(ScreenVisual2DManager &visuals,
                          std::shared_ptr<GameplayLaunchStore> request,
                          TextCatalog &texts, std::shared_ptr<EditorWorkspaceStore> workspaceStore)

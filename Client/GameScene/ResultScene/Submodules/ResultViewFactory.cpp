@@ -1,6 +1,8 @@
 #include "ResultViewFactory.h"
 #include "Taiko/TaikoResultView.h"
 #include <stdexcept>
+using namespace PhantomCore;
+
 std::unique_ptr<IResultView> CreateResultView(const IPlayResult &result,
                                               ScreenVisual2DManager &visuals,
                                               TextCatalog &texts, ResultViewContext context)

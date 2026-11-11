@@ -6,33 +6,33 @@
 class RecordFilterPanel final
 {
   public:
-    void Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IWindowControl *window);
+    void Initialize(PhantomCore::Visual2DCanvas &canvas, TextCatalog &texts, PhantomCore::IWindowControl *window);
     void Open(const RecordFilter &filter);
     void Close() noexcept;
     void Shutdown() noexcept;
     void SetViewport(std::uint32_t height);
     void RefreshTexts();
     [[nodiscard]] bool IsVisible() const noexcept { return overlay_ && overlay_->IsVisible(); }
-    bool ProcessAction(const Action &action);
-    void ProcessInput(const InputState &input);
+    bool ProcessAction(const PhantomCore::Action &action);
+    void ProcessInput(const PhantomCore::InputState &input);
     [[nodiscard]] std::optional<RecordFilter> TakeApplied();
 
   private:
-    Visual2DNode &Label(Visual2DNode &parent, std::string name, float size = 16);
+    PhantomCore::Visual2DNode &Label(PhantomCore::Visual2DNode &parent, std::string name, float size = 16);
     void Layout();
     void RefreshValues();
     void SynchronizeText();
     void UpdateInputVisibility();
     void TryApply();
     void EditCondition();
-    Visual2DCanvas *canvas_{};
+    PhantomCore::Visual2DCanvas *canvas_{};
     TextCatalog *texts_{};
-    Visual2DNode *overlay_{}, *panel_{}, *title_{}, *close_{}, *apply_{}, *status_{};
-    Visual2DNode *minimum_{}, *maximum_{}, *seedLabel_{}, *condition_{}, *conditionText_{};
-    std::array<Visual2DNode *, RecordFilterFlagCount + 1> choiceLabels_{}, choices_{};
-    std::array<Visual2DNode *, 4> rangeLabels_{};
-    std::array<Visual2DNode *, 9> fields_{};
-    std::array<std::unique_ptr<ITextInput>, 9> inputs_;
+    PhantomCore::Visual2DNode *overlay_{}, *panel_{}, *title_{}, *close_{}, *apply_{}, *status_{};
+    PhantomCore::Visual2DNode *minimum_{}, *maximum_{}, *seedLabel_{}, *condition_{}, *conditionText_{};
+    std::array<PhantomCore::Visual2DNode *, RecordFilterFlagCount + 1> choiceLabels_{}, choices_{};
+    std::array<PhantomCore::Visual2DNode *, 4> rangeLabels_{};
+    std::array<PhantomCore::Visual2DNode *, 9> fields_{};
+    std::array<std::unique_ptr<PhantomCore::ITextInput>, 9> inputs_;
     RecordFilterDraft draft_;
     std::optional<RecordFilter> applied_;
     std::string error_;

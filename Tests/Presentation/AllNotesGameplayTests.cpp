@@ -9,6 +9,8 @@
 #include <chrono>
 #include <thread>
 
+using namespace PhantomCore;
+
 using tests::Require;
 
 namespace

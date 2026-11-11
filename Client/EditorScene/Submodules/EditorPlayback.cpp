@@ -5,6 +5,8 @@
 #include <limits>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 namespace
 {
 

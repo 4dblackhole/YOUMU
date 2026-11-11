@@ -8,6 +8,8 @@
 #include "Submodules/SongSelectionText.h"
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 using namespace song_select;
 
 MusicSelectScene::MusicSelectScene(ScreenVisual2DManager &visuals,

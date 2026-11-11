@@ -3,6 +3,8 @@
 #include <cmath>
 #include <stdexcept>
 
+using namespace PhantomCore;
+
 void GameplaySessionController::SetEditorTestRate(double rate, const UpdateContext &context)
 {
     if (!launchRequest_.editorTestStart || !std::isfinite(rate) ||

@@ -6,6 +6,8 @@
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
 #include <algorithm>
 #include <limits>
+using namespace PhantomCore;
+
 using namespace editor_ui;
 
 #include "Editing/ChartEditor.h"

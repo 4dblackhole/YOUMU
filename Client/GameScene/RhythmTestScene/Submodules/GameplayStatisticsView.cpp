@@ -1,6 +1,8 @@
 #include "GameplayStatisticsView.h"
 #include "App/AssetPaths.h"
 
+using namespace PhantomCore;
+
 namespace
 {
     Visual2DNode &Label(Visual2DNode &parent, std::string name, std::wstring text, TextCatalog &texts)
