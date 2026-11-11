@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <utility>
+#include <iterator>
 
 using namespace PhantomCore;
 
@@ -55,11 +56,15 @@ void GameplayAudioRouter::Shutdown() noexcept
     bypassedEffects_.clear();
     appliedValues_.clear();
     if (audioSystem_)
-        for (auto &[id, sound] : clips_)
+        for (auto entry = clips_.begin(); entry != clips_.end(); ++entry)
         {
-            static_cast<void>(id);
-            // Aliases share one clip. Retire only the last owned alias.
-            if (sound.clip.use_count() > 1)
+            auto& sound = entry->second;
+            if (!sound.clip) continue;
+            const auto* clip = sound.clip.get();
+            const bool hasLaterAlias = std::any_of(std::next(entry), clips_.end(),
+                [clip](const auto& candidate) { return candidate.second.clip.get() == clip; });
+            // Retire the last router alias even while a voice still owns the clip.
+            if (hasLaterAlias)
             {
                 sound.clip.reset();
                 continue;
