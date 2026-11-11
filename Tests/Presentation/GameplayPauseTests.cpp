@@ -488,7 +488,14 @@ namespace
                     Check(paths.size() == 1 && paths.front().filename() == L"Sky.png",
                           "The loading BG must be prepared before the bulk gameplay images.");
                 }
-                return inner_.PrepareImages(paths, error);
+                lastPreparationCount_ = paths.size();
+                lastPreparationReady_ = inner_.PrepareImages(paths, error);
+                return lastPreparationReady_;
+            }
+            void PrintPreparationDiagnostic() const
+            {
+                std::fprintf(stderr, "Image preparation: paths=%zu ready=%d\n",
+                    lastPreparationCount_, lastPreparationReady_);
             }
             Size GetImageSize(ImageHandle image) const noexcept override { return inner_.GetImageSize(image); }
             void SubmitScreen(const Visual2DCanvas &canvas, const RenderContext &ctx, Point origin, std::uint32_t z) override
@@ -532,6 +539,8 @@ namespace
             bool &introImage_;
             std::size_t resumesBefore_{};
             bool firstPreparation_{true};
+            std::size_t lastPreparationCount_{};
+            bool lastPreparationReady_{};
         };
       public:
         explicit ColdStartClient(bool &verified, bool accelerated=false) : verified_(verified), accelerated_(accelerated) {}
@@ -575,6 +584,19 @@ namespace
         }
         bool Update(const UpdateContext &ctx) override
         {
+            if (ctx.totalSeconds >= 5)
+            {
+                std::fprintf(stderr, "Cold start timeout: shown=%d sent=%d intro=%d BG=%d canvases=%zu resumes=%zu loads=%zu\n",
+                    shown_, sent_, intro_, introImage_, visuals_.CanvasCount(), musicResumes, clipLoads);
+                rendering_->PrintPreparationDiagnostic();
+                if (const auto* canvas = visuals_.FindCanvas(2))
+                    if (const auto* error = Find(canvas->Root(), "Hud.Error"))
+                        if (const auto* text = error->GetComponent<TextVisualComponent>())
+                        {
+                            const auto value = text->Text();
+                            std::fprintf(stderr, "Cold start error: %.*ls\n", static_cast<int>(value.size()), value.data());
+                        }
+            }
             Check(ctx.totalSeconds < 5, "Cold-start gameplay did not become visible.");
             InputStateTestAccess::Begin(input_);
             const auto before = sampleStarts;
@@ -659,8 +681,20 @@ namespace
         }
         bool Update(const UpdateContext &ctx) override
         {
+            if (ctx.totalSeconds >= 10)
+                std::fprintf(stderr, "Pause timeout: phase=%d state=%d time=%lld pausedUpdates=%d error=%.*s\n",
+                    phase_, static_cast<int>(controller_->CurrentState()),
+                    static_cast<long long>(controller_->Time().count()), pausedUpdates_,
+                    static_cast<int>(controller_->ErrorMessage().size()), controller_->ErrorMessage().data());
             Check(ctx.totalSeconds < 10, "Pause transport timed out.");
             controller_->Update(ctx);
+            if (phase_ == 0 && controller_->CurrentState() == PlayState::Pause && !reportedUnexpectedPause_)
+            {
+                reportedUnexpectedPause_ = true;
+                std::fprintf(stderr, "Unexpected initial Pause: Space=%d Esc=%d error=%.*s\n",
+                    ctx.input.WasKeyPressed(VK_SPACE), ctx.input.WasKeyPressed(VK_ESCAPE),
+                    static_cast<int>(controller_->ErrorMessage().size()), controller_->ErrorMessage().data());
+            }
             if (phase_ == 0 && controller_->CurrentState() != PlayState::Gameplay)
                 return true;
             if (phase_ == 0 && controller_->Time().count() >= 12'250'000)
@@ -1158,6 +1192,7 @@ namespace
         bool &verified_;
         bool rendered_{};
         int phase_{}, pausedUpdates_{};
+        bool reportedUnexpectedPause_{};
         RhythmTime paused_{};
         PlaySession *session_{};
         std::optional<EngineServices> services_;

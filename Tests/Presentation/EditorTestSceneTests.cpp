@@ -167,11 +167,27 @@ namespace
               "A Test with no remaining notes is valid and has no HP judgement.");
         GameplaySessionController ending(request, h.playback, false, std::move(empty.session));
         ending.InitializeSession(); ending.Start(h.services, *request.editorTestStart);
+        const auto readyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
+        while (ending.CurrentState() == PlayState::Loading && std::chrono::steady_clock::now() < readyDeadline)
+        { ending.Update(h.Context(idle)); std::this_thread::sleep_for(std::chrono::milliseconds{2}); }
+        if (ending.CurrentState() != PlayState::Gameplay && !ending.ShouldShowResult())
+            std::fprintf(stderr, "Empty Test preparation: state=%d, error=%.*s\n",
+                static_cast<int>(ending.CurrentState()), static_cast<int>(ending.ErrorMessage().size()),
+                ending.ErrorMessage().data());
+        Check(ending.CurrentState() == PlayState::Gameplay || ending.ShouldShowResult(),
+              "Empty Test music must become ready before its transport deadline starts.");
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{3};
         while (!ending.ShouldShowResult() && std::chrono::steady_clock::now() < deadline)
         { ending.Update(h.Context(idle)); std::this_thread::sleep_for(std::chrono::milliseconds{2}); }
-        Check(ending.ShouldShowResult() && ending.Time() >= RhythmTime{6'000'000} &&
-                  !ending.TakeResult()->Summary().CanUseHp(),
+        const bool completed = ending.ShouldShowResult();
+        auto ended = completed ? ending.TakeResult() : nullptr;
+        if (!completed || ending.Time() < RhythmTime{6'000'000} || !ended || ended->Summary().CanUseHp())
+            std::fprintf(stderr, "Empty Test: state=%d, time=%lld, result=%d, HP=%d, error=%.*s\n",
+                static_cast<int>(ending.CurrentState()), static_cast<long long>(ending.Time().count()),
+                ended != nullptr, ended ? ended->Summary().CanUseHp() : false,
+                static_cast<int>(ending.ErrorMessage().size()), ending.ErrorMessage().data());
+        Check(completed && ending.Time() >= RhythmTime{6'000'000} && ended &&
+                  !ended->Summary().CanUseHp(),
               "Empty Test must finish at the actual song end and remain outside HP qualification.");
         ending.Shutdown();
     }
@@ -181,11 +197,16 @@ namespace
         for (const auto &child : node.Children()) if (auto *found = Find(*child, name)) return found;
         return nullptr;
     }
-    std::pair<Visual2DCanvas *, Visual2DNode *> Find(Harness &h, std::string_view name)
+    std::pair<Visual2DCanvas *, Visual2DNode *> TryFind(Harness &h, std::string_view name)
     {
         for (std::uint64_t id = 1; id < 128; ++id)
             if (auto *canvas = h.visuals.FindCanvas(id))
                 if (auto *node = Find(canvas->Root(), name)) return {canvas, node};
+        return {};
+    }
+    std::pair<Visual2DCanvas *, Visual2DNode *> Find(Harness &h, std::string_view name)
+    {
+        if (auto found = TryFind(h, name); found.second) return found;
         throw std::runtime_error("Expected Test visual missing: " + std::string(name));
     }
     void TestRoundTrip(Harness &h, GameplayLaunchRequest request)
@@ -221,12 +242,27 @@ namespace
             InputState key; InputStateTestAccess::Key(key, VK_ESCAPE); tick(key);
             Check(scenes.CurrentSceneId() == EditorSceneId && !result, "Esc must restore the editor without any Result transfer.");
         };
+        const auto waitForGameplay = [&]
+        {
+            const auto readyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
+            while (scenes.CurrentSceneId() == RhythmTestSceneId && std::chrono::steady_clock::now() < readyDeadline)
+            {
+                tick(idle);
+                const auto help = TryFind(h, "EditorTest.Help").second;
+                if (help && help->GetComponent<TextVisualComponent>()->Text() == h.texts.Get("Editor.testControls")) return;
+                std::this_thread::sleep_for(std::chrono::milliseconds{2});
+            }
+            throw std::runtime_error("Editor Test did not enter Gameplay: " + launches->TakeEditorTestError());
+        };
         launch(); escape(); // Include an early return while resources are preparing.
         launch();
-        for (int i = 0; i < 120; ++i) { tick(idle); std::this_thread::sleep_for(std::chrono::milliseconds{2}); }
+        waitForGameplay();
         InputState key; InputStateTestAccess::Key(key, VK_SPACE); tick(key);
+        unsigned rateCheck{};
         const auto setRate = [&](float edge)
         {
+            std::printf("Test rate lookup %u: Scene=%s, Canvas count=%zu\n", ++rateCheck,
+                std::string(scenes.CurrentSceneId()).c_str(), h.visuals.CanvasCount());
             auto [canvas, slider] = Find(h, "EditorTest.Rate");
             const auto bounds = slider->BoundsInCanvas();
             const auto logical = canvas->LogicalSize();
@@ -247,7 +283,7 @@ namespace
         escape(); launch(); escape();
         Check(h.playback.PlaybackCount() == 0 && !result, "Repeated Test round trips must not retain voices or results.");
         launch();
-        for (int i = 0; i < 80; ++i) { tick(idle); std::this_thread::sleep_for(std::chrono::milliseconds{2}); }
+        waitForGameplay();
         setRate(1);
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{8};
         while (scenes.CurrentSceneId() == RhythmTestSceneId && std::chrono::steady_clock::now() < deadline)

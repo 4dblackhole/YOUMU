@@ -769,6 +769,27 @@ namespace
         }
         void OnClientUpdated(const UpdateContext &context) override
         {
+            if (context.input.WasKeyPressed(VK_SPACE) || context.input.WasKeyPressed(VK_ESCAPE))
+                std::fprintf(stderr, "Native transition control edge: Space=%d Esc=%d scene=%s\n",
+                    context.input.WasKeyPressed(VK_SPACE), context.input.WasKeyPressed(VK_ESCAPE),
+                    std::string(Scenes().CurrentSceneId()).c_str());
+            if (context.totalSeconds >= 12)
+            {
+                std::fprintf(stderr, "Result timeout: scene=%s sessions=%zu results=%zu canvases=%zu retry=%d return=%d\n",
+                    std::string(Scenes().CurrentSceneId()).c_str(), sessionCreations_, resultCreations_,
+                    ScreenVisuals().CanvasCount(), retryRequested_, returnRequested_);
+                for (ScreenCanvasId id = 1; id <= 5; ++id)
+                    if (const auto* canvas = ScreenVisuals().FindCanvas(id))
+                        for (const auto name : {"Hud.Error", "Progress.CurrentTime", "Progress.TotalTime"})
+                            if (const auto* node = FindNode(canvas->Root(), name))
+                                if (const auto* text = node->GetComponent<TextVisualComponent>())
+                                {
+                                    const auto value = text->Text();
+                                    std::fprintf(stderr, "Canvas %llu %s: %.*ls\n",
+                                        static_cast<unsigned long long>(id), name,
+                                        static_cast<int>(value.size()), value.data());
+                                }
+            }
             Check(context.totalSeconds < 12, "Result transition regression timed out.");
             if (Scenes().CurrentSceneId() == ResultSceneId && !retryRequested_)
             {

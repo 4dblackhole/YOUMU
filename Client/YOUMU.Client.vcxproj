@@ -365,4 +365,31 @@
     <None Include="Texts\Languages\ja.ini" />
   </ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\PlayOptionsPanel\Submodules\PlayOptionsLayout.cpp" /></ItemGroup>
+  <!-- Keep Client-only incremental LTCG, but rebuild its state after SDK changes. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <PhantomCoreLtcgStamp>$(IntDir)PhantomCoreLtcg.inputs.stamp</PhantomCoreLtcgStamp>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <LinkTimeCodeGenerationObjectFile>$(IntDir)$(TargetName).iobj</LinkTimeCodeGenerationObjectFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <FileWrites Include="$(PhantomCoreLtcgStamp)" />
+  </ItemGroup>
+  <Target Name="InvalidatePhantomCoreLtcgCache" BeforeTargets="Link"
+          Condition="'$(Configuration)|$(Platform)'=='Release|x64'"
+          Inputs="$(ProjectDir)..\Dependencies\PhantomCore\bin\$(Platform)\$(Configuration)\PhantomCore.lib;$(ProjectDir)..\Dependencies\PhantomCore\Engine\SDK\PhantomCore.h;$(MSBuildProjectFullPath)"
+          Outputs="$(PhantomCoreLtcgStamp)">
+    <Message Importance="High" Text="PhantomCore SDK changed: refreshing Client incremental LTCG state." />
+    <Delete Files="$(IntDir)$(TargetName).iobj;$(IntDir)$(TargetName).ipdb" />
+    <CreateProperty Value="true">
+      <Output TaskParameter="ValueSetByTask" PropertyName="PhantomCoreLtcgInvalidated" />
+    </CreateProperty>
+  </Target>
+  <Target Name="RecordPhantomCoreLtcgInputs" AfterTargets="Link"
+          Condition="'$(PhantomCoreLtcgInvalidated)'=='true'">
+    <!-- A failed link must not acknowledge the new SDK inputs. -->
+    <Touch Files="$(PhantomCoreLtcgStamp)" AlwaysCreate="true" />
+  </Target>
 </Project>
