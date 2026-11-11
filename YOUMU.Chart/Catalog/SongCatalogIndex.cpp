@@ -133,7 +133,8 @@ namespace
             out.Path(path);
             out.Number(static_cast<std::int64_t>(entry.modified.time_since_epoch().count()));
             out.Number(static_cast<std::uint64_t>(entry.size));
-            out.Number(static_cast<std::uint64_t>(entry.noteCount));
+            out.Number(static_cast<std::uint8_t>(entry.noteCount.has_value()));
+            if (entry.noteCount) out.Number(static_cast<std::uint64_t>(*entry.noteCount));
             out.Number(static_cast<std::uint8_t>(entry.bpmRange.has_value()));
             if (entry.bpmRange) { out.Number(entry.bpmRange->first); out.Number(entry.bpmRange->second); }
             Write(out, entry.parsed->document);
@@ -156,7 +157,10 @@ namespace
             const auto modified = std::filesystem::file_time_type{
                 std::filesystem::file_time_type::duration{in.Number<std::int64_t>()}};
             const auto size = in.Number<std::uint64_t>();
-            const auto noteCount = in.Number<std::uint64_t>();
+            const auto hasNoteCount = in.Number<std::uint8_t>();
+            if (hasNoteCount > 1) throw std::runtime_error("Invalid catalog note-count availability.");
+            std::optional<std::size_t> noteCount;
+            if (hasNoteCount) noteCount = static_cast<std::size_t>(in.Number<std::uint64_t>());
             std::optional<std::pair<double, double>> bpmRange;
             if (in.Number<std::uint8_t>()) bpmRange = {in.Number<double>(), in.Number<double>()};
             auto parsed = std::make_shared<typename Cache::mapped_type::Parsed>();
@@ -175,15 +179,17 @@ namespace
                 parsed->diagnostics.push_back(std::move(d));
             }
             if (!cache.emplace(path, typename Cache::mapped_type{modified, size, std::move(parsed),
-                static_cast<std::size_t>(noteCount), bpmRange}).second)
+                noteCount, bpmRange}).second)
                 throw std::runtime_error("Duplicate catalog cache record.");
         }
     }
 }
 
-SongCatalog SongCatalog::MetadataIndex(std::filesystem::path cacheFile)
+SongCatalog SongCatalog::MetadataIndex(
+    std::filesystem::path cacheFile, PatternNoteCounter countNotes)
 {
-    SongCatalog catalog;
+    if (!countNotes) throw std::invalid_argument("A catalog index requires a logical note counter.");
+    SongCatalog catalog(std::move(countNotes));
     catalog.metadataOnly_ = true;
     catalog.cacheFile_ = std::move(cacheFile);
     return catalog;

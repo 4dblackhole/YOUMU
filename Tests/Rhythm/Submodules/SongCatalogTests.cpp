@@ -1,11 +1,31 @@
 #include "TestSupport.h"
 #include "Catalog/SongCatalogCacheVersion.h"
+#include "Mode/PlayGameModeFactory.h"
 
 namespace tests
 {
+    void VerifyMetadataNoteCounts(const std::filesystem::path& songsRoot,
+        const std::map<std::filesystem::path, std::size_t>& expected)
+    {
+        TemporaryDirectory fixture("YOUMULogicalNoteCounts");
+        const auto cache = fixture.Path() / "index.bin";
+        const auto cold = SongCatalog::MetadataIndex(cache, CountPlayableNotes).Load(songsRoot);
+        const auto restored = SongCatalog::MetadataIndex(cache, CountPlayableNotes).Load(songsRoot);
+        for (const auto* index : {&cold, &restored})
+        {
+            Require(index->Succeeded() && index->PatternCount() == expected.size(),
+                "Cold and restored indices must retain every validated pattern.");
+            for (const auto& song : index->songs)
+                for (const auto& pattern : song.patterns)
+                    Require(pattern.pattern.notes.empty() &&
+                        pattern.noteCount == expected.at(pattern.patternPath),
+                        "The disk index must preserve logical counts without retaining note bodies.");
+        }
+    }
+
     void TestSongCatalog(const std::filesystem::path &songsRoot)
     {
-        const SongCatalogLoadResult catalog = SongCatalog{}.Load(songsRoot);
+        const SongCatalogLoadResult catalog = SongCatalog{CountPlayableNotes}.Load(songsRoot);
         if (!catalog.Succeeded())
         {
             for (const Diagnostic &diagnostic : catalog.diagnostics)
@@ -26,6 +46,7 @@ namespace tests
                     catalog.PatternCount() == catalog.discoveredPatternFiles,
                 "All bundled and optional local YMP patterns must be associated with their songs.");
         TaikoMode taiko;
+        std::map<std::filesystem::path, std::size_t> expectedCounts;
         bool checkedAngelDream = false;
         for (const SongCatalogEntry &song : catalog.songs)
         {
@@ -91,8 +112,13 @@ namespace tests
                     taiko.LoadSession(pattern.patternPath, pattern.effectPath);
                 Require(loaded.Succeeded() && loaded.session->Gear().LaneCount() == 1,
                         "Every copied Taiko pattern must create one playable Lane.");
+                const auto count = loaded.session->PlayableNoteCount();
+                Require(pattern.noteCount == count,
+                    "Catalog counts must equal actual logical note objects, including long notes.");
+                expectedCounts.emplace(pattern.patternPath, count);
             }
         }
+        VerifyMetadataNoteCounts(songsRoot, expectedCounts);
         Require(checkedAngelDream, "The catalog test must exercise the bundled AngelDream song.");
         std::cout << "Catalog verified: " << catalog.songs.size() << " songs, "
                   << catalog.PatternCount() << " patterns.\n";
@@ -114,7 +140,7 @@ namespace tests
                       "Pattern Name: Invalid\nMode: Taiko\nBase BPM: 120\n"
                       "[Pattern]\n0/1,1,0\n");
 
-        const SongCatalogLoadResult catalog = SongCatalog{}.Load(fixture.Path());
+        const SongCatalogLoadResult catalog = SongCatalog{CountPlayableNotes}.Load(fixture.Path());
         Require(!catalog.Succeeded() && catalog.discoveredMusicFiles == 2 &&
                     catalog.discoveredPatternFiles == 2,
                 "Catalog discovery must retain diagnostics and source counts for invalid files.");
@@ -136,7 +162,14 @@ namespace tests
         std::string source = "Version: 1\nMusic metadata: valid.ymm\nEffect file: valid.yme\n"
             "Pattern Name: Valid\nMode: Taiko\nBase BPM: 120\nJudgeLevel: 40.37\nHP: 17.25\n[Time Signature]\n1/4,#bpm 250\n1/4,#bpm 180\n[Pattern]\n0/1,1,0\n";
         WriteTextFile(pattern, source);
-        const auto load = [&] { return SongCatalog::MetadataIndex(cache).Load(root); };
+        std::size_t countCalculations{};
+        const SongCatalog::PatternNoteCounter countNotes = [&](const PatternDocument& pattern,
+            const EffectDocument& effects)
+        {
+            ++countCalculations;
+            return CountPlayableNotes(pattern, effects);
+        };
+        const auto load = [&] { return SongCatalog::MetadataIndex(cache, countNotes).Load(root); };
         const auto first = load();
         Require(first.Succeeded() && first.PatternCount() == 1 &&
             first.songs.front().patterns.front().pattern.notes.empty() &&
@@ -146,6 +179,10 @@ namespace tests
             first.songs.front().patterns.front().pattern.hpLevel == HpLevel{17.25},
             "The metadata index must preserve list metadata and counts without retaining note bodies.");
         Require(std::filesystem::file_size(cache) > 24, "The index must be persisted outside source songs.");
+        auto unsupported = ChartParser{}.ParsePatternFile(pattern).document;
+        unsupported.mode = "UnsupportedRegressionMode";
+        Require(!CountPlayableNotes(unsupported),
+            "Unsupported modes must not publish a fabricated logical note count.");
         const auto savedAt = std::filesystem::last_write_time(cache);
         const auto restored = load();
         Require(restored.PatternCount() == 1 && restored.songs.front().patterns.front().bpmRange == std::pair{120.0, 180.0} &&
@@ -160,6 +197,14 @@ namespace tests
             file.read(reinterpret_cast<char *>(&value), sizeof(value));
             return value;
         };
+
+        const auto beforeEffectChange = countCalculations;
+        const auto oldEffectTime = std::filesystem::last_write_time(effect);
+        WriteTextFile(effect, "Version: 1\n\n");
+        std::filesystem::last_write_time(effect, oldEffectTime + std::chrono::seconds{2});
+        Require(load().songs.front().patterns.front().noteCount == 1 &&
+            countCalculations == beforeEffectChange + 1,
+            "A changed YME must invalidate the logical note count even when the YMP is unchanged.");
 
         const auto beforeEdit = std::filesystem::last_write_time(pattern);
         source.replace(source.find("Pattern Name: Valid"), 19, "Pattern Name: Other");
@@ -194,7 +239,7 @@ namespace tests
         Require(load().PatternCount() == 1, "A checksum mismatch must rebuild the disk cache.");
         const auto directoryTarget = fixture.Path() / "CacheDirectory";
         std::filesystem::create_directory(directoryTarget);
-        Require(SongCatalog::MetadataIndex(directoryTarget).Load(root).PatternCount() == 1 &&
+        Require(SongCatalog::MetadataIndex(directoryTarget, CountPlayableNotes).Load(root).PatternCount() == 1 &&
             std::filesystem::is_directory(directoryTarget),
             "An unusable cache path must preserve both source loading and an existing directory.");
         WriteTextFile(effect, "Version: invalid\n");
@@ -206,7 +251,7 @@ namespace tests
         std::filesystem::remove(pattern);
         Require(load().discoveredPatternFiles == 0 && load().PatternCount() == 0,
             "Deleted patterns must disappear from a persistent index.");
-        Require(SongCatalog{}.Load(root).songs.size() == 1,
+        Require(SongCatalog{CountPlayableNotes}.Load(root).songs.size() == 1,
             "The full-document catalog API must remain available independently of the list index.");
     }
 } // namespace tests

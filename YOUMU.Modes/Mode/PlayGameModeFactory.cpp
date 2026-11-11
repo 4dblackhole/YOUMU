@@ -44,3 +44,12 @@ std::unique_ptr<IPlayGameMode> CreatePlayGameMode(std::string_view id, PlaySessi
         return mode->create(std::move(options));
     throw std::invalid_argument("Unsupported game mode: " + std::string(id));
 }
+
+std::optional<std::size_t> CountPlayableNotes(
+    const PatternDocument& pattern, const EffectDocument& effects)
+{
+    if (!IsSupportedPlayGameMode(pattern.mode)) return std::nullopt;
+    const auto result = CreatePlayGameMode(pattern.mode)->CreateSession(pattern, effects);
+    return result.Succeeded()
+        ? std::optional{result.session->PlayableNoteCount()} : std::nullopt;
+}

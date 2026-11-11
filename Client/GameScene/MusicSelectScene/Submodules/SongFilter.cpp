@@ -50,7 +50,8 @@ bool SongFilter::Matches(const SongCatalogPattern &entry) const noexcept
 {
     const auto &pattern = entry.pattern;
     if (!mode.empty() && mode != pattern.mode) return false;
-    if (!InRange(entry.noteCount.value_or(pattern.notes.size()), minimumNotes, maximumNotes)) return false;
+    if ((minimumNotes || maximumNotes) &&
+        (!entry.noteCount || !InRange(*entry.noteCount, minimumNotes, maximumNotes))) return false;
     if ((minimumBpm || maximumBpm) && (!std::isfinite(pattern.baseBpm) ||
         !InRange(pattern.baseBpm, minimumBpm, maximumBpm))) return false;
     if (!InRange(pattern.judgementLevel.Value(), minimumJudgeLevel, maximumJudgeLevel)) return false;

@@ -90,18 +90,20 @@ namespace
 
     template <class Cache, class Parser>
     auto ParseChangedFile(Cache &cache, const std::filesystem::directory_entry &file, Parser parse,
-                         bool &dirty, bool metadataOnly = false)
+                         bool &dirty, bool metadataOnly = false,
+                         const std::function<std::optional<std::size_t>(const PatternDocument&)> &countNotes = {})
     {
         const auto &path = file.path();
         using Parsed = typename Cache::mapped_type::Parsed;
         const auto read = [&](auto modified, auto size)
         {
             auto parsed = parse(path);
-            std::size_t noteCount{};
+            std::optional<std::size_t> noteCount;
             std::optional<std::pair<double, double>> bpmRange;
             if constexpr (requires { parsed.document.notes; })
             {
-                noteCount = parsed.document.notes.size();
+                if (parsed.Succeeded() && countNotes)
+                    noteCount = countNotes(parsed.document);
                 if (parsed.Succeeded())
                     try { bpmRange = MusicalTimeline(parsed.document).BpmRange(); }
                     catch (const std::exception &)
@@ -134,6 +136,25 @@ namespace
         cache.insert_or_assign(path, entry);
         dirty = true;
         return entry;
+    }
+
+    template <class Patterns, class Effects>
+    void InvalidateChangedPatternEffect(Patterns& patterns, const Effects& effects,
+        const std::filesystem::path& path)
+    {
+        const auto previous = patterns.find(path);
+        if (previous == patterns.end()) return;
+        const auto& document = previous->second.parsed->document;
+        if (document.effectFile.empty()) return;
+        const auto dependency = (path.parent_path() / document.effectFile).lexically_normal();
+        const auto cached = effects.find(dependency);
+        std::error_code error;
+        const std::filesystem::directory_entry file(dependency, error);
+        if (error || cached == effects.end()) { patterns.erase(previous); return; }
+        const auto modified = file.last_write_time(error);
+        if (error || modified != cached->second.modified) { patterns.erase(previous); return; }
+        const auto size = file.file_size(error);
+        if (error || size != cached->second.size) patterns.erase(previous);
     }
 
     [[nodiscard]] CatalogFiles DiscoverCatalogFiles(
@@ -327,12 +348,27 @@ SongCatalogLoadResult SongCatalog::Load(
     {
         const auto &path = file.path();
         std::shared_ptr<const ParseResult<PatternDocument>> parsed;
-        std::size_t noteCount{};
+        std::optional<std::size_t> noteCount;
         std::optional<std::pair<double, double>> bpmRange;
         try
         {
+            InvalidateChangedPatternEffect(patternCache_, effectCache_, path);
+            const auto countNotes = [&](const PatternDocument& document) -> std::optional<std::size_t>
+            {
+                if (!countNotes_) return std::nullopt;
+                EffectDocument effects;
+                if (!document.effectFile.empty())
+                {
+                    auto parsedEffects = parser.ParseEffectFile(
+                        (path.parent_path() / document.effectFile).lexically_normal());
+                    if (!parsedEffects.Succeeded()) return std::nullopt;
+                    effects = std::move(parsedEffects.document);
+                }
+                return countNotes_(document, effects);
+            };
             const auto cached = ParseChangedFile(patternCache_, file,
-                [&parser](const auto &file) { return parser.ParsePatternFile(file); }, cacheDirty_, metadataOnly_);
+                [&parser](const auto &file) { return parser.ParsePatternFile(file); },
+                cacheDirty_, metadataOnly_, countNotes);
             parsed = cached.parsed;
             noteCount = cached.noteCount;
             bpmRange = cached.bpmRange;

@@ -19,6 +19,12 @@ namespace tests
             entry.pattern.baseBpm = 150;
             entry.bpmRange = std::pair{1.0, 999.0};
         }
+        auto unknown = song.patterns.front();
+        unknown.noteCount.reset();
+        SongFilter countFilter;
+        countFilter.minimumNotes = 0;
+        Require(!countFilter.Matches(unknown) && SongFilter{}.Matches(unknown),
+            "Unknown logical counts are excluded only when a note-count bound is active.");
         song.patterns[0].pattern.baseBpm = 90;
         song.patterns[1].pattern.mode = "Other";
         other.music.names = {"Other"};

@@ -10,12 +10,15 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <functional>
+#include <utility>
 
 struct SongCatalogPattern
 {
     std::filesystem::path patternPath;
     std::optional<std::filesystem::path> effectPath;
     PatternDocument pattern;
+    // Logical note objects produced by the mode; empty when unavailable.
     std::optional<std::size_t> noteCount;
     std::optional<std::pair<double, double>> bpmRange;
     // Client-calculated value. Empty until calculation; not stored in YMP or the disk index.
@@ -47,16 +50,23 @@ struct SongCatalogLoadResult
 class SongCatalog final
 {
 public:
+    using PatternNoteCounter = std::function<
+        std::optional<std::size_t>(const PatternDocument&, const EffectDocument&)>;
+
     SongCatalog() = default;
+    explicit SongCatalog(PatternNoteCounter countNotes)
+        : countNotes_(std::move(countNotes)) {}
     // List-only projection: validates changed source files in full, then drops
     // note/timing/effect bodies. Gameplay must still load the selected pattern.
-    [[nodiscard]] static SongCatalog MetadataIndex(std::filesystem::path cacheFile);
+    [[nodiscard]] static SongCatalog MetadataIndex(
+        std::filesystem::path cacheFile, PatternNoteCounter countNotes);
     [[nodiscard]] SongCatalogLoadResult Load(
         const std::filesystem::path& songsRoot) const;
 
   private:
     void ReadIndex(const std::filesystem::path &root) const noexcept;
     void WriteIndex(const std::filesystem::path &root) const noexcept;
+    PatternNoteCounter countNotes_;
     bool metadataOnly_{};
     std::filesystem::path cacheFile_;
     mutable std::filesystem::path cachedRoot_;
@@ -67,7 +77,7 @@ public:
         std::filesystem::file_time_type modified;
         std::uintmax_t size{};
         std::shared_ptr<const ParseResult<Document>> parsed;
-        std::size_t noteCount{};
+        std::optional<std::size_t> noteCount;
         std::optional<std::pair<double, double>> bpmRange;
     };
     mutable std::map<std::filesystem::path, CachedDocument<MusicDocument>> musicCache_;

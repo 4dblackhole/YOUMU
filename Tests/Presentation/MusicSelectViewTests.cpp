@@ -1097,7 +1097,7 @@ int main()
         Check(playable != first.songs.end(), "The worker regression requires a real playable chart.");
         const auto &pattern = playable->patterns.front();
         Check(pattern.pattern.notes.empty() && pattern.noteCount.has_value(),
-              "Runtime catalog loading must publish compact metadata with the original note count.");
+              "Runtime catalog loading must publish compact metadata with the logical note count.");
         PlaySessionLoader sessions;
         sessions.Start({pattern.patternPath, pattern.effectPath, playable->audioPath, pattern.pattern.mode});
         Check(sessions.Busy(), "A session worker must retain its job until publication.");
@@ -1107,6 +1107,8 @@ int main()
             std::this_thread::sleep_for(std::chrono::milliseconds{1});
         Check(loaded && loaded->Succeeded() && !sessions.Busy() && !loaded->session->Gear().Lanes().empty(),
               "The worker must create and transfer a real playable session without loading on Poll.");
+        Check(pattern.noteCount == loaded->session->PlayableNoteCount(),
+              "Displayed catalog counts must equal the playable session logical note objects.");
         sessions.Start({"missing-regression.ymp", {}, "missing.mp3", "Taiko"});
         loaded.reset();
         while (!(loaded = sessions.Poll()) && std::chrono::steady_clock::now() < deadline)

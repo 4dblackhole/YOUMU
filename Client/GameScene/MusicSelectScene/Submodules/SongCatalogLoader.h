@@ -1,5 +1,6 @@
 #pragma once
 #include "Catalog/SongCatalog.h"
+#include "Mode/PlayGameModeFactory.h"
 #include <chrono>
 #include <future>
 #include <memory>
@@ -19,7 +20,7 @@ class SongCatalogLoader final
             return;
         }
         if (!cache_ || loadingRoot_ != root)
-            cache_ = std::make_shared<SongCatalog>(SongCatalog::MetadataIndex(CachePath(root)));
+            cache_ = std::make_shared<SongCatalog>(SongCatalog::MetadataIndex(CachePath(root), CountPlayableNotes));
         loadingRoot_ = root;
         pendingRoot_.reset();
         const auto cache = cache_;
