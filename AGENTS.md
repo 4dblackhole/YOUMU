@@ -35,6 +35,8 @@ Applies to this repository; `Dependencies/PhantomCore` follows its own agreement
   `IPlayGameMode` and own chart-to-note construction.
 - Public product/domain types use the global scope. Keep anonymous/internal,
   collision-avoiding UI constants and third-party namespaces where needed.
+  Engine names belong to PhantomCore. Qualify them in headers; implementation
+  files may use using namespace PhantomCore only after their includes.
 - Converter implementation belongs to the independent OsuTaikoConverter repository
   and its existing dedicated chat. It uses file formats and Taiko note contracts;
   Client `OsuImportValidation` validates converted files with actual play sessions.

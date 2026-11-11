@@ -13,8 +13,11 @@
 - 표시 이름과 EXE 이름의 원본은 `Client/Texts/GameIdentity.props`의 GameDisplayName입니다.
   현재 표시는 `Y's Orchestral Unison: Melodic Ultimatum`, EXE는 콜론을 치환한
   `Y's Orchestral Unison - Melodic Ultimatum.exe`입니다.
-- 제품/도메인 타입은 전역 이름을 사용합니다. 내부 링크·충돌 방지 UI 상수·외부 라이브러리의
-  이름 범위는 허용합니다. 이전 이름을 유지하는 호환 별칭/전달 헤더를 복원하지 않습니다.
+- YOUMU 제품/도메인 타입은 전역 이름을 사용합니다. 엔진 공개 이름은 `PhantomCore`에 둡니다.
+  Client 헤더는 `PhantomCore::`를 명시하고 구현 파일은 include 뒤에서만
+  `using namespace PhantomCore;`를 사용할 수 있습니다(사용자 D9 확정).
+  내부 링크·충돌 방지 UI 상수·외부 라이브러리의 이름 범위는 허용합니다.
+  이전 이름을 유지하는 호환 별칭/전달 헤더를 복원하지 않습니다.
 
 상세: [TextManagement](TextManagement.md#게임-이름-변경). 검증: 빌드·네 smoke와 CheckArchitecture.
 

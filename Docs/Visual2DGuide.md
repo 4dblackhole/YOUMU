@@ -2,7 +2,9 @@
 
 `Visual2DNode`는 Sprite와 UI가 공유하는 구체 클래스다. 상속으로 Button 종류를
 늘리지 않고, 필요한 시각·충돌·입력·동작 컴포넌트를 붙여 기능을 구성한다.
-클라이언트는 엔진 공개 헤더 `PhantomCore.h`만 포함한다.
+클라이언트는 엔진 공개 헤더 `PhantomCore.h`만 포함한다. 엔진 타입은 `PhantomCore`에
+있으므로 헤더에서 `PhantomCore::`를 명시한다. 구현 파일은 include 뒤에
+`using namespace PhantomCore;`를 둘 수 있다.
 
 ## 좌표계와 아홉 앵커
 
@@ -46,10 +48,10 @@ BottomLeft    BottomCenter    BottomRight
 
 ```cpp
 auto& badge = canvas_->CreateNode(
-    Anchor::TopRight,
+    PhantomCore::Anchor::TopRight,
     "Badge");
 badge.SetBounds({-20.0F, -20.0F, 100.0F, 50.0F});
-badge.AddComponent<SpriteVisualComponent>();
+badge.AddComponent<PhantomCore::SpriteVisualComponent>();
 ```
 
 창 크기가 바뀔 때마다 `SetViewportSize`를 호출한다. 앵커 Transform이 새 논리 폭과
@@ -61,14 +63,14 @@ Canvas가 반드시 전체 화면일 필요는 없다. 독립 패널은 필요�
 유지된다.
 
 ```cpp
-Visual2DCanvas panelCanvas(
+PhantomCore::Visual2DCanvas panelCanvas(
     {480.0F, 340.0F},
-    CanvasScaleMode::Fixed);
-Point panelOrigin{panelX, panelY};
+    PhantomCore::CanvasScaleMode::Fixed);
+PhantomCore::Point panelOrigin{panelX, panelY};
 
 context.visual2DRendering->SubmitScreen(
     panelCanvas, context, panelOrigin, 1);
-const auto localPointer = MapScreenPointer(
+const auto localPointer = PhantomCore::MapScreenPointer(
     mousePosition, viewportSize, panelCanvas, panelOrigin);
 ```
 
@@ -77,8 +79,8 @@ const auto localPointer = MapScreenPointer(
 아무 동작이 없는 Sprite는 시각 컴포넌트 하나만 가진다.
 
 ```cpp
-auto& sprite = CreateSprite(
-    canvas_->AnchorNode(Anchor::Center),
+auto& sprite = PhantomCore::CreateSprite(
+    canvas_->AnchorNode(PhantomCore::Anchor::Center),
     {-90.0F, -90.0F, 180.0F, 180.0F},
     imageHandle,
     "Character");
@@ -90,16 +92,16 @@ sprite.Transform().SetScale(1.0F, 1.0F, 1.0F);
 같은 Sprite를 클릭 가능하게 만들려면 상속하지 않고 컴포넌트를 추가한다.
 
 ```cpp
-sprite.AddComponent<RectangleCollider2DComponent>();
-sprite.AddComponent<PointerReceiverComponent>(
-    [](Visual2DNode& node,
-       const PointerEvent& event,
-       std::vector<Action>& actions)
+sprite.AddComponent<PhantomCore::RectangleCollider2DComponent>();
+sprite.AddComponent<PhantomCore::PointerReceiverComponent>(
+    [](PhantomCore::Visual2DNode& node,
+       const PhantomCore::PointerEvent& event,
+       std::vector<PhantomCore::Action>& actions)
     {
-        if (event.type == PointerEventType::Click)
+        if (event.type == PhantomCore::PointerEventType::Click)
         {
             actions.push_back({
-                ActionType::Clicked,
+                PhantomCore::ActionType::Clicked,
                 node.Id(),
                 0.0F,
                 0,
@@ -128,8 +130,8 @@ backend-neutral `TextFont`를 전달합니다. `Default`는 renderer 기본 글�
 게임의 언어별 선택은 `Client/Texts/TextCatalog.*`에서 관리합니다.
 
 ```cpp
-text.SetFont({TextFontSource::System, L"Segoe UI"});
-combo.SetFont({TextFontSource::File,
+text.SetFont({PhantomCore::TextFontSource::System, L"Segoe UI"});
+combo.SetFont({PhantomCore::TextFontSource::File,
                L"assets/fonts/MyFont-Regular.ttf"});
 ```
 
@@ -139,22 +141,22 @@ Button이나 ComboBox도 별도 Node 파생형이 아니다. 팩토리는 자주
 조합을 만든 뒤 일반 `Visual2DNode&`를 반환한다.
 
 ```cpp
-auto& panel = CreatePanel(
-    canvas_->AnchorNode(Anchor::MiddleLeft),
+auto& panel = PhantomCore::CreatePanel(
+    canvas_->AnchorNode(PhantomCore::Anchor::MiddleLeft),
     {0.0F, -170.0F, 480.0F, 340.0F});
 
-auto& apply = CreateButton(
+auto& apply = PhantomCore::CreateButton(
     panel,
     {16.0F, 236.0F, 200.0F, 40.0F},
     L"APPLY");
-const NodeId applyId = apply.Id();
+const PhantomCore::NodeId applyId = apply.Id();
 
-auto& device = CreateComboBox(
+auto& device = PhantomCore::CreateComboBox(
     panel,
     {16.0F, 170.0F, 448.0F, 38.0F},
     {L"Driver 0", L"Driver 1"});
 auto* combo = device.GetComponent<
-    ComboBoxBehaviorComponent>();
+    PhantomCore::ComboBoxBehaviorComponent>();
 combo->SetItemHeight(36.0F);
 combo->SetMaxVisibleItems(4);
 ```
@@ -169,20 +171,20 @@ combo->SetMaxVisibleItems(4);
 라우터에 전달한다.
 
 ```cpp
-const auto point = MapScreenPointer(
+const auto point = PhantomCore::MapScreenPointer(
     mousePosition,
     viewportSize,
     *canvas_);
 
-PointerInput pointer{};
+PhantomCore::PointerInput pointer{};
 pointer.available = point.has_value();
-pointer.position = point.value_or(Point{});
+pointer.position = point.value_or(PhantomCore::Point{});
 pointer.leftButtonDown = input.IsMouseButtonDown(
-    MouseButton::Left);
+    PhantomCore::MouseButton::Left);
 pointer.leftButtonPressed = input.WasMouseButtonPressed(
-    MouseButton::Left);
+    PhantomCore::MouseButton::Left);
 pointer.leftButtonReleased = input.WasMouseButtonReleased(
-    MouseButton::Left);
+    PhantomCore::MouseButton::Left);
 pointer.wheelDelta = input.MouseWheelDelta();
 inputRouter_.Process(*canvas_, pointer);
 ```
@@ -204,7 +206,7 @@ const auto normal = services.visual2DRendering.LoadImage(
 const auto hover = services.visual2DRendering.LoadImage(
     RuntimeAssetPath(L"Images\\ButtonHover.png"));
 
-VisualStyle style{};
+PhantomCore::VisualStyle style{};
 style.normalImage = normal;
 style.hoveredImage = hover;
 style.pressedImage = hover;
@@ -212,7 +214,7 @@ style.disabledImage = normal;
 style.normal = style.hovered = style.pressed =
     {1.0F, 1.0F, 1.0F, 1.0F};
 
-apply.GetComponent<SpriteVisualComponent>()->SetStyle(style);
+apply.GetComponent<PhantomCore::SpriteVisualComponent>()->SetStyle(style);
 ```
 
 같은 texture table과 렌더 상태를 쓰는 Sprite/위젯은 함께 인스턴싱된다. 투명 PNG
@@ -225,7 +227,7 @@ apply.GetComponent<SpriteVisualComponent>()->SetStyle(style);
 
 ```cpp
 auto& visual = *panel.GetComponent<
-    SpriteVisualComponent>();
+    PhantomCore::SpriteVisualComponent>();
 visual.SetCornerRadius(12.0F);
 ```
 
