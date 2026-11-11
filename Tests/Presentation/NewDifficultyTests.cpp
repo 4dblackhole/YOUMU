@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <fstream>
 #include <iostream>
+#include <string_view>
 
 namespace
 {
@@ -27,21 +28,59 @@ namespace
         std::ifstream stream(path, std::ios::binary);
         return {std::istreambuf_iterator<char>{stream}, {}};
     }
+    BOOL CALLBACK FindDifficultyDialog(HWND window, LPARAM user)
+    {
+        if (!window || !user) return TRUE;
+        wchar_t className[32]{};
+        if (GetClassNameW(window, className, 32) != 0 &&
+            std::wstring_view(className) == L"#32770" &&
+            GetDlgItem(window, 100) && GetDlgItem(window, 103) && GetDlgItem(window, 105))
+        {
+            *reinterpret_cast<HWND*>(user) = window;
+            return FALSE;
+        }
+        return TRUE;
+    }
+    HWND OwnDifficultyDialog()
+    {
+        HWND dialog{};
+        EnumThreadWindows(GetCurrentThreadId(), FindDifficultyDialog,
+            reinterpret_cast<LPARAM>(&dialog));
+        return dialog;
+    }
+
     struct DialogProbe
     {
         int phase{};
-        bool cancel{}, passed{};
+        bool cancel{}, passed{}, forceInactive{}, inactiveObserved{};
+        UINT_PTR timer{};
+        ULONGLONG boundAt{};
         ULONGLONG started{GetTickCount64()};
     };
     DialogProbe *probe{};
     void CALLBACK DriveDialog(HWND, UINT, UINT_PTR timer, DWORD)
     {
-        const auto dialog = GetActiveWindow();
-        if (!dialog || !GetDlgItem(dialog, 100))
+        if (!probe || timer != probe->timer) return;
+        const auto dialog = OwnDifficultyDialog();
+        if (!dialog)
+        {
+            if (GetTickCount64() - probe->started > 5000)
+            {
+                KillTimer(nullptr, timer);
+                PostQuitMessage(1);
+            }
             return;
-        if (GetTickCount64() - probe->started > 5000)
+        }
+        if (probe->forceInactive)
+        {
+            ShowWindow(dialog, SW_HIDE);
+            probe->inactiveObserved = probe->inactiveObserved || GetActiveWindow() != dialog;
+        }
+        if (!probe->boundAt) probe->boundAt = GetTickCount64();
+        if (GetTickCount64() - probe->boundAt > 5000)
         {
             KillTimer(nullptr, timer);
+            std::cerr << "Difficulty dialog timed out at phase " << probe->phase << '\n';
             SendMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
             return;
         }
@@ -155,16 +194,20 @@ int main()
         cancelled.cancel = true;
         probe = &cancelled;
         const auto cancelTimer = SetTimer(nullptr, 0, 25, DriveDialog);
+        cancelled.timer = cancelTimer;
         Check(cancelTimer != 0, "Dialog test timer unavailable.");
         Check(!CreateDifficultyWithDialog(root, song, texts) && cancelled.passed, "Cancel creates nothing.");
         DialogProbe submitted;
+        submitted.forceInactive = true;
         probe = &submitted;
-        Check(SetTimer(nullptr, 0, 25, DriveDialog) != 0, "Dialog test timer unavailable.");
+        submitted.timer = SetTimer(nullptr, 0, 25, DriveDialog);
+        Check(submitted.timer != 0, "Dialog test timer unavailable.");
         const auto fromDialog = CreateDifficultyWithDialog(root, song, texts);
         Check(fromDialog && submitted.passed && fromDialog->pattern.judgementLevel == 80.25 &&
                   fromDialog->pattern.makers.size() == 2 &&
                   fromDialog->pattern.tags == std::vector<std::string>{"tag1", "tag2"},
               "Unicode metadata persists after correcting invalid input in the same dialog.");
+        Check(submitted.inactiveObserved, "The dialog regression must exercise an inactive owning window.");
         const auto catalog = SongCatalog{}.Load(root);
         Check(catalog.songs.size() == 1 && catalog.PatternCount() == 3, "New difficulties reload into the catalog.");
         Check(Read(music) == "Version: 1\nFile: sample.wav\nMusic Name 1: Test\nArtist 1: Test\n",
