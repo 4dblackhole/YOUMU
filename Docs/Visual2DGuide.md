@@ -248,10 +248,16 @@ viewport.SetClipRect({
 그 다음 형제보다 앞이나 뒤에 놓이며, 자식 하나만 다른 부모의 stacking
 context를 뚫고 나가지 않는다.
 
-서로 다른 Canvas는 `SubmitScreen`의 `canvasZOrder`로 순서를 정한다.
-렌더러는 먼저 Canvas별 depth band를 고르고, 그 band 안에서만 해당 Canvas 트리의
-paint order를 배치한다. 따라서 뒤쪽 Canvas의 자식이 아무리 높은 `ZIndex`를 가져도
-앞쪽 Canvas 위로 넘어오지 않는다.
+서로 다른 Canvas는 `SubmitScreen`의 `canvasZOrder` 오름차순으로 합성하며
+같은 Z에서는 제출 순서를 유지한다. 각 트리의 사각형·이미지·글자는 paint order대로
+기록하므로 반투명 덮개가 뒤쪽 배경과 글자에 함께 적용된다. 연속된 같은 종류만
+배치하며 이미지 페이지가 바뀌면 배치를 닫는다.
+
+EndFrame은 월드, 화면 Canvas, 직접 제출한 Text 순서로 기록한다. 화면 요소는
+기존 depth band로 월드 깊이를 검사하고 깊이 쓰기를 끈다. 월드 검사에 쓰는 Z만
+최대 31로 제한한다. 따라서 뒤쪽 Canvas의 높은 `ZIndex` 자식도 앞쪽 Canvas 위로
+넘어오지 않는다. `SubmitScreen`이 복사한 프레임 데이터는 제출 뒤 node를 제거해도
+그 프레임의 표시를 유지한다.
 
 ```cpp
 context.visual2DRendering->SubmitScreen(optionsCanvas, context, {}, 0);
