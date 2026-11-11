@@ -22,6 +22,10 @@
 
 ## 현재 범위와 검증
 
+다중 레인 화면과 위치 기반 판정 입력은 다른 게임 모드를 설계할 때 확장합니다.
+[IScrollGearPresentation](../YOUMU.Rhythm/Scroll/ScrollGear.h)은 그때 함께 판단하도록
+선언을 유지합니다. 현재 구현·호출은 없으며 새 모드의 필수 구현 계약으로 사용하지 않습니다.
+
 - 입력 라우팅은 여러 레인을 지원합니다. 플레이 화면의 `GameplayLayout`은 Taiko용 단일 레인 루트를 배치합니다. 4키·7키 화면에는 레인별 배치·노트·키 표시 구현이 필요합니다. [플레이 화면](../Client/GameScene/RhythmTestScene/Submodules/GameplayLayout.cpp)
 - 판정용 입력에는 시각, 행동, 물리 키와 눌림·뗌이 들어갑니다. osu!standard의 커서 위치와 osu!catch의 이동 위치에는 별도의 입력 계약이 필요합니다. [입력 이벤트](../YOUMU.Rhythm/Note/Submodules/NoteTypes.h)
 - BMS 지원에는 파일 해석과 해당 채보를 플레이할 모드가 각각 필요합니다. 입력 레인 매핑은 플레이 세션을 구성하는 부분입니다.

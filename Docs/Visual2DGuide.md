@@ -6,6 +6,9 @@
 있으므로 헤더에서 `PhantomCore::`를 명시한다. 구현 파일은 include 뒤에
 `using namespace PhantomCore;`를 둘 수 있다.
 
+Update 중 추가·삭제의 방문 시점과 지연 파괴, 사용자 충돌 콜백의 예외 전달은
+엔진 [Visual2D 트리 계약](../Dependencies/PhantomCore/Docs/Visual2DArchitecture.md#update-중-트리-변경과-콜백-오류)을 따릅니다.
+
 ## 좌표계와 아홉 앵커
 
 기본 Canvas는 `1280x720` 디자인 좌표에서 세로 720을 고정한다. 실제 픽셀 배율은

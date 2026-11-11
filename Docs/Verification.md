@@ -95,6 +95,11 @@ smoke는 초기화/실행/정리 검사입니다. 시각 지정 replay·자동 U
 
 현재 알려진 빌드 관련 사항:
 
+- Release Client는 엔진 SDK의 LIB/공개 헤더 또는 Client 프로젝트가 변경되면 자기 `IntDir`의
+  증분 LTCG `.iobj`/`.ipdb`만 제거합니다. 성공한 Link 뒤에 입력 확인 stamp를 기록하고,
+  입력이 같은 Client 빌드에서는 캐시를 계속 재사용합니다. `/GL`과 Release 최적화는 유지합니다.
+  LNK1103 재발 시 OBJ/LIB/대상 PDB/링크 캐시와 실제 링크 명령을 먼저 보존한 뒤 비교합니다.
+
 - Release 증분 LTCG의 LNK4020/LNK1318이 나면 같은 구성의 OBJ/LIB/compiler PDB를
   재생성하는 전체 Rebuild로 복구합니다. 필요하면 직렬 빌드와 전체 LTCG 링크를 사용합니다.
   최적화를 끄거나 경고를 억제하지 않으며 마지막 성공한 빌드·검사를 기준으로 합니다.
