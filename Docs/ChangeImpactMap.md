@@ -21,7 +21,7 @@
 | 시작·Scene 수명·launch snapshot | `Client/App`, `Client/GameFlow`, 각 Scene 주 파일 | SceneStateTests, ResultPresentationTests |
 | 플레이 시계·Debug 정지·입력 순서 | `GameFlow/Submodules`: GameplaySessionController, GameplayInput, GameplayState; `Rhythm/Time` | RhythmCoreTests, InputOrderingTests, RunGameplayPauseTests |
 | ESC·재개·되감기·Retire | GameplayPause, GameplayPauseMenu/Layout, PlaySessionSeeking | PlayPauseTests, GameplayPauseTests, ResultPresentationTests |
-| Lane·노트/롱노트·마디선·키빔·진행바 | `RhythmTestScene/Submodules`: GameplayPresenter/Layout/NoteVisuals/Keys/ProgressView, GameplayNoteVisibility; LaneKeyBeam | RunGameplayJudgementTests, RunAllNotesGameplayTests |
+| Lane·노트/롱노트·마디선·키빔·진행바 | `RhythmTestScene/Submodules`: GameplayPresenter/Layout/NoteVisuals/InputView/ProgressView, GameplayNoteVisibility; LaneKeyBeam | RunGameplayJudgementTests, RunAllNotesGameplayTests |
 | 판정 인디케이터·링·문구 | GameplayJudgementView, GameplayFeedbackVisuals | GameplayJudgementTests |
 | 정확도·POOR·Buzz·물리 키 유지 | `YOUMU.Rhythm/Note`, Judgement, Lane; `Modes/Mode/Submodules/PlaySession` | AccuracyTests, InputOrderingTests, BuzzReplayTests, PlayPauseTests |
 | Taiko 노트 종류·사운드 정책 | `YOUMU.Modes/Taiko/Submodules`: TaikoNoteDefinition, SessionBuilder, LongNoteFactory, SoundPolicy, NoteOptions | TaikoModeTests, SoundPolicyTests, EditorModeTests |

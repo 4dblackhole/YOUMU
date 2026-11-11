@@ -321,9 +321,11 @@ Reset은 처리 개수를 0으로 되돌립니다.
 
 코드 진입점은 `Client/GameScene/RhythmTestScene/Submodules`입니다.
 `GameplayPresenter`가 Canvas를 소유하고 판정 표시는 `GameplayJudgementView`, 진행바는
-`GameplayProgressView`에 위임합니다.
+`GameplayProgressView`에 위임합니다. 키 표시 노드의 관찰자·이미지·점멸 타이머와
+생성/입력 갱신/정리는 `GameplayInputView`가 소유합니다. 노드는 같은 Canvas 아래에
+같은 순서·좌표·Z로 생성되며, Presenter는 초기화와 갱신을 위임합니다.
 `GameplayLayout`, `GameplayNoteVisuals`,
-`GameplayKeys`, `GameplayFeedbackVisuals`에 표시별 구현을 둡니다. `GameplaySessionController`는
+`GameplayInputView`, `GameplayFeedbackVisuals`에 표시별 구현을 둡니다. `GameplaySessionController`는
 `Client/GameFlow`에서 시간·입력·오디오와 모드 공통 상태머신을 소유하고
 `GameplayFeedback`으로 표시할 이벤트만 전달합니다.
 UI 수정 시 해당 표시 파일과 `GameplaySupport.h`의 관련 상수만 읽으면 됩니다.
