@@ -469,3 +469,10 @@ production router object with the public SDK. FMOD uses NoSound; injected test
 clips/voices exercise successful, failed and throwing Stop calls. After the last
 router alias and voice release a Loading clip, it must remain retired until Ready
 and then release exactly once. No production audio backend is added.
+
+## New difficulty dialog
+
+`RunNewDifficultyTests.ps1` locates its own dialog through current-thread window
+enumeration and checks correction of invalid metadata while the dialog is hidden
+and inactive. It does not depend on the desktop active window. Timers are matched
+to their probe, and a missing/timed-out dialog terminates the test with failure.
