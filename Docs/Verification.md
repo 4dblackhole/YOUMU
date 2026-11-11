@@ -67,7 +67,8 @@ clang-analyzer/bugprone/performance 규칙이 있습니다. 일괄 서식 변경
 실행합니다. 에디터·옵션·키 설정·기록·변환 결과·Pause·결과·판정 표시·전체 노트 replay를
 포함하며, `RunGameplayPauseTests.ps1`은 Debug 정지 중 입력과 Release 비활성화도 검사합니다.
 
-엔진 변경은 독립 저장소의 AGENTS/SDK 회귀를 따릅니다. 변환기 변경은 전용 저장소의
+엔진 변경은 독립 저장소의 AGENTS/SDK 회귀를 따릅니다. 엔진 코드 분석은 SDK와 공개 SDK
+테스트 프로젝트의 결과를 모두 확인합니다. 변환기 변경은 전용 저장소의
 단위·CLI 검사를 수행하고 실제 출력의 카탈로그·모드 세션 검증은 Client에서 수행합니다.
 재구축 가능한 목록 캐시와 영속 기록 DB를 같은 복구 정책으로 다루지 않습니다.
 
@@ -94,8 +95,6 @@ smoke는 초기화/실행/정리 검사입니다. 시각 지정 replay·자동 U
 
 현재 알려진 빌드 관련 사항:
 
-- 전체 엔진 분석에는 범위 밖 기존 C26478(`ScreenVisual2DManager`) 및
-  C26498/C6011(`Visual2DSurface`)이 남아 있습니다. 실제 분석 결과를 다시 확인하고 보고합니다.
 - Release 증분 LTCG의 LNK4020/LNK1318이 나면 같은 구성의 OBJ/LIB/compiler PDB를
   재생성하는 전체 Rebuild로 복구합니다. 필요하면 직렬 빌드와 전체 LTCG 링크를 사용합니다.
   최적화를 끄거나 경고를 억제하지 않으며 마지막 성공한 빌드·검사를 기준으로 합니다.
