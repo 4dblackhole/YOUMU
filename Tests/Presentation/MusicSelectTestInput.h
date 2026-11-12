@@ -20,4 +20,3 @@ struct InputStateTestAccess
     }
 };
 } // namespace PhantomCore
-
