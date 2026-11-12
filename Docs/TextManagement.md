@@ -147,8 +147,8 @@ Visual2D 패널입니다.
 
 패널이 열리거나 닫히는 동안에는 뒤쪽 화면의 선택·검색·전환 입력을 처리하지
 않습니다. 옵션 패널의 노드는 기본 화면의 다른 anchor보다 높은 Z 순서로 배치합니다.
-Taiko 키 설정 패널은 옵션 패널보다 높은 Z 순서를 사용해 겹친 영역에서도 표시와
-hit-test가 앞에 오도록 합니다.
+키 오버레이(Taiko 키 설정 패널)는 옵션 패널보다 높은 Z 순서를 사용해 겹친 영역에서도 표시와
+hit-test가 앞에 오도록 합니다. 오버레이가 열려 있는 동안에는 그 오버레이 안의 노드만 동작을 받습니다.
 
 ## 공통 UI 색상
 
@@ -166,19 +166,23 @@ Scene마다 필요한 색상군과 alpha 차이는 이름으로 구분하여 기
 [RulesetBindingsSection](https://github.com/ppy/osu/blob/master/osu.Game/Overlays/Settings/Sections/Input/RulesetBindingsSection.cs)과
 [VariantBindingsSubsection](https://github.com/ppy/osu/blob/master/osu.Game/Overlays/Settings/Sections/Input/VariantBindingsSubsection.cs)입니다.
 모드/variant 단위의 섹션을 만들고 모드가 제공한 입력과 기본 binding으로 행을 구성합니다.
-Taiko 키 설정 버튼은 Gameplay 입력 패널 이미지와 네 열의 키 설정 패널을 엽니다.
+키 편집 형태는 [모드 표현 등록부](../Client/Presentation/ModePresentation.cpp)가 정합니다. 키 오버레이를
+등록한 모드는 Input 탭의 버튼 하나로 오버레이를 열고, 등록하지 않은 모드는 Input 탭에 바인딩·칸마다
+한 줄을 둡니다. Taiko 키 설정 버튼은 Gameplay 입력 패널 이미지와 네 열의 키 설정 패널을 엽니다.
+열은 레이아웃의 바인딩 순서이며, 등록부의 키 이미지·색·위치·열 제목을 사용합니다.
 각 열의 첫 칸은 메인 키, 나머지 세 칸은 각각 비울 수 있는 보조 키입니다.
 초기 메인 키는 D/F/J/K, 첫 보조 키는 C/V/N/M입니다. 키 칸을 선택하고 새 키를
 누르면 저장하며 보조 키의 × 버튼은 해당 칸을 비웁니다. 같은 모드의 다른 키와
 중복할 수 없으며 기존 게임 제어 ESC/Space/R/F7은 예약합니다. ESC는 키 지정 대기를
-취소하거나 키 설정 패널을 닫습니다. 사용자 입력은 단일 Win32 Virtual-Key이며 키 조합/마우스 binding은
-이번 범위에 없습니다. DLL 로더 자체는 아직 구현하지 않았습니다.
+취소하거나 키 설정 패널을 닫습니다. 사용자 입력은 단일 Win32 Virtual-Key이며 키 조합/마우스 binding과
+런타임 DLL 모드 로더는 구현되어 있지 않습니다.
 
 `IPlayGameMode::InputLayout`은 stable mode/binding ID, 표시 이름, semantic action,
 기본·보조 physical key 목록을 제공합니다. PlayGameModeFactory의 실제 지원 모드 목록으로
 옵션 행을 구성하고 ResolveInputLayout이 기본값과 저장한 변경값을 검증합니다.
 PlaySession이 해결된 목록을 소유하며 판정·held·키 불빛·입력 기록에 같은 매핑을 사용합니다.
-새 모드는 factory에 구현을 연결하고 자신의 목록을 제공합니다. 런타임 DLL 로딩/ABI 계약은 별도입니다.
+빈 보조 키 허용 같은 키 정책은 레이아웃의 `allowUnassignedAuxiliaryKeys`로 모드가 선언합니다.
+새 모드를 연결하는 전체 절차는 [게임 모드 추가](AddingGameMode.md)를 따릅니다.
 
 해상도 목록은 현재 모니터가 지원하는 실제 픽셀 크기와 현재 창 크기를 표시합니다.
 선택 즉시 client 영역 크기를 변경하고 저장하며 다음 실행의 EngineConfig에도 사용합니다.
@@ -193,8 +197,8 @@ offscreen context에서는 선택을 비활성화합니다. GPU 한도에 따라
 오프셋으로 컴파일하고 원본 YMP/YME·Pattern Offset은 수정하지 않습니다.
 에디터 Copy/Replace/타이밍 수정/저장에도 이 분리를 유지합니다.
 
-OptionsPanel은 Canvas/스크롤/키보드 소유권을 맡고 Submodules의 OptionsDisplay,
-OptionsKeys, OptionsOffset이 각 표시·적용 함수를 분리합니다. OptionSettings는 지속 값의
+OptionsPanel은 Canvas/스크롤/키보드 소유권과 모드별 키 오버레이 노드 목록을 맡고 Submodules의
+OptionsDisplay, OptionsKeys, OptionsOffset이 각 표시·적용 함수를 분리합니다. OptionSettings는 지속 값의
 검증/원자적 저장을 맡으며 창·오디오 핸들은 소유하지 않습니다.
 
 ## Option.ini

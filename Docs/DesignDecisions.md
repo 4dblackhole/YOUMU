@@ -28,9 +28,15 @@
 - 저장소/도메인 경계는 [Design](Design.md#시스템-경계)을 따릅니다. 엔진 변경은 독립 저장소,
   Client는 단일 공개 SDK를 사용합니다. 노트·포맷·분석에 UI/엔진 역의존성을 넣지 않습니다.
 - Scene은 수명/조립/전환, Controller는 세션/시계/오디오, Presenter는 Canvas/노드를 소유합니다.
+  Controller의 오디오 등록·준비·메트로놈은 GameplayAudioSession, Presenter의 노트 표시는
+  GameplayNoteView처럼 자기 상태를 가진 객체에 맡깁니다.
   gameplay Scene은 DestroyOnExit이며, 진입은 값 snapshot, 종료는 결과 데이터만 전달합니다.
 - 노트는 INote/INoteRule/INoteSoundPolicy의 계약과 의미 이벤트로 확장합니다.
   새 모드는 IPlayGameMode, 에디터 모드는 IEditorMode와 별도 IEditorDocument를 사용합니다.
+  모드 생성·지원 여부는 PlayGameModeFactory의 등록 표, 키 정책은 ModeInputLayout, Client의
+  효과음 파일·키 편집 형태·바인딩 문구는 ModePresentation 데이터로 등록합니다. 공통 코드는
+  이 등록 지점과 에디터·결과 화면 factory 밖에서 모드 이름으로 분기하지 않습니다.
+  절차는 [AddingGameMode](AddingGameMode.md)입니다.
 - 기능별 파일/물리 폴더/필터를 맞추며 큰 클래스의 함수만 여러 cpp로 옮기는 것을 책임 분리로
   간주하지 않습니다. 기존 소유권을 바꾸는 리팩터링은 별도의 설계 변경입니다.
 

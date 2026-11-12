@@ -1,6 +1,7 @@
 # 플레이 오디오
 
-파일 등록/기본 cue: `GameFlow/Submodules/GameplayAudio.cpp`.
+파일 등록·자원 준비·메트로놈: `GameFlow/Submodules/GameplayAudioSession.*`. 모드별 기본 타격음 파일 목록은
+`Client/Presentation/ModePresentation.cpp`의 등록부가 소유합니다.
 규칙별 정책: `YOUMU.Modes/Taiko/Submodules/TaikoSoundPolicy.cpp`, 공통 ID: `TaikoSoundIds.h`.
 실제 재생: `Client/Audio/GameplayAudioRouter.*`. 엔진 API 변경 때만 엔진 Audio 문서를 읽습니다.
 

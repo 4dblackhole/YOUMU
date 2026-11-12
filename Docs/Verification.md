@@ -10,7 +10,8 @@
 ## 환경과 필수 검사
 
 저장소 루트의 x64 Developer PowerShell에서 실행합니다. Visual Studio 2022/v143,
-Windows SDK, FMOD SDK와 `../OsuTaikoConverter` checkout이 필요합니다.
+Windows SDK, FMOD SDK, `../OsuTaikoConverter` checkout과 PATH의 ripgrep(`rg`)이 필요합니다.
+`Scripts/CheckArchitecture.ps1`은 `rg`로 프로젝트·소스 목록을 만듭니다.
 `FmodRoot`는 `FMOD_ROOT` 또는 `Directory.Build.props`의 기본 설치 경로를 사용합니다.
 Presentation 실행기에는 `-FmodRoot`를 전달하거나 `FMOD_ROOT`를 설정합니다.
 
@@ -66,6 +67,14 @@ clang-analyzer/bugprone/performance 규칙이 있습니다. 일괄 서식 변경
 실행기가 있습니다. [변경 영향 지도](ChangeImpactMap.md)에서 관련 검사를 골라 두 구성으로
 실행합니다. 에디터·옵션·키 설정·기록·변환 결과·Pause·결과·판정 표시·전체 노트 replay를
 포함하며, `RunGameplayPauseTests.ps1`은 Debug 정지 중 입력과 Release 비활성화도 검사합니다.
+실제 엔진을 실행하는 검사는 빌드나 다른 검사와 동시에 돌리지 않습니다. 재생 중 시간 검사는
+측정한 실제 경과 시간에 배속을 곱한 범위와 비교하지만, 숨김 실행의 준비 대기 한도(cold start 15초·
+Pause transport 10초)는 멈춤을 잡기 위한 고정 시간입니다.
+
+화면 합성 비용은 게임 실행 중 F7 성능 표시의 `Draws` 줄(1초 평균과 최대 draw 수)로 확인합니다.
+같은 파이프라인과 텍스처 페이지를 쓰는 연속 primitive는 draw 하나로 묶이므로, 사각형·이미지·
+글자가 번갈아 나오는 화면일수록 값이 커집니다. 자세한 의미는 엔진
+[PerformanceStatistics](../Dependencies/PhantomCore/Docs/PerformanceStatistics.md)를 따릅니다.
 
 엔진 변경은 독립 저장소의 AGENTS/SDK 회귀를 따릅니다. 엔진 코드 분석은 SDK와 공개 SDK
 테스트 프로젝트의 결과를 모두 확인합니다. 변환기 변경은 전용 저장소의

@@ -83,7 +83,8 @@ Ready일 때 새 QPC/DSP 기준으로 시작합니다. 파일 로딩 실패도 �
 - RhythmTestScene은 메뉴·Controller·Presenter를 조립하고 결과 전환을 요청합니다.
 - GameplayPauseMenu는 별도 앞쪽 Canvas의 표시·포커스·값 조절을 소유하고 선택 값을 반환합니다.
   한국어/영어 문구는 Texts/GameScene/RhythmTestScene/PauseTexts가 소유합니다.
-- 공통 GameFlow/GameplaySessionController의 GameplayPause 구현은 타이머 이동·오디오 재예약·세션 명령을 담당합니다.
+- 공통 GameFlow/GameplaySessionController의 GameplayPause 구현은 타이머 이동·세션 명령을 담당하고,
+  음악 정지·자동화 초기화·재준비는 GameplayAudioSession에 요청합니다.
 - PlaySession의 PlaySessionSeeking 구현은 판정 상태 복원과 강제 종료를 담당합니다.
   입력·상태 변화가 있는 Update·held 상태 변화만 처리 이력에 남기며 매 프레임 로그를 쌓지 않습니다.
   Rewind 시 대상 이전 처리만 원래 실행 순서대로 규칙에 다시 전달합니다. 이전 입력 로그와 음성 재생을

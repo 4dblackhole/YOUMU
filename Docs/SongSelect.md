@@ -1,7 +1,7 @@
 # Penpot 곡 선택 화면
 
 수정 진입점: `Client/GameScene/MusicSelectScene/Submodules`.
-배치는 SongSelectLayout/패널은 SongSelectPanels/카드는 SongSelectCards,
+배치는 SongSelectLayout/패널은 SongSelectPanels/곡 목록 카드·스크롤은 SongListView,
 선택 정책은 SongSelectionState, 미리듣기는 SongPreviewController를 읽습니다.
 MusicSelectScene은 View와 상태·오디오를 조립하고 View의 전환 의도를 처리합니다.
 

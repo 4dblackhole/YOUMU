@@ -29,7 +29,7 @@ Result로는 값 데이터만 이동합니다. 통계/그래프와 소유권은 
 BG 없음·실패 시 기존 기본 바탕을 유지하며 자원 준비·음악 시작 조건을 유지합니다.
 배경은 Gameplay와 동일하게 원본 비율을 유지하면서 화면을 채우고 YMP 오프셋을 적용합니다.
 선택 채보의 정적 BG는 선곡·플레이·리절트 화면에서 공통으로 사용합니다. BGA·MP4 등 추가 그래픽
-포맷과 영상 재생은 사용자 추후 지정 사항입니다. 이번 배경 연결은 기존 이미지 경로 계약을 사용합니다.
+포맷과 영상 재생은 사용자가 아직 지정하지 않았습니다. 배경은 기존 이미지 경로 계약을 사용합니다.
 실제 플레이 Canvas는 자원 준비 후 Gameplay 상태에서 표시합니다.
 기존 곡 선택 화면의 Sky 색상과 타이포그래피를 유지하면서 짙은 밤하늘색 Lane,
 ScrollGear 프레임, 마디선, 입력 키, 키빔, 롱노트 tick과 롤/큰 롤/Balloon/DengDeng 남은
@@ -324,9 +324,12 @@ Reset은 처리 개수를 0으로 되돌립니다.
 `GameplayProgressView`에 위임합니다. 키 표시 노드의 관찰자·이미지·점멸 타이머와
 생성/입력 갱신/정리는 `GameplayInputView`가 소유합니다. 노드는 같은 Canvas 아래에
 같은 순서·좌표·Z로 생성되며, Presenter는 초기화와 갱신을 위임합니다.
-`GameplayLayout`, `GameplayNoteVisuals`,
-`GameplayInputView`, `GameplayFeedbackVisuals`에 표시별 구현을 둡니다. `GameplaySessionController`는
-`Client/GameFlow`에서 시간·입력·오디오와 모드 공통 상태머신을 소유하고
+배치는 `GameplayLayout`, 판정 문구·정확도·오류 표시는 `GameplayFeedbackVisuals`에 둡니다.
+노트·롱노트 몸통과 tick·마디선·풍선/뎅뎅 처리 연출과 남은 타수 표시는 `GameplayNoteView`가
+상태와 노드를 소유합니다. Presenter는 레인 루트를 만든 뒤 노트 뷰를 붙이고 레인 폭·판정
+위치를 전달합니다. 노트 뷰는 레인 로컬 +Y를 미래 방향으로 쓰므로 모드는 레인 루트만
+회전합니다. `GameplaySessionController`는 `Client/GameFlow`에서 시간·입력과 모드 공통
+상태머신을 소유하고 오디오는 `GameplayAudioSession`에 맡기며
 `GameplayFeedback`으로 표시할 이벤트만 전달합니다.
 UI 수정 시 해당 표시 파일과 `GameplaySupport.h`의 관련 상수만 읽으면 됩니다.
 

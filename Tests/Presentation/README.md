@@ -188,6 +188,10 @@ The controller probe also checks Debug-only Space freeze, note inputs in the sam
 Raw Input batch and during frozen time, held 1/2 seeking at 1 chart second per real
 second at 1x/1.5x Accelerate, one-shot 3/4 millisecond steps, music resume alignment
 and the ESC menu boundary. Release checks that Space and 1–4 do not freeze or seek.
+Checks that playback keeps running compare chart-time progress with the real time measured
+around the two clock captures, so a busy machine does not fail them; a 250ms seek still leaves
+that range. Do not run this suite while a build or another device test is using the machine:
+the hidden cold-start and pause-transport runs keep fixed readiness timeouts.
 Backward seeking also checks that past MISS history is restored without repeating
 MISS feedback. GameplayJudgementTests checks the signed Debug timer in us/ms,
 frozen time and 1ms changes, and the absence of that label in Release.
@@ -293,6 +297,9 @@ this does not replace visual inspection, listening or mouse testing in the app.
 Resolution changes use the window service immediately, with rollback when INI saving fails.
 The suite checks primary/auxiliary key capture, default-key conflicts, reserved game controls,
 ESC cancellation, integer global offsets, invalid drafts and persistent mode profiles.
+It first checks the Client mode presentation registry against the registered play modes:
+one entry per mode, binding captions that name layout bindings and existing text keys,
+hit-sound files with unique sound ids, and one key-overlay face per binding.
 The rhythm suite's OptionTimingTests checks resolved input/held mappings and us timing translation
 across notes, ticks, BPM/delay, bars and YME, without changing saved chart data.
 Engine SDK `--window-control` verifies actual hidden native resizing and renderer notifications.

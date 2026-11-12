@@ -12,6 +12,7 @@
 [변경 영향 지도](Docs/ChangeImpactMap.md)에서 찾습니다.
 
 Visual Studio 2022/MSVC v143, Windows SDK, FMOD Studio API for Windows가 필요합니다.
+아키텍처 검사 스크립트는 PATH의 ripgrep(`rg`)을 사용합니다.
 전체 솔루션은 형제 폴더의 비공개 변환기 저장소도 참조합니다.
 
 ```powershell
