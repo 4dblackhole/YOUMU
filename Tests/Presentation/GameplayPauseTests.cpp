@@ -586,7 +586,10 @@ namespace
         }
         bool Update(const UpdateContext &ctx) override
         {
-            if (ctx.totalSeconds >= 5)
+            // A hang guard, not a speed requirement: Debug runs on a loaded machine
+            // can need several seconds to prepare the first gameplay frame.
+            constexpr double ColdStartTimeoutSeconds = 15;
+            if (ctx.totalSeconds >= ColdStartTimeoutSeconds)
             {
                 std::fprintf(stderr, "Cold start timeout: shown=%d sent=%d intro=%d BG=%d canvases=%zu resumes=%zu loads=%zu\n",
                     shown_, sent_, intro_, introImage_, visuals_.CanvasCount(), musicResumes, clipLoads);
@@ -599,7 +602,7 @@ namespace
                             std::fprintf(stderr, "Cold start error: %.*ls\n", static_cast<int>(value.size()), value.data());
                         }
             }
-            Check(ctx.totalSeconds < 5, "Cold-start gameplay did not become visible.");
+            Check(ctx.totalSeconds < ColdStartTimeoutSeconds, "Cold-start gameplay did not become visible.");
             InputStateTestAccess::Begin(input_);
             const auto before = sampleStarts;
             if (shown_ && !sent_)
@@ -901,9 +904,19 @@ namespace
                     else InputStateTestAccess::Release(input, key, ticks);
                     frame(seconds);
                 };
+                // Running playback advances chart time by Accelerate times the real time,
+                // so progress is bounded by the measured time around both clock captures
+                // instead of a fixed budget. A scrub moves the clock 250 ms outside it.
+                const auto chartMicroseconds = [rate](const auto from, const auto to) {
+                    return rate * std::chrono::duration<double, std::micro>(to - from).count();
+                };
+                const auto beforeRunning = std::chrono::steady_clock::now();
+                frame();
                 const auto running = controller.Time();
                 edge('1', true, .25);
-                Check(controller.Time() >= running && controller.Time() - running < RhythmDuration{100'000},
+                const auto runningProgress = static_cast<double>((controller.Time() - running).count());
+                Check(runningProgress >= 0 &&
+                          runningProgress <= chartMicroseconds(beforeRunning, std::chrono::steady_clock::now()) + 1'000,
                       "Timeline controls must not scrub while normal playback is running.");
                 edge('1', false);
                 const auto samples = sampleStarts;
@@ -911,7 +924,9 @@ namespace
                 const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
                 InputStateTestAccess::Press(input, VK_SPACE, ticks);
                 InputStateTestAccess::Press(input, 'F', ticks + 1);
+                [[maybe_unused]] const auto beforeFrozen = std::chrono::steady_clock::now();
                 frame();
+                [[maybe_unused]] const auto afterFrozen = std::chrono::steady_clock::now();
                 Check(controller.CurrentState() == PlayState::Gameplay && !controller.PauseMenuOpen() &&
                           controller.Session().FinalizedNoteCount() == priorNotes + 1 && sampleStarts > samples,
                       "A note input after Space in the same batch must still be judged and play a hit sound.");
@@ -990,8 +1005,14 @@ namespace
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds{2});
                 InputStateTestAccess::Begin(input);
+                const auto beforeLastFrame = std::chrono::steady_clock::now();
                 frame(.5);
-                Check(controller.Time() > frozen && controller.Time() - frozen < RhythmDuration{100'000} &&
+                // The clock advanced at least for the real time between the two frames
+                // and at most for the time around them; a 250 ms seek leaves this range.
+                const auto progress = static_cast<double>((controller.Time() - frozen).count());
+                const auto lowerBound = chartMicroseconds(afterFrozen, beforeLastFrame) - 1'000;
+                const auto upperBound = chartMicroseconds(beforeFrozen, std::chrono::steady_clock::now()) + 1'000;
+                Check(progress > 0 && progress >= lowerBound && progress <= upperBound &&
                           controller.CurrentState() == PlayState::Gameplay,
                       "Release must ignore Space and all four debug timeline keys.");
 #endif
