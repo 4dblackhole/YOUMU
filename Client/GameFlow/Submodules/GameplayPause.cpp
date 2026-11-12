@@ -21,7 +21,7 @@ void GameplaySessionController::PauseAt(std::int64_t ticks, bool menuShown)
     playbackRequested_ = false;
     playbackStart_.reset();
     // Transient samples are discarded, never resumed as background music.
-    audioRouter_.PauseMusicAndStopSamples();
+    audio_.PauseMusicAndStopSamples();
     pauseMenuOpen_ = menuShown;
     session_->RecordControl({PlayControlType::Pause, time_, time_, 0, menuShown});
 }
@@ -38,18 +38,18 @@ bool GameplaySessionController::ContinueAt(const UpdateContext &context, RhythmT
                                            PlayControlType action)
 {
     const auto from = time_;
-    audioRouter_.PauseMusicAndStopSamples();
-    audioRouter_.ResetAutomation();
+    audio_.PauseMusicAndStopSamples();
+    audio_.ResetAutomation();
     const auto clock = context.audio.CaptureClockSnapshot();
     timer_.Seek(target, clock.performanceCounterTicks);
     time_ = target;
     session_->RecordControl({action, from, target});
-    audioRouter_.ApplyAutomation(session_->EvaluateAutomation(target));
+    audio_.ApplyAutomation(session_->EvaluateAutomation(target));
     feedback_.push_back({true}); // Invalidate visuals only; Resume keeps domain state.
     completedElapsedSeconds_ = 0;
     playbackRequested_ = true;
     playbackStart_.reset();
-    nextAudioPreparationPoll_ = 0;
+    audio_.ResetPollDeadline();
     pauseMenuOpen_ = false;
     PrepareGameplay(context);
     return true; // Accepted once; seek completion is polled by the Pause state.
@@ -76,10 +76,10 @@ void GameplaySessionController::RetryFromPause(const UpdateContext &context)
 {
     if (state_ == PlayState::Pause)
     {
-        if (resourcePreparation_ == AudioPreparationState::Failed)
+        if (audio_.Resources() == AudioPreparationState::Failed)
         {
-            InitializeAudio(context.audio);
-            resourcePreparation_ = AudioPreparationState::Loading;
+            RegisterAudio(context.audio);
+            audio_.RestartResourcePolling();
         }
         ResetTimeline();
     }

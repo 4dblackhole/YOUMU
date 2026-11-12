@@ -8,8 +8,8 @@ void GameplaySessionController::ResetTimeline()
 {
     feedback_.push_back({true});
     session_->Reset();
-    audioRouter_.PauseMusicAndStopSamples();
-    audioRouter_.ResetAutomation();
+    audio_.PauseMusicAndStopSamples();
+    audio_.ResetAutomation();
     timer_.Stop();
     time_ = initialTime_;
     state_ = PlayState::Loading;
@@ -18,7 +18,7 @@ void GameplaySessionController::ResetTimeline()
     playbackRequested_ = true;
     pauseMenuOpen_ = false;
     completedElapsedSeconds_ = 0;
-    nextAudioPreparationPoll_ = 0;
+    audio_.ResetPollDeadline();
 }
 
 void GameplaySessionController::ProcessControlKeys(const UpdateContext &context)
@@ -51,7 +51,7 @@ void GameplaySessionController::ToggleDebugTimeline(const UpdateContext &context
     {
         time_ = timer_.Now(ticks);
         timer_.Pause(ticks);
-        audioRouter_.PauseMusicAndStopSamples();
+        audio_.PauseMusicAndStopSamples();
         session_->RecordControl({PlayControlType::Pause, time_, time_});
     }
     else if (timer_.CurrentState() == State::Paused)
@@ -107,17 +107,16 @@ void GameplaySessionController::ProcessDebugTimeline(const InputState &input,
 
     const auto before = timer_.Now(clock.performanceCounterTicks);
     const auto after = before + RhythmDuration{deltaMicroseconds};
-    audioRouter_.PauseMusicAndStopSamples();
+    audio_.PauseMusicAndStopSamples();
     if (after < before)
     {
         feedback_.push_back({true});
         session_->RewindJudgements(after);
-        audioRouter_.ResetAutomation();
+        audio_.ResetAutomation();
     }
     timer_.Seek(after, clock.performanceCounterTicks);
     timer_.AnchorDspClock(after, clock.dspClock, clock.sampleRate);
-    metronomeCursor_ = static_cast<std::size_t>(std::ranges::lower_bound(
-        session_->metronomeBeats, after, {}, &MetronomeBeat::time) - session_->metronomeBeats.begin());
+    audio_.SeekMetronome(session_->metronomeBeats, after);
 }
 
 void GameplaySessionController::ProcessRhythmInput(const UpdateContext &context,

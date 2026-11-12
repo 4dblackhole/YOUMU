@@ -1,5 +1,5 @@
 #pragma once
-#include "Audio/GameplayAudioRouter.h"
+#include "GameFlow/Submodules/GameplayAudioSession.h"
 #include "GameFlow/GameplayLaunchRequest.h"
 #include "GameFlow/GameplayFeedback.h"
 #include "Mode/Submodules/PlaySession.h"
@@ -25,7 +25,7 @@ class GameplaySessionController final
   public:
     GameplaySessionController(GameplayLaunchRequest request, PhantomCore::AudioPlaybackManager &playback,
                               bool debug, std::unique_ptr<PlaySession> prepared = {})
-        : launchRequest_(std::move(request)), session_(std::move(prepared)), audioRouter_(playback), debugMode_(debug)
+        : launchRequest_(std::move(request)), session_(std::move(prepared)), audio_(playback), debugMode_(debug)
     {
     }
     ~GameplaySessionController()
@@ -57,7 +57,8 @@ class GameplaySessionController final
     }
     bool CanContinue() const noexcept
     {
-        return state_ == PlayState::Pause && resourcePreparation_ == PhantomCore::AudioPreparationState::Ready && !playbackRequested_;
+        return state_ == PlayState::Pause && audio_.Resources() == PhantomCore::AudioPreparationState::Ready &&
+               !playbackRequested_;
     }
     void Shutdown() noexcept;
     const PlaySession &Session() const
@@ -88,9 +89,7 @@ class GameplaySessionController final
     static constexpr bool ReferenceTimeDebug = false;
 #endif
     std::vector<PhysicalKey> heldKeys_;
-    void InitializeAudio(PhantomCore::AudioSystem &audio);
-    void ScheduleMetronome();
-    std::size_t metronomeCursor_{};
+    void RegisterAudio(PhantomCore::AudioSystem &audio);
     void UpdateLoading(const PhantomCore::UpdateContext &context);
     void UpdateGameplay(const PhantomCore::UpdateContext &context);
     void UpdatePause(const PhantomCore::UpdateContext &context);
@@ -119,7 +118,7 @@ class GameplaySessionController final
     GameplaySessionFactory sessionFactory_;
     bool sessionInitialized_{};
     RhythmTimer timer_;
-    GameplayAudioRouter audioRouter_;
+    GameplayAudioSession audio_;
     std::vector<GameplayFeedback> feedback_;
     RhythmTime time_{};
     RhythmTime initialTime_{-2'000'000};
@@ -127,14 +126,10 @@ class GameplaySessionController final
     std::unique_ptr<IPlayResult> result_;
     std::optional<PhantomCore::AudioClockSnapshot> playbackStart_;
     std::int64_t gameplayStartTicks_{};
-    std::string initializationError_;
     double completedElapsedSeconds_{};
     double playbackRate_{1.0};
     RhythmTime testEndTime_{};
-    bool musicRegistered_{};
-    bool audioInitialized_{}, playbackRequested_{};
-    PhantomCore::AudioPreparationState resourcePreparation_{PhantomCore::AudioPreparationState::Loading};
-    double nextAudioPreparationPoll_{};
+    bool playbackRequested_{};
     bool debugMode_{};
     bool pauseMenuOpen_{};
 };

@@ -17,42 +17,33 @@ void GameplaySessionController::SetEditorTestRate(double rate, const UpdateConte
     const bool running = state_ == PlayState::Gameplay;
     if (playbackStart_)
     {
-        audioRouter_.PauseMusicAndStopSamples();
+        audio_.PauseMusicAndStopSamples();
         playbackStart_.reset();
-        nextAudioPreparationPoll_ = 0;
+        audio_.ResetPollDeadline();
     }
     playbackRate_ = rate;
     timer_.Start(clock.performanceCounterTicks, clock.performanceCounterFrequency, time_, rate);
     timer_.AnchorDspClock(time_, clock.dspClock, clock.sampleRate);
     if (!running) timer_.Pause(clock.performanceCounterTicks);
-    std::string error;
-    if (!audioRouter_.SetEditorTestRate(rate, time_, timer_, error))
-    {
-        initializationError_ = std::move(error);
+    if (!audio_.SetEditorTestRate(rate, time_, timer_))
         FailPlaybackPreparation();
-    }
 }
 
 bool GameplaySessionController::PrepareResources(const UpdateContext &context)
 {
-    if (resourcePreparation_ == AudioPreparationState::Ready)
-        return true;
-    if (resourcePreparation_ == AudioPreparationState::Failed)
-        return false;
-    if (!audioInitialized_ || context.totalSeconds < nextAudioPreparationPoll_)
-        return false;
-    nextAudioPreparationPoll_ = context.totalSeconds + 0.002;
-    const auto prepared = audioRouter_.PrepareResources();
-    if (prepared == AudioPreparationState::Failed || !initializationError_.empty())
+    // Ready and Failed are latched; only the transition is handled here.
+    const auto previous = audio_.Resources();
+    if (previous != AudioPreparationState::Loading)
+        return previous == AudioPreparationState::Ready;
+    const auto prepared = audio_.PollResources(context.totalSeconds);
+    if (prepared == AudioPreparationState::Failed)
     {
-        resourcePreparation_ = AudioPreparationState::Failed;
         FailPlaybackPreparation();
         return false;
     }
-    resourcePreparation_ = prepared;
-    if (resourcePreparation_ == AudioPreparationState::Ready && launchRequest_.editorTestStart)
-        testEndTime_ = std::max(testEndTime_, audioRouter_.MusicDuration().value_or(RhythmTime{}));
-    return resourcePreparation_ == AudioPreparationState::Ready;
+    if (prepared == AudioPreparationState::Ready && launchRequest_.editorTestStart)
+        testEndTime_ = std::max(testEndTime_, audio_.MusicDuration());
+    return prepared == AudioPreparationState::Ready;
 }
 
 void GameplaySessionController::UpdateLoading(const UpdateContext &context)
@@ -128,19 +119,13 @@ void GameplaySessionController::PrepareGameplay(const UpdateContext &context)
         state_ = PlayState::Gameplay;
         return;
     }
-    if (context.totalSeconds < nextAudioPreparationPoll_)
+    const auto prepared = audio_.PrepareMusicAt(context.totalSeconds, time_, debugMode_);
+    if (prepared == Preparation::Loading)
         return;
-    nextAudioPreparationPoll_ = context.totalSeconds + 0.002;
-    if (!debugMode_ && musicRegistered_)
+    if (prepared == Preparation::Failed)
     {
-        const auto prepared = audioRouter_.PrepareMusicAt(time_);
-        if (prepared == Preparation::Loading)
-            return;
-        if (prepared == Preparation::Failed)
-        {
-            FailPlaybackPreparation();
-            return;
-        }
+        FailPlaybackPreparation();
+        return;
     }
     ScheduleGameplay(context);
 }
@@ -149,7 +134,7 @@ void GameplaySessionController::FailPlaybackPreparation()
 {
     playbackRequested_ = false;
     playbackStart_.reset();
-    audioRouter_.StopAllVoices();
+    audio_.StopAllVoices();
     state_ = PlayState::Pause;
     pauseMenuOpen_ = true;
     session_->RecordControl({PlayControlType::Pause, time_, time_, 0, true});
@@ -157,7 +142,7 @@ void GameplaySessionController::FailPlaybackPreparation()
 
 void GameplaySessionController::ScheduleGameplay(const UpdateContext &context)
 {
-    audioRouter_.ApplyAutomation(session_->EvaluateAutomation(time_));
+    audio_.ApplyAutomation(session_->EvaluateAutomation(time_));
     auto start = context.audio.CaptureClockSnapshot();
     // Reserve the same 20 ms on both clocks; a DSP-only lead makes music late.
     if (!debugMode_)
@@ -168,9 +153,9 @@ void GameplaySessionController::ScheduleGameplay(const UpdateContext &context)
     timer_.Start(start.performanceCounterTicks, start.performanceCounterFrequency, time_, playbackRate_);
     timer_.Pause(start.performanceCounterTicks);
     timer_.AnchorDspClock(time_, start.dspClock, start.sampleRate);
-    metronomeCursor_ = static_cast<std::size_t>(std::ranges::lower_bound(session_->metronomeBeats, time_, {}, &MetronomeBeat::time) - session_->metronomeBeats.begin());
-    ScheduleMetronome();
-    if (!debugMode_ && musicRegistered_ && !audioRouter_.StartPreparedMusic(time_, timer_))
+    audio_.SeekMetronome(session_->metronomeBeats, time_);
+    audio_.ScheduleMetronome(session_->metronomeBeats, time_, playbackRate_, timer_);
+    if (!debugMode_ && !audio_.StartPreparedMusic(time_, timer_))
     {
         FailPlaybackPreparation();
         return;
@@ -196,7 +181,7 @@ void GameplaySessionController::EnterEnding(PlayEndReason reason)
     playbackRequested_ = false;
     playbackStart_.reset();
     pauseMenuOpen_ = false;
-    audioRouter_.StopAllVoices();
+    audio_.StopAllVoices();
     // Preserve the displayed end time, while stopping the judgement clock.
     timer_.Stop();
     result_ = session_->TakeResult(reason, time_);

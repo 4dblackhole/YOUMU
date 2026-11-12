@@ -62,18 +62,18 @@ bool GameplaySessionController::PrepareSession()
     return true;
 }
 
+void GameplaySessionController::RegisterAudio(AudioSystem &audio)
+{
+    audio_.Register(audio, *session_, launchRequest_, playbackRate_, time_, timer_);
+}
+
 AudioPreparationState GameplaySessionController::PrepareAudioResources(AudioSystem &audio)
 {
-    if (!audioInitialized_)
-    {
-        InitializeAudio(audio);
-        audioInitialized_ = true;
-    }
-    if (!initializationError_.empty())
-        return AudioPreparationState::Failed;
-    const auto prepared = audioRouter_.PrepareResources();
+    if (!audio_.Registered())
+        RegisterAudio(audio);
+    const auto prepared = audio_.PollResourcesNow();
     if (launchRequest_.editorTestStart && prepared == AudioPreparationState::Ready)
-        testEndTime_ = std::max(testEndTime_, audioRouter_.MusicDuration().value_or(RhythmTime{}));
+        testEndTime_ = std::max(testEndTime_, audio_.MusicDuration());
     return prepared;
 }
 void GameplaySessionController::Start(const EngineServices &services,
@@ -85,10 +85,8 @@ void GameplaySessionController::Start(const EngineServices &services,
         return;
     static_cast<void>(PrepareAudioResources(services.audio));
     time_ = initialTime_;
-    audioInitialized_ = true;
-    resourcePreparation_ = AudioPreparationState::Loading;
+    audio_.RestartResourcePolling();
     playbackRequested_ = state_ == PlayState::Loading;
-    nextAudioPreparationPoll_ = 0;
 }
 void GameplaySessionController::Update(const UpdateContext &context)
 {
@@ -112,7 +110,7 @@ void GameplaySessionController::Update(const UpdateContext &context)
     // update that finishes Loading/Pause. Earlier preparation input is ignored.
     if (previousState != PlayState::Gameplay && state_ == PlayState::Gameplay)
         UpdateGameplay(context);
-    audioRouter_.Update();
+    audio_.Update();
 }
 void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
 {
@@ -142,9 +140,9 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
     }
     time_ = timer_.Now(exitTicks.value_or(clock.performanceCounterTicks));
     UpdateSession(context.input, time_, exitTicks.has_value());
-    audioRouter_.ApplyAutomation(session_->EvaluateAutomation(time_));
+    audio_.ApplyAutomation(session_->EvaluateAutomation(time_));
     if (!exitTicks && timer_.CurrentState() == RhythmTimer::State::Running)
-        ScheduleMetronome();
+        audio_.ScheduleMetronome(session_->metronomeBeats, time_, playbackRate_, timer_);
     if (exitTicks)
     {
         if (!launchRequest_.editorTestStart && IsPatternComplete())
@@ -168,7 +166,7 @@ std::string_view GameplaySessionController::ErrorMessage() const noexcept
 {
     if (session_ && !session_->AutomationError().empty())
         return session_->AutomationError();
-    return audioRouter_.LastError().empty() ? initializationError_ : audioRouter_.LastError();
+    return audio_.Error();
 }
 void GameplaySessionController::Shutdown() noexcept
 {
@@ -176,13 +174,10 @@ void GameplaySessionController::Shutdown() noexcept
     state_ = PlayState::Ending;
     result_.reset();
     playbackStart_.reset();
-    audioInitialized_ = playbackRequested_ = false;
-    resourcePreparation_ = AudioPreparationState::Loading;
-    nextAudioPreparationPoll_ = 0;
-    audioRouter_.Shutdown();
+    playbackRequested_ = false;
+    audio_.Shutdown();
     session_.reset();
     sessionInitialized_ = false;
-    musicRegistered_ = false;
     feedback_.clear();
     pauseMenuOpen_ = false;
     completedElapsedSeconds_ = 0;
@@ -215,6 +210,6 @@ bool GameplaySessionController::IsPatternComplete() const noexcept
 
 void GameplaySessionController::ConsumeResult(NoteProcessResult result, bool pressed)
 {
-    audioRouter_.PlayNow(result.audioCues);
+    audio_.PlayNow(result.audioCues);
     feedback_.push_back({false, pressed, std::move(result)});
 }

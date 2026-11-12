@@ -211,7 +211,9 @@
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectPurpose.h" />
     <ClCompile Include="GameScene\RhythmTestScene\RhythmTestScene.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\RhythmTestScene.h" />
-    <ClCompile Include="GameFlow\Submodules\GameplayAudio.cpp" />    <ClInclude Include="GameFlow\GameplayFeedback.h" />
+    <ClCompile Include="GameFlow\Submodules\GameplayAudioSession.cpp" />
+    <ClInclude Include="GameFlow\Submodules\GameplayAudioSession.h" />
+    <ClInclude Include="GameFlow\GameplayFeedback.h" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayFeedbackVisuals.cpp" />
     <ClCompile Include="GameFlow\Submodules\GameplayInput.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayInputView.cpp" />
