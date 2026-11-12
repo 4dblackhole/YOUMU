@@ -113,9 +113,7 @@ void GameplayPresenter::CreateLaneVisuals(Visual2DNode &gearRoot)
     const auto beamImage = screenVisuals_.RegisterImage(InGameSkinAssetPath(L"LaneLight"));
     keyBeam_.Initialize(*laneRoot_, beamImage, ScaledImageSize(screenVisuals_, beamImage));
 
-    // Note order is local to this layer, above the key beam and judgement circle.
-    noteRoot_ = &laneRoot_->CreateChild("Lane.Notes");
-    noteRoot_->SetZIndex(4);
+    noteView_.Attach(*canvas_, *laneRoot_);
 
     const auto judgementImage = screenVisuals_.RegisterImage(InGameSkinAssetPath(L"JudgementCircle"));
     const auto judgementSize = ScaledImageSize(screenVisuals_, judgementImage);
@@ -253,58 +251,11 @@ void GameplayPresenter::UpdatePresentationLayout()
         laneRoot_->SetPosition(
             {-logicalWidth * 0.5F + laneScreenLeft + laneLength * 0.5F, 0.0F});
         UpdateLaneSurfaceLayout(laneLength);
-        UpdateNoteTravelLayout();
+        noteView_.SetLaneLayout(laneWidth_, judgementLocalY_);
     }
     if (inputPresentationRoot_ != nullptr)
     {
         inputPresentationRoot_->SetPosition(
             {-logicalWidth * 0.5F + GearMargin, -inputPanelSize_.height * 0.5F});
-    }
-}
-
-void GameplayPresenter::UpdateNoteTravelLayout()
-{
-    if (laneRoot_ == nullptr || session_ == nullptr)
-    {
-        return;
-    }
-
-    float largestHeadRadius = largestHeadRadius_;
-    for (const auto &[id, layers] : noteVisuals_)
-    {
-        static_cast<void>(id);
-        largestHeadRadius = std::max(largestHeadRadius, layers.diameter * 0.5F);
-    }
-    // The local +Y lane end meets the screen's right edge after the Taiko
-    // rotation. Keep the entire largest head beyond that edge at spawn time.
-    noteTravelDistance_ = std::max(
-        laneRoot_->NodeSize().height - judgementLocalY_ + largestHeadRadius + 1.0F, 1.0F);
-    visibility_.Rebuild(*session_, pixelsPerWholeNote_, noteTravelDistance_);
-
-    // Ticks retain their chart spacing when the window width changes.
-    for (const auto &lane : session_->Gear().Lanes())
-    {
-        for (const auto &note : lane->Notes())
-        {
-            const auto found = noteVisuals_.find(note->Id());
-            if (found == noteVisuals_.end())
-            {
-                continue;
-            }
-            const NoteVisualLayers &layers = found->second;
-            const auto *presentation = session_->FindNotePresentation(note->Id());
-            const float speed = presentation == nullptr
-                                    ? 1.0F
-                                    : static_cast<float>(presentation->scrollMultiplier);
-            for (const TimedVisual &tick : layers.ticks)
-            {
-                const auto bounds = tick.node->Bounds();
-                const float offset = TravelPixelsAt(tick.timing, layers.timing, speed);
-                tick.node->SetBounds(
-                    {(layers.diameter - bounds.width) * 0.5F,
-                     layers.diameter * 0.5F + offset - bounds.height * 0.5F,
-                     bounds.width, bounds.height});
-            }
-        }
     }
 }

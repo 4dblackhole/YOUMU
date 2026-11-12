@@ -1,7 +1,5 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
-#include <limits>
-#include <numeric>
 
 using namespace PhantomCore;
 
@@ -17,8 +15,57 @@ void GameplayPresenter::Initialize(const EngineServices &services,
     if (!canvas_)
         throw std::runtime_error("Failed to create the gameplay screen Canvas.");
     CreatePresentation();
-    CreateNoteVisuals();
-    UpdateNoteTravelLayout();
+    noteView_.Initialize(screenVisuals_, texts_, session);
+    noteView_.SetLaneLayout(laneWidth_, judgementLocalY_);
+}
+
+bool GameplayPresenter::PrepareAssets(const EngineServices &services)
+{
+    if (preparingImages_.empty())
+    {
+        GameplayNoteView::AppendImagePaths(preparingImages_);
+        for (const auto file : {L"AccuracyIndicator",
+                                L"HudDigits",
+                                L"InputPanel",
+                                L"LaneLight",
+                                L"JudgementCircle",
+                                L"Lane",
+                                L"KeyButtonLeftKat",
+                                L"KeyButtonLeftDon",
+                                L"KeyButtonRightDon",
+                                L"KeyButtonRightKat",
+                                L"KeyLightStrong",
+                                L"KeyLightWeak",
+                                L"KeyPressFlash",
+                                L"Progress.Background",
+                                L"Progress.Track",
+                                L"Progress.Fill",
+                                L"Progress.Marker",
+                                L"Judgements.MAX",
+                                L"Judgements.PERFECT",
+                                L"Judgements.GREAT",
+                                L"Judgements.GOOD",
+                                L"Judgements.BAD",
+                                L"Judgements.MISS",
+                                L"Judgements.POOR",
+                                L"Judgements.OK"})
+            preparingImages_.push_back(InGameSkinAssetPath(file));
+    }
+    std::string error;
+    const bool ready = services.visual2DRendering.PrepareImages(preparingImages_, error);
+    if (!error.empty())
+        throw std::runtime_error(error);
+    if (!ready || backgroundPath_.empty())
+        return ready;
+    const std::array background{backgroundPath_};
+    const bool backgroundReady = services.visual2DRendering.PrepareImages(background, error);
+    if (!error.empty())
+    {
+        backgroundWarning_ = "Background image: " + error;
+        backgroundPath_.clear();
+        return true;
+    }
+    return backgroundReady;
 }
 
 void GameplayPresenter::OnResize(const std::uint32_t width, const std::uint32_t height)
@@ -34,31 +81,7 @@ void GameplayPresenter::OnResize(const std::uint32_t width, const std::uint32_t 
 
 RhythmTime GameplayPresenter::InitialTimelineTime() const
 {
-    return visibility_.InitialTimelineTime(*session_);
-}
-
-float GameplayPresenter::TravelPixels(const RhythmDuration duration,
-                                      const float multiplier) const noexcept
-{
-    constexpr long double MicrosecondsPerWholeNoteAtBpmOne = 240'000'000.0L;
-    return static_cast<float>(static_cast<long double>(duration.count()) *
-                              session_->Timeline().BaseBpm() / MicrosecondsPerWholeNoteAtBpmOne *
-                              pixelsPerWholeNote_ * multiplier);
-}
-
-float GameplayPresenter::TravelPixelsAt(RhythmTime target, RhythmTime current, float multiplier) const
-{
-    return static_cast<float>(session_->ScrollDistance(target, current) *
-        session_->Timeline().BaseBpm() / 240'000'000.0L * pixelsPerWholeNote_ * multiplier);
-}
-
-Point GameplayPresenter::LaneObjectPosition(const RhythmTime target,
-                                                           const RhythmTime current,
-                                                           const float multiplier) const
-{
-    // Notes and measure lines are centred lane objects on the same time axis.
-    // Whole integrates the shared distance; Separate scales that distance per object.
-    return {laneWidth_ * 0.5F, judgementLocalY_ + TravelPixelsAt(target, current, multiplier)};
+    return noteView_.InitialTimelineTime();
 }
 
 void GameplayPresenter::Shutdown() noexcept
@@ -68,14 +91,8 @@ void GameplayPresenter::Shutdown() noexcept
     progressView_.Shutdown();
     hpView_.Shutdown();
     statisticsView_.Shutdown();
-    noteVisuals_.clear();
-    visibility_.Reset();
-    noteImages_.clear();
+    noteView_.Shutdown();
     preparingImages_.clear();
-    presentationGeneration_ = 0;
-    presentedNoteIds_.clear();
-    completionEffects_.clear();
-    measureLineVisuals_.clear();
     inputView_.Shutdown();
     background_ = nullptr;
     scrollGearRoot_ = nullptr;
@@ -84,9 +101,6 @@ void GameplayPresenter::Shutdown() noexcept
     inputPresentationRoot_ = nullptr;
     inputPanel_ = nullptr;
     laneRoot_ = nullptr;
-    noteRoot_ = nullptr;
-    noteTravelDistance_ = 1.0F;
-    pixelsPerWholeNote_ = 1.0F;
     laneTiles_.clear();
     laneImage_ = {};
     accuracyIndicator_ = nullptr;
@@ -105,27 +119,24 @@ void GameplayPresenter::ApplyFeedback(const GameplayFeedback &feedback)
     {
         keyBeam_.Reset();
         judgementView_.Reset();
-        completionEffects_.clear();
     }
     if (feedback.keyPressed)
         keyBeam_.OnKeyPressed(feedback.result);
     PresentJudgementFeedback(feedback);
-    for (const NoteEvent &event : feedback.result.events)
-    {
-        if (event.type != NoteEventType::Completed)
-        {
-            continue;
-        }
-        if (!noteVisuals_.contains(event.noteId))
-            if (const auto *model = visibility_.Find(event.noteId))
-                CreateNoteVisual(*model);
-        const auto visual = noteVisuals_.find(event.noteId);
-        if (visual != noteVisuals_.end() && visual->second.focusType != FocusNoteType::None)
-        {
-            completionEffects_[event.noteId] = event.eventTime;
-        }
-    }
+    noteView_.ApplyFeedback(feedback);
 }
+
+void GameplayPresenter::UpdatePresentation(const RhythmTime time)
+{
+    progressView_.Update(time);
+    UpdateAccuracyPresentation();
+    statisticsView_.Update(*session_);
+#if defined(_DEBUG)
+    UpdateDebugPresentation(time);
+#endif
+    noteView_.Update(time);
+}
+
 void GameplayPresenter::SetDebugVisible([[maybe_unused]] bool visible)
 {
 #if defined(_DEBUG)
