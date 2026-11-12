@@ -84,6 +84,11 @@
 - 로딩 BG는 전체 플레이 자원 준비보다 먼저 시작합니다. 선곡에서 등록한 BG는 로딩 씬
   초기화 중 동일 handle을 연결해 첫 로딩 프레임부터 표시하며, 미등록 BG는 비동기로 준비합니다.
 - 목록 디스크 캐시는 원본에서 재생성합니다. 영속 기록 DB는 같은 방식으로 삭제하지 않습니다.
+- 곡 목록은 검증이 끝난 곡·패턴을 탐색 중 바로 추가하며 첫 로딩 전용 문구는 두지 않습니다.
+  첫 탐색 중 곡이 아직 없거나 패턴이 추가되지 않은 곡은 `NO DIFFICULTIES`로 표시합니다.
+  읽힌 패턴은 전체 탐색 중에도 선택·플레이/편집기 진입을 허용하고 나머지 탐색은 계속합니다.
+  새 난이도 생성·가져오기는 전체 탐색 후 허용합니다. 최신 루트만 게시하고 부분/최종 갱신은
+  선택 경로·검색·필터를 보존합니다. 파싱·컴파일·세션 구성은 협력 취소하며 UI에서 join하지 않습니다.
 
 상세: [ResourceLoading](ResourceLoading.md), [Audio](Gameplay/Audio.md).
 검증: SongCatalogTests, MusicSelectViewTests, GameplayPauseTests의 cold-start/실패/Retry.

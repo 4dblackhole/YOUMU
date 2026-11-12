@@ -4,7 +4,7 @@
 
 ## 세션과 입력
 
-1. `IPlayGameMode`의 `Id`, `InputLayout`, `LoadSession`, `CreateSession`을 구현합니다. `LoadSession`은 원본 차트와 효과 데이터를 읽고, `CreateSession`은 같은 모드 규칙으로 세션을 구성합니다. 기존 구현은 `TaikoMode`와 `TaikoSessionBuilder`에서 확인할 수 있습니다. [모드 계약](../YOUMU.Modes/Mode/PlayGameMode.h) · [Taiko 세션 구성](../YOUMU.Modes/Taiko/Submodules/TaikoSessionBuilder.cpp)
+1. `IPlayGameMode`의 `Id`, `InputLayout`, `LoadSession`, `CreateSession`을 구현합니다. `LoadSession`은 원본 차트와 효과 데이터를 읽고, `CreateSession`은 같은 모드 규칙으로 세션을 구성합니다. 기존 구현은 `TaikoMode`와 `TaikoSessionBuilder`에서 확인할 수 있습니다. [모드 계약](../YOUMU.Modes/Mode/PlayGameMode.h) · [Taiko 세션 구성](../YOUMU.Modes/Taiko/Submodules/TaikoSessionBuilder.cpp) `LoadSession`·`CreateSession`의 `std::stop_token`은 파서·컴파일 경로에 전달하고, 취소 예외를 읽기 오류 진단으로 바꾸지 않습니다. 완성된 세션의 런타임 상태에는 취소 토큰을 보관하지 않습니다. [로딩 계약](ResourceLoading.md)
 2. `ScrollGear`에 레인과 노트를 구성하고 레인을 확정한 뒤 `SetInputLayout`을 호출합니다. 각 `ModeInputBinding`에 안정적인 바인딩 ID, 표시 이름, 행동, 물리 키, 0부터 시작하는 `laneIndex`를 지정합니다. 행동마다 레인은 하나이며 여러 행동을 한 레인에 연결할 수 있습니다. 세션은 존재하지 않는 레인이나 한 행동의 상충하는 레인 지정을 준비 단계에서 거부합니다. [입력 데이터](../YOUMU.Modes/Mode/ModeInputLayout.h) · [세션 구성과 라우팅](../YOUMU.Modes/Mode/Submodules/PlaySession.cpp)
 3. `ResolveInputLayout`으로 저장된 키를 검증한 뒤 `SetInputMapping`으로 물리 키와 행동을 연결합니다. 키 정책은 레이아웃에 선언합니다. Taiko는 `allowUnassignedAuxiliaryKeys`로 빈 보조 슬롯을 허용하며 주 키는 필수입니다. 라이브 입력과 되감기는 동일한 레인으로 전달됩니다. [키 정책](../YOUMU.Modes/Mode/ModeInputLayout.cpp) · [되감기](../YOUMU.Modes/Mode/Submodules/PlaySessionSeeking.cpp)
 4. 노트 규칙과 사운드 정책에서 `NoteEvent`와 `AudioCueRequest`를 생성합니다. 기본 타격 사운드 ID와 자유 입력 cue는 세션에 연결합니다. 타격 음원 파일과 엔진 장치 호출은 Client에서 관리합니다. [Taiko 사운드 정책](../YOUMU.Modes/Taiko/Submodules/TaikoSoundPolicy.cpp) · [Client 사운드 연결](../Client/GameFlow/Submodules/GameplayAudio.cpp)

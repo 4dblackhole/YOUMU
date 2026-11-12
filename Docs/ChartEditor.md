@@ -294,6 +294,10 @@ YOUMU.Editor는 엔진을 참조하지 않고 전달받은 interleaved PCM의 FF
 재생과 분석은 같은 디코더/원본 sample rate/샘플 0을 사용합니다. MP3는 dr_mp3의
 Info/LAME 패딩 처리를 적용하며 Vorbis/Windows 코덱은 기존 경로를 엔진에서 공유합니다.
 최초 FFT 계산은 rolling buffer를 사용하고, 상세 분석용 원본 PCM은 한 번 보관해 타일 작업끼리 공유합니다.
+
+2048점 FFT의 순열·회전계수·Hann 창은 불변 계산표로 한 번 준비해 분석 작업끼리 공유합니다.
+내부 창 채우기·복소수·전력 계산은 같은 연산 순서를 유지하며, PCM sample 0·10ms 개요 간격·
+96대역·상세 타일 픽셀 규격과 채널별 전력 평균은 유지합니다.
 형식 오류와 취소는 기존 상태 메시지/worker 경로로 전달합니다. 디코더 출처와 수명은
 [엔진 오디오 문서](../Dependencies/PhantomCore/Docs/AudioPlayback.md#공통-pcm-시간축-2026-10-20)를 참고합니다.
 프로세스 수명의 단일 worker가 복사한 파일 목록/취소 토큰만 소유합니다. Scene 종료는

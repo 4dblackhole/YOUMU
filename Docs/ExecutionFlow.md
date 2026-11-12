@@ -3,7 +3,9 @@
 엔진은 Win32, D3D12, 입력, FMOD와 프레임 루프를 소유하고 Client는
 게임 설정과 Scene을 소유합니다.
 
-곡 목록은 Scene이 소유한 SongCatalogLoader worker에서 준비하고 완료 결과만 게시합니다.
+곡 목록은 SongCatalogLoader가 복사 데이터의 worker 작업으로 준비하고 검증한 곡·패턴부터
+점진 게시합니다(LOAD-01). 읽힌 패턴은 탐색 중에도 플레이/편집기에 진입할 수 있습니다.
+같은 루트의 진행 중 탐색은 KeepAlive 재진입 때 이어받고, 새 난이도·가져오기는 완료 후 허용합니다.
 플레이 진입에서는 Session을 worker에서 받은 뒤 PNG와 오디오를 함께 비동기 준비합니다.
 Canvas를 구성한 후에도 실제 Gameplay 시작 전에는 플레이 화면을 표시하지 않습니다.
 공통 GameplaySessionController의 Loading→Gameplay→Pause→Ending 상태로 실행합니다.
@@ -82,7 +84,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
   출력 방식/드라이버는 기존 오디오 객체를 유지하면서 즉시 적용하고 Option.ini에 저장합니다.
   같은 옵션 버튼이나 ESC로 닫습니다. Songs 폴더 변경은 OptionSettings가 저장하고,
   활성 곡 선택 Scene은 루트 변경을 감지해 미리듣기를 정지하고 카탈로그를 다시 요청합니다.
-  카탈로그 worker는 가장 최근 루트만 대기시키며 이전 결과를 화면에 게시하지 않습니다.
+  카탈로그는 이전 루트 작업에 취소를 요청하고 최신 루트의 부분/최종 결과만 게시합니다.
 - Logo에서 Editor를 누르면 기록 패널이 없는 EditorSongSelect로 이동합니다.
   이 Scene은 Lobby의 카탈로그·미리듣기·검색·정렬·곡/난이도 탐색을 공유하며,
   난이도를 확정하면 선택 경로를 기록하고 Editor Scene으로 이동합니다.

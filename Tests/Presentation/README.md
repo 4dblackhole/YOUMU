@@ -432,6 +432,10 @@ separation of playback clicks from the original hit-sound analysis markers.
 
 ## Canonical PCM timing check for an existing song
 
+The editor regression uses the shipped song catalog by default, keeping its
+analysis deadline independent of the user's imported music library. An explicit
+`-SongFilter` selects from the user Songs directory instead.
+
 After building both configurations, the editor and actual gameplay regression runners
 accept `-SongFilter <substring of the catalog metadata path>`. This is a test-only
 selection, not a game command-line option. Use a chart whose first note was authored
