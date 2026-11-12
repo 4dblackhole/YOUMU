@@ -119,6 +119,9 @@ TextCatalog는 문구와 글꼴 선택을 소유하고, 엔진 TextVisual/ComboB
 
 ## 옵션 패널
 
+확정 리디자인([UI-02](DesignDecisions.md#ui-02-ui-리디자인), 미구현)은 폭 432의 왼쪽 분류 막대와 이어진 섹션 배치를 사용합니다
+([옵션 패널](UIRedesign.md#옵션-패널)). 아래는 현재 구현입니다.
+
 `Client/Presentation/OptionsPanel.*`은 로고와 곡 선택 View가 조립하는 공통
 Visual2D 패널입니다.
 

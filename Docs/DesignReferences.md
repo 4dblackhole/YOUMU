@@ -2,6 +2,8 @@
 
 화면 디자인 작업에만 읽습니다. 디자인의 미구현 항목은 기능 추가 지시가 아닙니다.
 
+- 확정 UI 리디자인 시안: YOUMU 저장소 밖 `rhythmgameUI/redesign`(`index.html`, 부품 상태표 `kit.html`).
+  아래 Penpot 시안 다음의 화면 설계이며 미구현입니다. [UI-02](DesignDecisions.md#ui-02-ui-리디자인), [UI 리디자인](UIRedesign.md).
 - Penpot 파일: `3be9e5e1-190f-8090-8008-7468d9cc1bc8`.
 - `Music Select · Sky`: 페이지 `3be9e5e1-190f-8090-8008-7468d9cc1bc9`.
 - 곡 상세 JudgeLevel/BPM 범위/길이: 보드 `e6833909-d4a4-8067-8008-dc78ac88d495`.

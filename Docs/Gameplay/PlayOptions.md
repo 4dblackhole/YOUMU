@@ -13,6 +13,9 @@ YMM/YMP/YME 파일은 수정하지 않습니다.
 
 ## 플레이 옵션 패널
 
+확정 리디자인([UI-02](../DesignDecisions.md#ui-02-ui-리디자인), 미구현)은 확인 버튼을 `Done`으로 하고 Difficulty 열에 HP 게이지 선택을 두며,
+곡 필터 직접 조건식과 조건식 편집 창을 더합니다. 세부는 [UI 리디자인](../UIRedesign.md#플레이-옵션과-필터)입니다.
+
 선곡 하단 Play options는 별도 Windows 대화상자 대신 게임 내 패널을 엽니다.
 패널은 아래에서 올라오며 화면 대부분을 차지합니다. 왼쪽부터 Difficulty(Scroll Speed·
 Accelerate·JudgeLevel), Layout(Mirror·Random), Assist(Ignore scroll effects·Metronome)의

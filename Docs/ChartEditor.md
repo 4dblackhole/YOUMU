@@ -2,6 +2,8 @@
 
 설계 기준: [EDIT-01·02](DesignDecisions.md#edit-01-에디터),
 [UI-01](DesignDecisions.md#ui-01-화면과-키-설정).
+확정 리디자인([UI-02](DesignDecisions.md#ui-02-ui-리디자인), 미구현)의 탭은 Compose·Audio·Metadata이고 Test 버튼 대신
+Compose의 Preview를 씁니다. 세부는 [UI 리디자인](UIRedesign.md#차트-에디터)이며 아래는 현재 구현입니다.
 
 ## 선택·복사·붙여넣기·편집 기록
 

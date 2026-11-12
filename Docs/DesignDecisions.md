@@ -313,6 +313,7 @@ PlayOptionsPanelTests(닫기 적용·Reset·오류·모달 격리·실 네이티
 ## UI-01 화면과 키 설정
 
 근거: 사용자 확정. 구현: 구현. Penpot의 추가 시안은 별도 상태.
+확정된 다음 화면 설계는 [UI-02](#ui-02-ui-리디자인)이며 구현 전까지 아래 현재 계약을 유지합니다.
 
 - 선곡 노트 수는 기본 플레이 세션의 실제 논리 노트 객체 수로 집계합니다. 롱노트의
   머리·꼬리 행이나 개별 입력/틱을 별도 노트로 세지 않습니다. 목록 표시와 노트 수 필터는
@@ -385,6 +386,26 @@ PlayOptionsPanelTests(닫기 적용·Reset·오류·모달 격리·실 네이티
 상세: [SongSelect](SongSelect.md), [TextManagement](TextManagement.md), [ChartEditor](ChartEditor.md),
 [Presentation](Gameplay/Presentation.md), [DesignReferences](DesignReferences.md).
 검증: MusicSelectViewTests, OptionsPanelTests, EditorMenuTests, GameplayJudgementTests와 해당 시각 검증.
+
+## UI-02 UI 리디자인
+
+근거: 사용자 확정(rhythmgameUI/redesign 시안 검토 결정). 구현: **미구현(설계만)**.
+
+- 타이틀·곡 선택·에디터 곡 선택·플레이 옵션·옵션 패널·로딩·플레이 HUD·일시정지·결과·리플레이·
+  차트 에디터와 공용 부품·경고 대화상자의 화면 설계를 확정했습니다. 세부는 [UI 리디자인](UIRedesign.md)입니다.
+- 구현은 UI-01의 절차대로 화면·기능 묶음별로 브리핑하고 승인받은 뒤 진행합니다. 구현한 묶음은 해당
+  기능 문서의 현재 계약으로 옮기고 아래 대체 항목을 갱신합니다. 설계만으로 현재 동작이 바뀌었다고 보지 않습니다.
+- 구현되면 대체하는 현재 계약:
+  - UI-01: 현재 타이틀 유지(캐러셀 폐기는 유지), 선곡 패널 바탕 90%, 복수 이름 여러 줄 표시,
+    옵션 네 탭 전환, 상단 `ALL` 바.
+  - 표시 규칙: 정확도 표시 소수 여섯 자리 → 둘째 자리 버림, 랭크 이름 PERFECT·SSS·SS·S → X·SS·S·AA,
+    기본 HP 게이지 두 사각형 → 틀·채움 두 종류·클리어 표시·자물쇠, 일시정지 제목/설명 없음 → `PAUSED`와 설명,
+    좁은 화면 축소 → 16:9 미만 레터박스·32:9 초과 좌우 띠, 선곡 `NO RECORDS` → `NO RECORD`.
+  - 에디터: 탭 구성(Compose·Audio·Metadata), Test 버튼, 새 난이도 입력 창·.osu 진행 표시.
+- 판정·정확도 계산·점수·HP 규칙은 바꾸지 않습니다. HP 게이지 선택 자리는 두지만 추가 게이지는 HP-02대로 미정입니다.
+- 미정점: 난이도 계산식·척도, 추가 HP 게이지, 영어·일본어 문구 길이, 스킨 파일 이름·새 skin.ini 키·랭크 키 이름.
+
+상세: [UIRedesign](UIRedesign.md). 검증: 구현 묶음마다 해당 기능의 기존 회귀와 시각 검증을 정합니다.
 
 ## DATA-01 결과와 기록
 
@@ -463,6 +484,7 @@ PlayOptionsPanelTests(닫기 적용·Reset·오류·모달 격리·실 네이티
 | 랭크 콘텐츠·서버/라이선스 인증·공용 미디어 ID/BGA | RankedContentProposal의 검토 제안, 미구현 |
 | 현재 등록 모드/편집 형식 | Taiko와 YMP/YME. 확장 인터페이스가 있다는 이유로 다른 모드 구현을 추정하지 않음 |
 | Penpot의 나머지 시안 요소 | 시안 상태. 해당 기능 요청·구현 여부는 기능 문서로 확인 |
+| UI 리디자인(UI-02) | 사용자 확정 설계, 미구현. 화면·기능 묶음별 브리핑·승인 후 구현 |
 
 제안을 채택하거나 보류를 해제할 때 사용자 요청과 영향 범위를 기록합니다.
 현재 코드·문서에 이름이 등장한다는 이유만으로 구현 완료/채택 완료로 표시하지 않습니다.

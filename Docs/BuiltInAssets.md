@@ -9,6 +9,9 @@
 - `Assets/Skins/Default Skin` 전체
 - `Assets/Fonts`의 세 글꼴과 각각의 라이선스(리절트·일시정지용 Noto Sans KR 포함)
 
+`Assets/Skins/Default Skin Blue`는 확정 리디자인(UI-02, 미구현)의 부품 PNG이며 팩에 넣지 않습니다.
+게임에서 고르려면 외부 자산 루트의 `Skins`에 복사합니다. 세부는 [스킨 부품](UIRedesign.md#스킨-부품)입니다.
+
 AngelDream Handshaking MP3 1개·YMM 1개·YMP/YME 5쌍과 이펙트 테스트 WAV 2개는
 EXE에 넣지 않습니다. 추가 WAV는 기본 스킨의 Don/Kat 원본을 재사용한 테스트 파일입니다.
 Git에서 추적하는 `YOUMU.Assets/Assets/Songs` 원본을 Client 빌드 시
