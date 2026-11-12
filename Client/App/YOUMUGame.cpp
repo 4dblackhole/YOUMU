@@ -42,6 +42,7 @@ YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId,
     texts_.SetLanguage(optionSettings_.Values().language);
     framesPerSecondText_ = texts_.Get("Performance.measuringFps");
     updatesPerSecondText_ = texts_.Get("Performance.measuringUps");
+    drawCallsText_ = texts_.Get("Performance.measuringDraws");
     for (const auto &diagnostic : texts_.Diagnostics())
         OutputDebugStringA((diagnostic + "\n").c_str());
     SkinSetSelection::Instance().Initialize(optionSettings_.Values().skinSet);
@@ -169,10 +170,13 @@ void YOUMUGame::OnClientRendered(const RenderContext &context)
     constexpr float bottomMargin = 18.0F;
     constexpr float lineHeight = 26.0F;
     const float viewportHeight = static_cast<float>(context.height);
-    const float upsY = std::max(viewportHeight - bottomMargin - lineHeight, 0.0F);
+    const float drawsY = std::max(viewportHeight - bottomMargin - lineHeight, 0.0F);
+    const float upsY = std::max(drawsY - lineHeight, 0.0F);
     SubmitPerformanceLine(*context.textRendering, framesPerSecondText_, performanceFont_,
                           std::max(upsY - lineHeight, 0.0F), static_cast<float>(context.width));
     SubmitPerformanceLine(*context.textRendering, updatesPerSecondText_, performanceFont_, upsY,
+                          static_cast<float>(context.width));
+    SubmitPerformanceLine(*context.textRendering, drawCallsText_, performanceFont_, drawsY,
                           static_cast<float>(context.width));
 }
 
@@ -204,6 +208,10 @@ void YOUMUGame::RefreshPerformanceText(const PerformanceStatistics &performance)
         std::wstring(texts_.Get("Performance.fps")) + L"  " + std::to_wstring(performance.framesPerSecond);
     updatesPerSecondText_ =
         std::wstring(texts_.Get("Performance.ups")) + L"  " + std::to_wstring(performance.updatesPerSecond);
+    // Average GPU draws per rendered frame and the busiest frame of the sample.
+    drawCallsText_ = std::wstring(texts_.Get("Performance.draws")) + L"  " +
+        std::to_wstring(performance.drawCallsPerFrame) + L" (" + std::wstring(texts_.Get("Performance.peak")) + L" " +
+        std::to_wstring(performance.peakDrawCallsPerFrame) + L")";
 }
 
 void YOUMUGame::SubmitPerformanceLine(TextRenderSystem &textRendering,

@@ -52,4 +52,5 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     std::uint64_t lastPerformanceMeasurementIndex_{};
     std::wstring framesPerSecondText_;
     std::wstring updatesPerSecondText_;
+    std::wstring drawCallsText_;
 };
