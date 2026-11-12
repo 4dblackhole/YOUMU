@@ -164,10 +164,10 @@ namespace tests
         WriteTextFile(pattern, source);
         std::size_t countCalculations{};
         const SongCatalog::PatternNoteCounter countNotes = [&](const PatternDocument& pattern,
-            const EffectDocument& effects)
+            const EffectDocument& effects, std::stop_token stop)
         {
             ++countCalculations;
-            return CountPlayableNotes(pattern, effects);
+            return CountPlayableNotes(pattern, effects, stop);
         };
         const auto load = [&] { return SongCatalog::MetadataIndex(cache, countNotes).Load(root); };
         const auto first = load();

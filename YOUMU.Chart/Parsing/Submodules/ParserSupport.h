@@ -2,6 +2,7 @@
 #include "Parsing/ChartWhitespace.h"
 #include "Parsing/ChartParser.h"
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cctype>
 #include <cmath>
@@ -11,19 +12,34 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
-[[nodiscard]] inline std::string ReadUtf8File(const std::filesystem::path &path)
+[[nodiscard]] inline std::string ReadUtf8File(
+    const std::filesystem::path& path, std::stop_token stop = {})
 {
+    CheckChartLoadCancellation(stop);
     std::ifstream stream(path, std::ios::binary);
     if (!stream)
     {
         const auto utf8 = path.u8string();
         throw std::runtime_error("Unable to open chart file: " +
-            std::string(reinterpret_cast<const char *>(utf8.data()), utf8.size()));
+            std::string(reinterpret_cast<const char*>(utf8.data()), utf8.size()));
     }
-    std::string text(std::istreambuf_iterator<char>(stream), {});
-    if (stream.bad())
-        throw std::runtime_error("Unable to finish reading chart file.");
+    std::string text;
+    std::vector<char> buffer(64 * 1024);
+    for (;;)
+    {
+        CheckChartLoadCancellation(stop);
+        stream.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const auto count = stream.gcount();
+        if (count > 0)
+            text.append(buffer.data(), static_cast<std::size_t>(count));
+        if (stream.eof())
+            break;
+        if (!stream)
+            throw std::runtime_error("Unable to finish reading chart file.");
+    }
+    CheckChartLoadCancellation(stop);
     return text;
 }
 
@@ -135,8 +151,9 @@ inline void AddDiagnostic(std::vector<Diagnostic> &diagnostics,
 }
 
 [[nodiscard]] inline std::vector<std::pair<std::size_t, std::string_view>> EnumerateLines(
-    std::string_view text)
+    std::string_view text, std::stop_token stop = {})
 {
+    CheckChartLoadCancellation(stop);
     if (text.starts_with("\xEF\xBB\xBF"))
         text.remove_prefix(3);
     std::vector<std::pair<std::size_t, std::string_view>> lines;
@@ -144,6 +161,7 @@ inline void AddDiagnostic(std::vector<Diagnostic> &diagnostics,
     std::size_t begin = 0;
     while (begin <= text.size())
     {
+        CheckChartLoadCancellation(stop);
         const std::size_t end = text.find('\n', begin);
         std::string_view line = text.substr(begin, end - begin);
         if (!line.empty() && line.back() == '\r')

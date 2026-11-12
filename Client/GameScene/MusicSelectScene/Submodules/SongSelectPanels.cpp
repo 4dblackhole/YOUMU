@@ -87,38 +87,9 @@ void MusicSelectView::CreateCategoryBar()
 
 void MusicSelectView::CreateRecordPanel()
 {
-    const auto &text = MusicSelect(texts_);
-    auto &panel = AddBorderedPanel(*board_, layout::RecordPanel, PanelWhite, BorderBlue, 3.0F,
-                                   24.0F, "RecordPanel");
-    recordPanel_ = &panel;
-    auto &selector = CreateComboBox(
-        panel, ScaleTopLeftBounds(layout::RecordSelector, panel.NodeSize().height),
-        {std::wstring(text.personalRecord)}, "RecordSelector");
-    recordSelector_ = &selector;
-    recordSelectorId_ = selector.Id();
-    ApplySpriteStyle(selector, PaleBlue, PaleBlue);
-    SetCornerRadius(selector, 10.0F);
-    BindSkinImage(selector, screenVisuals_, "MusicSelect", "RecordSelector");
-    auto &recordBehavior = RequireComponent<ComboBoxBehaviorComponent>(selector);
-    recordBehavior.SetFontSize(CanvasFontSize(10.0F));
-    texts_.ApplyFont(recordBehavior);
-    recordBehavior.SetTextColor(DeepBlue);
-    recordBehavior.SetSelectedTextColor(PureWhite);
-    recordBehavior.SetPopupBackgroundColor(PureWhite);
-    const auto button = [this, &panel](const char *key, const char *name) -> Visual2DNode * {
-        auto &node = CreateButton(panel, {}, std::wstring(texts_.Get(key)), name);
-        ApplyButtonStyle(node, PaleBlue, PureWhite, AccentBlue);
-        auto &caption = RequireComponent<TextVisualComponent>(node);
-        texts_.ApplyFont(caption); caption.SetFontSize(14); caption.SetTextColor(DeepBlue);
-        return &node;
-    };
-    recordQueryButton_ = button("Records.query", "RecordQuery");
-    recordPreviousButton_ = button("Records.previous", "RecordPrevious");
-    recordNextButton_ = button("Records.next", "RecordNext");
-    recordRows_ = &panel.CreateChild("RecordRows");
-    emptyRecordMessage_ = &AddLabel(
-        panel, layout::EmptyRecordMessage, std::wstring(text.noRecords), 28.0F, DeepBlue,
-        "NoRecords", TextAlignment::Center);
+    recordPanel_ = &AddBorderedPanel(*board_, layout::RecordPanel, PanelWhite, BorderBlue, 3.0F,
+                                    24.0F, "RecordPanel");
+    records_.InitializeContent(*recordPanel_);
 }
 
 void MusicSelectView::CreateSongInformationPanel()
@@ -352,15 +323,8 @@ Visual2DNode &MusicSelectView::AddLabel(
     const float penpotFontSize, const Color color, std::string name,
     const TextAlignment alignment)
 {
-    auto &label = CreateLabel(
-        parent, ScaleTopLeftBounds(penpotBounds, parent.NodeSize().height), std::move(text),
-        std::move(name));
-    auto &textComponent = RequireComponent<TextVisualComponent>(label);
-    textComponent.SetFontSize(CanvasFontSize(penpotFontSize));
-    texts_.ApplyFont(textComponent);
-    textComponent.SetTextColor(color);
-    textComponent.SetHorizontalAlignment(alignment);
-    return label;
+    return CreateSongLabel(parent, penpotBounds, std::move(text), penpotFontSize, color,
+                           std::move(name), texts_, alignment);
 }
 
 Visual2DNode &MusicSelectView::AddScrollableLabel(Visual2DNode &parent, Rect bounds, std::wstring text,
@@ -387,7 +351,7 @@ void MusicSelectView::ApplyTexts()
     };
 
     setLabel(categoryLabel_, text.all);
-    setLabel(emptyRecordMessage_, text.noRecords);
+    records_.RefreshTexts();
     artwork_.ApplyTexts(texts_);
     setLabel(difficultyHeading_, text.difficulty);
     setLabel(creatorHeading_, text.creator);
@@ -410,13 +374,6 @@ void MusicSelectView::ApplyTexts()
     setLabel(newDifficultyItem_, text.newDifficulty);
     setLabel(convertOsuItem_, text.convertOsu);
 
-    if (recordSelector_ != nullptr)
-    {
-        auto &combo =
-            RequireComponent<ComboBoxBehaviorComponent>(*recordSelector_);
-        combo.SetItems({std::wstring(text.personalRecord)});
-        texts_.ApplyFont(combo);
-    }
     if (sortSelector_ != nullptr)
     {
         auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*sortSelector_);
@@ -431,18 +388,10 @@ void MusicSelectView::ApplyTexts()
         texts_.ApplyFont(
             RequireComponent<TextVisualComponent>(*searchField_));
     }
-    if (recordQueryButton_)
-    {
-        setLabel(recordQueryButton_, texts_.Get("Records.query"));
-        setLabel(recordPreviousButton_, texts_.Get("Records.previous"));
-        setLabel(recordNextButton_, texts_.Get("Records.next"));
-        ++recordRevision_;
-    }
     options_.RefreshTexts();
     playOptionsPanel_.RefreshTexts();
     filterPanel_.RefreshTexts();
-    recordFilterPanel_.RefreshTexts();
-    recordFilterPanel_.SetViewport(height_);
+    records_.SetViewport(height_);
     filterPanel_.SetViewport(width_, height_);
     favoriteTabs_.Refresh(selection_.favorites_, selection_.favoriteFolder_);
     favoritesPanel_.RefreshTexts();

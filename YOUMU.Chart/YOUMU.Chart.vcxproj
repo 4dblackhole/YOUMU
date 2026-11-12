@@ -26,6 +26,7 @@
     <ClInclude Include="Model\Submodules\PatternDocument.h" />
     <ClCompile Include="Parsing\ChartParser.cpp" />
     <ClInclude Include="Parsing\ChartParser.h" />
+    <ClInclude Include="Parsing\LoadCancellation.h" />
     <ClCompile Include="Parsing\Submodules\EffectParser.cpp" />
     <ClCompile Include="Parsing\Submodules\MusicalPositionParser.cpp" />
     <ClCompile Include="Parsing\Submodules\MusicParser.cpp" />

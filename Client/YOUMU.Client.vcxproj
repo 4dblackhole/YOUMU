@@ -344,6 +344,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectRecords.cpp" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongRecordView.cpp" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongRecordView.h" />
     <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultOptions.cpp" />
   </ItemGroup>
   <ItemGroup>

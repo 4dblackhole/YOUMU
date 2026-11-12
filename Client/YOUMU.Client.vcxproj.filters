@@ -253,6 +253,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectRecords.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongRecordView.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongRecordView.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultOptions.cpp"><Filter>GameScene\ResultScene\Submodules\Taiko</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>

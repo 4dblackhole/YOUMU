@@ -3,12 +3,12 @@
 namespace
 {
     template <typename Document, typename Parse>
-    ParseResult<Document> ParseFile(const std::filesystem::path &path, Parse parse)
+    ParseResult<Document> ParseFile(const std::filesystem::path &path, std::stop_token stop, Parse parse)
     {
         std::string text;
         try
         {
-            text = ReadUtf8File(path);
+            text = ReadUtf8File(path, stop);
         }
         catch (const std::runtime_error &error)
         {
@@ -23,17 +23,17 @@ namespace
 
 ParseResult<MusicDocument> ChartParser::ParseMusicFile(const std::filesystem::path &path) const
 {
-    return ParseFile<MusicDocument>(path, [this](const auto &text, const auto &source) { return ParseMusic(text, source); });
+    return ParseFile<MusicDocument>(path, stop_, [this](const auto &text, const auto &source) { return ParseMusic(text, source); });
 }
 
 ParseResult<PatternDocument> ChartParser::ParsePatternFile(
     const std::filesystem::path &path) const
 {
-    return ParseFile<PatternDocument>(path, [this](const auto &text, const auto &source) { return ParsePattern(text, source); });
+    return ParseFile<PatternDocument>(path, stop_, [this](const auto &text, const auto &source) { return ParsePattern(text, source); });
 }
 
 ParseResult<EffectDocument> ChartParser::ParseEffectFile(
     const std::filesystem::path &path) const
 {
-    return ParseFile<EffectDocument>(path, [this](const auto &text, const auto &source) { return ParseEffect(text, source); });
+    return ParseFile<EffectDocument>(path, stop_, [this](const auto &text, const auto &source) { return ParseEffect(text, source); });
 }

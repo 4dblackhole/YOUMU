@@ -14,6 +14,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameFlow\GameplayLaunchRequest.h" />
+    <ClInclude Include="GameFlow\ChartLoadJob.h" />
+    <ClCompile Include="GameFlow\ChartLoadJob.cpp" />
     <ClInclude Include="GameFlow\GameplayLaunchStore.h" />
     <ClInclude Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorTool.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.h" />

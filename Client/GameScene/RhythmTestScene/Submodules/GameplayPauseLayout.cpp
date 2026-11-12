@@ -38,7 +38,7 @@ namespace
                                  ui_colors::pause::Focus, 1.25F * Scale, "Pause.ArrowStroke");
             stroke.SetPivot({.5F, .5F});
             stroke.SetPosition({6 * Scale, (9 + sign * 3) * Scale});
-            stroke.Transform().SetRotationRollPitchYaw(0, 0, -direction * sign * DirectX::XM_PIDIV4);
+            stroke.Transform().SetRotationRollPitchYaw(0, 0, -direction * sign * QuarterPi);
         }
     }
 } // namespace

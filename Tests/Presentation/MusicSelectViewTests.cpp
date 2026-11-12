@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "MusicSelectTestInput.h"
 #include "App/AssetPaths.h"
 #include "SongSearchInputTests.h"
@@ -32,7 +33,7 @@ namespace
     {
       public:
         std::vector<std::filesystem::path> loaded;
-        ImageHandle LoadImage(const std::filesystem::path &path) override
+        ImageHandle LoadImageFile(const std::filesystem::path &path) override
         {
             if (path.filename() == "preview-cpu-fail.jpg" || path.filename() == "preview-gpu-fail.jpg")
             {
@@ -56,8 +57,8 @@ namespace
                           std::uint32_t) override
         {
         }
-        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const DirectX::XMFLOAT4X4 &,
-                         Size, const DirectX::XMFLOAT4X4 &) override
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &,
+                         Size, const Float4x4 &) override
         {
         }
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override
@@ -215,10 +216,10 @@ namespace
                 int fills=0; bool interiorBorder=false, edgeBorder=false;
                 for (const auto &packet : packets)
                 {
-                    const auto inverse=DirectX::XMMatrixInverse(nullptr,DirectX::XMLoadFloat4x4(&packet.nodeTransform));
+                    const auto inverse=Inverse(packet.nodeTransform);
                     const auto point=[&](Point p) {
-                        const auto local=DirectX::XMVector2TransformCoord(DirectX::XMVectorSet(p.x,p.y,0,1),inverse);
-                        return Point{DirectX::XMVectorGetX(local),DirectX::XMVectorGetY(local)};
+                        const auto local=TransformPoint({p.x,p.y,0},inverse);
+                        return Point{local.x,local.y};
                     };
                     if (packet.type==DrawPacketType::Image && packet.bounds.Contains(point(interior)) &&
                         std::abs(packet.color.alpha-.9F)<.0001F) ++fills;

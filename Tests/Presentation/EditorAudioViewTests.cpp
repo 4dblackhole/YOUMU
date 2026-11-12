@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "App/AssetPaths.h"
 #include "Catalog/SongCatalog.h"
 #include "Editing/ChartEditor.h"
@@ -62,7 +63,7 @@ namespace
     {
       public:
         std::vector<DrawPacket> packets;
-        ImageHandle LoadImage(const std::filesystem::path &) override
+        ImageHandle LoadImageFile(const std::filesystem::path &) override
         {
             return {++imageId};
         }
@@ -78,8 +79,8 @@ namespace
             const auto batches = canvas.BuildDrawList();
             ForEachDrawPrimitive(batches, [this](const DrawPacket &packet) { packets.push_back(packet); });
         }
-        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const DirectX::XMFLOAT4X4 &,
-                         Size, const DirectX::XMFLOAT4X4 &) override
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &,
+                         Size, const Float4x4 &) override
         {
         }
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override
@@ -297,9 +298,14 @@ int main(int argc, char** argv)
         Check(range.TimelineRangeMilliseconds() == std::pair{-500.0, 1500.0},
               "Timeline must include negative notes and the last note.");
 
-        RunEditorAudioAnalysisIntegrationTests(
-            std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() / "YOUMU.Assets/Assets/Songs");
-        const auto songs = SongCatalog{}.Load(UserSongs());
+        const auto bundledSongs = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() /
+                                  "YOUMU.Assets/Assets/Songs";
+        RunEditorAudioAnalysisIntegrationTests(bundledSongs);
+        // Default regressions use a fixed shipped catalog. An arbitrary first
+        // user song can exceed the analysis budget in an unoptimized build.
+        // An explicit filter still exercises the requested user song.
+        const auto songsRoot = argc > 1 ? UserSongs() : bundledSongs;
+        const auto songs = SongCatalog{}.Load(songsRoot);
         Check(!songs.songs.empty() && !songs.songs.front().patterns.empty(), "Real catalog missing");
         auto songIt = songs.songs.begin();
         if (argc > 1)
@@ -313,6 +319,8 @@ int main(int argc, char** argv)
         const auto &song = *songIt;
         TestEditorPlaybackWithFmod(song.audioPath);
         const auto &selected = song.patterns.front();
+        GameplayLaunchRequest launch{selected.patternPath, selected.effectPath, song.audioPath, selected.pattern.mode};
+        launch.songsRoot = songsRoot;
         {
             AudioSystem previewAudio;
             AudioConfig config;
@@ -373,18 +381,19 @@ int main(int argc, char** argv)
         // analysis, including when the requesting editor has been destroyed.
         for (int attempt = 0; attempt < 8; ++attempt)
         {
-            EditorWorkspace cancelled({selected.patternPath, selected.effectPath, song.audioPath, selected.pattern.mode});
+            EditorWorkspace cancelled(launch);
             cancelled.Initialize();
             cancelled.UpdateAnalysis();
             cancelled.Analysis().Stop();
             Check(!cancelled.Analysis().Running(), "Stopped worker must detach its editor immediately");
         }
-        EditorWorkspace state({selected.patternPath, selected.effectPath, song.audioPath, selected.pattern.mode});
+        EditorWorkspace state(launch);
         state.Initialize();
         Check(state.MusicMetadataPath() == song.metadataPath.lexically_normal() &&
                   state.Document().SourcePath() == selected.patternPath &&
                   (!selected.effectPath || state.Document().Effects().sourcePath == *selected.effectPath),
               "Folder actions must resolve the currently edited YMM/YMP/YME paths.");
+        const auto analysisStarted = std::chrono::steady_clock::now();
         state.UpdateAnalysis();
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{120};
         while (state.Analysis().Running() && std::chrono::steady_clock::now() < deadline)
@@ -392,7 +401,11 @@ int main(int argc, char** argv)
             std::this_thread::sleep_for(std::chrono::milliseconds{10});
             state.UpdateAnalysis();
         }
-        Check(!state.Analysis().Running() && state.Analysis().Data().errors.empty(), "Audio worker failed");
+        Check(!state.Analysis().Running(), "Audio worker did not finish within 120 seconds");
+        Check(state.Analysis().Data().errors.empty(), state.Analysis().Data().errors.c_str());
+        std::cout << "Editor source analysis elapsed_ms="
+                  << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - analysisStarted).count()
+                  << '\n';
         if (argc > 1)
         {
             const auto& music = state.Analysis().Data().sounds.at("Music");
@@ -479,12 +492,8 @@ int main(int argc, char** argv)
                 renderer.packets,
                 [&](const auto &packet)
                 {
-                    DirectX::XMFLOAT3 corner;
-                    DirectX::XMStoreFloat3(
-                        &corner,
-                        DirectX::XMVector3TransformCoord(
-                            DirectX::XMVectorSet(packet.bounds.x, packet.bounds.y + packet.bounds.height, 0, 1),
-                            DirectX::XMLoadFloat4x4(&packet.nodeTransform)));
+                    const auto corner = TransformPoint(
+                        {packet.bounds.x, packet.bounds.y + packet.bounds.height, 0}, packet.nodeTransform);
                     const float y = 540 - corner.y;
                     return packet.type == DrawPacketType::Rectangle && y >= top && y < bottom &&
                            corner.x >= 205 - 960 && corner.x < 1770 - 960 && packet.color.red > .3F &&
@@ -511,13 +520,17 @@ int main(int argc, char** argv)
             });
         Check(reused >= 8, "Moving audio time must reuse both tracks' cached tile geometry.");
         const auto waitDetails = [&] {
-            const auto until = std::chrono::steady_clock::now() + std::chrono::seconds{90};
+            const auto began = std::chrono::steady_clock::now();
+            const auto until = began + std::chrono::seconds{90};
             while (state.Analysis().SpectrumRunning() && std::chrono::steady_clock::now() < until)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds{5});
                 state.UpdateAnalysis();
             }
             Check(!state.Analysis().SpectrumRunning(), "Visible spectrum analysis did not finish.");
+            std::cout << "Editor detail analysis wait_ms="
+                      << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count()
+                      << '\n';
             view.Build();
         };
         waitDetails();

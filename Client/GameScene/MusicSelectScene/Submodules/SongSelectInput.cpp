@@ -109,19 +109,12 @@ bool MusicSelectView::ProcessActions()
         {
             continue;
         }
-        if (recordQueryButton_ && action.source == recordQueryButton_->Id())
+        const auto recordAction = records_.ProcessAction(action);
+        if (recordAction == SongRecordAction::OpenFilter)
         {
             OpenRecordFilter(); return true;
         }
-        if (recordPreviousButton_ && action.source == recordPreviousButton_->Id())
-        {
-            recordOffset_ = recordOffset_ >= 6 ? recordOffset_ - 6 : 0;
-            ++recordRevision_; return true;
-        }
-        if (recordNextButton_ && action.source == recordNextButton_->Id() && recordNext_)
-        {
-            recordOffset_ += 6; ++recordRevision_; return true;
-        }
+        if (recordAction == SongRecordAction::PageChanged) return true;
         if (action.source == backButtonId_)
         {
             command_ = SongSelectCommand::Back;

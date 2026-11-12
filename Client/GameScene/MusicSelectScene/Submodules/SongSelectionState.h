@@ -43,6 +43,8 @@ class SongSelectionState final
     std::string launchErrorDetail_;
 
     void RebuildVisibleSongs();
+    void MergeCatalogProgress(std::vector<SongCatalogEntry> entries);
+    void FinishCatalog(SongCatalogLoadResult catalog);
     void MoveSongFocus(const int delta);
     void MoveDifficultyFocus(const int delta);
     void SelectVisibleSong(const std::size_t visiblePosition);
@@ -52,6 +54,9 @@ class SongSelectionState final
     [[nodiscard]] std::vector<std::size_t> VisiblePatternIndices(std::size_t catalogIndex) const;
     [[nodiscard]] std::size_t VisiblePatternCount(std::size_t catalogIndex) const noexcept;
   private:
+    using SelectionPaths = std::pair<std::filesystem::path, std::filesystem::path>;
+    [[nodiscard]] SelectionPaths CurrentSelectionPaths() const;
+    void RestoreSelection(const SelectionPaths& paths);
     bool patternsFiltered_{};
     std::vector<std::vector<std::size_t>> filteredPatterns_;
 };

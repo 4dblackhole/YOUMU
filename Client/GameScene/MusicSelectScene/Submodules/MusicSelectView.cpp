@@ -47,7 +47,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     filterPanel_.Initialize(*canvas_, texts_, services.windowControl);
     if (!IsEditorSongSelect()) playOptionsPanel_.Initialize(*canvas_, texts_, services.windowControl);
     favoritesPanel_.Initialize(*canvas_, texts_);
-    if (recordPanel_) recordFilterPanel_.Initialize(*canvas_, texts_, services.windowControl);
+    if (recordPanel_) records_.InitializeFilter(*canvas_, services.windowControl);
     ApplyTexts();
     UpdateResponsiveLayout();
     RebuildVisibleSongs();
@@ -108,7 +108,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
     {
         CloseAdditionMenu();
         UpdateResponsiveLayout();
-        ++recordRevision_;
+        records_.Invalidate();
         RebuildSongCards();
         EnsureFocusedCardVisible();
         inputRouter_.InvalidateHitTest();
@@ -118,7 +118,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 void MusicSelectView::Shutdown() noexcept
 {
     playOptionsPanel_.Shutdown();
-    recordFilterPanel_.Shutdown();
+    records_.Shutdown();
     filterPanel_.Shutdown();
     favoritesPanel_.Shutdown();
     favoriteTabs_.Shutdown();
@@ -166,11 +166,7 @@ void MusicSelectView::Shutdown() noexcept
     difficultyInformation_ = nullptr;
     artwork_.Reset();
     informationPanel_ = nullptr;
-    emptyRecordMessage_ = nullptr;
-    recordSelector_ = nullptr;
     recordPanel_ = nullptr;
-    recordRows_ = recordQueryButton_ = recordPreviousButton_ = recordNextButton_ = nullptr;
-    ++recordRevision_;
     categoryBar_ = nullptr;
     categoryLabel_ = nullptr;
     background_ = nullptr;
@@ -182,8 +178,13 @@ void MusicSelectView::Shutdown() noexcept
 void MusicSelectView::RebuildVisibleSongs()
 {
     selection_.RebuildVisibleSongs();
-    favoriteTabs_.Refresh(selection_.favorites_, selection_.favoriteFolder_);
     scrollOffset_ = 0.0F;
+    RefreshCatalogPresentation();
+}
+
+void MusicSelectView::RefreshCatalogPresentation()
+{
+    favoriteTabs_.Refresh(selection_.favorites_, selection_.favoriteFolder_);
     RefreshSelection();
     RefreshSearchPresentation();
     RefreshFilterButton();

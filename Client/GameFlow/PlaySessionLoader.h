@@ -1,27 +1,30 @@
 #pragma once
 #include "GameFlow/GameplayLaunchRequest.h"
+#include "GameFlow/ChartLoadJob.h"
 #include "Mode/PlayGameModeFactory.h"
-#include <chrono>
-#include <future>
+#include "Parsing/LoadCancellation.h"
 #include <stdexcept>
 
 // The worker owns a request snapshot and domain data only. Poll never waits.
 class PlaySessionLoader final
 {
   public:
-    bool Busy() const noexcept { return job_.valid(); }
+    bool Busy() const noexcept { return job_.Busy(); }
+    void Cancel() noexcept { job_.Cancel(); }
     void Start(GameplayLaunchRequest request)
     {
         if (Busy())
             throw std::logic_error("A pattern load is already in progress.");
-        job_ = std::async(std::launch::async, [request = std::move(request)]
+        job_ = StartChartLoad([request = std::move(request)](std::stop_token stop)
         {
             try
             {
+                CheckChartLoadCancellation(stop);
                 auto result = CreatePlayGameMode(request.mode,
                     {RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000}, request.inputKeys,
                      request.playOptions, request.editorTestStart})
-                    ->LoadSession(request.patternPath, request.effectPath);
+                    ->LoadSession(request.patternPath, request.effectPath, stop);
+                CheckChartLoadCancellation(stop);
                 if (result.Succeeded() && !request.editorTestStart && !result.session->CanEnterGameplay())
                 {
                     result.session.reset();
@@ -30,7 +33,11 @@ class PlaySessionLoader final
                 }
                 return result;
             }
-            catch (const std::exception &error)
+            catch (const ChartLoadCancelled&)
+            {
+                throw;
+            }
+            catch (const std::exception& error)
             {
                 ModeLoadResult result;
                 result.diagnostics.push_back({DiagnosticSeverity::Error, {request.patternPath, 1, 1}, error.what()});
@@ -40,10 +47,8 @@ class PlaySessionLoader final
     }
     std::optional<ModeLoadResult> Poll()
     {
-        if (!Busy() || job_.wait_for(std::chrono::seconds{0}) != std::future_status::ready)
-            return {};
-        return job_.get();
+        return job_.Poll();
     }
   private:
-    std::future<ModeLoadResult> job_;
+    ChartLoadJob<ModeLoadResult> job_;
 };

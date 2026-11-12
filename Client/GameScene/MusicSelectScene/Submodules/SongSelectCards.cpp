@@ -86,7 +86,7 @@ void MusicSelectView::UpdateVisibleSongCards()
         AddLabel(*songContent_,
                  {layout::EmptySongMessage.x, layout::EmptySongMessage.y, std::max(songContentWidth_ - 32.0F, 1.0F),
                   layout::EmptySongMessage.height},
-                 std::wstring(selection_.catalogLoading_ ? text.loadingSongs : text.noSongsAvailable), 20.0F, DeepBlue,
+                 std::wstring(selection_.catalogLoading_ ? text.noDifficulties : text.noSongsAvailable), 20.0F, DeepBlue,
                  "NoSongs", TextAlignment::Center);
     }
     firstVisibleRow_ = firstIndex;

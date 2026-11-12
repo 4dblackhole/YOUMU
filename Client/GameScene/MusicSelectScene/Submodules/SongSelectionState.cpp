@@ -187,3 +187,67 @@ void SongSelectionState::ClearLaunchError() noexcept
     launchErrorKind_ = LaunchErrorKind::None;
     launchErrorDetail_.clear();
 }
+
+SongSelectionState::SelectionPaths SongSelectionState::CurrentSelectionPaths() const
+{
+    if (focusedSongPosition_ >= visibleSongIndices_.size()) return {};
+    const auto& song = catalog_.songs[visibleSongIndices_[focusedSongPosition_]];
+    return {song.metadataPath, selectedPatternIndex_ < song.patterns.size()
+        ? song.patterns[selectedPatternIndex_].patternPath : std::filesystem::path{}};
+}
+
+void SongSelectionState::RestoreSelection(const SelectionPaths& paths)
+{
+    visibleSongIndices_.clear();
+    focusedSongPosition_ = 0;
+    RebuildVisibleSongs();
+    for (std::size_t position = 0; position < visibleSongIndices_.size(); ++position)
+    {
+        const auto& song = catalog_.songs[visibleSongIndices_[position]];
+        if (song.metadataPath != paths.first) continue;
+        focusedSongPosition_ = position;
+        const auto visiblePatterns = VisiblePatternIndices(visibleSongIndices_[position]);
+        selectedPatternIndex_ = visiblePatterns.empty() ? 0 : visiblePatterns.front();
+        for (const auto index : VisiblePatternIndices(visibleSongIndices_[position]))
+            if (song.patterns[index].patternPath == paths.second)
+            {
+                selectedPatternIndex_ = index;
+                break;
+            }
+        break;
+    }
+}
+
+void SongSelectionState::MergeCatalogProgress(std::vector<SongCatalogEntry> entries)
+{
+    const auto selection = CurrentSelectionPaths();
+    std::map<std::filesystem::path, std::size_t> songs;
+    for (std::size_t index = 0; index < catalog_.songs.size(); ++index)
+        songs.emplace(catalog_.songs[index].metadataPath, index);
+    for (auto& entry : entries)
+    {
+        const auto [position, added] = songs.emplace(entry.metadataPath, catalog_.songs.size());
+        if (added)
+            catalog_.songs.push_back(std::move(entry));
+        else
+        {
+            auto& song = catalog_.songs[position->second];
+            for (auto& pattern : entry.patterns)
+            {
+                const auto found = std::ranges::find(song.patterns, pattern.patternPath,
+                                                     &SongCatalogPattern::patternPath);
+                if (found == song.patterns.end()) song.patterns.push_back(std::move(pattern));
+                else *found = std::move(pattern);
+            }
+        }
+    }
+    RestoreSelection(selection);
+}
+
+void SongSelectionState::FinishCatalog(SongCatalogLoadResult catalog)
+{
+    const auto selection = CurrentSelectionPaths();
+    catalog_ = std::move(catalog);
+    catalogLoading_ = false;
+    RestoreSelection(selection);
+}

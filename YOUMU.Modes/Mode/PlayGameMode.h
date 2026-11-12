@@ -1,6 +1,7 @@
 #pragma once
 #include "Mode/ModeInputLayout.h"
 #include "Mode/Submodules/PlaySession.h"
+#include <stop_token>
 
 struct ModeLoadResult
 {
@@ -18,8 +19,10 @@ class IPlayGameMode
     [[nodiscard]] virtual std::string_view Id() const noexcept = 0;
     [[nodiscard]] virtual ModeLoadResult LoadSession(
         const std::filesystem::path &patternPath,
-        const std::optional<std::filesystem::path> &effectPath = std::nullopt) const = 0;
+        const std::optional<std::filesystem::path> &effectPath = std::nullopt,
+        std::stop_token stop = {}) const = 0;
     [[nodiscard]] virtual ModeLoadResult CreateSession(
         const PatternDocument &pattern,
-        const EffectDocument &effects = {}) const = 0;
+        const EffectDocument &effects = {},
+        std::stop_token stop = {}) const = 0;
 };

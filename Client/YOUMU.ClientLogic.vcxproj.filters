@@ -8,6 +8,8 @@
     <Filter Include="GameScene\MusicSelectScene" />
     <Filter Include="GameScene\MusicSelectScene\Submodules" />
     <ClInclude Include="GameFlow\GameplayLaunchRequest.h"><Filter>GameFlow</Filter></ClInclude>
+    <ClInclude Include="GameFlow\ChartLoadJob.h"><Filter>GameFlow</Filter></ClInclude>
+    <ClCompile Include="GameFlow\ChartLoadJob.cpp"><Filter>GameFlow</Filter></ClCompile>
     <ClInclude Include="GameFlow\GameplayLaunchStore.h"><Filter>GameFlow</Filter></ClInclude>
     <ClInclude Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorTool.h"><Filter>EditorScene\Submodules\Modes\Taiko</Filter></ClInclude>
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>

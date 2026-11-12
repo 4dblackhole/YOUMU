@@ -23,6 +23,7 @@
     <ClInclude Include="Model\Submodules\PatternDocument.h"><Filter>Model\Submodules</Filter></ClInclude>
     <ClCompile Include="Parsing\ChartParser.cpp"><Filter>Parsing</Filter></ClCompile>
     <ClInclude Include="Parsing\ChartParser.h"><Filter>Parsing</Filter></ClInclude>
+    <ClInclude Include="Parsing\LoadCancellation.h"><Filter>Parsing</Filter></ClInclude>
     <ClCompile Include="Parsing\Submodules\EffectParser.cpp"><Filter>Parsing\Submodules</Filter></ClCompile>
     <ClCompile Include="Parsing\Submodules\MusicalPositionParser.cpp"><Filter>Parsing\Submodules</Filter></ClCompile>
     <ClCompile Include="Parsing\Submodules\MusicParser.cpp"><Filter>Parsing\Submodules</Filter></ClCompile>

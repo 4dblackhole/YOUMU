@@ -1,6 +1,7 @@
 #pragma once
 #include "App/AssetPaths.h"
 #include "Catalog/SongCatalog.h"
+#include "Texts/TextCatalog.h"
 #include "PhantomCore.h"
 #include "Presentation/MarqueeTextComponent.h"
 #include "Presentation/SkinVisualComponent.h"
@@ -11,6 +12,7 @@
 #include <format>
 #include <ranges>
 #include <stdexcept>
+#include <utility>
 
 namespace song_select
 {
@@ -42,6 +44,11 @@ namespace song_select
     {
         return penpotFontSize * DesignToCanvasScale * ReadableFontScale(penpotFontSize);
     }
+
+    [[nodiscard]] inline PhantomCore::Visual2DNode& CreateSongLabel(
+        PhantomCore::Visual2DNode& parent, const PhantomCore::Rect bounds, std::wstring text,
+        float fontSize, PhantomCore::Color color, std::string name, TextCatalog& texts,
+        PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading);
 
     constexpr auto CanvasBlue = ui_colors::sky::Background, PanelWhite = ui_colors::sky::Surface;
     constexpr auto PureWhite = ui_colors::White, AccentBlue = ui_colors::sky::Accent;
@@ -296,5 +303,19 @@ namespace song_select
             }
         }
         return result;
+    }
+    inline PhantomCore::Visual2DNode& CreateSongLabel(
+        PhantomCore::Visual2DNode& parent, const PhantomCore::Rect bounds, std::wstring text,
+        float fontSize, PhantomCore::Color color, std::string name, TextCatalog& texts,
+        PhantomCore::TextAlignment alignment)
+    {
+        auto& label = PhantomCore::CreateLabel(parent,
+            ScaleTopLeftBounds(bounds, parent.NodeSize().height), std::move(text), std::move(name));
+        auto& content = RequireComponent<PhantomCore::TextVisualComponent>(label);
+        content.SetFontSize(CanvasFontSize(fontSize));
+        texts.ApplyFont(content);
+        content.SetTextColor(color);
+        content.SetHorizontalAlignment(alignment);
+        return label;
     }
 } // namespace song_select

@@ -35,6 +35,7 @@
     <ClCompile Include="Submodules\SceneStateTests.cpp" />
     <ClCompile Include="Submodules\SongFavoritesTests.cpp" />
     <ClCompile Include="Submodules\SongCatalogTests.cpp" />
+    <ClCompile Include="Submodules\ChartLoadingTests.cpp" />
     <ClCompile Include="Submodules\SoundPolicyTests.cpp" />
     <ClCompile Include="Submodules\TaikoModeTests.cpp" />
     <ClInclude Include="Submodules\TestCases.h" />

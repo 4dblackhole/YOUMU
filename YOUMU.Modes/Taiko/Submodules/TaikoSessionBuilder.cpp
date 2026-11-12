@@ -13,21 +13,26 @@
 namespace
 {
     std::vector<MeasureLinePresentationInfo> BuildMeasureLines(const MusicalTimeline &timeline,
-                                                               const EffectLookup &effects)
+                                                               const EffectLookup &effects, std::stop_token stop)
     {
         std::vector<MeasureLinePresentationInfo> result;
         result.reserve(timeline.MeasureSpans().size());
         for (const auto &span : timeline.MeasureSpans())
+        {
+            CheckChartLoadCancellation(stop);
             if (span.end > span.begin)
                 result.push_back({span.begin, effects.Value(EffectCommandType::NoteSpeed, span.begin)});
+        }
         return result;
     }
 } // namespace
 
 ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern,
                                                   const EffectDocument &effects,
-                                                  const PlaySessionOptions &options, ModeInputLayout inputLayout)
+                                                  const PlaySessionOptions &options, ModeInputLayout inputLayout,
+                                                  std::stop_token stop)
 {
+    CheckChartLoadCancellation(stop);
     ModeLoadResult result;
     if (pattern.mode != "Taiko")
     {
@@ -46,15 +51,16 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     auto syncopationRange = std::make_shared<const AccuracyRange>("Taiko.Syncopation", judgeLevel,
         AccuracyRange::DefaultLevel50Bands(), RhythmDuration{10'000});
 
-    MusicalTimeline timeline(pattern, options.globalOffset);
-    ValidateEffectPositions(effects, timeline);
-    auto compiledEffects = timeline.CompileEffects(effects);
+    MusicalTimeline timeline(pattern, options.globalOffset, stop);
+    ValidateEffectPositions(effects, timeline, stop);
+    auto compiledEffects = timeline.CompileEffects(effects, stop);
     if (options.play.ignoreScrollEffects)
-        std::erase_if(compiledEffects, [](const auto &effect) {
+        std::erase_if(compiledEffects, [&stop](const auto &effect) {
+            CheckChartLoadCancellation(stop);
             return effect.command.type == EffectCommandType::NoteSpeed || effect.command.type == EffectCommandType::ScrollSpeed;
         });
-    const EffectLookup effectLookup(compiledEffects);
-    auto compiled = PlayableInSourceOrder(timeline.CompileNotes(pattern));
+    const EffectLookup effectLookup(compiledEffects, stop);
+    auto compiled = PlayableInSourceOrder(timeline.CompileNotes(pattern, stop), stop);
     PlayResultSummary summary;
     summary.patternPath = pattern.sourcePath;
     summary.globalOffset = options.globalOffset;
@@ -62,11 +68,12 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     summary.judgementLevel = judgeLevel;
     summary.playOptions = options.play;
     auto collector = std::make_unique<TaikoResultCollector>(std::move(summary), compiled.size());
-    ConfigureHitSounds(*session, pattern, effects, timeline, result.diagnostics);
+    ConfigureHitSounds(*session, pattern, effects, timeline, result.diagnostics, stop);
     if (!result.diagnostics.empty())
         return result;
     for (auto &note : compiled)
     {
+        CheckChartLoadCancellation(stop);
         if (!note.note.hitSound.empty() && !effects.hitSounds.contains(note.note.hitSound))
         {
             result.diagnostics.push_back({DiagnosticSeverity::Error, note.note.source,
@@ -88,6 +95,7 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
 
     for (const CompiledPatternNote &compiledNote : compiled)
     {
+        CheckChartLoadCancellation(stop);
         PatternNote source = compiledNote.note;
         const auto profile =
             UsesSyncopation(effectLookup, timeline, source.position) ? syncopationRange : defaultRange;
@@ -123,7 +131,7 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
             AddLongNote(*longNoteHead, compiledNote, timeline,
                         UsesSyncopation(effectLookup, timeline, longNoteHead->note.position) ? syncopationRange
                                                                                              : defaultRange,
-                        lane, *session, nextId, result.diagnostics);
+                        lane, *session, nextId, result.diagnostics, stop);
             if (nextId > longNoteId)
             {
                 session->SetNoteScrollMultiplier(longNoteId, longNoteHead->scrollMultiplier);
@@ -203,13 +211,15 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
                              Cue(DonFreeInput, "UserInputFeedback"));
     session->SetFreeInputCue(ActionValue(TaikoAction::Kat),
                              Cue(KatFreeInput, "UserInputFeedback"));
-    session->SetMeasureLines(BuildMeasureLines(timeline, effectLookup));
+    session->SetMeasureLines(BuildMeasureLines(timeline, effectLookup, stop));
     session->SetEffects(std::move(compiledEffects));
     if (options.play.metronome && !timeline.MeasureSpans().empty())
         session->metronomeBeats = CompileQuarterBeats(timeline,
-            static_cast<std::int64_t>(timeline.MeasureSpans().size()) - 1, timeline.MeasureSpans().back().end);
+            static_cast<std::int64_t>(timeline.MeasureSpans().size()) - 1, timeline.MeasureSpans().back().end, stop);
     session->SetTimeline(std::move(timeline));
+    CheckChartLoadCancellation(stop);
     session->Gear().Finalize();
+    CheckChartLoadCancellation(stop);
     session->SetResultCollector(std::move(collector));
     result.session = std::move(session);
     return result;

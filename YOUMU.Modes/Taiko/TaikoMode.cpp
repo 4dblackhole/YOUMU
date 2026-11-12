@@ -30,9 +30,10 @@ std::string_view TaikoMode::Id() const noexcept
 
 ModeLoadResult TaikoMode::LoadSession(
     const std::filesystem::path &patternPath,
-    const std::optional<std::filesystem::path> &effectPath) const
+    const std::optional<std::filesystem::path> &effectPath, std::stop_token stop) const
 {
-    ChartParser parser;
+    CheckChartLoadCancellation(stop);
+    ChartParser parser{stop};
     ParseResult<PatternDocument> pattern = parser.ParsePatternFile(patternPath);
     ParseResult<EffectDocument> effect;
     const auto resolvedEffect = effectPath ? *effectPath : pattern.document.effectFile.empty()
@@ -54,7 +55,7 @@ ModeLoadResult TaikoMode::LoadSession(
         return result;
     }
 
-    ModeLoadResult created = CreateSession(pattern.document, effect.document);
+    ModeLoadResult created = CreateSession(pattern.document, effect.document, stop);
     result.session = std::move(created.session);
     result.diagnostics.insert(result.diagnostics.end(),
                               std::make_move_iterator(created.diagnostics.begin()),
@@ -63,15 +64,20 @@ ModeLoadResult TaikoMode::LoadSession(
 }
 
 ModeLoadResult TaikoMode::CreateSession(const PatternDocument &pattern,
-                                        const EffectDocument &effects) const
+                                        const EffectDocument &effects, std::stop_token stop) const
 {
     try
     {
+        CheckChartLoadCancellation(stop);
         auto resolved = effects;
-        ResolveEffectInterpolations(resolved);
-        ValidateEffectDocument(resolved);
+        ResolveEffectInterpolations(resolved, stop);
+        ValidateEffectDocument(resolved, stop);
         return TaikoSessionBuilder::CreateSession(pattern, resolved, options_,
-                                                  ResolveInputLayout(InputLayout(), options_.inputKeys));
+                                                  ResolveInputLayout(InputLayout(), options_.inputKeys), stop);
+    }
+    catch (const ChartLoadCancelled&)
+    {
+        throw;
     }
     catch (const std::exception &error)
     {

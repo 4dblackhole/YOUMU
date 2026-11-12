@@ -8,4 +8,4 @@
 
 // Uses the same mode construction as gameplay; unsupported/invalid charts stay unknown.
 [[nodiscard]] std::optional<std::size_t> CountPlayableNotes(
-    const PatternDocument& pattern, const EffectDocument& effects = {});
+    const PatternDocument& pattern, const EffectDocument& effects = {}, std::stop_token stop = {});

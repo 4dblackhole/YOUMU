@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "YOUMUAssets.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "GameScene/ResultScene/ResultScene.h"
@@ -34,7 +35,7 @@ namespace
     class NullRenderer final : public Visual2DRenderSystem
     {
       public:
-        ImageHandle LoadImage(const std::filesystem::path &path) override
+        ImageHandle LoadImageFile(const std::filesystem::path &path) override
         {
             if (path.filename() == "chart-bg-fail.png") throw std::runtime_error("BG decode/upload failure fixture.");
             if (path.filename() == "chart-bg-zero.png")
@@ -74,8 +75,8 @@ namespace
                           std::uint32_t) override
         {
         }
-        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const DirectX::XMFLOAT4X4 &,
-                         Size, const DirectX::XMFLOAT4X4 &) override
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &,
+                         Size, const Float4x4 &) override
         {
         }
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override

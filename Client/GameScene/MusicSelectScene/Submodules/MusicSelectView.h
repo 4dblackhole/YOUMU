@@ -4,7 +4,7 @@
 #include "Presentation/PlayOptionsPanel.h"
 #include "SongSelectionState.h"
 #include "SongFilterPanel.h"
-#include "RecordFilterPanel.h"
+#include "SongRecordView.h"
 #include "SongFavoriteTabs.h"
 #include "SongFavoritesPanel.h"
 #include "SongSelectPurpose.h"
@@ -13,8 +13,6 @@
 #include <filesystem>
 #include <array>
 #include <vector>
-#include <future>
-#include "Records/PlayRecordStore.h"
 
 enum class SongSelectCommand
 {
@@ -31,15 +29,15 @@ class MusicSelectView final
                     SongSelectPurpose purpose, TextCatalog &texts,
                     OptionSettings &options, std::filesystem::path recordDatabase = {})
         : selection_(state), purpose_(purpose), screenVisuals_(visuals), texts_(texts),
-          settings_(options), options_(texts, options, &visuals), recordDatabase_(std::move(recordDatabase)),
+          settings_(options), options_(texts, options, &visuals), records_(texts, visuals, std::move(recordDatabase)),
           artwork_(visuals)
     {
     }
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); recordFilterPanel_.Close(); playOptionsPanel_.Dismiss(); }
-        else ++recordRevision_;
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); }
+        else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
     }
@@ -48,6 +46,7 @@ class MusicSelectView final
     void OnResize(const std::uint32_t width, const std::uint32_t height);
     void Shutdown() noexcept;
     void RebuildVisibleSongs();
+    void RefreshCatalogPresentation();
     void RefreshSelectionPresentation();
 
   private:
@@ -67,11 +66,9 @@ class MusicSelectView final
     void CreateCategoryBar();
     void CreateRecordPanel();
     void UpdateRecords();
-    void ShowRecords(const std::vector<PlayRecord> &records);
     void OpenRecordFilter();
     bool ProcessRecordFilterPanel(const PhantomCore::InputState &input);
     bool ProcessPlayOptionsPanel(const PhantomCore::InputState &input);
-    void LayoutRecordControls();
     void CreateSongInformationPanel();
     void CreateSongBrowser();
     void CreateFooter();
@@ -102,7 +99,7 @@ class MusicSelectView final
     bool ProcessFavoritesPanel(const PhantomCore::InputState &input);
     void OpenFavoritesPanel();
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
-    { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || recordFilterPanel_.IsVisible() || playOptionsPanel_.IsVisible(); }
+    { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || records_.FilterVisible() || playOptionsPanel_.IsVisible(); }
     [[nodiscard]] float VisibleSongBottom() const noexcept;
     void RefreshFilterButton();
     bool ProcessKeyboard(const PhantomCore::InputState &input);
@@ -143,11 +140,9 @@ class MusicSelectView final
     OptionsPanel options_;
     PlayOptionsPanel playOptionsPanel_;
     SongFilterPanel filterPanel_;
-    RecordFilterPanel recordFilterPanel_;
-    RecordFilter recordFilter_;
+    SongRecordView records_;
     SongFavoriteTabs favoriteTabs_;
     SongFavoritesPanel favoritesPanel_;
-    std::filesystem::path recordDatabase_;
     SongBackgroundPreview artwork_;
     std::uint64_t textRevision_{};
     std::vector<SongCard> songCards_;
@@ -172,17 +167,7 @@ class MusicSelectView final
     PhantomCore::Visual2DNode *background_{};
     PhantomCore::Visual2DNode *categoryBar_{};
     PhantomCore::Visual2DNode *categoryLabel_{};
-    std::future<std::vector<PlayRecord>> recordJob_;
-    std::filesystem::path recordPattern_;
-    std::string recordMode_, recordQuery_;
-    std::size_t recordOffset_{};
-    std::uint64_t recordRevision_{1}, recordJobRevision_{}, recordDisplayRevision_{};
-    bool recordNext_{};
-    PhantomCore::Visual2DNode *recordQueryButton_{}, *recordPreviousButton_{}, *recordNextButton_{};
-    PhantomCore::Visual2DNode *recordRows_{};
     PhantomCore::Visual2DNode *recordPanel_{};
-    PhantomCore::Visual2DNode *recordSelector_{};
-    PhantomCore::Visual2DNode *emptyRecordMessage_{};
     PhantomCore::Visual2DNode *informationPanel_{};
     PhantomCore::Visual2DNode *difficultyInformation_{};
     PhantomCore::Visual2DNode *difficultyHeading_{};
@@ -214,7 +199,6 @@ class MusicSelectView final
     PhantomCore::Visual2DNode *goButton_{};
     PhantomCore::Visual2DNode *goFill_{};
     PhantomCore::Visual2DNode *goLabel_{};
-    PhantomCore::NodeId recordSelectorId_{};
     PhantomCore::NodeId sortSelectorId_{};
     PhantomCore::NodeId searchFieldId_{};
     PhantomCore::NodeId backButtonId_{};

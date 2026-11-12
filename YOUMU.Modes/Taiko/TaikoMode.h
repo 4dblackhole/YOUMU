@@ -17,10 +17,12 @@ class TaikoMode final : public IPlayGameMode
     [[nodiscard]] std::string_view Id() const noexcept override;
     [[nodiscard]] ModeLoadResult LoadSession(
         const std::filesystem::path &patternPath,
-        const std::optional<std::filesystem::path> &effectPath = std::nullopt) const override;
+        const std::optional<std::filesystem::path> &effectPath = std::nullopt,
+        std::stop_token stop = {}) const override;
     [[nodiscard]] ModeLoadResult CreateSession(
         const PatternDocument &pattern,
-        const EffectDocument &effects = {}) const override;
+        const EffectDocument &effects = {},
+        std::stop_token stop = {}) const override;
 
   private:
     PlaySessionOptions options_;

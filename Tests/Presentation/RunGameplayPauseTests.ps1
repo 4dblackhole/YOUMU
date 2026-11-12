@@ -10,7 +10,7 @@ $units = @('Pch', 'GameplaySessionController', 'GameplaySessionFactory', 'Gamepl
     'RhythmTestScene', 'EditorTestControls', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteVisuals', 'GameplayNoteVisibility', 'GameplayFeedbackVisuals',
     'GameplayInputView', 'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
-$libraries = @('Rhythm', 'Chart', 'Modes', 'Assets') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }
+$libraries = @('Rhythm', 'Chart', 'Modes', 'Assets', 'ClientLogic') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }
 $objectDirectory = "build/obj/GameplayPauseTests/$Configuration"
 New-Item -ItemType Directory -Path $objectDirectory -Force | Out-Null
 & cl /nologo /utf-8 /std:c++20 /EHsc /W4 /analyze @runtime /DNOMINMAX /IClient /IYOUMU.Rhythm /IYOUMU.Chart /IYOUMU.Modes /IYOUMU.Assets/Public /IDependencies/PhantomCore/Engine/SDK Tests/Presentation/GameplayPauseTests.cpp @objects @libraries "Dependencies/PhantomCore/bin/x64/$Configuration/PhantomCore.lib" "/Fo$objectDirectory/" "/Febin/x64/$Configuration/GameplayPauseTests.exe" /link /OPT:NOICF /OPT:NOREF "/LIBPATH:$FmodRoot/api/core/lib/x64" "build/obj/YOUMU.Assets/x64/$Configuration/YOUMU.Assets.res" user32.lib gdi32.lib ole32.lib mfplat.lib mfreadwrite.lib mfuuid.lib

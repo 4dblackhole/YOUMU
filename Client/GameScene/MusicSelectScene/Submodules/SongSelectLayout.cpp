@@ -61,25 +61,13 @@ void MusicSelectView::UpdateResponsiveLayout()
     UpdateSearchInputLayout();
     filterPanel_.SetViewport(width_, height_);
     playOptionsPanel_.SetViewport(height_);
-    recordFilterPanel_.SetViewport(height_);
+    records_.SetViewport(height_);
     favoritesPanel_.SetViewport();
 }
 
 void MusicSelectView::UpdateRecordPanelLayout()
 {
-    if (recordPanel_ == nullptr || recordSelector_ == nullptr || emptyRecordMessage_ == nullptr)
-    {
-        return;
-    }
-    LayoutRecordControls();
-    const float panelWidth = recordPanel_->NodeSize().width / DesignToCanvasScale;
-    const float innerWidth = std::max(panelWidth - 44.0F, 1.0F);
-    recordSelector_->SetBounds(
-        ScaleTopLeftBounds({22.0F, 22.0F, innerWidth, layout::RecordSelector.height},
-                           recordPanel_->NodeSize().height));
-    emptyRecordMessage_->SetBounds(
-        ScaleTopLeftBounds({22.0F, 400.0F, innerWidth, layout::EmptyRecordMessage.height},
-                           recordPanel_->NodeSize().height));
+    if (recordPanel_) records_.Layout();
 }
 
 void MusicSelectView::UpdateSongInformationLayout()

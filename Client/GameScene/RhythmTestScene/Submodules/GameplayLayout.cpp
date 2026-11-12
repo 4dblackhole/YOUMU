@@ -106,7 +106,7 @@ void GameplayPresenter::CreateLaneVisuals(Visual2DNode &gearRoot)
     // Taiko is a presentation of the same vertical lane rotated clockwise.
     // Notes continue to update only local Y, so changing this one transform
     // redirects the background, effects, judgement line and notes together.
-    laneRoot_->Transform().SetRotationRollPitchYaw(0.0F, 0.0F, -DirectX::XM_PIDIV2);
+    laneRoot_->Transform().SetRotationRollPitchYaw(0.0F, 0.0F, -HalfPi);
 
     CreateLaneSurface();
 

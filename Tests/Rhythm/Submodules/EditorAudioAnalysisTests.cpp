@@ -43,6 +43,23 @@ namespace tests
 
         Require(analysis.pcm && analysis.pcm->samples == samples && !analysis.pcm->waveform.empty(),
                 "Analysis must retain immutable original PCM and its waveform pyramid.");
+        const PcmReader fragmented = [&](const std::filesystem::path &, std::stop_token,
+                                         const PcmConsumer &consume) {
+            const auto pcm = std::span<const float>(samples);
+            constexpr std::size_t chunk = 91 * channels;
+            for (std::size_t offset = 0; offset < pcm.size(); offset += chunk)
+                consume(channels, rate, pcm.subspan(offset, std::min(chunk, pcm.size() - offset)));
+        };
+        const auto fragmentedAnalysis = AnalyzeAudio({}, {}, fragmented);
+        Require(fragmentedAnalysis.frames.size() == analysis.frames.size(),
+                "PCM chunk boundaries must not change the analysis time grid.");
+        for (std::size_t index = 0; index < analysis.frames.size(); ++index)
+        {
+            const auto &expected = analysis.frames[index], &actual = fragmentedAnalysis.frames[index];
+            Require(actual.minimum == expected.minimum && actual.maximum == expected.maximum &&
+                        actual.peak == expected.peak && actual.bands == expected.bands,
+                    "Windows spanning PCM chunks must retain the same extrema and spectrum.");
+        }
         for (const auto region : {std::pair{.301, .002}, std::pair{-.01, 1.02}, std::pair{1.1, .25}})
         {
             const auto peaks = BuildAudioWaveform(*analysis.pcm, region.first, region.second, 113);

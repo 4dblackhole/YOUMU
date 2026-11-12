@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Model/Submodules/MusicDocument.h"
+#include "Parsing/LoadCancellation.h"
 #include "Model/Submodules/PatternDocument.h"
 #include "Model/Submodules/EffectDocument.h"
 
@@ -51,7 +52,10 @@ class SongCatalog final
 {
 public:
     using PatternNoteCounter = std::function<
-        std::optional<std::size_t>(const PatternDocument&, const EffectDocument&)>;
+        std::optional<std::size_t>(const PatternDocument&, const EffectDocument&, std::stop_token)>;
+    // Metadata first (no patterns), then one validated pattern per delta.
+    // Consumers merge by metadataPath/patternPath; Load still returns the full catalog.
+    using ProgressHandler = std::function<void(SongCatalogEntry)>;
 
     SongCatalog() = default;
     explicit SongCatalog(PatternNoteCounter countNotes)
@@ -61,11 +65,12 @@ public:
     [[nodiscard]] static SongCatalog MetadataIndex(
         std::filesystem::path cacheFile, PatternNoteCounter countNotes);
     [[nodiscard]] SongCatalogLoadResult Load(
-        const std::filesystem::path& songsRoot) const;
+        const std::filesystem::path& songsRoot, std::stop_token stop = {},
+        ProgressHandler progress = {}) const;
 
   private:
-    void ReadIndex(const std::filesystem::path &root) const noexcept;
-    void WriteIndex(const std::filesystem::path &root) const noexcept;
+    void ReadIndex(const std::filesystem::path &root, std::stop_token stop) const;
+    void WriteIndex(const std::filesystem::path &root, std::stop_token stop) const;
     PatternNoteCounter countNotes_;
     bool metadataOnly_{};
     std::filesystem::path cacheFile_;

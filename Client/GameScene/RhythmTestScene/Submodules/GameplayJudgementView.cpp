@@ -128,7 +128,7 @@ void GameplayJudgementView::CreateJudgementImages(ScreenVisual2DManager &visuals
         node.SetPosition({judgementCircle.NodeSize().width * 0.5F, judgementCircle.NodeSize().height * 0.5F});
         // Follow the judgement-circle position/scale but keep the wording
         // upright inside Taiko's clockwise-rotated lane.
-        node.Transform().SetRotationRollPitchYaw(0.0F, 0.0F, DirectX::XM_PIDIV2);
+        node.Transform().SetRotationRollPitchYaw(0.0F, 0.0F, HalfPi);
         node.SetZIndex(1);
         judgementImages_[index] = &node;
     }

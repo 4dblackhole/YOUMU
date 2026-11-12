@@ -75,15 +75,14 @@ int main()
         beam.OnKeyPressed(rollover);
         Check(Near(tint().green, 1), "Roll tick white");
 
-        lane.Transform().SetRotationRollPitchYaw(0, 0, -DirectX::XM_PIDIV2);
+        lane.Transform().SetRotationRollPitchYaw(0, 0, -HalfPi);
         lane.Transform().SetScale(2, 2, 1);
         beam.SetLayout(152, 300);
         Check(Near(sprite.Bounds().y, 0) && Near(sprite.Bounds().height, 760), "Image aspect and lane origin");
-        const auto world = DirectX::XMLoadFloat4x4(&sprite.Transform().WorldMatrix());
-        const auto origin = DirectX::XMVector3TransformCoord(DirectX::XMVectorZero(), world);
-        const auto forward = DirectX::XMVector3TransformCoord(
-            DirectX::XMVectorSet(0, 1, 0, 1), world);
-        Check(Near(DirectX::XMVectorGetX(DirectX::XMVectorSubtract(forward, origin)), 2), "Lane rotation and scale inherited");
+        const auto& world = sprite.Transform().WorldMatrix();
+        const auto origin = TransformPoint({0, 0, 0}, world);
+        const auto forward = TransformPoint({0, 1, 0}, world);
+        Check(Near(forward.x - origin.x, 2), "Lane rotation and scale inherited");
         const auto draws = canvas.BuildDrawList();
         Check(draws.size() == 1 && draws.front().clipBounds.has_value(), "Beam draw packet has clip");
         Check(Near(draws.front().clipBounds->width, 600), "Rotated clip ends at resized lane boundary");

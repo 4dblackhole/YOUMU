@@ -1,61 +1,82 @@
 #pragma once
 #include "Catalog/SongCatalog.h"
+#include "GameFlow/ChartLoadJob.h"
 #include "Mode/PlayGameModeFactory.h"
-#include <chrono>
-#include <future>
-#include <memory>
+#include <atomic>
 #include <cstdlib>
 #include <cwctype>
+#include <memory>
+#include <mutex>
 
-// Jobs own copied paths and their parser cache, never Scene/engine observers.
-// KeepAlive retains this loader across transitions; polling never waits for I/O.
+// KeepAlive retains copied-data jobs across play/editor transitions. A new root
+// cancels the old generation; only the current generation can publish progress.
 class SongCatalogLoader final
 {
-  public:
-    void Refresh(const std::filesystem::path &root)
+public:
+    bool Refresh(const std::filesystem::path& root)
     {
-        if (job_.valid())
+        if (job_.Busy() && loadingRoot_ == root) return false;
+        if (loadingRoot_ != root)
         {
-            pendingRoot_ = root != loadingRoot_ ? std::optional{root} : std::nullopt;
-            return;
+            job_.Cancel();
+            cache_.reset();
         }
-        if (!cache_ || loadingRoot_ != root)
-            cache_ = std::make_shared<SongCatalog>(SongCatalog::MetadataIndex(CachePath(root), CountPlayableNotes));
+        if (!cache_)
+            cache_ = std::make_shared<SongCatalog>(
+                SongCatalog::MetadataIndex(CachePath(root), CountPlayableNotes));
         loadingRoot_ = root;
-        pendingRoot_.reset();
+        progress_ = std::make_shared<Progress>();
         const auto cache = cache_;
-        job_ = std::async(std::launch::async, [cache, root] { return cache->Load(root); });
+        const auto progress = progress_;
+        job_ = StartChartLoad([cache, progress, root](std::stop_token stop)
+        {
+            return cache->Load(root, stop, [progress, stop](SongCatalogEntry entry)
+            {
+                CheckChartLoadCancellation(stop);
+                {
+                    std::scoped_lock lock(progress->mutex);
+                    progress->entries.push_back(std::move(entry));
+                }
+                progress->pending.store(true, std::memory_order_release);
+            });
+        });
+        return true;
+    }
+    void Cancel() noexcept
+    {
+        job_.Cancel();
+        cache_.reset();
+        progress_.reset();
+        loadingRoot_.clear();
+    }
+    std::vector<SongCatalogEntry> PollProgress()
+    {
+        if (!progress_ || !progress_->pending.exchange(false, std::memory_order_acq_rel))
+            return {};
+        std::vector<SongCatalogEntry> entries;
+        std::scoped_lock lock(progress_->mutex);
+        entries.swap(progress_->entries);
+        return entries;
     }
     std::optional<SongCatalogLoadResult> Poll()
     {
-        if (!job_.valid() || job_.wait_for(std::chrono::seconds{0}) != std::future_status::ready)
-            return {};
-        try
+        try { return job_.Poll(); }
+        catch (const ChartLoadCancelled&) { return {}; }
+        catch (const std::exception& error)
         {
-            auto result = job_.get();
-            if (pendingRoot_)
-            {
-                const auto next = *pendingRoot_;
-                Refresh(next);
-                return {};
-            }
-            return result;
-        }
-        catch (const std::exception &error)
-        {
-            if (pendingRoot_)
-            {
-                const auto next = *pendingRoot_;
-                Refresh(next);
-                return {};
-            }
             SongCatalogLoadResult result;
             result.diagnostics.push_back({DiagnosticSeverity::Error, {}, error.what()});
             return result;
         }
     }
 
-  private:
+private:
+    struct Progress
+    {
+        std::atomic<bool> pending{};
+        std::mutex mutex;
+        std::vector<SongCatalogEntry> entries;
+    };
     static std::filesystem::path CachePath(const std::filesystem::path &root)
     {
         wchar_t *directory{};
@@ -69,7 +90,7 @@ class SongCatalogLoader final
         return std::filesystem::path{directory} / L"YOUMU" / L"SongCatalog" / (std::to_string(hash) + ".bin");
     }
     std::shared_ptr<SongCatalog> cache_;
-    std::future<SongCatalogLoadResult> job_;
+    std::shared_ptr<Progress> progress_;
+    ChartLoadJob<SongCatalogLoadResult> job_;
     std::filesystem::path loadingRoot_;
-    std::optional<std::filesystem::path> pendingRoot_;
 };

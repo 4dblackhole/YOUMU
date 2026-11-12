@@ -19,6 +19,7 @@
     <ClCompile Include="Submodules\SceneStateTests.cpp"><Filter>Submodules</Filter></ClCompile>
     <ClCompile Include="Submodules\SongFavoritesTests.cpp"><Filter>Submodules</Filter></ClCompile>
     <ClCompile Include="Submodules\SongCatalogTests.cpp"><Filter>Submodules</Filter></ClCompile>
+    <ClCompile Include="Submodules\ChartLoadingTests.cpp"><Filter>Submodules</Filter></ClCompile>
     <ClCompile Include="Submodules\SoundPolicyTests.cpp"><Filter>Submodules</Filter></ClCompile>
     <ClCompile Include="Submodules\TaikoModeTests.cpp"><Filter>Submodules</Filter></ClCompile>
     <ClInclude Include="Submodules\TestCases.h"><Filter>Submodules</Filter></ClInclude>

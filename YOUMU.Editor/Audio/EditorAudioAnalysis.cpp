@@ -12,31 +12,105 @@ namespace
 {
 
     constexpr std::size_t Window = 2048;
-    void FFT(std::array<std::complex<float>, Window> &values)
+    struct SpectrumPlan
     {
-        for (std::size_t i = 1, j = 0; i < Window; ++i)
+        std::array<std::size_t, Window> reversed{};
+        std::array<std::complex<float>, Window - 1> twiddles{};
+        std::array<float, Window> hann{};
+        float windowSum{};
+
+        SpectrumPlan()
         {
-            std::size_t bit = Window >> 1;
-            for (; j & bit; bit >>= 1)
-                j ^= bit;
-            j ^= bit;
-            if (i < j)
-                std::swap(values[i], values[j]);
-        }
-        for (std::size_t length = 2; length <= Window; length <<= 1)
-        {
-            const auto root = std::polar(1.0F, -2 * std::numbers::pi_v<float> / static_cast<float>(length));
-            for (std::size_t i = 0; i < Window; i += length)
+            for (std::size_t i = 1, j = 0; i < Window; ++i)
             {
+                std::size_t bit = Window >> 1;
+                for (; j & bit; bit >>= 1)
+                    j ^= bit;
+                j ^= bit;
+                reversed[i] = j;
+            }
+            // Retain the original coefficient recurrence and its rounding.
+            // Every block in a stage uses this same sequence.
+            for (std::size_t length = 2; length <= Window; length <<= 1)
+            {
+                const auto root = std::polar(1.0F, -2 * std::numbers::pi_v<float> / static_cast<float>(length));
                 std::complex<float> w{1, 0};
                 for (std::size_t j = 0; j < length / 2; ++j)
                 {
-                    const auto a = values[i + j], b = values[i + j + length / 2] * w;
-                    values[i + j] = a + b;
-                    values[i + j + length / 2] = a - b;
+                    twiddles[length / 2 - 1 + j] = w;
                     w *= root;
                 }
             }
+            for (std::size_t i = 0; i < Window; ++i)
+            {
+                hann[i] = .5F - .5F * std::cos(2 * std::numbers::pi_v<float> * static_cast<float>(i) /
+                                             static_cast<float>(Window - 1));
+                windowSum += hann[i];
+            }
+        }
+    };
+
+    const SpectrumPlan &GetSpectrumPlan()
+    {
+        static const SpectrumPlan plan;
+        return plan;
+    }
+
+    void FFT(std::array<std::complex<float>, Window> &values)
+    {
+        const auto &plan = GetSpectrumPlan();
+        // [complex.numbers.general] guarantees interleaved array access to the
+        // real and imaginary components. Avoid tiny complex/array calls in the
+        // Debug inner loop while retaining the same scalar operation order.
+        auto *const data = reinterpret_cast<float *>(values.data());
+        const auto *const reversed = plan.reversed.data();
+        for (std::size_t i = 1; i < Window; ++i)
+            if (i < reversed[i])
+            {
+                std::swap(data[2 * i], data[2 * reversed[i]]);
+                std::swap(data[2 * i + 1], data[2 * reversed[i] + 1]);
+            }
+        for (std::size_t length = 2; length <= Window; length <<= 1)
+        {
+            const auto *const twiddles = reinterpret_cast<const float *>(plan.twiddles.data()) + 2 * (length / 2 - 1);
+            for (std::size_t i = 0; i < Window; i += length)
+                for (std::size_t j = 0; j < length / 2; ++j)
+                {
+                    const auto left = 2 * (i + j), right = 2 * (i + j + length / 2);
+                    const float ar = data[left], ai = data[left + 1];
+                    const float br = data[right], bi = data[right + 1];
+                    const float wr = twiddles[2 * j], wi = twiddles[2 * j + 1];
+                    const float real = br * wr - bi * wi;
+                    const float imaginary = br * wi + bi * wr;
+                    data[left] = ar + real;
+                    data[left + 1] = ai + imaginary;
+                    data[right] = ar - real;
+                    data[right + 1] = ai - imaginary;
+                }
+        }
+    }
+
+    void FillSpectrumWindow(std::array<std::complex<float>, Window> &values,
+                            const float *samples, std::size_t frames, std::uint32_t channels,
+                            std::uint32_t channel, std::int64_t center, const float *hann)
+    {
+        auto *const data = reinterpret_cast<float *>(values.data());
+        std::fill_n(data, 2 * Window, 0.0F);
+        for (std::size_t i = 0; i < Window; ++i)
+        {
+            const auto sample = center + static_cast<std::int64_t>(i) - static_cast<std::int64_t>(Window / 2);
+            if (sample >= 0 && static_cast<std::size_t>(sample) < frames)
+                data[2 * i] = samples[static_cast<std::size_t>(sample) * channels + channel] * hann[i];
+        }
+    }
+
+    void AccumulatePower(const std::array<std::complex<float>, Window> &values, float *power)
+    {
+        const auto *const data = reinterpret_cast<const float *>(values.data());
+        for (std::size_t bin = 1; bin <= Window / 2; ++bin)
+        {
+            const float real = data[2 * bin], imaginary = data[2 * bin + 1];
+            power[bin] += real * real + imaginary * imaginary;
         }
     }
     void BuildWaveformPyramid(AudioPcm &audio, std::stop_token stop)
@@ -95,18 +169,10 @@ namespace
         std::array<float, Window / 2 + 1> power{};
         for (std::uint32_t channel = 0; channel < audio.channels; ++channel)
         {
-            values.fill({});
-            for (std::size_t i = 0; i < Window; ++i)
-            {
-                const auto sample = static_cast<std::int64_t>(start) + static_cast<std::int64_t>(i) -
-                                    static_cast<std::int64_t>(Window / 2);
-                if (sample >= 0 && static_cast<std::size_t>(sample) < sampleCount)
-                    values[i] =
-                        audio.samples[static_cast<std::size_t>(sample) * audio.channels + channel] * hann[i];
-            }
+            FillSpectrumWindow(values, audio.samples.data(), sampleCount, audio.channels, channel,
+                               static_cast<std::int64_t>(start), hann.data());
             FFT(values);
-            for (std::size_t bin = 1; bin < power.size(); ++bin)
-                power[bin] += std::norm(values[bin]);
+            AccumulatePower(values, power.data());
         }
         const float normalization = 4.0F / (windowSum * windowSum * static_cast<float>(audio.channels));
         for (std::size_t band = 0; band < frame.bands.size(); ++band)
@@ -131,14 +197,9 @@ AudioAnalysis AnalyzeAudio(const std::filesystem::path &path, const std::stop_to
     // Allocate FFT scratch once per source; reuse it across frames/channels
     // instead of growing the worker stack or allocating on every FFT.
     const auto spectrumScratch = std::make_unique<std::array<std::complex<float>, Window>>();
-    std::array<float, Window> hann{};
-    float windowSum = 0;
-    for (std::size_t i = 0; i < Window; ++i)
-    {
-        hann[i] = .5F - .5F * std::cos(2 * std::numbers::pi_v<float> * static_cast<float>(i) /
-                                       static_cast<float>(Window - 1));
-        windowSum += hann[i];
-    }
+    const auto &plan = GetSpectrumPlan();
+    const auto &hann = plan.hann;
+    const float windowSum = plan.windowSum;
     std::array<std::size_t, SpectrumBandCount + 1> bins{};
     std::size_t nextFrame = 0, hop = 1;
     const auto initialize = [&](const DecodedAudio &audio)
@@ -276,13 +337,9 @@ void AccumulateAudioSpectrum(SpectrumTile &output, const AudioPcm &audio, const 
     const double duration = static_cast<double>(frames) / audio.sampleRate;
     if (offset >= region.begin + region.seconds || offset + duration <= region.begin) return;
     const auto values = std::make_unique<std::array<std::complex<float>, Window>>();
-    std::array<float, Window> hann{};
-    float windowSum = 0;
-    for (std::size_t i = 0; i < Window; ++i)
-    {
-        hann[i] = .5F - .5F * std::cos(2 * std::numbers::pi_v<float> * static_cast<float>(i) / (Window - 1));
-        windowSum += hann[i];
-    }
+    const auto &plan = GetSpectrumPlan();
+    const auto &hann = plan.hann;
+    const float windowSum = plan.windowSum;
     struct Band { std::size_t first{}, last{}, nearest{}; float fraction{}; bool visible{}; };
     std::vector<Band> bands(region.bands);
     for (std::size_t band = 0; band < bands.size(); ++band)
@@ -318,15 +375,9 @@ void AccumulateAudioSpectrum(SpectrumTile &output, const AudioPcm &audio, const 
             currentPower->fill(0);
             for (std::uint32_t channel = 0; channel < audio.channels; ++channel)
             {
-                values->fill({});
-                for (std::size_t i = 0; i < Window; ++i)
-                {
-                    const auto sample = center + static_cast<std::int64_t>(i) - static_cast<std::int64_t>(Window / 2);
-                    if (sample >= 0 && static_cast<std::size_t>(sample) < frames)
-                        (*values)[i] = audio.samples[static_cast<std::size_t>(sample) * audio.channels + channel] * hann[i];
-                }
+                FillSpectrumWindow(*values, audio.samples.data(), frames, audio.channels, channel, center, hann.data());
                 FFT(*values);
-                for (std::size_t bin = 1; bin < power.size(); ++bin) (*currentPower)[bin] += std::norm((*values)[bin]);
+                AccumulatePower(*values, currentPower->data());
             }
             for (std::size_t bin = 1; bin < power.size(); ++bin) power[bin] = std::max(power[bin], (*currentPower)[bin]);
         }

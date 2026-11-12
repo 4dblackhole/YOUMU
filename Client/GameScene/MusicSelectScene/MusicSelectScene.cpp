@@ -52,6 +52,7 @@ void MusicSelectScene::EndScene() noexcept
 {
     active_ = false;
     pendingLaunch_.reset();
+    patternLoader_.Cancel();
     preview_->StopPreviewAudio();
     view_->SetVisible(false);
 }
@@ -60,16 +61,20 @@ void MusicSelectScene::Update(const UpdateContext &context, SceneManager &scenes
     if (catalogRoot_ != options_.SongsRoot())
         RefreshCatalog();
     PollOsuImport();
+    if (auto entries = catalogLoader_.PollProgress(); !entries.empty())
+    {
+        selection_->MergeCatalogProgress(std::move(entries));
+        view_->RefreshCatalogPresentation();
+    }
     if (auto catalog = catalogLoader_.Poll())
     {
         preview_->StopPreviewAudio();
-        selection_->catalogLoading_ = false;
-        selection_->catalog_ = std::move(*catalog);
+        selection_->FinishCatalog(std::move(*catalog));
         selection_->ClearLaunchError();
         if (selection_->catalog_.songs.empty() && !selection_->catalog_.diagnostics.empty())
             selection_->SetLaunchError(SongSelectionState::LaunchErrorKind::Catalog,
                                        selection_->catalog_.diagnostics.front().message);
-        view_->RebuildVisibleSongs();
+        view_->RefreshCatalogPresentation();
     }
     preview_->UpdatePreviewAudio(context.deltaSeconds);
     const auto command = view_->Update(context.input, context.deltaSeconds);
@@ -163,6 +168,8 @@ void MusicSelectScene::OnResize(std::uint32_t width, std::uint32_t height)
 }
 void MusicSelectScene::Shutdown() noexcept
 {
+    patternLoader_.Cancel();
+    catalogLoader_.Cancel();
     preview_->StopPreviewAudio();
     view_->Shutdown();
     *selection_ = {};
@@ -170,7 +177,7 @@ void MusicSelectScene::Shutdown() noexcept
 
 bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
 {
-    if (selection_->catalogLoading_ || patternLoader_.Busy())
+    if (osuImport_.Busy() || patternLoader_.Busy())
         return false;
     if (selection_->focusedSongPosition_ >= selection_->visibleSongIndices_.size())
     {
@@ -228,6 +235,20 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
 
 void MusicSelectScene::PollPatternLoad(SceneManager &scenes)
 {
+    if (pendingLaunch_)
+    {
+        const auto position = selection_->focusedSongPosition_;
+        const auto& indices = selection_->visibleSongIndices_;
+        const auto* song = position < indices.size() ? &selection_->catalog_.songs[indices[position]] : nullptr;
+        const auto pattern = selection_->selectedPatternIndex_;
+        if (!song || pattern >= song->patterns.size() ||
+            song->patterns[pattern].patternPath != pendingLaunch_->patternPath)
+        {
+            patternLoader_.Cancel();
+            pendingLaunch_.reset();
+            return;
+        }
+    }
     auto loaded = patternLoader_.Poll();
     if (!loaded || !pendingLaunch_)
         return;
@@ -256,12 +277,14 @@ void MusicSelectScene::PollPatternLoad(SceneManager &scenes)
 
 void MusicSelectScene::RefreshCatalog()
 {
+    const auto root = options_.SongsRoot();
+    if (!catalogLoader_.Refresh(root)) return;
     pendingLaunch_.reset();
-    catalogRoot_ = options_.SongsRoot();
+    patternLoader_.Cancel();
+    catalogRoot_ = root;
     preview_->StopPreviewAudio();
     selection_->catalogLoading_ = true;
     selection_->catalog_ = {};
-    catalogLoader_.Refresh(catalogRoot_);
     if (active_)
         view_->RebuildVisibleSongs();
 }

@@ -1,7 +1,7 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
 $ErrorActionPreference = 'Stop'
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
-$units = @('Pch', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'SongSelectRecords', 'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongSelectCards', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'EditorOsuImport', 'OsuImportValidation',
+$units = @('Pch', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'SongSelectRecords', 'SongRecordView', 'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongSelectCards', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'EditorOsuImport', 'OsuImportValidation',
     'MusicSelectTexts', 'MarqueeTextComponent', 'ScrollableTextComponent', 'OptionsPanel', 'OptionsTabs', 'OptionsDisplay', 'OptionsKeys', 'OptionsOffset', 'OptionsSongs', 'OptionSettings', 'OptionTexts', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Modes', 'Chart', 'Rhythm', 'ClientLogic', 'Assets') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }

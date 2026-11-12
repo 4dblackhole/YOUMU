@@ -1,4 +1,5 @@
 #include "Mode/PlayGameModeFactory.h"
+#include "Parsing/LoadCancellation.h"
 #include "Taiko/TaikoMode.h"
 #include <algorithm>
 #include <array>
@@ -46,10 +47,11 @@ std::unique_ptr<IPlayGameMode> CreatePlayGameMode(std::string_view id, PlaySessi
 }
 
 std::optional<std::size_t> CountPlayableNotes(
-    const PatternDocument& pattern, const EffectDocument& effects)
+    const PatternDocument& pattern, const EffectDocument& effects, std::stop_token stop)
 {
+    CheckChartLoadCancellation(stop);
     if (!IsSupportedPlayGameMode(pattern.mode)) return std::nullopt;
-    const auto result = CreatePlayGameMode(pattern.mode)->CreateSession(pattern, effects);
+    const auto result = CreatePlayGameMode(pattern.mode)->CreateSession(pattern, effects, stop);
     return result.Succeeded()
         ? std::optional{result.session->PlayableNoteCount()} : std::nullopt;
 }

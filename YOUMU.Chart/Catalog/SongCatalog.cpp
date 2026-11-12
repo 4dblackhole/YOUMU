@@ -91,13 +91,17 @@ namespace
     template <class Cache, class Parser>
     auto ParseChangedFile(Cache &cache, const std::filesystem::directory_entry &file, Parser parse,
                          bool &dirty, bool metadataOnly = false,
-                         const std::function<std::optional<std::size_t>(const PatternDocument&)> &countNotes = {})
+                         const std::function<std::optional<std::size_t>(const PatternDocument&)> &countNotes = {},
+                         std::stop_token stop = {})
     {
+        CheckChartLoadCancellation(stop);
         const auto &path = file.path();
         using Parsed = typename Cache::mapped_type::Parsed;
         const auto read = [&](auto modified, auto size)
         {
+            CheckChartLoadCancellation(stop);
             auto parsed = parse(path);
+            CheckChartLoadCancellation(stop);
             std::optional<std::size_t> noteCount;
             std::optional<std::pair<double, double>> bpmRange;
             if constexpr (requires { parsed.document.notes; })
@@ -105,7 +109,8 @@ namespace
                 if (parsed.Succeeded() && countNotes)
                     noteCount = countNotes(parsed.document);
                 if (parsed.Succeeded())
-                    try { bpmRange = MusicalTimeline(parsed.document).BpmRange(); }
+                    try { bpmRange = MusicalTimeline(parsed.document, {}, stop).BpmRange(); }
+                    catch (const ChartLoadCancelled&) { throw; }
                     catch (const std::exception &)
                     {
                         // Keep the parsed entry available when only its BPM summary fails.
@@ -119,6 +124,7 @@ namespace
             }
             if constexpr (requires { parsed.document.commands; })
                 if (metadataOnly) parsed.document = {};
+            CheckChartLoadCancellation(stop);
             return typename Cache::mapped_type{modified, size,
                 std::make_shared<const Parsed>(std::move(parsed)), noteCount, bpmRange};
         };
@@ -159,8 +165,9 @@ namespace
 
     [[nodiscard]] CatalogFiles DiscoverCatalogFiles(
         const std::filesystem::path& songsRoot,
-        SongCatalogLoadResult& result)
+        SongCatalogLoadResult& result, std::stop_token stop)
     {
+        CheckChartLoadCancellation(stop);
         CatalogFiles files;
         std::error_code error;
         std::filesystem::recursive_directory_iterator iterator(
@@ -179,6 +186,7 @@ namespace
 
         while (iterator != end)
         {
+            CheckChartLoadCancellation(stop);
             const std::filesystem::path path = iterator->path();
             std::error_code typeError;
             if (iterator->is_regular_file(typeError))
@@ -217,8 +225,13 @@ namespace
         }
 
         const auto byPath = [](const auto &entry) -> const std::filesystem::path & { return entry.path(); };
-        std::ranges::sort(files.music, {}, byPath);
-        std::ranges::sort(files.patterns, {}, byPath);
+        const auto less = [stop](const auto& left, const auto& right)
+        {
+            CheckChartLoadCancellation(stop);
+            return left < right;
+        };
+        std::ranges::sort(files.music, less, byPath);
+        std::ranges::sort(files.patterns, less, byPath);
         return files;
     }
 }
@@ -244,15 +257,17 @@ bool SongCatalogLoadResult::Succeeded() const noexcept
 }
 
 SongCatalogLoadResult SongCatalog::Load(
-    const std::filesystem::path& songsRoot) const
+    const std::filesystem::path& songsRoot, std::stop_token stop,
+    ProgressHandler progress) const
 {
+    CheckChartLoadCancellation(stop);
     if (metadataOnly_ && cachedRoot_ != songsRoot)
     {
         musicCache_.clear();
         patternCache_.clear();
         effectCache_.clear();
+        ReadIndex(songsRoot, stop);
         cachedRoot_ = songsRoot;
-        ReadIndex(songsRoot);
     }
     SongCatalogLoadResult result;
     std::error_code rootError;
@@ -268,11 +283,12 @@ SongCatalogLoadResult SongCatalog::Load(
         return result;
     }
 
-    ChartParser parser;
+    ChartParser parser(stop);
     std::map<std::string, std::size_t, std::less<>> songByMetadataPath;
-    CatalogFiles files = DiscoverCatalogFiles(songsRoot, result);
-    const auto deleted = [&files](const auto &entry)
+    CatalogFiles files = DiscoverCatalogFiles(songsRoot, result, stop);
+    const auto deleted = [&files, stop](const auto &entry)
     {
+        CheckChartLoadCancellation(stop);
         if (files.metadata.contains(entry.first)) return false;
         std::error_code error;
         const bool exists = std::filesystem::exists(entry.first, error);
@@ -287,13 +303,15 @@ SongCatalogLoadResult SongCatalog::Load(
     // Load music first so pattern references can be joined in one pass.
     for (const auto &file : files.music)
     {
+        CheckChartLoadCancellation(stop);
         const auto &path = file.path();
         std::shared_ptr<const ParseResult<MusicDocument>> parsed;
         try
         {
             parsed = ParseChangedFile(musicCache_, file,
-                                      [&parser](const auto &file) { return parser.ParseMusicFile(file); }, cacheDirty_).parsed;
+                                      [&parser](const auto &file) { return parser.ParseMusicFile(file); }, cacheDirty_, false, {}, stop).parsed;
         }
+        catch (const ChartLoadCancelled&) { throw; }
         catch (const std::exception& exception)
         {
             AddCatalogError(result, path, exception.what());
@@ -342,10 +360,12 @@ SongCatalogLoadResult SongCatalog::Load(
         const std::size_t index = result.songs.size();
         songByMetadataPath.emplace(PathKey(path), index);
         result.songs.push_back(std::move(song));
+        if (progress) progress(result.songs.back());
     }
 
     for (const auto &file : files.patterns)
     {
+        CheckChartLoadCancellation(stop);
         const auto &path = file.path();
         std::shared_ptr<const ParseResult<PatternDocument>> parsed;
         std::optional<std::size_t> noteCount;
@@ -364,15 +384,16 @@ SongCatalogLoadResult SongCatalog::Load(
                     if (!parsedEffects.Succeeded()) return std::nullopt;
                     effects = std::move(parsedEffects.document);
                 }
-                return countNotes_(document, effects);
+                return countNotes_(document, effects, stop);
             };
             const auto cached = ParseChangedFile(patternCache_, file,
                 [&parser](const auto &file) { return parser.ParsePatternFile(file); },
-                cacheDirty_, metadataOnly_, countNotes);
+                cacheDirty_, metadataOnly_, countNotes, stop);
             parsed = cached.parsed;
             noteCount = cached.noteCount;
             bpmRange = cached.bpmRange;
         }
+        catch (const ChartLoadCancelled&) { throw; }
         catch (const std::exception& exception)
         {
             AddCatalogError(result, path, exception.what());
@@ -444,8 +465,9 @@ SongCatalogLoadResult SongCatalog::Load(
                 const auto effectFile = discoveredEffect == files.metadata.end()
                     ? std::filesystem::directory_entry{effectPath} : discoveredEffect->second;
                 effects = ParseChangedFile(effectCache_, effectFile,
-                    [&parser](const auto &file) { return parser.ParseEffectFile(file); }, cacheDirty_, metadataOnly_).parsed;
+                    [&parser](const auto &file) { return parser.ParseEffectFile(file); }, cacheDirty_, metadataOnly_, {}, stop).parsed;
             }
+            catch (const ChartLoadCancelled&) { throw; }
             catch (const std::exception& exception)
             {
                 AddCatalogError(result, effectPath, exception.what());
@@ -464,17 +486,28 @@ SongCatalogLoadResult SongCatalog::Load(
         pattern.pattern = parsed->document;
         pattern.noteCount = noteCount;
         pattern.bpmRange = bpmRange;
-        result.songs[target->second].patterns.push_back(
-            std::move(pattern));
+        auto& song = result.songs[target->second];
+        song.patterns.push_back(std::move(pattern));
+        if (progress)
+        {
+            SongCatalogEntry delta;
+            delta.metadataPath = song.metadataPath;
+            delta.audioPath = song.audioPath;
+            delta.music = song.music;
+            delta.patterns.push_back(song.patterns.back());
+            progress(std::move(delta));
+        }
     }
 
     for (SongCatalogEntry& song : result.songs)
     {
+        CheckChartLoadCancellation(stop);
         std::ranges::stable_sort(
             song.patterns,
-            [](const SongCatalogPattern& left,
+            [stop](const SongCatalogPattern& left,
                const SongCatalogPattern& right)
             {
+                CheckChartLoadCancellation(stop);
                 return left.pattern.name < right.pattern.name;
             });
     }
@@ -482,14 +515,25 @@ SongCatalogLoadResult SongCatalog::Load(
     std::vector<std::pair<std::string, std::size_t>> order;
     order.reserve(result.songs.size());
     for (std::size_t i = 0; i < result.songs.size(); ++i)
+    {
+        CheckChartLoadCancellation(stop);
         order.emplace_back(DisplaySortKey(result.songs[i]), i);
-    std::ranges::stable_sort(order, {}, &decltype(order)::value_type::first);
+    }
+    std::ranges::stable_sort(order, [stop](const auto& left, const auto& right)
+    {
+        CheckChartLoadCancellation(stop);
+        return left.first < right.first;
+    });
     std::vector<SongCatalogEntry> sorted;
     sorted.reserve(result.songs.size());
     for (const auto &[key, index] : order)
+    {
+        CheckChartLoadCancellation(stop);
         sorted.push_back(std::move(result.songs[index]));
+    }
     result.songs = std::move(sorted);
+    CheckChartLoadCancellation(stop);
     if (metadataOnly_ && cacheDirty_)
-        WriteIndex(songsRoot);
+        WriteIndex(songsRoot, stop);
     return result;
 }

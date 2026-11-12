@@ -25,10 +25,12 @@ namespace
     }
 } // namespace
 
-MusicalTimeline::MusicalTimeline(const PatternDocument &pattern, RhythmDuration runtimeOffset)
+MusicalTimeline::MusicalTimeline(const PatternDocument &pattern, RhythmDuration runtimeOffset,
+                                 std::stop_token stop)
     : runtimeOffset_(runtimeOffset), baseBpm_(pattern.baseBpm),
-      offsetMilliseconds_(pattern.patternOffsetMilliseconds), directives_(pattern.timing)
+      offsetMilliseconds_(pattern.patternOffsetMilliseconds)
 {
+    CheckChartLoadCancellation(stop);
     if (!std::isfinite(baseBpm_) || baseBpm_ <= 0.0)
     {
         throw std::invalid_argument("Base BPM must be finite and greater than zero.");
@@ -38,13 +40,23 @@ MusicalTimeline::MusicalTimeline(const PatternDocument &pattern, RhythmDuration 
         throw std::invalid_argument("Pattern offset must be finite.");
     }
 
-    BuildMeasurePrefixSums(pattern);
-    std::ranges::stable_sort(directives_, [](const TimingDirective &left, const TimingDirective &right)
-                             { return left.position < right.position; });
-    BuildTimePoints();
+    directives_ = pattern.timing;
+    CheckChartLoadCancellation(stop);
+    BuildMeasurePrefixSums(pattern, stop);
+    std::size_t comparisons{};
+    std::ranges::stable_sort(directives_, [&stop, &comparisons](const TimingDirective &left, const TimingDirective &right)
+                             {
+                                 if ((comparisons++ & 63U) == 0) CheckChartLoadCancellation(stop);
+                                 return left.position < right.position;
+                             });
+    CheckChartLoadCancellation(stop);
+    BuildTimePoints(stop);
     measureSpans_.reserve(measureLengths_.size());
     for (std::size_t i = 0; i < measureLengths_.size(); ++i)
+    {
+        CheckChartLoadCancellation(stop);
         measureSpans_.push_back(BuildMeasureSpan(static_cast<std::int64_t>(i)));
+    }
 }
 
 std::pair<double, double> MusicalTimeline::BpmRange() const noexcept
@@ -65,32 +77,39 @@ RhythmTime MusicalTimeline::Compile(const MusicalPosition position) const
     return CompileAbsolute(PositionToWholeNotes(position));
 }
 
-std::vector<CompiledPatternNote> MusicalTimeline::CompileNotes(const PatternDocument &pattern) const
+std::vector<CompiledPatternNote> MusicalTimeline::CompileNotes(const PatternDocument &pattern, std::stop_token stop) const
 {
+    CheckChartLoadCancellation(stop);
     std::vector<CompiledPatternNote> result;
     result.reserve(pattern.notes.size());
     for (const PatternNote &note : pattern.notes)
     {
+        CheckChartLoadCancellation(stop);
         result.push_back({note, Compile(note.position), 1, IsPositionActive(note.position)});
     }
+    std::size_t comparisons{};
     std::ranges::stable_sort(result,
-                             [](const CompiledPatternNote &left, const CompiledPatternNote &right)
+                             [&stop, &comparisons](const CompiledPatternNote &left, const CompiledPatternNote &right)
                              {
+                                 if ((comparisons++ & 63U) == 0) CheckChartLoadCancellation(stop);
                                  if (left.timing != right.timing)
                                  {
                                      return left.timing < right.timing;
                                  }
                                  return left.note.sourceOrder < right.note.sourceOrder;
                              });
+    CheckChartLoadCancellation(stop);
     return result;
 }
 
-std::vector<CompiledEffectCommand> MusicalTimeline::CompileEffects(const EffectDocument &effects) const
+std::vector<CompiledEffectCommand> MusicalTimeline::CompileEffects(const EffectDocument &effects, std::stop_token stop) const
 {
+    CheckChartLoadCancellation(stop);
     std::vector<CompiledEffectCommand> result;
     result.reserve(effects.commands.size());
     for (const EffectCommand &command : effects.commands)
     {
+        CheckChartLoadCancellation(stop);
         if (command.position.measure < 0 || command.position.measure >= MaximumMeasureCount ||
             (command.endPosition &&
              (command.endPosition->measure < 0 || command.endPosition->measure >= MaximumMeasureCount)))
@@ -104,19 +123,23 @@ std::vector<CompiledEffectCommand> MusicalTimeline::CompileEffects(const EffectD
                                 : RhythmDuration{static_cast<RhythmDuration::rep>(
                                       std::llround(command.durationMilliseconds * 1000.0))}});
     }
+    std::size_t comparisons{};
     std::ranges::stable_sort(result,
-                             [](const CompiledEffectCommand &left, const CompiledEffectCommand &right)
+                             [&stop, &comparisons](const CompiledEffectCommand &left, const CompiledEffectCommand &right)
                              {
+                                 if ((comparisons++ & 63U) == 0) CheckChartLoadCancellation(stop);
                                  return std::pair{left.timing, left.command.position} <
                                         std::pair{right.timing, right.command.position};
                              });
+    CheckChartLoadCancellation(stop);
     return result;
 }
 
 std::vector<std::pair<std::size_t, std::size_t>> MusicalTimeline::SubdivisionRanges(MusicalPosition begin,
                                                                                     MusicalPosition end,
-                                                                                    std::size_t divisions) const
+                                                                                    std::size_t divisions, std::stop_token stop) const
 {
+    CheckChartLoadCancellation(stop);
     if (divisions == 0)
         return {};
     if (divisions > static_cast<std::size_t>(std::numeric_limits<Rational::Representation>::max()))
@@ -143,6 +166,7 @@ std::vector<std::pair<std::size_t, std::size_t>> MusicalTimeline::SubdivisionRan
     auto span = std::ranges::upper_bound(removedSpans_, first, {}, &RemovedSpan::end);
     for (; span != removedSpans_.end() && span->anchor < last && cursor < count; ++span)
     {
+        CheckChartLoadCancellation(stop);
         const auto removedEnd = std::min(count, ceilCount(span->end));
         auto low = cursor, high = removedEnd;
         while (low < high)
@@ -163,9 +187,10 @@ std::vector<std::pair<std::size_t, std::size_t>> MusicalTimeline::SubdivisionRan
 }
 
 std::vector<RhythmTime> MusicalTimeline::CompileSubdivisions(MusicalPosition begin, MusicalPosition end,
-                                                                     std::size_t divisions) const
+                                                                     std::size_t divisions, std::stop_token stop) const
 {
-    const auto ranges = SubdivisionRanges(begin, end, divisions);
+    CheckChartLoadCancellation(stop);
+    const auto ranges = SubdivisionRanges(begin, end, divisions, stop);
     std::size_t count = 0;
     for (const auto &[first, last] : ranges)
         count += last - first;
@@ -179,29 +204,41 @@ std::vector<RhythmTime> MusicalTimeline::CompileSubdivisions(MusicalPosition beg
     result.reserve(count + (includeTail ? 1 : 0));
     for (const auto &[first, last] : ranges)
         for (std::size_t i = first; i < last; ++i)
+        {
+            if ((i & 63U) == 0) CheckChartLoadCancellation(stop);
             result.push_back(CompileAbsolute(origin + Rational{static_cast<Rational::Representation>(i),
                                                                static_cast<Rational::Representation>(divisions)}));
+        }
     if (includeTail)
         result.push_back(Compile(end));
+    CheckChartLoadCancellation(stop);
     return result;
 }
 
 std::size_t MusicalTimeline::CountSubdivisions(MusicalPosition begin, MusicalPosition end,
-                                               std::size_t divisions) const
+                                               std::size_t divisions, std::stop_token stop) const
 {
+    CheckChartLoadCancellation(stop);
     std::size_t count = 0;
-    for (const auto &[first, last] : SubdivisionRanges(begin, end, divisions))
+    for (const auto &[first, last] : SubdivisionRanges(begin, end, divisions, stop))
+    {
+        CheckChartLoadCancellation(stop);
         count += last - first;
+    }
     return count;
 }
 
-std::vector<RhythmTime> MusicalTimeline::CompileMeasureStarts() const
+std::vector<RhythmTime> MusicalTimeline::CompileMeasureStarts(std::stop_token stop) const
 {
+    CheckChartLoadCancellation(stop);
     std::vector<RhythmTime> result;
     result.reserve(measureSpans_.size());
     for (const auto &span : measureSpans_)
+    {
+        CheckChartLoadCancellation(stop);
         if (span.end > span.begin)
             result.push_back(span.begin);
+    }
     return result;
 }
 
@@ -276,12 +313,13 @@ Rational MusicalTimeline::MeasureLength(const std::int64_t measure) const
                : measureLengths_.back();
 }
 
-void MusicalTimeline::BuildMeasurePrefixSums(const PatternDocument &pattern)
+void MusicalTimeline::BuildMeasurePrefixSums(const PatternDocument &pattern, std::stop_token stop)
 {
     std::int64_t maximumMeasure = 0;
     std::map<std::int64_t, Rational> measureChanges;
     for (const TimingDirective &directive : directives_)
     {
+        CheckChartLoadCancellation(stop);
         if (directive.position.measure < 0 || directive.position.measure >= MaximumMeasureCount)
         {
             throw std::invalid_argument("A timing directive must use a measure in 0..99,999.");
@@ -298,6 +336,7 @@ void MusicalTimeline::BuildMeasurePrefixSums(const PatternDocument &pattern)
     }
     for (const PatternNote &note : pattern.notes)
     {
+        CheckChartLoadCancellation(stop);
         if (note.position.measure < 0 || note.position.measure >= MaximumMeasureCount)
         {
             throw std::invalid_argument("A note must use a measure in 0..99,999.");
@@ -312,6 +351,7 @@ void MusicalTimeline::BuildMeasurePrefixSums(const PatternDocument &pattern)
     Rational currentLength{1, 1};
     for (std::int64_t measure = 0; measure <= maximumMeasure; ++measure)
     {
+        CheckChartLoadCancellation(stop);
         if (const auto change = measureChanges.find(measure); change != measureChanges.end())
         {
             currentLength = change->second;
@@ -321,7 +361,7 @@ void MusicalTimeline::BuildMeasurePrefixSums(const PatternDocument &pattern)
     }
 }
 
-void MusicalTimeline::BuildTimePoints()
+void MusicalTimeline::BuildTimePoints(std::stop_token stop)
 {
     struct Change
     {
@@ -331,6 +371,7 @@ void MusicalTimeline::BuildTimePoints()
     std::map<Rational, Change> changes;
     for (const auto &directive : directives_)
     {
+        CheckChartLoadCancellation(stop);
         if (directive.type == TimingDirectiveType::MeasureLength)
             continue;
         auto &change = changes[PositionToWholeNotes(directive.position)];
@@ -356,6 +397,7 @@ void MusicalTimeline::BuildTimePoints()
     activeTimePoints_.reserve(changes.size() + 1);
     for (const auto &[position, change] : changes)
     {
+        CheckChartLoadCancellation(stop);
         const auto &previous = activeTimePoints_.back();
         const long double before = previous.timeAfterMicroseconds + (position - previous.position).Value() *
                                                                         MicrosecondsPerWholeNoteAtBpmOne /
@@ -366,7 +408,7 @@ void MusicalTimeline::BuildTimePoints()
             std::max(0.0L, change.delayMicroseconds) * previous.bpm / MicrosecondsPerWholeNoteAtBpmOne;
         auto gapPosition = position;
         if (change.delayMicroseconds < 0)
-            std::tie(gapPosition, retainedGap) = RemoveElapsedInterval(position, target, after);
+            std::tie(gapPosition, retainedGap) = RemoveElapsedInterval(position, target, after, stop);
         const auto &anchor = activeTimePoints_.back();
         const TimePoint point{
             position,   before, after, change.bpm.value_or(anchor.bpm), anchor.gapWholePrefix + retainedGap,
@@ -378,19 +420,23 @@ void MusicalTimeline::BuildTimePoints()
 
 std::pair<Rational, long double> MusicalTimeline::RemoveElapsedInterval(const Rational &position,
                                                                         RhythmTime target,
-                                                                        long double after)
+                                                                        long double after, std::stop_token stop)
 {
     Rational firstRemoved = position;
     // Restore the tempo before all overwritten BPM/delay anchors. The
     // synthetic Base BPM origin also supports a jump before chart zero.
     while (activeTimePoints_.size() > 1 && CheckedTime(activeTimePoints_.back().timeAfterMicroseconds) >= target)
     {
+        CheckChartLoadCancellation(stop);
         firstRemoved = activeTimePoints_.back().position;
         activeTimePoints_.pop_back();
     }
     const auto &anchor = activeTimePoints_.back();
     while (!removedSpans_.empty() && removedSpans_.back().end > anchor.position)
+    {
+        CheckChartLoadCancellation(stop);
         removedSpans_.pop_back();
+    }
     const long double elapsedBeats =
         (after - anchor.timeAfterMicroseconds) * anchor.bpm / MicrosecondsPerWholeNoteAtBpmOne;
     const long double sourceBegin = std::clamp(anchor.position.Value() + elapsedBeats, 0.0L, firstRemoved.Value());

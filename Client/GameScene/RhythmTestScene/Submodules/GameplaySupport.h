@@ -2,6 +2,7 @@
 #include "PhantomCore.h"
 #include "App/AssetPaths.h"
 #include "Mode/Submodules/PlaySessionTypes.h"
+#include <Windows.h>
 #include <algorithm>
 #include <array>
 #include <cmath>

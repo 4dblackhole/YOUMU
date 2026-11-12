@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "YOUMUAssets.h"
 #include "EditorScene/EditorScene.h"
 #include "EditorScene/Submodules/EditorWorkspace.h"
@@ -50,11 +51,11 @@ namespace
     void Check(bool value, const char *message) { if (!value) throw std::runtime_error(message); }
     class Renderer final : public Visual2DRenderSystem
     {
-        ImageHandle LoadImage(const std::filesystem::path &) override { return {++image_}; }
+        ImageHandle LoadImageFile(const std::filesystem::path &) override { return {++image_}; }
         Size GetImageSize(ImageHandle) const noexcept override { return {64, 64}; }
         void SubmitScreen(const Visual2DCanvas &, const RenderContext &, Point, std::uint32_t) override {}
-        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const DirectX::XMFLOAT4X4 &, Size,
-                         const DirectX::XMFLOAT4X4 &) override {}
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &, Size,
+                         const Float4x4 &) override {}
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override { return {}; }
         void RenderToTexture(const Visual2DCanvas &, const RenderTargetTextureHandle &, const RenderContext &) override {}
         std::uint64_t image_{};

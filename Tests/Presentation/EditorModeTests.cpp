@@ -283,12 +283,8 @@ namespace
                 packets(),
                 [&](const auto &packet)
                 {
-                    DirectX::XMFLOAT3 corner;
-                    DirectX::XMStoreFloat3(
-                        &corner,
-                        DirectX::XMVector3TransformCoord(
-                            DirectX::XMVectorSet(packet.bounds.x, packet.bounds.y + packet.bounds.height, 0, 1),
-                            DirectX::XMLoadFloat4x4(&packet.nodeTransform)));
+                    const auto corner = TransformPoint(
+                        {packet.bounds.x, packet.bounds.y + packet.bounds.height, 0}, packet.nodeTransform);
                     const float y = 540 - corner.y;
                     const bool colored = waveform ? packet.color.green > .5F && packet.color.red < .3F
                                                   : packet.color.red > .3F && packet.color.green < .95F;

@@ -87,7 +87,7 @@ void SongBackgroundPreview::LayoutImage()
         return;
     const auto scale = std::max(size.width / previewImageSize_.width,
                                 size.height / previewImageSize_.height);
-    const DirectX::XMFLOAT2 uvScale{size.width / (previewImageSize_.width * scale),
+    const Float2 uvScale{size.width / (previewImageSize_.width * scale),
                                    size.height / (previewImageSize_.height * scale)};
     RequireComponent<SpriteVisualComponent>(*previewImage_).SetUvTransform(
         uvScale, {(1 - uvScale.x) * .5F, (1 - uvScale.y) * .5F});

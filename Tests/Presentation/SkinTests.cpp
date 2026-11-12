@@ -67,7 +67,7 @@ namespace
     class Renderer final : public Visual2DRenderSystem
     {
       public:
-        ImageHandle LoadImage(const fs::path &path) override
+        ImageHandle LoadImageFile(const fs::path &path) override
         {
             loaded.push_back(path);
             return {loaded.size()};
@@ -80,8 +80,8 @@ namespace
                           std::uint32_t) override
         {
         }
-        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const DirectX::XMFLOAT4X4 &,
-                         Size, const DirectX::XMFLOAT4X4 &) override
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &,
+                         Size, const Float4x4 &) override
         {
         }
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override

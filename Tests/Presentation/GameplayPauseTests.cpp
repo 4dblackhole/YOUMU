@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "YOUMUAssets.h"
 #include "GameFlow/GameplaySessionController.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplayPauseMenu.h"
@@ -42,7 +43,7 @@ namespace
     class NullRenderer final : public Visual2DRenderSystem
     {
       public:
-        ImageHandle LoadImage(const std::filesystem::path &) override
+        ImageHandle LoadImageFile(const std::filesystem::path &) override
         {
             return {};
         }
@@ -54,8 +55,8 @@ namespace
                           std::uint32_t) override
         {
         }
-        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const DirectX::XMFLOAT4X4 &,
-                         Size, const DirectX::XMFLOAT4X4 &) override
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &,
+                         Size, const Float4x4 &) override
         {
         }
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override
@@ -453,15 +454,16 @@ namespace
             return "Probe";
         }
         ModeLoadResult LoadSession(const std::filesystem::path &,
-                                         const std::optional<std::filesystem::path> &) const override
+                                         const std::optional<std::filesystem::path> &, std::stop_token stop = {}) const override
         {
-            return CreateSession({}, {});
+            return CreateSession({}, {}, stop);
         }
         ModeLoadResult CreateSession(const PatternDocument &pattern,
-                                           const EffectDocument &) const override
+                                           const EffectDocument &, std::stop_token stop = {}) const override
         {
+            CheckChartLoadCancellation(stop);
             auto session = std::make_unique<PlaySession>();
-            session->SetTimeline(MusicalTimeline(pattern));
+            session->SetTimeline(MusicalTimeline(pattern, {}, stop));
             session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
                 1, RhythmTime{}, std::make_shared<const AccuracyRange>(), std::make_unique<TapInputRule>(1)));
             session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
@@ -479,7 +481,7 @@ namespace
           public:
             Rendering(Visual2DRenderSystem &inner, bool &shown, bool &intro, bool &introImage)
                 : inner_(inner), shown_(shown), intro_(intro), introImage_(introImage), resumesBefore_(musicResumes) {}
-            ImageHandle LoadImage(const std::filesystem::path &path) override { return inner_.LoadImage(path); }
+            ImageHandle LoadImageFile(const std::filesystem::path &path) override { return inner_.LoadImageFile(path); }
             bool PrepareImages(std::span<const std::filesystem::path> paths, std::string &error) override
             {
                 if (firstPreparation_)
@@ -525,8 +527,8 @@ namespace
                 }
                 inner_.SubmitScreen(canvas, ctx, origin, z);
             }
-            void SubmitPlane(const Visual2DCanvas &canvas, const RenderContext &ctx, const DirectX::XMFLOAT4X4 &world,
-                             Size size, const DirectX::XMFLOAT4X4 &view) override
+            void SubmitPlane(const Visual2DCanvas &canvas, const RenderContext &ctx, const Float4x4 &world,
+                             Size size, const Float4x4 &view) override
             { inner_.SubmitPlane(canvas, ctx, world, size, view); }
             RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t w, std::uint32_t h) override
             { return inner_.CreateCanvasRenderTarget(w, h); }

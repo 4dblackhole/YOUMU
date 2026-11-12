@@ -20,10 +20,13 @@
 class EffectLookup final
 {
   public:
-    explicit EffectLookup(const std::vector<CompiledEffectCommand> &commands)
+    explicit EffectLookup(const std::vector<CompiledEffectCommand> &commands, std::stop_token stop = {})
     {
         for (const auto &command : commands)
+        {
+            CheckChartLoadCancellation(stop);
             index_.insert_or_assign({command.command.type, command.timing}, &command);
+        }
     }
     const CompiledEffectCommand *Find(EffectCommandType type, RhythmTime time) const
     {
@@ -62,18 +65,25 @@ inline bool UsesSyncopation(const EffectLookup &effects, const MusicalTimeline &
 }
 inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &pattern,
                                const EffectDocument &effects, const MusicalTimeline &timeline,
-                               std::vector<Diagnostic> &diagnostics)
+                               std::vector<Diagnostic> &diagnostics, std::stop_token stop = {})
 {
     std::map<SoundId, std::filesystem::path> files;
     std::set<std::string> used;
     for (const auto &note : pattern.notes)
+    {
+        CheckChartLoadCancellation(stop);
         if (!note.hitSound.empty())
             used.insert(note.hitSound);
+    }
     for (const auto &change : effects.hitSoundChanges)
+    {
+        CheckChartLoadCancellation(stop);
         if (timeline.IsPositionActive(change.position))
             used.insert(change.soundIndex);
+    }
     for (const auto &[index, path] : effects.hitSounds)
     {
+        CheckChartLoadCancellation(stop);
         if (used.contains(index))
             files.emplace(ChartSoundId(index), (effects.sourcePath.parent_path() / path).lexically_normal());
     }
@@ -83,6 +93,7 @@ inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &patt
     std::vector<TimedSoundOverride> katChanges;
     for (const auto &change : effects.hitSoundChanges)
     {
+        CheckChartLoadCancellation(stop);
         if ((change.keyType != 1 && change.keyType != 2) || !effects.hitSounds.contains(change.soundIndex) ||
             change.position.measure < 0 || change.position.measure >= MaximumMeasureCount ||
             change.position.fraction < Rational{} ||
@@ -99,7 +110,10 @@ inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &patt
         changes.push_back({timeline.Compile(change.position), ChartSoundId(change.soundIndex)});
     }
     for (const auto &binding : TimedSoundBindings)
+    {
+        CheckChartLoadCancellation(stop);
         session.SetSoundOverrides(binding.sound, binding.keyType == 1 ? donChanges : katChanges);
+    }
 }
 
 [[nodiscard]] inline NoteAction ActionValue(const TaikoAction action) noexcept

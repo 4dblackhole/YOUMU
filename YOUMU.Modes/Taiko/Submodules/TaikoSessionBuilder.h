@@ -6,7 +6,8 @@ class TaikoSessionBuilder final
 {
   public:
     static ModeLoadResult CreateSession(const PatternDocument &pattern, const EffectDocument &effects,
-                                        const PlaySessionOptions &options, ModeInputLayout inputLayout);
+                                        const PlaySessionOptions &options, ModeInputLayout inputLayout,
+                                        std::stop_token stop = {});
 
   private:
     static void AddLongNote(const CompiledPatternNote &head,
@@ -14,7 +15,7 @@ class TaikoSessionBuilder final
                             const MusicalTimeline &timeline,
                             const std::shared_ptr<const AccuracyRange> &profile,
                             Lane &lane, PlaySession &session, NoteId &nextId,
-                            std::vector<Diagnostic> &diagnostics);
+                            std::vector<Diagnostic> &diagnostics, std::stop_token stop);
     [[nodiscard]] static std::shared_ptr<const INoteSoundPolicy> MakeTapSoundPolicy(
         std::string soundId);
     [[nodiscard]] static std::shared_ptr<const INoteSoundPolicy> MakeBigSoundPolicy(

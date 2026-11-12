@@ -54,7 +54,7 @@ namespace
     {
       public:
         std::size_t loads{};
-        ImageHandle LoadImage(const std::filesystem::path &path) override
+        ImageHandle LoadImageFile(const std::filesystem::path &path) override
         {
             // Read the real embedded/fallback PNG metadata, without a GPU.
             std::ifstream file(path, std::ios::binary);
@@ -82,8 +82,8 @@ namespace
                           std::uint32_t) override
         {
         }
-        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const DirectX::XMFLOAT4X4 &,
-                         Size, const DirectX::XMFLOAT4X4 &) override
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &,
+                         Size, const Float4x4 &) override
         {
         }
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override
@@ -119,7 +119,7 @@ namespace
         visuals.Initialize(renderer, {1280.0F, 720.0F});
         Visual2DCanvas canvas;
         auto &lane = canvas.Root().CreateChild("Lane");
-        lane.Transform().SetRotationRollPitchYaw(0.0F, 0.0F, -DirectX::XM_PIDIV2);
+        lane.Transform().SetRotationRollPitchYaw(0.0F, 0.0F, -HalfPi);
         auto &circle = CreateSprite(lane, {30.0F, 40.0F, 96.0F, 96.0F}, {}, "Circle");
         GameplayJudgementView view;
         TextCatalog texts;
@@ -154,10 +154,9 @@ namespace
             Check(Near(overlay.x + overlay.width * 0.5F, target.x + target.width * 0.5F) &&
                       Near(overlay.y + overlay.height * 0.5F, target.y + target.height * 0.5F),
                   "Overlay and judgement circle must have the same world centre.");
-            const auto world = DirectX::XMLoadFloat4x4(
-                &Node(root, "Lane.Judgement." + std::string(words[index])).Transform().WorldMatrix());
-            const auto right = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(1, 0, 0, 0), world);
-            Check(Near(DirectX::XMVectorGetX(right), 1.0F) && Near(DirectX::XMVectorGetY(right), 0.0F),
+            const auto& world = Node(root, "Lane.Judgement." + std::string(words[index])).Transform().WorldMatrix();
+            const auto right = TransformDirection({1, 0, 0}, world);
+            Check(Near(right.x, 1.0F) && Near(right.y, 0.0F),
                   "Lettering must remain upright in the rotated lane.");
         }
         view.Reset();

@@ -83,6 +83,9 @@ namespace tests
     void TestSongCatalog(const std::filesystem::path &songsRoot);
     void TestSongCatalogIsolatesInvalidFiles();
     void TestSongCatalogIndex();
+    void TestChartLoadCancellation();
+    void TestChartLoadJobLifetime();
+    void TestSongCatalogProgressSelection();
     void TestInvalidNumericFieldsReportDiagnostics();
     void TestNumericFieldsRejectEmbeddedNulls();
     void TestTimingMicrosecondsAndEffects();
