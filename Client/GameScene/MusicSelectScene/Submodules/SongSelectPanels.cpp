@@ -11,6 +11,31 @@ using namespace song_select;
 
 namespace
 {
+    [[nodiscard]] std::wstring LaunchErrorText(
+        const SongSelectionState &selection,
+        const MusicSelectTextSet &text)
+    {
+        using Kind = SongSelectionState::LaunchErrorKind;
+        if (selection.launchErrorKind_ == Kind::None)
+        {
+            return {};
+        }
+
+        const std::wstring_view prefix =
+            selection.launchErrorKind_ == Kind::Catalog        ? text.catalogErrorPrefix
+            : selection.launchErrorKind_ == Kind::UnsupportedMode
+                ? text.unsupportedModePrefix
+                : text.patternErrorPrefix;
+        const std::wstring detail =
+            selection.launchErrorDetail_.empty()
+                ? std::wstring(text.unknownChartError)
+                : DecodeDisplayText(selection.launchErrorDetail_);
+        return std::wstring(prefix) + detail;
+    }
+} // namespace
+
+namespace
+{
     // Outline geometry leaves the interior empty, so the panel's 90% fill blends
     // directly with the chart BG instead of an opaque border-colored rectangle.
     class SongPanelBorder final : public Visual2DComponent
@@ -188,18 +213,7 @@ void MusicSelectView::CreateSongBrowser()
 
     auto &viewport = AddBorderedPanel(panel, layout::SongViewport, ViewportBlue, SubtleBorder, 1.5F,
                                       14.0F, "SongViewport");
-    songViewport_ = &viewport;
-    viewport.SetClipRect({0.0F, 0.0F, viewport.NodeSize().width, viewport.NodeSize().height});
-    songContent_ = &viewport.CreateChild("SongContent");
-    songContent_->SetSize(viewport.NodeSize());
-    songContent_->SetPosition({0.0F, 0.0F});
-    songContent_->SetZIndex(1);
-    scrollbarTrack_ = &AddPanel(viewport, layout::ScrollbarTrack, {0.835F, 0.910F, 0.957F, 1.0F},
-                                "ScrollbarTrack", 3.0F);
-    scrollbarTrack_->SetZIndex(2);
-    scrollbarHandle_ =
-        &AddPanel(viewport, layout::ScrollbarTrack, AccentBlue, "ScrollbarHandle", 3.0F);
-    scrollbarHandle_->SetZIndex(3);
+    songList_.Attach(*canvas_, inputRouter_, viewport);
 
     browserHint_ = &AddLabel(panel, layout::BrowserHint, std::wstring(text.browserHint), 9.0F,
                              SoftTextBlue, "BrowserHint", TextAlignment::Center);
@@ -276,13 +290,7 @@ Visual2DNode &MusicSelectView::AddPanel(Visual2DNode &parent,
                                                        std::string name,
                                                        const float penpotCornerRadius)
 {
-    auto &panel = CreatePanel(
-        parent, ScaleTopLeftBounds(penpotBounds, parent.NodeSize().height), std::move(name));
-    ApplyFlatStyle(panel, color);
-    SetCornerRadius(panel, penpotCornerRadius);
-    if (panel.Name() != "Surface" && !panel.Name().ends_with(".Fill"))
-        BindSkinImage(panel, screenVisuals_, "MusicSelect", panel.Name());
-    return panel;
+    return CreateSongPanel(screenVisuals_, parent, penpotBounds, color, std::move(name), penpotCornerRadius);
 }
 
 Visual2DNode &MusicSelectView::AddBorderedPanel(
@@ -330,12 +338,7 @@ Visual2DNode &MusicSelectView::AddLabel(
 Visual2DNode &MusicSelectView::AddScrollableLabel(Visual2DNode &parent, Rect bounds, std::wstring text,
                                                 float fontSize, Color color, std::string name)
 {
-    auto &node = parent.CreateChild(std::move(name));
-    node.SetBounds(ScaleTopLeftBounds(bounds, parent.NodeSize().height));
-    auto &scroll = node.AddComponent<ScrollableTextComponent>();
-    scroll.SetStyle(texts_.CurrentProfile().font, CanvasFontSize(fontSize), color);
-    scroll.SetText(std::move(text));
-    return node;
+    return CreateScrollableSongLabel(parent, bounds, std::move(text), fontSize, color, std::move(name), texts_);
 }
 
 void MusicSelectView::ApplyTexts()
@@ -398,4 +401,101 @@ void MusicSelectView::ApplyTexts()
     RefreshSelectionPresentation();
     RefreshSearchPresentation();
     textRevision_ = texts_.Revision();
+}
+
+void MusicSelectView::RefreshSelectionPresentation()
+{
+    if (selectedSongLabel_ == nullptr || selectedArtistLabel_ == nullptr ||
+        selectedPatternLabel_ == nullptr || selectedCreatorLabel_ == nullptr ||
+        selectedDetailsLabel_ == nullptr)
+    {
+        return;
+    }
+
+    auto &songText = RequireComponent<ScrollableTextComponent>(*selectedSongLabel_);
+    auto &artistText = RequireComponent<ScrollableTextComponent>(*selectedArtistLabel_);
+    auto &creatorText = RequireComponent<ScrollableTextComponent>(*selectedCreatorLabel_);
+    const auto &text = MusicSelect(texts_);
+    const std::wstring launchError = LaunchErrorText(selection_, text);
+    for (auto *label : extraDetailsLabels_)
+        if (label) RequireComponent<TextVisualComponent>(*label).SetText(L"");
+    if (selection_.visibleSongIndices_.empty())
+    {
+        artwork_.SetImage({}, canvas_->LogicalSize());
+        songText.SetText(std::wstring(text.noSongSelected));
+        artistText.SetText(L"");
+        RequireComponent<TextVisualComponent>(*selectedPatternLabel_).SetText(L"—");
+        creatorText.SetText(L"—");
+        RequireComponent<TextVisualComponent>(*selectedDetailsLabel_)
+            .SetText(launchError.empty() ? std::wstring(text.emptyDetails) : launchError);
+        return;
+    }
+
+    selection_.focusedSongPosition_ =
+        std::min(selection_.focusedSongPosition_, selection_.visibleSongIndices_.size() - 1);
+    const auto &song =
+        selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
+    songText.SetText(DisplayLines(song.music.names, song.metadataPath.stem().wstring()));
+    artistText.SetText(DisplayLines(song.music.artists));
+    if (song.patterns.empty())
+    {
+        artwork_.SetImage({}, canvas_->LogicalSize());
+        RequireComponent<TextVisualComponent>(*selectedPatternLabel_)
+            .SetText(std::wstring(text.noDifficulty));
+        creatorText.SetText(L"—");
+        RequireComponent<TextVisualComponent>(*selectedDetailsLabel_)
+            .SetText(std::wstring(text.emptyDetails));
+        return;
+    }
+
+    selection_.selectedPatternIndex_ =
+        std::min(selection_.selectedPatternIndex_, song.patterns.size() - 1);
+    const auto &selected = song.patterns[selection_.selectedPatternIndex_];
+    artwork_.SetImage(selected.pattern.backgroundFile.empty()
+                          ? std::filesystem::path{}
+                          : settings_.SongsRoot() / L"BG" / selected.pattern.backgroundFile,
+                      canvas_->LogicalSize(), selected.pattern.backgroundOffsetX,
+                      selected.pattern.backgroundOffsetY);
+    RequireComponent<TextVisualComponent>(*selectedPatternLabel_)
+        .SetText(PatternName(selected));
+    creatorText.SetText(DisplayLines(selected.pattern.makers));
+    std::wstring mode =
+        selected.pattern.mode.empty() ? L"—" : DecodeDisplayText(selected.pattern.mode);
+    std::ranges::transform(mode, mode.begin(), [](const wchar_t character) {
+        return static_cast<wchar_t>(std::towupper(character));
+    });
+    if (!launchError.empty())
+    {
+        RequireComponent<TextVisualComponent>(*selectedDetailsLabel_)
+            .SetText(launchError);
+        return;
+    }
+    const std::wstring bpm = BpmText(selected.pattern.baseBpm);
+    const std::wstring noteCount = selected.noteCount
+        ? std::to_wstring(*selected.noteCount) : L"—";
+    RequireComponent<TextVisualComponent>(*selectedDetailsLabel_)
+        .SetText(std::vformat(text.detailsFormat,
+                              std::make_wformat_args(bpm, noteCount, mode)));
+    const auto range = !selected.bpmRange ? L"—"
+        : selected.bpmRange->first == selected.bpmRange->second ? BpmText(selected.bpmRange->first)
+        : BpmText(selected.bpmRange->first) + L" – " + BpmText(selected.bpmRange->second);
+    std::wstring duration = L"—";
+    if (selection_.selectedDurationMicroseconds_)
+    {
+        const auto seconds = *selection_.selectedDurationMicroseconds_ / 1'000'000;
+        duration = std::format(L"{}:{:02}", seconds / 60, seconds % 60);
+    }
+    const std::array values{std::format(L"{}  {:.2f}", texts_.Get("MusicSelect.judgeLevelLabel"),
+                                        selected.pattern.judgementLevel.Value()),
+                            std::format(L"{}  {:.2f}", texts_.Get("MusicSelect.hpLevelLabel"),
+                                        selected.pattern.hpLevel.Value()),
+                            std::wstring(texts_.Get("MusicSelect.bpmRangeLabel")) + L"  " + range,
+                            std::wstring(texts_.Get("MusicSelect.durationLabel")) + L"  " + duration};
+    for (std::size_t i = 0; i < values.size(); ++i)
+        if (extraDetailsLabels_[i])
+        {
+            auto &label = RequireComponent<TextVisualComponent>(*extraDetailsLabels_[i]);
+            label.SetText(values[i]);
+            texts_.ApplyFont(label);
+        }
 }

@@ -64,7 +64,7 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     if (textRevision_ != texts_.Revision())
     {
         ApplyTexts();
-        RebuildSongCards();
+        songList_.Rebuild();
         UpdateSearchInputLayout();
     }
     UpdateRecords();
@@ -109,8 +109,8 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
         CloseAdditionMenu();
         UpdateResponsiveLayout();
         records_.Invalidate();
-        RebuildSongCards();
-        EnsureFocusedCardVisible();
+        songList_.Rebuild();
+        songList_.EnsureFocusedVisible();
         inputRouter_.InvalidateHitTest();
     }
 }
@@ -131,9 +131,7 @@ void MusicSelectView::Shutdown() noexcept
     options_.Shutdown();
     additionMenu_ = newDifficultyItem_ = convertOsuItem_ = nullptr;
     canvasPointer_.reset();
-    difficultyButtonIds_.clear();
-    songCards_.clear();
-    songRows_.clear();
+    songList_.Shutdown();
     goLabel_ = nullptr;
     goFill_ = nullptr;
     goButton_ = nullptr;
@@ -155,10 +153,6 @@ void MusicSelectView::Shutdown() noexcept
     filterButton_ = nullptr;
     searchCountLabel_ = nullptr;
     searchField_ = nullptr;
-    scrollbarHandle_ = nullptr;
-    scrollbarTrack_ = nullptr;
-    songContent_ = nullptr;
-    songViewport_ = nullptr;
     browserPanel_ = nullptr;
     informationDivider_ = nullptr;
     creatorHeading_ = nullptr;
@@ -178,7 +172,7 @@ void MusicSelectView::Shutdown() noexcept
 void MusicSelectView::RebuildVisibleSongs()
 {
     selection_.RebuildVisibleSongs();
-    scrollOffset_ = 0.0F;
+    songList_.ResetScroll();
     RefreshCatalogPresentation();
 }
 
@@ -229,7 +223,7 @@ bool MusicSelectView::IsEditorSongSelect() const noexcept
 
 void MusicSelectView::RefreshSelection()
 {
-    RebuildSongCards();
+    songList_.Rebuild();
     RefreshSelectionPresentation();
-    EnsureFocusedCardVisible();
+    songList_.EnsureFocusedVisible();
 }

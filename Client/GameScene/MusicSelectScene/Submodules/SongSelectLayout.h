@@ -4,6 +4,7 @@
 #include "Texts/TextCatalog.h"
 #include "PhantomCore.h"
 #include "Presentation/MarqueeTextComponent.h"
+#include "Presentation/ScrollableTextComponent.h"
 #include "Presentation/SkinVisualComponent.h"
 #include "Presentation/UiColors.h"
 #include <algorithm>
@@ -317,5 +318,34 @@ namespace song_select
         content.SetTextColor(color);
         content.SetHorizontalAlignment(alignment);
         return label;
+    }
+
+    // Penpot-sized flat panel. Named panels bind their MusicSelect skin image;
+    // card surfaces and button fills are tinted by their owner instead.
+    inline PhantomCore::Visual2DNode &CreateSongPanel(
+        PhantomCore::ScreenVisual2DManager &visuals, PhantomCore::Visual2DNode &parent,
+        const PhantomCore::Rect penpotBounds, const PhantomCore::Color color, std::string name,
+        const float penpotCornerRadius = 0.0F)
+    {
+        auto &panel = PhantomCore::CreatePanel(
+            parent, ScaleTopLeftBounds(penpotBounds, parent.NodeSize().height), std::move(name));
+        ApplyFlatStyle(panel, color);
+        SetCornerRadius(panel, penpotCornerRadius);
+        if (panel.Name() != "Surface" && !panel.Name().ends_with(".Fill"))
+            BindSkinImage(panel, visuals, "MusicSelect", panel.Name());
+        return panel;
+    }
+
+    // Multi-line text that scrolls inside its own bounds on wheel input.
+    inline PhantomCore::Visual2DNode &CreateScrollableSongLabel(
+        PhantomCore::Visual2DNode &parent, const PhantomCore::Rect bounds, std::wstring text,
+        const float fontSize, const PhantomCore::Color color, std::string name, TextCatalog &texts)
+    {
+        auto &node = parent.CreateChild(std::move(name));
+        node.SetBounds(ScaleTopLeftBounds(bounds, parent.NodeSize().height));
+        auto &scroll = node.AddComponent<ScrollableTextComponent>();
+        scroll.SetStyle(texts.CurrentProfile().font, CanvasFontSize(fontSize), color);
+        scroll.SetText(std::move(text));
+        return node;
     }
 } // namespace song_select

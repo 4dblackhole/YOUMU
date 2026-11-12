@@ -9,6 +9,7 @@
 #include "SongFavoritesPanel.h"
 #include "SongSelectPurpose.h"
 #include "SongBackgroundPreview.h"
+#include "SongListView.h"
 #include "Texts/TextCatalog.h"
 #include <filesystem>
 #include <array>
@@ -30,7 +31,7 @@ class MusicSelectView final
                     OptionSettings &options, std::filesystem::path recordDatabase = {})
         : selection_(state), purpose_(purpose), screenVisuals_(visuals), texts_(texts),
           settings_(options), options_(texts, options, &visuals), records_(texts, visuals, std::move(recordDatabase)),
-          artwork_(visuals)
+          artwork_(visuals), songList_(visuals, state, texts, purpose == SongSelectPurpose::Editor)
     {
     }
     void SetVisible(bool visible)
@@ -51,17 +52,6 @@ class MusicSelectView final
 
   private:
     using SortMode = SongSelectionState::SortMode;
-    struct SongCard
-    {
-        std::size_t catalogIndex{};
-        float top{};
-        float height{};
-        PhantomCore::Visual2DNode *button{};
-        PhantomCore::Visual2DNode *title{};
-        PhantomCore::Visual2DNode *artist{};
-        std::size_t visiblePosition{};
-        PhantomCore::NodeId createDifficultyId{};
-    };
 
     void CreateCategoryBar();
     void CreateRecordPanel();
@@ -84,15 +74,7 @@ class MusicSelectView final
     void UpdateFooterLayout();
     void ResizeBorderedPanel(PhantomCore::Visual2DNode &panel, const PhantomCore::Rect bounds,
                              const float penpotBorderWidth);
-    void RebuildSongCards();
-    void UpdateVisibleSongCards();
-    void CreateSongCard(const std::size_t visiblePosition, const std::size_t catalogIndex,
-                        const float top, const float height, const bool focused);
-    PhantomCore::NodeId CreateDifficultyButton(PhantomCore::Visual2DNode &card, std::size_t visiblePosition);
     void RefreshSearchPresentation();
-    void EnsureFocusedCardVisible();
-    void ApplyScrollOffset();
-    void UpdateScrollbar();
     void ProcessPointer(const PhantomCore::InputState &input);
     bool ProcessActions();
     bool ProcessFilterPanel(const PhantomCore::InputState &input);
@@ -100,7 +82,6 @@ class MusicSelectView final
     void OpenFavoritesPanel();
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
     { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || records_.FilterVisible() || playOptionsPanel_.IsVisible(); }
-    [[nodiscard]] float VisibleSongBottom() const noexcept;
     void RefreshFilterButton();
     bool ProcessKeyboard(const PhantomCore::InputState &input);
     bool ProcessSearchKeyboard(const PhantomCore::InputState &input);
@@ -144,15 +125,8 @@ class MusicSelectView final
     SongFavoriteTabs favoriteTabs_;
     SongFavoritesPanel favoritesPanel_;
     SongBackgroundPreview artwork_;
+    SongListView songList_;
     std::uint64_t textRevision_{};
-    std::vector<SongCard> songCards_;
-    std::vector<SongCard> songRows_;
-    std::size_t firstVisibleRow_{}, lastVisibleRow_{};
-    bool songCardsDirty_{true};
-    std::vector<std::pair<PhantomCore::NodeId, std::size_t>> difficultyButtonIds_;
-    float scrollOffset_{};
-    float contentHeight_{};
-    float songContentWidth_{454.29F};
     std::uint32_t width_{1280};
     std::uint32_t height_{720};
     bool searchFocused_{};
@@ -174,10 +148,6 @@ class MusicSelectView final
     PhantomCore::Visual2DNode *creatorHeading_{};
     PhantomCore::Visual2DNode *informationDivider_{};
     PhantomCore::Visual2DNode *browserPanel_{};
-    PhantomCore::Visual2DNode *songViewport_{};
-    PhantomCore::Visual2DNode *songContent_{};
-    PhantomCore::Visual2DNode *scrollbarTrack_{};
-    PhantomCore::Visual2DNode *scrollbarHandle_{};
     PhantomCore::Visual2DNode *searchField_{};
     PhantomCore::Visual2DNode *searchCountLabel_{};
     PhantomCore::Visual2DNode *sortSelector_{};

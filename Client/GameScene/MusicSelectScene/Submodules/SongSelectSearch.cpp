@@ -1,6 +1,7 @@
 #include "MusicSelectView.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
+#include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 #include <algorithm>
 #include <cmath>
 
@@ -73,4 +74,29 @@ void MusicSelectView::UpdateSearchInputLayout()
     const auto &font = text.Font();
     searchInput_->SetFont(font.source == TextFontSource::System ? std::wstring_view(font.value) : L"Segoe UI", fontHeight);
     searchInput_->SetColors(NativeColor(text.TextColor()), NativeColor(PureWhite));
+}
+
+void MusicSelectView::RefreshSearchPresentation()
+{
+    const auto &text = MusicSelect(texts_);
+    if (searchField_ != nullptr)
+    {
+        std::wstring display =
+            selection_.searchText_.empty() ? std::wstring(text.searchSongs)
+                                           : selection_.searchText_;
+        if (searchInput_)
+        {
+            display.clear();
+            searchInput_->SetPlaceholder(text.searchSongs);
+            if (!searchInput_->HasFocus()) searchInput_->SetText(selection_.searchText_);
+        }
+        RequireComponent<TextVisualComponent>(*searchField_)
+            .SetText(std::move(display));
+    }
+    if (searchCountLabel_ != nullptr)
+    {
+        const std::size_t songCount = selection_.visibleSongIndices_.size();
+        RequireComponent<TextVisualComponent>(*searchCountLabel_)
+            .SetText(std::vformat(text.songCountFormat, std::make_wformat_args(songCount)));
+    }
 }

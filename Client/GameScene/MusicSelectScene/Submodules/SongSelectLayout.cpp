@@ -130,8 +130,8 @@ void MusicSelectView::UpdateSongInformationLayout()
 void MusicSelectView::UpdateSongBrowserLayout()
 {
     if (browserPanel_ == nullptr || searchField_ == nullptr || searchCountLabel_ == nullptr ||
-        sortSelector_ == nullptr || filterButton_ == nullptr || songViewport_ == nullptr || songContent_ == nullptr ||
-        scrollbarTrack_ == nullptr || scrollbarHandle_ == nullptr || browserHint_ == nullptr)
+        sortSelector_ == nullptr || filterButton_ == nullptr || songList_.Viewport() == nullptr ||
+        browserHint_ == nullptr)
     {
         return;
     }
@@ -163,25 +163,15 @@ void MusicSelectView::UpdateSongBrowserLayout()
         ScaleTopLeftBounds({14.0F + sortWidth + 10.0F, layout::SortSelector.y + tabsHeight, filterWidth, layout::SortSelector.height},
                            browserPanel_->NodeSize().height));
     ResizeBorderedPanel(
-        *songViewport_,
+        *songList_.Viewport(),
         ScaleTopLeftBounds({14.0F, layout::SongViewport.y + tabsHeight, innerWidth, layout::SongViewport.height - tabsHeight},
                            browserPanel_->NodeSize().height),
         1.5F);
-    songViewport_->SetClipRect(
-        {0.0F, 0.0F, songViewport_->NodeSize().width, songViewport_->NodeSize().height});
-    songContent_->SetSize(songViewport_->NodeSize());
-    songContentWidth_ = std::max(innerWidth - 24.0F, 1.0F);
-
-    const float trackX = std::max(innerWidth - 9.0F, 0.0F);
-    scrollbarTrack_->SetBounds(
-        ScaleTopLeftBounds({trackX, layout::ScrollbarTrack.y, layout::ScrollbarTrack.width,
-                            layout::ScrollbarTrack.height - tabsHeight},
-                           songViewport_->NodeSize().height));
+    songList_.SetLayout(innerWidth);
     browserHint_->SetBounds(
         ScaleTopLeftBounds({18.0F, layout::BrowserHint.y, std::max(panelWidth - 36.0F, 1.0F),
                             layout::BrowserHint.height},
                            browserPanel_->NodeSize().height));
-    UpdateScrollbar();
 }
 
 void MusicSelectView::UpdateFooterLayout()

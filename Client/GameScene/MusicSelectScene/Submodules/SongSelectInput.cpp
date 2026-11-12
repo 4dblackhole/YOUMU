@@ -40,12 +40,9 @@ void MusicSelectView::ProcessPointer(const InputState &input)
     }
     if (!textScrolled && !IsSelectionModalVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) &&
         canvasPointer_.has_value() &&
-        songViewport_ != nullptr && songViewport_->BoundsInCanvas().Contains(*canvasPointer_) &&
+        songList_.Viewport() != nullptr && songList_.Viewport()->BoundsInCanvas().Contains(*canvasPointer_) &&
         std::abs(input.MouseWheelDelta()) > 0.0F)
-    {
-        scrollOffset_ -= input.MouseWheelDelta() * layout::ScrollStep;
-        ApplyScrollOffset();
-    }
+        songList_.ScrollBy(-input.MouseWheelDelta() * layout::ScrollStep);
 }
 
 bool MusicSelectView::ProcessActions()
@@ -55,7 +52,7 @@ bool MusicSelectView::ProcessActions()
         if (options_.ProcessAction(action))
         {
             ApplyTexts();
-            RebuildSongCards();
+            songList_.Rebuild();
             return true;
         }
         if (action.type == ActionType::Clicked && action.source == optionButtonId_)
@@ -131,36 +128,28 @@ bool MusicSelectView::ProcessActions()
             RefreshSearchPresentation();
             return false;
         }
-        for (std::size_t position = 0; position < songCards_.size(); ++position)
+        const auto listAction = songList_.ProcessAction(action);
+        switch (listAction.kind)
         {
-            if (IsEditorSongSelect() && songCards_[position].createDifficultyId != 0 &&
-                action.source == songCards_[position].createDifficultyId)
-            {
-                const auto anchor = songCards_[position].button->BoundsInCanvas();
-                SetSearchFocus(false);
-                SelectVisibleSong(songCards_[position].visiblePosition);
-                RefreshSearchPresentation();
-                OpenAdditionMenu(anchor);
-                return true;
-            }
-            if (songCards_[position].button != nullptr && action.source == songCards_[position].button->Id())
-            {
-                SetSearchFocus(false);
-                SelectVisibleSong(songCards_[position].visiblePosition);
-                RefreshSearchPresentation();
-                return false;
-            }
-        }
-        for (const auto [id, patternIndex] : difficultyButtonIds_)
-        {
-            if (action.source == id)
-            {
-                SetSearchFocus(false);
-                SelectPattern(patternIndex);
-                RefreshSearchPresentation();
-                command_ = SongSelectCommand::Launch;
-                return true;
-            }
+        case SongListView::ActionKind::CreateDifficultyClicked:
+            SetSearchFocus(false);
+            SelectVisibleSong(listAction.index);
+            RefreshSearchPresentation();
+            OpenAdditionMenu(listAction.anchor);
+            return true;
+        case SongListView::ActionKind::SongClicked:
+            SetSearchFocus(false);
+            SelectVisibleSong(listAction.index);
+            RefreshSearchPresentation();
+            return false;
+        case SongListView::ActionKind::PatternClicked:
+            SetSearchFocus(false);
+            SelectPattern(listAction.index);
+            RefreshSearchPresentation();
+            command_ = SongSelectCommand::Launch;
+            return true;
+        case SongListView::ActionKind::None:
+            break;
         }
     }
     return false;
@@ -255,16 +244,6 @@ void MusicSelectView::SelectVisibleSong(const std::size_t visiblePosition)
 void MusicSelectView::SelectPattern(const std::size_t index)
 {
     selection_.SelectPattern(index);
-    for (const auto [id, patternIndex] : difficultyButtonIds_)
-    {
-        if (auto *button = canvas_->FindNode(id))
-        {
-            const bool selected = patternIndex == selection_.selectedPatternIndex_;
-            ApplyButtonStyle(*button, selected ? AccentBlue : PureWhite, selected ? AccentHover : PaleBlue,
-                             selected ? PureWhite : DeepBlue);
-            BindSkinImage(*button, screenVisuals_, "MusicSelect",
-                                                     selected ? "DifficultySelected" : "Difficulty");
-        }
-    }
+    songList_.RefreshPatternSelection();
     RefreshSelectionPresentation();
 }
