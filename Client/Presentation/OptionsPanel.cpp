@@ -138,9 +138,7 @@ void OptionsPanel::Shutdown() noexcept
     languageLabel_ = nullptr;
     title_ = nullptr;
     panel_ = nullptr;
-    keyPanel_ = openKeyPanel_ = closeKeyPanel_ = keyPanelStatus_ = nullptr;
-    keyPanelImage_ = keyPanelTitle_ = nullptr;
-    keyFaceImages_ = {};
+    keyOverlays_.clear();
     panelId_ = {};
     languageComboId_ = {};
     skinComboId_ = {};
@@ -165,7 +163,7 @@ void OptionsPanel::Toggle()
         return;
     }
     targetOpen_ = !targetOpen_;
-    if (keyPanel_) keyPanel_->SetVisible(false);
+    HideKeyOverlays();
     CancelKeyboardEdit();
     if (targetOpen_)
     {
@@ -219,10 +217,10 @@ bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inpu
         }
         return false;
     }
-    if (keyPanel_ && keyPanel_->IsVisible())
+    if (auto *overlay = VisibleKeyOverlay())
     {
         if (captureRow_) CancelKeyboardEdit();
-        else keyPanel_->SetVisible(false);
+        else overlay->panel->SetVisible(false);
         inputRouter.Reset(*canvas_);
         return true;
     }
@@ -253,8 +251,8 @@ bool OptionsPanel::ProcessInput(const InputState &input,
         if (consumed)
             return true;
     }
-    if (keyPanel_ && keyPanel_->IsVisible())
-        return !canvasPointer || !keyPanel_->BoundsInCanvas().Contains(*canvasPointer);
+    if (const auto *overlay = VisibleKeyOverlay())
+        return !canvasPointer || !overlay->panel->BoundsInCanvas().Contains(*canvasPointer);
     if (!IsVisible() || panel_ == nullptr || !canvasPointer.has_value() ||
         !panel_->BoundsInCanvas().Contains(*canvasPointer))
     {
@@ -537,9 +535,9 @@ void OptionsPanel::RefreshStatus()
     auto &label = RequireComponent<TextVisualComponent>(*statusLabel_);
     label.SetText(value);
     texts_.ApplyFont(label);
-    if (keyPanelStatus_)
+    for (const auto &overlay : keyOverlays_)
     {
-        auto &keyStatus = RequireComponent<TextVisualComponent>(*keyPanelStatus_);
+        auto &keyStatus = RequireComponent<TextVisualComponent>(*overlay.status);
         keyStatus.SetText(value);
         texts_.ApplyFont(keyStatus);
     }

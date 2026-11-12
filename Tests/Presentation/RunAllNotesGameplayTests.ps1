@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 if (-not $FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot with the installed SDK path.' }
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
 if ($Effects) { $runtime += '/DTEST_YME_EFFECTS' }
-$units = @('Pch', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteVisuals', 'GameplayNoteVisibility',
+$units = @('Pch', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteVisuals', 'GameplayNoteVisibility', 'ModePresentation',
     'GameplayFeedbackVisuals', 'GameplayInputView', 'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts',
     'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'GameplayAudioRouter',
     'ResultViewFactory', 'TaikoResultView', 'TaikoResultGraphs', 'TaikoResultPanels', 'TaikoResultGraphView',

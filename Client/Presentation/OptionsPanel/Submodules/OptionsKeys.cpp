@@ -30,85 +30,10 @@ void OptionsPanel::CreateKeyControls()
             &CreateFieldLabel(*content_, contentHeight_ - top, PanelWidth, "Options.Keys." + layout.modeId));
         top += 52;
         const auto *presentation = FindModePresentation(layout.modeId);
-        if (presentation && presentation->keyPanel == ModeKeyPanel::TaikoOverlay)
+        if (presentation && presentation->keyOverlay)
         {
-            // The settings list keeps one entry; the editor itself is a centered overlay.
-            openKeyPanel_ = &CreateButton(*content_, {24, contentHeight_ - top - 46, PanelWidth - 48, 38},
-                                          std::wstring(texts_.Get("Options.taikoKeySettings")), "Options.Taiko.OpenKeys");
-            SetPanelColor(*openKeyPanel_, FieldColor);
-            RequireComponent<TextVisualComponent>(*openKeyPanel_).SetTextColor(HeadingColor);
-            // Root-level Z order keeps this centered overlay above the options anchor.
-            keyPanel_ = &CreatePanel(canvas_->Root(), {-450, -325, 900, 650}, "Options.Taiko.Keys");
-            keyPanel_->SetZIndex(200);
-            SetPanelColor(*keyPanel_, ui_colors::result::Surface);
-            auto &title = CreateLabel(*keyPanel_, {40, 580, 700, 40},
-                                      std::wstring(texts_.Get("Options.taikoKeySettings")), "Options.Taiko.Title");
-            keyPanelTitle_ = &title;
-            auto &caption = RequireComponent<TextVisualComponent>(title);
-            texts_.ApplyFont(caption); caption.SetFontSize(30); caption.SetTextColor(HeadingColor);
-            closeKeyPanel_ = &CreateButton(*keyPanel_, {834, 588, 42, 42}, L"×", "Options.Taiko.CloseKeys");
-            SetPanelColor(*closeKeyPanel_, ui_colors::sky::Accent);
-            keyPanelStatus_ = &CreateLabel(*keyPanel_, {60, 20, 780, 65}, L"", "Options.Taiko.Status");
-            RequireComponent<TextVisualComponent>(*keyPanelStatus_).SetTextColor(ui_colors::Error);
-            RequireComponent<TextVisualComponent>(*keyPanelStatus_).SetFontSize(15);
-            // Reuse the same skin images and tint colors as the gameplay input panel.
-            if (visuals_)
-            {
-                const auto path = SkinSetSelection::Instance().Image("InGame", "InputPanel");
-                if (!path.empty())
-                    keyPanelImage_ = &CreateSprite(*keyPanel_, {365, 395, 170, 170}, visuals_->RegisterImage(path),
-                                                   "Options.Taiko.KeyLayout");
-                constexpr std::array names{"KeyButtonLeftKat", "KeyButtonLeftDon", "KeyButtonRightDon", "KeyButtonRightKat"};
-                constexpr std::array<Color, 4> colors{{{.04F,.57F,.81F,1}, {.92F,.07F,.11F,1},
-                                                       {.92F,.07F,.11F,1}, {.04F,.57F,.81F,1}}};
-                constexpr std::array<Rect, 4> gameplayBounds{{
-                    {16, 68, 39, 70}, {68, 92, 39, 70}, {120, 92, 39, 70}, {172, 68, 39, 70}}};
-                constexpr float sourceSize = 228.0F;
-                constexpr float scale = 170.0F / sourceSize;
-                for (std::size_t i = 0; i < names.size(); ++i)
-                {
-                    const auto keyPath = SkinSetSelection::Instance().Image("InGame", names[i]);
-                    if (keyPath.empty()) continue;
-                    const auto &bounds = gameplayBounds[i];
-                    auto &key = CreateSprite(*keyPanel_, {365.0F + bounds.x * scale,
-                        395.0F + (sourceSize - bounds.y - bounds.height) * scale,
-                        bounds.width * scale, bounds.height * scale}, visuals_->RegisterImage(keyPath),
-                        "Options.Taiko.KeyImage");
-                    RequireComponent<SpriteVisualComponent>(key).SetTint(colors[i]);
-                    keyFaceImages_[i] = &key;
-                }
-            }
-            // Rows preserve their slot number, including empty auxiliary bindings.
-            constexpr std::array headings{L"Left K", L"Left D", L"Right D", L"Right K"};
-            for (std::size_t column = 0; column < layout.bindings.size(); ++column)
-            {
-                const auto &binding = layout.bindings[column];
-                const float x = 60 + 200.0F * static_cast<float>(column);
-                auto &heading = CreateLabel(*keyPanel_, {x, 350, 170, 30},
-                                            column < headings.size() ? headings[column] : WideText(binding.displayName),
-                                            "Options.Taiko.Heading");
-                auto &headingText = RequireComponent<TextVisualComponent>(heading);
-                texts_.ApplyFont(headingText); headingText.SetFontSize(22); headingText.SetTextColor(HeadingColor);
-                for (std::size_t slot = 0; slot < binding.keys.size(); ++slot)
-                {
-                    KeyRow row{layout.modeId, binding.id, binding.displayName, slot};
-                    const float y = 285.0F - 61.0F * static_cast<float>(slot);
-                    const auto name = "Options.Key." + row.mode + "." + row.binding + "." + std::to_string(slot);
-                    row.button = &CreateButton(*keyPanel_, {x, y, slot ? 132.0F : 170.0F, 48}, L"", name);
-                    SetPanelColor(*row.button, slot ? FieldColor : ui_colors::sky::Accent);
-                    auto &buttonText = RequireComponent<TextVisualComponent>(*row.button);
-                    buttonText.SetFontSize(20); buttonText.SetTextColor(slot ? HeadingColor : ui_colors::White);
-                    if (slot)
-                    {
-                        row.clear = &CreateButton(*keyPanel_, {x + 136, y, 34, 48}, L"×", name + ".Clear");
-                        SetPanelColor(*row.clear, FieldColor);
-                        RequireComponent<TextVisualComponent>(*row.clear).SetTextColor(HeadingColor);
-                    }
-                    keyRows_.push_back(std::move(row));
-                }
-            }
-            keyPanel_->SetVisible(false);
-            top += presentation->keyPanelHeight;
+            CreateKeyOverlay(layout, *presentation->keyOverlay, top);
+            top += presentation->keyOverlay->settingsEntryHeight;
             continue;
         }
         for (const auto &binding : layout.bindings)
@@ -133,26 +58,129 @@ void OptionsPanel::CreateKeyControls()
             }
     }
 }
+void OptionsPanel::CreateKeyOverlay(const ModeInputLayout &layout, const ModeKeyOverlay &description,
+                                    const float top)
+{
+    const std::string prefix(description.nodePrefix);
+    const std::wstring title(texts_.Get(description.titleTextKey));
+    KeyOverlay overlay{&description};
+    // The settings list keeps one entry; the editor itself is a centered overlay.
+    overlay.open = &CreateButton(*content_, {24, contentHeight_ - top - 46, PanelWidth - 48, 38}, title,
+                                 prefix + ".OpenKeys");
+    SetPanelColor(*overlay.open, FieldColor);
+    RequireComponent<TextVisualComponent>(*overlay.open).SetTextColor(HeadingColor);
+    // Root-level Z order keeps this centered overlay above the options anchor.
+    overlay.panel = &CreatePanel(canvas_->Root(), {-450, -325, 900, 650}, prefix + ".Keys");
+    overlay.panel->SetZIndex(200);
+    SetPanelColor(*overlay.panel, ui_colors::result::Surface);
+    overlay.title = &CreateLabel(*overlay.panel, {40, 580, 700, 40}, title, prefix + ".Title");
+    auto &caption = RequireComponent<TextVisualComponent>(*overlay.title);
+    texts_.ApplyFont(caption); caption.SetFontSize(30); caption.SetTextColor(HeadingColor);
+    overlay.close = &CreateButton(*overlay.panel, {834, 588, 42, 42}, L"×", prefix + ".CloseKeys");
+    SetPanelColor(*overlay.close, ui_colors::sky::Accent);
+    overlay.status = &CreateLabel(*overlay.panel, {60, 20, 780, 65}, L"", prefix + ".Status");
+    RequireComponent<TextVisualComponent>(*overlay.status).SetTextColor(ui_colors::Error);
+    RequireComponent<TextVisualComponent>(*overlay.status).SetFontSize(15);
+
+    // Reuse the gameplay input panel image and key faces at the same layout.
+    constexpr Rect LayoutImageBounds{365, 395, 170, 170};
+    overlay.faces.assign(description.faces.size(), nullptr);
+    if (visuals_)
+    {
+        const auto path = SkinSetSelection::Instance().Image("InGame", std::string(description.layoutImage));
+        if (!path.empty())
+            overlay.layoutImage = &CreateSprite(*overlay.panel, LayoutImageBounds, visuals_->RegisterImage(path),
+                                                prefix + ".KeyLayout");
+        const float scale = LayoutImageBounds.width / description.layoutImageSourceSize;
+        for (std::size_t i = 0; i < description.faces.size(); ++i)
+        {
+            const auto &face = description.faces[i];
+            const auto keyPath = SkinSetSelection::Instance().Image("InGame", std::string(face.skinImage));
+            if (keyPath.empty()) continue;
+            const auto &bounds = face.sourceBounds;
+            auto &key = CreateSprite(*overlay.panel, {LayoutImageBounds.x + bounds.x * scale,
+                LayoutImageBounds.y + (description.layoutImageSourceSize - bounds.y - bounds.height) * scale,
+                bounds.width * scale, bounds.height * scale}, visuals_->RegisterImage(keyPath), prefix + ".KeyImage");
+            RequireComponent<SpriteVisualComponent>(key).SetTint(face.tint);
+            overlay.faces[i] = &key;
+        }
+    }
+
+    // One column per binding. Rows preserve their slot number, including empty
+    // auxiliary bindings. Four columns use the original 200px spacing.
+    const auto columns = layout.bindings.size();
+    const float columnStep = columns <= 4 ? 200.0F : 780.0F / static_cast<float>(columns);
+    const float columnWidth = std::min(170.0F, columnStep - 30.0F);
+    for (std::size_t column = 0; column < columns; ++column)
+    {
+        const auto &binding = layout.bindings[column];
+        const float x = 60 + columnStep * static_cast<float>(column);
+        auto &heading = CreateLabel(*overlay.panel, {x, 350, columnWidth, 30},
+                                    column < description.faces.size() ? std::wstring(description.faces[column].heading)
+                                                                      : WideText(binding.displayName),
+                                    prefix + ".Heading");
+        auto &headingText = RequireComponent<TextVisualComponent>(heading);
+        texts_.ApplyFont(headingText); headingText.SetFontSize(22); headingText.SetTextColor(HeadingColor);
+        for (std::size_t slot = 0; slot < binding.keys.size(); ++slot)
+        {
+            KeyRow row{layout.modeId, binding.id, binding.displayName, slot};
+            const float y = 285.0F - 61.0F * static_cast<float>(slot);
+            const auto name = "Options.Key." + row.mode + "." + row.binding + "." + std::to_string(slot);
+            row.button = &CreateButton(*overlay.panel, {x, y, slot ? columnWidth - 38 : columnWidth, 48}, L"", name);
+            SetPanelColor(*row.button, slot ? FieldColor : ui_colors::sky::Accent);
+            auto &buttonText = RequireComponent<TextVisualComponent>(*row.button);
+            buttonText.SetFontSize(20); buttonText.SetTextColor(slot ? HeadingColor : ui_colors::White);
+            if (slot)
+            {
+                row.clear = &CreateButton(*overlay.panel, {x + columnWidth - 34, y, 34, 48}, L"×", name + ".Clear");
+                SetPanelColor(*row.clear, FieldColor);
+                RequireComponent<TextVisualComponent>(*row.clear).SetTextColor(HeadingColor);
+            }
+            keyRows_.push_back(std::move(row));
+        }
+    }
+    overlay.panel->SetVisible(false);
+    keyOverlays_.push_back(std::move(overlay));
+}
+OptionsPanel::KeyOverlay *OptionsPanel::VisibleKeyOverlay() noexcept
+{
+    const auto found = std::ranges::find_if(keyOverlays_, [](const KeyOverlay &overlay) {
+        return overlay.panel->IsVisible();
+    });
+    return found == keyOverlays_.end() ? nullptr : &*found;
+}
+const OptionsPanel::KeyOverlay *OptionsPanel::VisibleKeyOverlay() const noexcept
+{
+    return const_cast<OptionsPanel *>(this)->VisibleKeyOverlay();
+}
+void OptionsPanel::HideKeyOverlays() noexcept
+{
+    for (auto &overlay : keyOverlays_)
+        overlay.panel->SetVisible(false);
+}
 void OptionsPanel::RefreshKeyImages()
 {
     if (!visuals_) return;
-    const auto refresh = [this](Visual2DNode *node, const char *name) {
+    const auto refresh = [this](Visual2DNode *node, std::string_view name) {
         if (!node) return;
-        const auto path = SkinSetSelection::Instance().Image("InGame", name);
+        const auto path = SkinSetSelection::Instance().Image("InGame", std::string(name));
         if (!path.empty()) RequireComponent<SpriteVisualComponent>(*node).SetImage(visuals_->RegisterImage(path));
     };
-    refresh(keyPanelImage_, "InputPanel");
-    constexpr std::array names{"KeyButtonLeftKat", "KeyButtonLeftDon", "KeyButtonRightDon", "KeyButtonRightKat"};
-    for (std::size_t i = 0; i < names.size(); ++i) refresh(keyFaceImages_[i], names[i]);
+    for (auto &overlay : keyOverlays_)
+    {
+        refresh(overlay.layoutImage, overlay.description->layoutImage);
+        for (std::size_t i = 0; i < overlay.faces.size(); ++i)
+            refresh(overlay.faces[i], overlay.description->faces[i].skinImage);
+    }
 }
 void OptionsPanel::RefreshKeyControls()
 {
     const auto &text = Options(texts_);
-    for (auto *node : {openKeyPanel_, keyPanelTitle_})
-        if (node)
+    for (const auto &overlay : keyOverlays_)
+        for (auto *node : {overlay.open, overlay.title})
         {
             auto &caption = RequireComponent<TextVisualComponent>(*node);
-            caption.SetText(std::wstring(texts_.Get("Options.taikoKeySettings")));
+            caption.SetText(std::wstring(texts_.Get(overlay.description->titleTextKey)));
             texts_.ApplyFont(caption);
         }
     std::size_t rowIndex = 0;
@@ -211,14 +239,15 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
     }
     if (action.type != ActionType::Clicked)
         return false;
-    if (keyPanel_ && keyPanel_->IsVisible())
+    if (auto *overlay = VisibleKeyOverlay())
     {
-        if (action.source == closeKeyPanel_->Id())
+        if (action.source == overlay->close->Id())
         {
             CancelKeyboardEdit();
-            keyPanel_->SetVisible(false);
+            overlay->panel->SetVisible(false);
             return true;
         }
+        // CanProcessAction admits only nodes inside the visible overlay.
         for (std::size_t i = 0; i < keyRows_.size(); ++i)
         {
             if (keyRows_[i].clear && action.source == keyRows_[i].clear->Id())
@@ -234,10 +263,11 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
         }
         return true;
     }
-    if (openKeyPanel_ && action.source == openKeyPanel_->Id())
-    {
-        CancelKeyboardEdit(); RefreshKeyImages(); keyPanel_->SetVisible(true); return true;
-    }
+    for (auto &overlay : keyOverlays_)
+        if (action.source == overlay.open->Id())
+        {
+            CancelKeyboardEdit(); RefreshKeyImages(); overlay.panel->SetVisible(true); return true;
+        }
     if (action.source == songsField_->Id())
     {
         CancelKeyboardEdit();

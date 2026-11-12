@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 if (-not $FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot.' }
 $runtime=if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MD','/DNDEBUG') }
 [xml]$project=Get-Content Client/YOUMU.Client.vcxproj
-$units=@('Pch','GameplaySessionController','GameplaySessionFactory','GameplayInput','GameplayAudio','GameplayState','GameplayPause',
+$units=@('Pch','GameplaySessionController','GameplaySessionFactory','GameplayInput','GameplayAudio', 'ModePresentation','GameplayState','GameplayPause',
     'GameplayPauseMenu','GameplayPauseLayout','PauseTexts','GameplayAudioRouter','TextCatalog','LanguageFile','SkinSetSelection',
     'SkinManifest','SkinVisualComponent','RhythmTestScene','EditorTestControls','GameplayPresenter','GameplayLayout','GameplayNoteVisuals', 'GameplayNoteVisibility',
     'GameplayFeedbackVisuals','GameplayInputView','GameplayJudgementView','GameplayProgressView','GameplayHpView','GameplayStatisticsView','LaneKeyBeam','GameplayTexts')

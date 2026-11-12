@@ -1,14 +1,14 @@
 #include "App/AssetPaths.h"
 #include "GameFlow/GameplaySessionController.h"
 #include "Presentation/ModePresentation.h"
-#include "Taiko/Submodules/TaikoSoundIds.h"
-#include <array>
 #include <map>
+#include <vector>
 using namespace PhantomCore;
 
 namespace
 {
-    void RegisterTaikoSounds(GameplayAudioRouter &router, std::string &errorMessage);
+    void RegisterModeHitSounds(GameplayAudioRouter &router, const ModePresentation &presentation,
+                               std::string &errorMessage);
 }
 
 void GameplaySessionController::InitializeAudio(AudioSystem &audio)
@@ -22,9 +22,8 @@ void GameplaySessionController::InitializeAudio(AudioSystem &audio)
     }
 
     std::string hitSoundError;
-    const auto *presentation = FindModePresentation(session_->InputLayout().modeId);
-    if (presentation && presentation->hitSounds == ModeHitSounds::Taiko)
-        RegisterTaikoSounds(audioRouter_, hitSoundError);
+    if (const auto *presentation = FindModePresentation(session_->InputLayout().modeId))
+        RegisterModeHitSounds(audioRouter_, *presentation, hitSoundError);
     audioRouter_.PrepareAutomation(session_->Effects());
 
     // Decode chart resources once on session entry, never on a key press.
@@ -73,51 +72,25 @@ void GameplaySessionController::InitializeAudio(AudioSystem &audio)
 
 namespace
 {
-    void RegisterTaikoSounds(GameplayAudioRouter &router, std::string &errorMessage)
+    // Each skin file is decoded once and shared by its sound ids. A missing file
+    // does not stop the others; the first failure is reported to the Scene.
+    void RegisterModeHitSounds(GameplayAudioRouter &router, const ModePresentation &presentation,
+                               std::string &errorMessage)
     {
-        struct SoundRegistration final
-        {
-            std::span<const SoundId> ids;
-            std::wstring_view file;
-        };
-        static const std::array<SoundId, 3> DonIds{DonHit,
-                                                                        LongNoteTick,
-                                                                        DonFreeInput};
-        static const std::array<SoundId, 2> KatIds{KatHit,
-                                                                        KatFreeInput};
-        static const std::array<SoundId, 1> BigDonIds{
-            BigDonFirstHit};
-        static const std::array<SoundId, 1> BigKatIds{
-            BigKatFirstHit};
-        const std::array<SoundRegistration, 4> registrations{{
-            {DonIds, L"don.wav"},
-            {KatIds, L"kat.wav"},
-            {BigDonIds, L"bigdon.wav"},
-            {BigKatIds, L"bigkat.wav"},
-        }};
         std::string firstError;
-        for (const SoundRegistration &registration : registrations)
+        for (const ModeHitSoundFile &sound : presentation.hitSounds)
         {
+            const std::vector<SoundId> ids(sound.soundIds.begin(), sound.soundIds.end());
             std::string registrationError;
-            if (!router.RegisterSoundAliases(registration.ids,
-                                             TaikoHitSound(registration.file),
+            if (!router.RegisterSoundAliases(ids, ModeHitSound(presentation.hitSoundFolder, sound.file),
                                              registrationError, AudioLoadMode::SampleAsync) &&
                 firstError.empty())
             {
-                firstError = registration.ids.front() + ": " + registrationError;
+                firstError = ids.front() + ": " + registrationError;
             }
         }
-        std::string balloonError;
-        if (!router.RegisterSound(BalloonPop,
-                                  TaikoHitSound(L"pop.wav"),
-                                  AudioLoadMode::SampleAsync, balloonError) &&
-            firstError.empty())
-        {
-            firstError = "Taiko.Balloon.Pop: " + balloonError;
-        }
         errorMessage = std::move(firstError);
-    }
-} // namespace
+    }} // namespace
 
 void GameplaySessionController::ScheduleMetronome()
 {

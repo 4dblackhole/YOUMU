@@ -1,4 +1,6 @@
 #include "App/OptionSettings.h"
+#include "Mode/PlayGameModeFactory.h"
+#include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
 #include "Presentation/UiColors.h"
 
@@ -6,6 +8,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <set>
 
 using namespace PhantomCore;
 
@@ -24,6 +27,46 @@ namespace
     void Check(bool condition, const char *message)
     {
         if (!condition) throw std::runtime_error(message);
+    }
+
+    // Registry entries are data that the options panel, gameplay audio and the
+    // editor read without mode-specific branches, so they must match the domain
+    // layouts they describe.
+    void TestModePresentationRegistry()
+    {
+        TextCatalog texts;
+        const auto layouts = AvailableInputLayouts();
+        std::set<std::string_view> modeIds;
+        for (const auto *presentation : ModePresentations())
+        {
+            if (presentation == nullptr)
+                throw std::runtime_error("Registered presentation entries are never null.");
+            Check(modeIds.insert(presentation->modeId).second, "Each mode has one presentation entry.");
+            Check(FindModePresentation(presentation->modeId) == presentation, "Lookup returns the registered entry.");
+            const auto layout = std::ranges::find(layouts, presentation->modeId, &ModeInputLayout::modeId);
+            Check(layout != layouts.end(), "A presentation entry must describe a registered play mode.");
+            for (const auto &caption : presentation->bindingCaptions)
+                Check(std::ranges::find(layout->bindings, caption.id, &ModeInputBinding::id) != layout->bindings.end() &&
+                          !texts.Get(Language::English, caption.textKey).empty(),
+                      "Binding captions must name a layout binding and an existing text key.");
+            std::set<std::string_view> soundIds;
+            for (const auto &sound : presentation->hitSounds)
+            {
+                Check(!sound.soundIds.empty() && !sound.file.empty() && !presentation->hitSoundFolder.empty(),
+                      "Hit sound entries need a skin folder, a file and at least one sound id.");
+                for (const char *id : sound.soundIds)
+                    Check(id && *id && soundIds.insert(id).second, "A sound id is registered by one file only.");
+            }
+            if (const auto *overlay = presentation->keyOverlay)
+            {
+                Check(overlay->faces.size() == layout->bindings.size(), "A key overlay has one face per binding.");
+                Check(!overlay->nodePrefix.empty() && overlay->layoutImageSourceSize > 0 &&
+                          overlay->settingsEntryHeight > 0 && !texts.Get(Language::English, overlay->titleTextKey).empty(),
+                      "A key overlay needs node names, a title text and positive layout sizes.");
+            }
+        }
+        Check(FindModePresentation("Unknown") == nullptr && FindModePresentation("") == nullptr,
+              "Unregistered modes use the default inline key rows without built-in hit sounds.");
     }
 
     class TestBackend final : public IAudioBackend
@@ -595,6 +638,7 @@ int main()
     try
     {
         std::filesystem::create_directory(folder);
+        TestModePresentationRegistry();
         TestInvalidOptionFallback(folder);
         TestOptions(folder);
         TestExtraOptions(folder);

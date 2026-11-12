@@ -4,6 +4,7 @@
 #include "GameScene/RhythmTestScene/Submodules/GameplayPresenter.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplaySupport.h"
 #include "GameScene/ResultScene/Submodules/ResultViewFactory.h"
+#include "Presentation/ModePresentation.h"
 #include "PhantomCore.h"
 #include <algorithm>
 #include <chrono>
@@ -223,27 +224,14 @@ namespace
         {
             std::string error;
             Require(audio_.Initialize(system, error), "Audio initialization: " + error);
-            struct Sample
+            // Use the production registry: one decoded sample/native channel per file.
+            for (const auto &sound : TaikoPresentation.hitSounds)
             {
-                SoundId id;
-                const wchar_t *file;
-            };
-            const std::array samples{Sample{DonHit, L"don.wav"},
-                                     Sample{LongNoteTick, L"don.wav"},
-                                     Sample{DonFreeInput, L"don.wav"},
-                                     Sample{KatHit, L"kat.wav"},
-                                     Sample{KatFreeInput, L"kat.wav"},
-                                     Sample{BigDonFirstHit, L"bigdon.wav"},
-                                     Sample{BigKatFirstHit, L"bigkat.wav"},
-                                     Sample{BalloonPop, L"pop.wav"}};
-            // Preserve production aliases: one decoded sample/native channel per file.
-            std::map<std::wstring, std::vector<SoundId>> aliases;
-            for (const auto &sample : samples)
-                aliases[sample.file].push_back(sample.id);
-            for (const auto &[file, ids] : aliases)
-                Require(audio_.RegisterSoundAliases(ids, TaikoHitSound(file), error,
-                                                    AudioLoadMode::SampleAsync),
+                const std::vector<SoundId> ids(sound.soundIds.begin(), sound.soundIds.end());
+                Require(audio_.RegisterSoundAliases(ids, ModeHitSound(TaikoPresentation.hitSoundFolder, sound.file),
+                                                    error, AudioLoadMode::SampleAsync),
                         "Sample registration: " + error);
+            }
             for (const auto &[id, path] : session_->HitSoundFiles())
                 Require(audio_.RegisterSound(id, path, AudioLoadMode::SampleAsync, error),
                         "YME sample registration: " + error);

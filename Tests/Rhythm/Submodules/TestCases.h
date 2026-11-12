@@ -44,6 +44,7 @@ namespace tests
     void TestAuthoritativeHeldInputs();
     void TestMappedLaneInput();
     void TestInvalidLaneMapping();
+    void TestPlayGameModeRegistry();
     void TestLargeNoteSoundState();
     void TestHoldTicksAreExactlyOnce();
     void TestLongNoteRemainsInScrollSnapshotUntilItsTail();

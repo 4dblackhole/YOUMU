@@ -6,6 +6,7 @@
 using namespace editor_ui;
 
 #include "App/AssetPaths.h"
+#include "Presentation/ModePresentation.h"
 #include "Taiko/Submodules/TaikoAudioPreview.h"
 #include "Taiko/Submodules/TaikoChartAudio.h"
 
@@ -25,7 +26,7 @@ std::map<std::string, std::filesystem::path> TaikoEditorMode::AudioFiles(
               {KatHit, L"kat.wav"},
               {BigDonFirstHit, L"bigdon.wav"},
               {BigKatFirstHit, L"bigkat.wav"}}})
-        files[id] = TaikoHitSound(file);
+        files[id] = ModeHitSound(TaikoPresentation.hitSoundFolder, file);
     for (const auto &[id, path] : document.Effects().hitSounds)
         files[ChartSoundId(id)] = document.Effects().sourcePath.parent_path() / path;
     return files;

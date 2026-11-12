@@ -50,11 +50,13 @@
         std::filesystem::path(L"NumberImage") / file);
 }
 
-[[nodiscard]] inline std::filesystem::path TaikoHitSound(
+// Built-in hit sounds live in one skin folder per mode under HitSounds.
+[[nodiscard]] inline std::filesystem::path ModeHitSound(
+    const std::wstring_view modeFolder,
     const std::filesystem::path& file)
 {
     return SkinSetSelection::Instance().Resolve(
-        std::filesystem::path(L"HitSounds\\TaikoMode") / file);
+        std::filesystem::path(L"HitSounds") / modeFolder / file);
 }
 
 [[nodiscard]] inline std::filesystem::path LeftFade()

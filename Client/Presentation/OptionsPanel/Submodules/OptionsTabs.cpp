@@ -18,8 +18,8 @@ void OptionsPanel::CreateTabs()
     {
         inputHeight += 52;
         if (const auto *presentation = FindModePresentation(layout.modeId);
-            presentation && presentation->keyPanel != ModeKeyPanel::InlineRows)
-            inputHeight += presentation->keyPanelHeight;
+            presentation && presentation->keyOverlay)
+            inputHeight += presentation->keyOverlay->settingsEntryHeight;
         else for (const auto &binding : layout.bindings)
             inputHeight += 84 * static_cast<float>(binding.keys.size());
     }
@@ -53,7 +53,7 @@ void OptionsPanel::SelectTab(std::size_t index)
     if (index >= TabCount || (activeTab_ == index && content_ == tabContents_[index])) return;
     CollapseCombos();
     CancelKeyboardEdit();
-    if (keyPanel_) keyPanel_->SetVisible(false);
+    HideKeyOverlays();
     scrollOffsets_.at(activeTab_) = scrollOffset_;
     activeTab_ = index;
     content_ = tabContents_[index];
@@ -94,12 +94,14 @@ void OptionsPanel::UpdateContentLayout()
 bool OptionsPanel::CanProcessAction(NodeId source) const noexcept
 {
     const auto *node = canvas_->FindNode(source);
-    bool modal = !(keyPanel_ && keyPanel_->IsVisible());
+    // A visible key overlay is modal: only its own descendants receive actions.
+    const auto *overlay = VisibleKeyOverlay();
+    bool admitted = overlay == nullptr;
     if (!node) return false;
     for (; node; node = node->Parent())
     {
         if (!node->IsVisible() || !node->IsEnabled()) return false;
-        modal |= node == keyPanel_;
+        admitted |= overlay && node == overlay->panel;
     }
-    return modal;
+    return admitted;
 }

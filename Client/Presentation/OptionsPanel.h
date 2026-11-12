@@ -7,6 +7,8 @@
 #include "Texts/TextCatalog.h"
 
 #include <optional>
+
+struct ModeKeyOverlay;
 #include <array>
 #include <vector>
 
@@ -88,8 +90,21 @@ class OptionsPanel final
         PhantomCore::Visual2DNode *label{}, *button{};
         PhantomCore::Visual2DNode *clear{};
     };
+    // A mode registered with a key overlay edits its keys in one centered panel
+    // opened from its Input tab entry; its key rows are children of that panel.
+    struct KeyOverlay
+    {
+        const ModeKeyOverlay *description{};
+        PhantomCore::Visual2DNode *panel{}, *open{}, *close{}, *status{}, *title{}, *layoutImage{};
+        std::vector<PhantomCore::Visual2DNode *> faces;
+    };
+    void CreateKeyOverlay(const ModeInputLayout &layout, const ModeKeyOverlay &description, float top);
+    [[nodiscard]] KeyOverlay *VisibleKeyOverlay() noexcept;
+    [[nodiscard]] const KeyOverlay *VisibleKeyOverlay() const noexcept;
+    void HideKeyOverlays() noexcept;
     std::vector<ModeInputLayout> inputLayouts_;
     std::vector<KeyRow> keyRows_;
+    std::vector<KeyOverlay> keyOverlays_;
     std::vector<PhantomCore::Visual2DNode *> modeLabels_;
     std::vector<PhantomCore::WindowResolution> resolutions_;
     PhantomCore::IWindowControl *window_{};
@@ -116,10 +131,6 @@ class OptionsPanel final
     Status status_{};
     std::string statusDetail_;
     PhantomCore::Visual2DNode *panel_{};
-    PhantomCore::Visual2DNode *keyPanel_{}, *openKeyPanel_{}, *closeKeyPanel_{}, *keyPanelStatus_{};
-    PhantomCore::Visual2DNode *keyPanelImage_{};
-    PhantomCore::Visual2DNode *keyPanelTitle_{};
-    std::array<PhantomCore::Visual2DNode *, 4> keyFaceImages_{};
     PhantomCore::Visual2DNode *title_{};
     PhantomCore::Visual2DNode *languageLabel_{};
     PhantomCore::Visual2DNode *skinLabel_{};

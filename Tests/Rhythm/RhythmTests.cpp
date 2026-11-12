@@ -75,6 +75,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestAuthoritativeHeldInputs", TestAuthoritativeHeldInputs},
         {"TestMappedLaneInput", TestMappedLaneInput},
         {"TestInvalidLaneMapping", TestInvalidLaneMapping},
+        {"TestPlayGameModeRegistry", TestPlayGameModeRegistry},
         {"TestLargeNoteSoundState", TestLargeNoteSoundState},
         {"TestHoldTicksAreExactlyOnce", TestHoldTicksAreExactlyOnce},
         {"TestLongNoteRemainsInScrollSnapshotUntilItsTail", TestLongNoteRemainsInScrollSnapshotUntilItsTail},
