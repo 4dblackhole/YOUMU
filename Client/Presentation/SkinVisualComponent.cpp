@@ -19,6 +19,11 @@ void SkinVisualComponent::Configure(std::string key, std::string decoration)
     Refresh();
     Apply();
 }
+void SkinVisualComponent::UseImageOpacity()
+{
+    imageOpacity_ = true;
+    Apply();
+}
 void SkinVisualComponent::SetBaseStyle(const VisualStyle &style)
 {
     base_ = style;
@@ -62,11 +67,13 @@ void SkinVisualComponent::Apply()
         style.pressedImage = images_.pressedImage ? images_.pressedImage : image;
         style.disabledImage = images_.disabledImage ? images_.disabledImage : image;
         // Keep the authored RGB instead of multiplying it by the default
-        // panel color. The node still controls visibility/input/opacity.
-        style.normal = {1, 1, 1, base_.normal.alpha};
-        style.hovered = {1, 1, 1, base_.hovered.alpha};
-        style.pressed = {1, 1, 1, base_.pressed.alpha};
-        style.disabled = {1, 1, 1, base_.disabled.alpha};
+        // panel color. A plain binding still applies the base style's opacity.
+        // A part image is drawn as authored; only a disabled part without its own image is dimmed.
+        const float disabledPart = images_.disabledImage ? 1.0F : 0.45F;
+        style.normal = {1, 1, 1, imageOpacity_ ? 1.0F : base_.normal.alpha};
+        style.hovered = {1, 1, 1, imageOpacity_ ? 1.0F : base_.hovered.alpha};
+        style.pressed = {1, 1, 1, imageOpacity_ ? 1.0F : base_.pressed.alpha};
+        style.disabled = {1, 1, 1, imageOpacity_ ? disabledPart : base_.disabled.alpha};
     }
     sprite->SetStyle(style);
     sprite->SetCornerRadius(image ? 0.0F : radius_);
@@ -88,6 +95,11 @@ void BindSkinImage(Visual2DNode &node, ScreenVisual2DManager &visuals, std::stri
                                                           sprite->CornerRadius());
     }
     binding->Configure(std::move(key), std::move(decoration));
+}
+void BindSkinPart(Visual2DNode &node, ScreenVisual2DManager &visuals, std::string scene, std::string key)
+{
+    BindSkinImage(node, visuals, std::move(scene), std::move(key));
+    node.GetComponent<SkinVisualComponent>()->UseImageOpacity();
 }
 void SetSkinBaseStyle(Visual2DNode &node, const VisualStyle &style)
 {

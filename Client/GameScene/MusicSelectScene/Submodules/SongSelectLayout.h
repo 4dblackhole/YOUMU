@@ -42,9 +42,14 @@ namespace song_select
         constexpr float ColumnGap = 16.0F;
         constexpr float FooterHeight = 64.0F;
 
-        // Veils behind the side columns, measured from the screen edges.
-        constexpr float LeftVeilWidth = 440.0F;
-        constexpr float RightVeilWidth = 500.0F;
+        // One sheet lies under the song details and the song list. Its left edge leans 26 over
+        // the screen height (top further right), with a shadow band along it. The record
+        // column has no sheet, so the chart BG shows there.
+        constexpr float SheetLeft = 362.0F;
+        constexpr float SheetImageWidth = 918.0F; // Reaches the right edge of a 16:9 screen.
+        constexpr float SheetEdgeLeft = 352.0F;
+        constexpr float SheetEdgeWidth = 36.0F;
+        constexpr float ColumnRuleInset = 16.0F; // The rule between details and list stops short.
 
         // Song list column (local to the list column).
         constexpr PhantomCore::Rect Tabs{16.0F, 16.0F, 336.0F, 34.0F};
@@ -112,7 +117,8 @@ namespace song_select
         const float listX = width - layout::ListWidth;
         return {width,
                 scale,
-                {layout::Margin, layout::BodyTop, layout::RecordWidth, layout::BodyHeight},
+                // Record rows start at the screen's left edge, so the column has no margin.
+                {0.0F, layout::BodyTop, layout::Margin + layout::RecordWidth, layout::BodyHeight},
                 {detailX, layout::BodyTop, listX - layout::ColumnGap - detailX, layout::BodyHeight},
                 {listX, layout::BodyTop, layout::ListWidth, layout::BodyHeight},
                 {0.0F, height - layout::FooterHeight, width, layout::FooterHeight},
@@ -124,6 +130,8 @@ namespace song_select
     constexpr SongSelectFrame ReferenceFrame = CalculateFrame(1280.0F);
     static_assert(ReferenceFrame.scale == 1.0F && ReferenceFrame.detail.x == 368.0F &&
                   ReferenceFrame.detail.width == 496.0F && ReferenceFrame.list.x == 880.0F);
+    static_assert(ReferenceFrame.record.x == 0.0F && ReferenceFrame.record.width == 352.0F);
+    static_assert(layout::SheetLeft + layout::SheetImageWidth == layout::CanvasSize.width);
     constexpr SongSelectFrame NarrowFrame = CalculateFrame(960.0F);
     static_assert(NarrowFrame.width == 1280.0F && NarrowFrame.scale == 0.75F);
     constexpr SongSelectFrame UltrawideFrame = CalculateFrame(3000.0F);
@@ -200,15 +208,17 @@ namespace song_select
 
     // A skinned part: the image supplies the whole shape, so the node itself is plain white.
     // Without the image the fallback colour keeps the control visible.
+    // Parts that touch a screen edge or another part pass a zero radius so no corner is cut.
     inline void ApplySkinPart(PhantomCore::Visual2DNode &node, PhantomCore::ScreenVisual2DManager &visuals,
-                              const std::string_view key, const PhantomCore::Color fallback)
+                              const std::string_view key, const PhantomCore::Color fallback,
+                              const float cornerRadius = 2.0F)
     {
         PhantomCore::VisualStyle style{};
         style.normal = style.hovered = style.pressed = fallback;
         style.disabled = {fallback.red, fallback.green, fallback.blue, fallback.alpha * 0.45F};
         SetSkinBaseStyle(node, style);
-        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetCornerRadius(2.0F);
-        BindSkinImage(node, visuals, "MusicSelect", std::string(key));
+        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetCornerRadius(cornerRadius);
+        BindSkinPart(node, visuals, "MusicSelect", std::string(key));
     }
 
     [[nodiscard]] inline std::int64_t LatestPointerTimestamp(

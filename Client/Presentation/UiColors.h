@@ -20,6 +20,9 @@ namespace ui_colors
         inline constexpr auto Sun = Rgb(0xF2B23A);
         inline constexpr auto Ink = Rgb(0x16294A), InkSoft = Rgb(0x2A4269), Caption = Rgb(0x4B6184);
         inline constexpr auto Rule = Rgb(0x3F6FA8, .2F), RuleStrong = Rgb(0x3F6FA8, .38F);
+        // The skin's base colour: opaque for controls, a plate over a chart BG, a sheet under a column.
+        inline constexpr auto Surface = Rgb(0xF0F8FF), SurfacePlate = Rgb(0xF0F8FF, .92F);
+        inline constexpr auto SurfaceSheet = Rgb(0xF0F8FF, .65F), SheetShadow = Rgb(0x1F4C99, .22F);
         inline constexpr auto Plot = Rgb(0xFFFFFF, .62F), Grid = Rgb(0xE3EEF8), Axis = Rgb(0x0F2A47);
         inline constexpr auto Chip = Rgb(0xFFFFFF, .8F), Badge = Rgb(0xE6EEFC);
         inline constexpr auto Ok = Rgb(0x17794F), Danger = Rgb(0xB42340), DangerSurface = Rgb(0xFDECEF);

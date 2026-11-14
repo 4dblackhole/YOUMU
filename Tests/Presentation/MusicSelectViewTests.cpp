@@ -208,11 +208,33 @@ namespace
                 auto *panel = Find(canvas->Root(),name);
                 if (!panel) { Check(purpose==SongSelectPurpose::Editor && std::string_view(name)=="RecordPanel", "Gameplay keeps its assigned record area."); continue; }
                 Check(!panel->GetComponent<SpriteVisualComponent>(),
-                      "Columns are not framed panels; side veils and the open middle group them.");
+                      "Columns are not framed panels; one sheet lies under the details and the list.");
             }
-            Check((Find(canvas->Root(),"RecordVeil")!=nullptr)==(purpose==SongSelectPurpose::Gameplay) &&
-                      Find(canvas->Root(),"ListVeil") && !Find(canvas->Root(),"Categories"),
-                  "Veils back the side columns, the editor has no record veil and no ALL bar exists.");
+            Check(!Find(canvas->Root(),"RecordVeil") && !Find(canvas->Root(),"ListVeil") && !Find(canvas->Root(),"Categories"),
+                  "The side veils and the ALL bar no longer exist.");
+            {
+                // Game and editor share the sheet: it starts right of the record column and
+                // reaches the right screen edge, with its shadow band 10 to the left.
+                const auto *sheet=Find(canvas->Root(),"Sheet"), *edge=Find(canvas->Root(),"SheetEdge");
+                const auto *extension=Find(canvas->Root(),"SheetExtension"), *rule=Find(canvas->Root(),"ColumnRule");
+                if (!sheet || !edge) throw std::runtime_error("Song-select sheet parts missing.");
+                if (!extension || !rule) throw std::runtime_error("Song-select sheet extension or column rule missing.");
+                const auto logical=canvas->LogicalSize();
+                const float scale=std::min(1.0F,logical.width/1280.0F), boardLeft=-logical.width/2;
+                const auto area=sheet->BoundsInCanvas(), band=edge->BoundsInCanvas(), line=rule->BoundsInCanvas();
+                Check(std::abs(area.x-(boardLeft+362*scale))<.01F && std::abs(area.width-918*scale)<.01F &&
+                          std::abs(area.height-720*scale)<.01F,
+                      "The sheet image starts at x 362 and spans the height of the 16:9 arrangement.");
+                Check(std::abs(band.x-(boardLeft+352*scale))<.01F && std::abs(band.width-36*scale)<.01F,
+                      "The shadow band follows the sheet's slanted edge from x 352.");
+                const bool wide=logical.width>1280.01F;
+                const float right=wide?extension->BoundsInCanvas().x+extension->BoundsInCanvas().width:area.x+area.width;
+                Check(extension->IsVisible()==wide && std::abs(right-logical.width/2)<.01F,
+                      "The sheet reaches the right screen edge; only a wider screen needs the extension.");
+                const auto list=Find(canvas->Root(),"SongBrowser")->BoundsInCanvas();
+                Check(std::abs(line.x+line.width-list.x)<.01F && std::abs(line.width-scale)<.01F && line.height<list.height,
+                      "A thin rule separates the song details from the song list.");
+            }
             {
                 const auto *board=Find(canvas->Root(),purpose==SongSelectPurpose::Editor?"YOUMU.EditorSongSelect.Board":"YOUMU.SongSelect.Board");
                 if (!board) throw std::runtime_error("Song-select board missing.");
@@ -893,6 +915,26 @@ namespace
             throw std::runtime_error("Record history page did not publish the expected rows.");
         };
         wait(6);auto *next=Find(canvas->Root(),"RecordNext");if(!next)throw std::runtime_error("Record next page control is missing.");Check(next->IsEnabled(),"Actual history has an older page.");
+        {
+            // The column has no sheet: rows are plates of one width from the left screen edge, 58 apart.
+            const auto &recordRows=Find(canvas->Root(),"RecordRows")->Children();
+            const auto first=recordRows.front()->BoundsInCanvas();
+            bool aligned=true;
+            for(std::size_t i=0;i<recordRows.size();++i)
+            {
+                const auto bounds=recordRows[i]->BoundsInCanvas();
+                const bool placed=std::abs(bounds.x+640)<.01F && std::abs(bounds.width-336)<.01F &&
+                                  std::abs(first.y-bounds.y-58*static_cast<float>(i))<.01F;
+                aligned=aligned && placed && recordRows[i]->GetComponent<SpriteVisualComponent>()!=nullptr;
+            }
+            Check(aligned && std::abs(first.height-52)<.01F,"Record rows are equal plates from the left screen edge, not following the sheet edge.");
+            const auto *pagerPlate=Find(canvas->Root(),"RecordPagerPlate"), *notice=Find(canvas->Root(),"RecordMessagePlate");
+            if(!pagerPlate||!notice)throw std::runtime_error("Record plates are missing.");
+            Check(pagerPlate->IsVisible() && !notice->IsVisible(),"A history longer than one page puts its page controls on a plate and shows no notice.");
+            const auto plate=pagerPlate->BoundsInCanvas(), previous=Find(canvas->Root(),"RecordPrevious")->BoundsInCanvas();
+            const auto following=next->BoundsInCanvas();
+            Check(plate.x<=previous.x && following.x+following.width<=plate.x+plate.width,"The page plate lies under both page buttons.");
+        }
         Click(*canvas,*next);static_cast<void>(view.Update(input,0));wait(2);
         Click(*canvas,*Find(canvas->Root(),"RecordPrevious"));static_cast<void>(view.Update(input,0));wait(6);
         const auto viewport=Find(canvas->Root(),"SongViewport")->BoundsInCanvas();
@@ -933,6 +975,14 @@ namespace
         for(const auto &row:Find(canvas->Root(),"RecordRows")->Children())
             Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only matching effective JudgeLevel records appear.");
         selection.selectedPatternIndex_=1;view.RefreshSelectionPresentation();static_cast<void>(view.Update(input,0));wait(0);
+        {
+            const auto *notice=Find(canvas->Root(),"RecordMessagePlate");
+            const auto plate=notice->BoundsInCanvas();
+            Check(notice->IsVisible() && Find(canvas->Root(),"NoRecord")->IsVisible() && !Find(canvas->Root(),"RecordPagerPlate")->IsVisible(),
+                  "A chart without history shows its notice on a plate and no page controls.");
+            Check(std::abs(plate.x+640)<.01F && std::abs(plate.width-336)<.01F && std::abs(plate.height-52)<.01F,
+                  "The notice plate takes the first record row's place.");
+        }
         view.Shutdown();
     }
     void TestOptionsToggle(MusicSelectView &view, Visual2DCanvas &canvas)

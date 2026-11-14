@@ -30,7 +30,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     SetCornerRadius(*background_, 0.0F);
     BindSkinImage(*background_, screenVisuals_, "MusicSelect", "Background");
     artwork_.CreateBackground(*board_);
-    CreateVeils();
+    CreateSheet();
     CreateLetterbox();
     if (!IsEditorSongSelect())
     {
@@ -170,8 +170,10 @@ void MusicSelectView::Shutdown() noexcept
     recordPanel_ = nullptr;
     letterbox_ = {};
     footerBar_ = nullptr;
-    listVeil_ = nullptr;
-    recordVeil_ = nullptr;
+    columnRule_ = nullptr;
+    sheetExtension_ = nullptr;
+    sheet_ = nullptr;
+    sheetEdge_ = nullptr;
     background_ = nullptr;
     board_ = nullptr;
     canvas_ = nullptr;

@@ -84,7 +84,7 @@ void SongFavoriteTabs::AddTab(std::uint64_t id, std::wstring name, bool selected
     auto &sprite = RequireComponent<SpriteVisualComponent>(button);
     sprite.SetStyle(style);
     sprite.SetCornerRadius(0.0F);
-    StyleText(RequireComponent<TextVisualComponent>(button), 13.0F, 800, selected ? theme::BrandText : theme::Caption,
+    StyleText(RequireComponent<TextVisualComponent>(button), 13.0F, 800, selected ? theme::BrandText : theme::InkSoft,
               TextAlignment::Center);
     tabs_.push_back({button.Id(), id, x, width});
     x += width + TabGap;

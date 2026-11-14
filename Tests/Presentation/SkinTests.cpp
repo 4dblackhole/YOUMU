@@ -125,7 +125,7 @@ namespace
         Write(skin / "skin.ini", "[Folders]\nLogo=Title\nMusicSelect=Select\nInGame=Play\n"
                                  "[Logo]\nBackground=sky.png\nMenu.Button=button.png\n"
                                  "Menu.Button.Hovered=hover.png\n[MusicSelect]\nBackground=background.png\n"
-                                 "Panels.Left=panel.png\nBack=panel.png\nSongCardFocused=panel.png\n"
+                                 "Panels.Sheet=panel.png\nBack=panel.png\nSongCardFocused=panel.png\n"
                                  "DifficultySelected=panel.png\n[InGame]\nnote=custom.png\n");
         auto &selection = SkinSetSelection::Instance();
         selection.Initialize(L"Test Skin");
@@ -165,15 +165,18 @@ namespace
         music.Initialize(services);
         music.SetVisible(true);
         auto &musicRoot = visuals.FindCanvas(2)->Root();
-        auto &record = Find(musicRoot, "RecordVeil");
+        auto &sheet = Find(musicRoot, "Sheet");
         auto &back = Find(musicRoot, "Back");
-        const auto customVeil = Image(record);
-        Check(customVeil && Image(back).value == customVeil.value,
-              "A selected skin replaces the veil and button images.");
+        const auto customSheet = Image(sheet);
+        Check(customSheet && Image(back).value == customSheet.value &&
+                  Image(Find(musicRoot, "SheetExtension")).value == customSheet.value,
+              "A selected skin replaces the sheet, its wide-screen extension and button images.");
         Check(back.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==1,
               "Skinned controls retain their authored opacity.");
+        Check(sheet.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==1,
+              "A part image is drawn at its own opacity; the translucent fallback colour does not thin it again.");
         auto &card = Find(musicRoot, "Song.0");
-        Check(Image(card).value == customVeil.value, "Virtualized song cards must accept skin images.");
+        Check(Image(card).value == customSheet.value, "Virtualized song cards must accept skin images.");
         const auto loads = renderer.loaded.size();
         for (int i = 0; i < 100; ++i)
             visuals.Update(.016);
@@ -186,10 +189,10 @@ namespace
         Check(selection.Select(L"Default Skin", error), error.c_str());
         visuals.Update(0);
         static_cast<void>(logo.Update(InputState{}, 0));
-        Check(Image(start) && Image(start).value != customButton.value && Image(record) &&
-                  Image(record).value != customVeil.value &&
-                  Image(record).value == visuals.RegisterImage(selection.Image("MusicSelect", "Panels.Left")).value &&
-                  Image(back) && Image(back).value != customVeil.value && Image(Find(logoRoot, "YOUMU.LogoBackground")),
+        Check(Image(start) && Image(start).value != customButton.value && Image(sheet) &&
+                  Image(sheet).value != customSheet.value &&
+                  Image(sheet).value == visuals.RegisterImage(selection.Image("MusicSelect", "Panels.Sheet")).value &&
+                  Image(back) && Image(back).value != customSheet.value && Image(Find(logoRoot, "YOUMU.LogoBackground")),
               "Returning to the default skin must restore the built-in title and song-select parts.");
         Check(selection.Select(L"Test Skin", error), error.c_str());
         Check(selection.Image("InGame", "note") == defaults / "InGame/note.png",

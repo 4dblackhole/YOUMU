@@ -46,16 +46,25 @@ namespace
     constexpr std::array<const char *, 6> StatNames{"BPM", "Length", "Notes", "JudgeLevel", "HP", "Mode"};
 } // namespace
 
-void MusicSelectView::CreateVeils()
+void MusicSelectView::CreateSheet()
 {
-    // White veils run in from the screen edges behind the side columns instead of framed panels.
-    if (!IsEditorSongSelect())
-    {
-        recordVeil_ = &CreatePanel(*board_, {}, "RecordVeil");
-        ApplySkinPart(*recordVeil_, screenVisuals_, "Panels.Left", {1.0F, 1.0F, 1.0F, 0.72F});
-    }
-    listVeil_ = &CreatePanel(*board_, {}, "ListVeil");
-    ApplySkinPart(*listVeil_, screenVisuals_, "Panels.Right", {1.0F, 1.0F, 1.0F, 0.72F});
+    // Song details and the song list share one sheet; the record column stays a window onto
+    // the chart BG. The editor's song select uses the same sheet without the record column.
+    sheetEdge_ = &CreatePanel(*board_, {}, "SheetEdge");
+    ApplySkinPart(*sheetEdge_, screenVisuals_, "Panels.SheetEdge", {0.0F, 0.0F, 0.0F, 0.0F}, 0.0F);
+    sheet_ = &CreatePanel(*board_, {}, "Sheet");
+    ApplySkinPart(*sheet_, screenVisuals_, "Panels.Sheet", theme::SurfaceSheet, 0.0F);
+
+    // The image covers a 16:9 screen. A wider screen continues it with its right-most column.
+    sheetExtension_ = &CreatePanel(*board_, {}, "SheetExtension");
+    ApplySkinPart(*sheetExtension_, screenVisuals_, "Panels.Sheet", theme::SurfaceSheet, 0.0F);
+    const float column = 1.0F / (layout::SheetImageWidth * 1.5F); // One source pixel at 1080p.
+    RequireComponent<SpriteVisualComponent>(*sheetExtension_).SetUvTransform({column, 1.0F}, {1.0F - column * 2.0F, 0.0F});
+    sheetExtension_->SetVisible(false);
+
+    columnRule_ = &CreatePanel(*board_, {}, "ColumnRule");
+    ApplyFlatStyle(*columnRule_, theme::RuleStrong);
+    SetCornerRadius(*columnRule_, 0.0F);
 }
 
 void MusicSelectView::CreateRecordPanel()
@@ -80,11 +89,11 @@ void MusicSelectView::CreateSongInformationPanel()
     artwork_.BindPreview(jacket, jacketImage);
 
     selectedArtistLabel_ =
-        &CreateCaption(panel, {}, L"", 15.0F, 700, theme::Caption, "SelectedArtist", TextAlignment::Center);
+        &CreateCaption(panel, {}, L"", 15.0F, 700, theme::InkSoft, "SelectedArtist", TextAlignment::Center);
     selectedSongLabel_ =
         &CreateCaption(panel, {}, L"", 30.0F, 900, theme::Ink, "SelectedSong", TextAlignment::Center);
     selectedCreatorLabel_ =
-        &CreateCaption(panel, {}, L"", 14.0F, 700, theme::InkSoft, "SelectedCreator", TextAlignment::Center);
+        &CreateCaption(panel, {}, L"", 14.0F, 700, theme::Ink, "SelectedCreator", TextAlignment::Center);
     creatorIcon_ = &CreateSprite(panel, {}, screenVisuals_.RegisterImage(Common(L"Icons.pencil")), "CreatorIcon");
     RequireComponent<SpriteVisualComponent>(*creatorIcon_).SetTint(theme::InkSoft);
 
@@ -103,7 +112,7 @@ void MusicSelectView::CreateSongInformationPanel()
     {
         const std::string name = std::string("Detail.") + StatNames[i];
         statCaptions_[i] =
-            &CreateCaption(panel, {}, L"", 13.0F, 700, theme::Caption, name + ".Caption", TextAlignment::Center);
+            &CreateCaption(panel, {}, L"", 13.0F, 700, theme::InkSoft, name + ".Caption", TextAlignment::Center);
         statValues_[i] =
             &CreateNumber(panel, {}, L"", 26.0F, 800, theme::Ink, name + ".Value", TextAlignment::Center);
     }

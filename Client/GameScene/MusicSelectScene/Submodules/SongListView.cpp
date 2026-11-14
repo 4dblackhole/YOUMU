@@ -12,7 +12,7 @@ namespace
     namespace theme = ui_colors::theme;
 
     constexpr Color TranslucentRow{1.0F, 1.0F, 1.0F, 0.16F};
-    constexpr Color CardWhite{1.0F, 1.0F, 1.0F, 0.70F};
+    constexpr Color CardWhite{1.0F, 1.0F, 1.0F, 0.92F};
     constexpr Color FocusedArtist{0.949F, 0.969F, 1.0F, 1.0F};
 
     [[nodiscard]] std::wstring FirstArtist(const SongCatalogEntry &song)

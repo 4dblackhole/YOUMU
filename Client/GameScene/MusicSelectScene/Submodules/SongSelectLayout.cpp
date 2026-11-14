@@ -34,10 +34,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     artwork_.LayoutBackground({frame.width, height});
     UpdateLetterbox(canvasSize, frame);
 
-    if (recordVeil_ != nullptr)
-        recordVeil_->SetBounds({0.0F, 0.0F, layout::LeftVeilWidth, height});
-    if (listVeil_ != nullptr)
-        listVeil_->SetBounds({frame.width - layout::RightVeilWidth, 0.0F, layout::RightVeilWidth, height});
+    UpdateSheetLayout(frame);
     if (recordPanel_ != nullptr)
         recordPanel_->SetBounds(TopLeft(frame.record, height));
     informationPanel_->SetBounds(TopLeft(frame.detail, height));
@@ -52,6 +49,28 @@ void MusicSelectView::UpdateResponsiveLayout()
     playOptionsPanel_.SetViewport(height_);
     records_.SetViewport(height_);
     favoritesPanel_.SetViewport();
+}
+
+void MusicSelectView::UpdateSheetLayout(const SongSelectFrame &frame)
+{
+    if (!AllCreated(sheetEdge_, sheet_, sheetExtension_, columnRule_))
+    {
+        return;
+    }
+    const float height = layout::CanvasSize.height;
+    sheetEdge_->SetBounds({layout::SheetEdgeLeft, 0.0F, layout::SheetEdgeWidth, height});
+    sheet_->SetBounds({layout::SheetLeft, 0.0F, layout::SheetImageWidth, height});
+
+    // Only a screen wider than 16:9 has room past the image.
+    const float imageRight = layout::SheetLeft + layout::SheetImageWidth;
+    const bool wider = frame.width > imageRight;
+    sheetExtension_->SetVisible(wider);
+    if (wider)
+        sheetExtension_->SetBounds({imageRight, 0.0F, frame.width - imageRight, height});
+
+    columnRule_->SetBounds(TopLeft({frame.list.x - 1.0F, frame.list.y + layout::ColumnRuleInset, 1.0F,
+                                    frame.list.height - layout::ColumnRuleInset * 2.0F},
+                                   height));
 }
 
 void MusicSelectView::UpdateLetterbox(const Size canvasSize, const SongSelectFrame &frame)

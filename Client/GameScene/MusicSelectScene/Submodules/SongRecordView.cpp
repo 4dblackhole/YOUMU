@@ -16,9 +16,12 @@ namespace
     namespace theme = ui_colors::theme;
 
     constexpr std::size_t PageSize = 6;
-    constexpr float Inset = 16.0F, RowWidth = 288.0F, RowHeight = 52.0F, RowsTop = 64.0F;
-    constexpr float ControlSize = 32.0F, PagerTop = 560.0F;
-    constexpr Color FieldWhite{1.0F, 1.0F, 1.0F, 0.74F};
+    // The column has no sheet behind it, so every row, notice and control sits on its own
+    // plate over the chart BG. Rows run from the screen's left edge at one width; their
+    // content starts at ContentLeft and ends at ContentRight, before the slanted end.
+    constexpr float RowWidth = 336.0F, RowHeight = 52.0F, RowPitch = 58.0F, RowsTop = 56.0F;
+    constexpr float ContentLeft = 48.0F, ContentRight = 308.0F;
+    constexpr float ControlSize = 32.0F, PagerTop = 560.0F, PagerCenter = 192.0F, PagerWidth = 124.0F;
 
     // Only what differs from a plain play, after the judge level the play actually used.
     [[nodiscard]] std::wstring OptionSummary(const PlayRecord &record)
@@ -48,7 +51,7 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
     panel_ = &panel;
     auto &selector = CreateComboBox(panel, {}, {std::wstring(text.personalRecord)}, "RecordSelector");
     selector_ = &selector;
-    ApplySkinPart(selector, visuals_, "SortSelector", FieldWhite);
+    ApplySkinPart(selector, visuals_, "Records.Selector", theme::Surface);
     auto &recordBehavior = RequireComponent<ComboBoxBehaviorComponent>(selector);
     recordBehavior.SetFontSize(13.0F);
     recordBehavior.SetFont(ui_fonts::Text(text.personalRecord));
@@ -59,7 +62,7 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
     // Icon-only controls; their names stay available to tooltips.
     const auto button = [this, &panel](const wchar_t *icon, const char *name) -> Visual2DNode * {
         auto &node = CreateButton(panel, {}, L"", name);
-        ApplySpriteStyle(node, FieldWhite, PureWhite);
+        ApplySpriteStyle(node, theme::Surface, PureWhite);
         SetCornerRadius(node, 2.0F);
         auto &glyph = CreateSprite(node, {(ControlSize - 18.0F) * 0.5F, (ControlSize - 18.0F) * 0.5F, 18.0F, 18.0F},
                                    visuals_.RegisterImage(Common(icon)), "Icon");
@@ -67,10 +70,16 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
         return &node;
     };
     queryButton_ = button(L"Icons.filter", "RecordQuery");
+    pagerPlate_ = &CreatePanel(panel, {}, "RecordPagerPlate");
+    ApplyFlatStyle(*pagerPlate_, theme::SurfacePlate);
+    SetCornerRadius(*pagerPlate_, 0.0F);
     previousButton_ = button(L"Icons.chev-left", "RecordPrevious");
     nextButton_ = button(L"Icons.chev-right", "RecordNext");
     pageLabel_ = &CreateNumber(panel, {}, L"", 13.0F, 500, theme::InkSoft, "RecordPage", TextAlignment::Center, false);
     rows_ = &panel.CreateChild("RecordRows");
+    // NO RECORD, loading and lookup errors use a row plate of their own.
+    messagePlate_ = &CreatePanel(panel, {}, "RecordMessagePlate");
+    ApplySkinPart(*messagePlate_, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
     emptyMessage_ = &CreateNumber(panel, {}, std::wstring(text.noRecord), 20.0F, 700, theme::Caption, "NoRecord",
                                   TextAlignment::Center, false);
 }
@@ -85,14 +94,15 @@ void SongRecordView::Layout()
     if (!rows_)
         return;
     const float height = panel_->NodeSize().height;
-    selector_->SetBounds(TopLeft({Inset, 16.0F, 248.0F, ControlSize}, height));
-    queryButton_->SetBounds(TopLeft({Inset + 256.0F, 16.0F, ControlSize, ControlSize}, height));
-    rows_->SetBounds(TopLeft({Inset, RowsTop, RowWidth, RowHeight * static_cast<float>(PageSize)}, height));
-    emptyMessage_->SetBounds(TopLeft({Inset, RowsTop + 120.0F, RowWidth, 28.0F}, height));
-    const float center = Inset + RowWidth * 0.5F;
-    previousButton_->SetBounds(TopLeft({center - 24.0F - ControlSize, PagerTop, ControlSize, ControlSize}, height));
-    pageLabel_->SetBounds(TopLeft({center - 24.0F, PagerTop, 48.0F, ControlSize}, height));
-    nextButton_->SetBounds(TopLeft({center + 24.0F, PagerTop, ControlSize, ControlSize}, height));
+    selector_->SetBounds(TopLeft({ContentLeft, 16.0F, 248.0F, ControlSize}, height));
+    queryButton_->SetBounds(TopLeft({ContentLeft + 256.0F, 16.0F, ControlSize, ControlSize}, height));
+    rows_->SetBounds(TopLeft({0.0F, RowsTop, RowWidth, RowPitch * static_cast<float>(PageSize)}, height));
+    messagePlate_->SetBounds(TopLeft({0.0F, RowsTop, RowWidth, RowHeight}, height));
+    emptyMessage_->SetBounds(TopLeft({ContentLeft, RowsTop + 12.0F, ContentRight - ContentLeft, 28.0F}, height));
+    pagerPlate_->SetBounds(TopLeft({PagerCenter - PagerWidth * 0.5F, PagerTop, PagerWidth, ControlSize}, height));
+    previousButton_->SetBounds(TopLeft({PagerCenter - 24.0F - ControlSize, PagerTop, ControlSize, ControlSize}, height));
+    pageLabel_->SetBounds(TopLeft({PagerCenter - 24.0F, PagerTop, 48.0F, ControlSize}, height));
+    nextButton_->SetBounds(TopLeft({PagerCenter + 24.0F, PagerTop, ControlSize, ControlSize}, height));
 }
 
 void SongRecordView::SetViewport(std::uint32_t height) { filterPanel_.SetViewport(height); }
@@ -136,6 +146,7 @@ void SongRecordView::ShowPager(const bool visible)
 {
     // A chart with one page of history, or none, shows no page controls.
     const bool paged = visible && (offset_ > 0 || next_);
+    pagerPlate_->SetVisible(paged);
     previousButton_->SetVisible(paged);
     nextButton_->SetVisible(paged);
     pageLabel_->SetVisible(paged);
@@ -168,7 +179,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
         for (auto id : ids)
             static_cast<void>(rows_->RemoveChild(id));
         // A song without a chart leaves the record column empty.
-        emptyMessage_->SetVisible(!pattern.empty());
+        ShowMessage(!pattern.empty());
         SetMessage(std::wstring(texts_.Get("Records.loading")));
     }
     if (job_.valid() && job_.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
@@ -183,7 +194,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
         {
             if (jobRevision_ == revision_)
             {
-                emptyMessage_->SetVisible(true);
+                ShowMessage(true);
                 SetMessage(std::wstring(texts_.Get("Records.loadError")) + DecodeDisplayText(error.what()));
             }
         }
@@ -203,6 +214,12 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
     }
 }
 
+void SongRecordView::ShowMessage(const bool visible)
+{
+    messagePlate_->SetVisible(visible);
+    emptyMessage_->SetVisible(visible);
+}
+
 void SongRecordView::SetMessage(std::wstring message)
 {
     // NO RECORD is a number-face line; loading and error sentences may need CJK glyphs.
@@ -217,24 +234,25 @@ void SongRecordView::SetMessage(std::wstring message)
 
 void SongRecordView::Show(const std::vector<PlayRecord> &records)
 {
-    emptyMessage_->SetVisible(records.empty());
+    ShowMessage(records.empty());
     SetMessage(std::wstring(texts_.Get("MusicSelect.noRecord")));
     next_ = records.size() > PageSize;
     ShowPager(true);
     const float height = rows_->NodeSize().height;
+    constexpr float mainLeft = ContentLeft + 58.0F, detailsWidth = 144.0F;
     for (std::size_t i = 0; i < std::min(records.size(), PageSize); ++i)
     {
         const auto &r = records[i];
-        auto &row = CreatePanel(*rows_, TopLeft({0.0F, static_cast<float>(i) * RowHeight, RowWidth, RowHeight}, height),
+        auto &row = CreatePanel(*rows_, TopLeft({0.0F, static_cast<float>(i) * RowPitch, RowWidth, RowHeight}, height),
                                 "PlayRecord");
-        ApplySkinPart(row, visuals_, "Records.Row", {1.0F, 1.0F, 1.0F, 0.0F});
-        static_cast<void>(CreateNumber(row, {2.0F, 7.0F, 48.0F, 38.0F}, std::wstring(RankName(r.accuracy)), 20.0F, 800,
-                                       theme::BrandText, "Rank", TextAlignment::Center));
-        static_cast<void>(CreateNumber(row, {60.0F, 5.0F, 150.0F, 24.0F}, AccuracyText(r.accuracy), 20.0F, 800,
+        ApplySkinPart(row, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
+        static_cast<void>(CreateNumber(row, {ContentLeft, 7.0F, 48.0F, 38.0F}, std::wstring(RankName(r.accuracy)), 20.0F,
+                                       800, theme::BrandText, "Rank", TextAlignment::Center));
+        static_cast<void>(CreateNumber(row, {mainLeft, 5.0F, 150.0F, 24.0F}, AccuracyText(r.accuracy), 20.0F, 800,
                                        theme::Ink, "Accuracy"));
-        auto &details = CreateNumber(row, {60.0F, 29.0F, 144.0F, 18.0F}, OptionSummary(r), 13.0F, 500, theme::Caption,
-                                     "Details", TextAlignment::Leading, false);
-        details.SetClipRect({0.0F, 0.0F, 144.0F, 18.0F});
+        auto &details = CreateNumber(row, {mainLeft, 29.0F, detailsWidth, 18.0F}, OptionSummary(r), 13.0F, 500,
+                                     theme::Caption, "Details", TextAlignment::Leading, false);
+        details.SetClipRect({0.0F, 0.0F, detailsWidth, 18.0F});
 
         // Clear, a finished play below the clear line, or a play that was left early.
         const char *statusKey = r.cleared ? "Records.cleared" : (r.completed ? "Records.practice" : "Records.interrupted");
@@ -242,14 +260,14 @@ void SongRecordView::Show(const std::vector<PlayRecord> &records)
         const Color statusColor = r.cleared ? theme::Ok : (r.completed ? theme::InkSoft : theme::Danger);
         std::wstring status(texts_.Get(statusKey));
         const float chipWidth = std::clamp(EstimateCaptionWidth(status, 12.0F) + 14.0F, 42.0F, 96.0F);
-        auto &chip = CreatePanel(row, TopLeft({RowWidth - chipWidth, 5.0F, chipWidth, 20.0F}, RowHeight), "Status");
+        auto &chip = CreatePanel(row, TopLeft({ContentRight - chipWidth, 6.0F, chipWidth, 20.0F}, RowHeight), "Status");
         ApplySkinPart(chip, visuals_, chipKey, {0.89F, 0.965F, 0.925F, 1.0F});
         static_cast<void>(CreateCaption(chip, {0.0F, 0.0F, chipWidth, 20.0F}, std::move(status), 12.0F, 700, statusColor,
                                         "StatusText", TextAlignment::Center));
 
         const auto timestamp =
             std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{r.playedAtMilliseconds}};
-        static_cast<void>(CreateNumber(row, {RowWidth - 84.0F, 29.0F, 84.0F, 18.0F},
+        static_cast<void>(CreateNumber(row, {ContentRight - 84.0F, 29.0F, 84.0F, 18.0F},
                                        std::format(L"{:%Y.%m.%d}", std::chrono::floor<std::chrono::days>(timestamp)),
                                        13.0F, 500, theme::Caption, "Date", TextAlignment::Trailing, false));
     }
@@ -272,7 +290,7 @@ void SongRecordView::RefreshTexts()
 void SongRecordView::Shutdown() noexcept
 {
     filterPanel_.Shutdown();
-    panel_ = selector_ = emptyMessage_ = pageLabel_ = nullptr;
-    queryButton_ = previousButton_ = nextButton_ = rows_ = nullptr;
+    panel_ = selector_ = messagePlate_ = emptyMessage_ = pageLabel_ = nullptr;
+    queryButton_ = pagerPlate_ = previousButton_ = nextButton_ = rows_ = nullptr;
     ++revision_;
 }

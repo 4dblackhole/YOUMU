@@ -54,7 +54,7 @@ class MusicSelectView final
   private:
     using SortMode = SongSelectionState::SortMode;
 
-    void CreateVeils();
+    void CreateSheet();
     void CreateLetterbox();
     void CreateRecordPanel();
     void UpdateRecords();
@@ -75,6 +75,7 @@ class MusicSelectView final
     void UpdateSongBrowserLayout();
     void UpdateFooterLayout(const song_select::SongSelectFrame &frame);
     void UpdateLetterbox(PhantomCore::Size canvasSize, const song_select::SongSelectFrame &frame);
+    void UpdateSheetLayout(const song_select::SongSelectFrame &frame);
     void RefreshSearchPresentation();
     void ProcessPointer(const PhantomCore::InputState &input);
     bool ProcessActions();
@@ -124,8 +125,10 @@ class MusicSelectView final
     std::optional<PhantomCore::Point> canvasPointer_;
     PhantomCore::Visual2DNode *board_{};
     PhantomCore::Visual2DNode *background_{};
-    PhantomCore::Visual2DNode *recordVeil_{};
-    PhantomCore::Visual2DNode *listVeil_{};
+    PhantomCore::Visual2DNode *sheetEdge_{};
+    PhantomCore::Visual2DNode *sheet_{};
+    PhantomCore::Visual2DNode *sheetExtension_{};
+    PhantomCore::Visual2DNode *columnRule_{};
     PhantomCore::Visual2DNode *footerBar_{};
     std::array<PhantomCore::Visual2DNode *, 4> letterbox_{};
     PhantomCore::Visual2DNode *recordPanel_{};
