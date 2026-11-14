@@ -59,6 +59,8 @@ Applies to this repository; `Dependencies/PhantomCore` follows its own agreement
   facades. Do not substitute file splitting for ownership separation.
 - Extract named helpers for distinct operations. For a long cohesive function,
   explain meaningful phases and required ordering without restating the code.
+- Keep each `if`/`while` condition to at most two `&&`/`||` operators; split longer
+  ones with guards, named `bool`s or predicates, preserving order and side effects.
 - Do not commit FMOD SDK/import libraries/runtime DLLs. Bundle licenses beside
   redistributed fonts and preserve third-party notices.
 
