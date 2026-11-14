@@ -35,29 +35,29 @@ namespace
         const auto skin = root / "manifest";
         Write(skin / L"그림 폴더/아이콘 #1.png", "isolated fixture");
         Write(skin / "skin.ini", "\xEF\xBB\xBF[Folders]\r\nLogo=그림 폴더\r\n[Logo]\r\n"
-                                 "LogoCenter=\"아이콘 #1.png\"\r\nLogoLeft=missing.png\r\n"
-                                 "LogoRight=../escape.png\r\nBackground=\r\n");
+                                 "Background=\"아이콘 #1.png\"\r\nSelectionCursor=missing.png\r\n"
+                                 "Menu.Button=../escape.png\r\n[MusicSelect]\r\nBackground=\r\n");
         const auto images = LoadSkinImages(skin, defaults);
-        Check(images.paths.at("Logo.LogoCenter") == skin / L"그림 폴더/아이콘 #1.png",
+        Check(images.paths.at("Logo.Background") == skin / L"그림 폴더/아이콘 #1.png",
               "Both directory and filename must be relative, with UTF-8/BOM/CRLF support.");
-        Check(images.paths.at("Logo.LogoLeft") == defaults / "Logo/LeftFade.png",
+        Check(images.paths.at("Logo.SelectionCursor") == defaults / "Logo/Menu/SelectionCursor.png",
               "A missing custom filename must fall back by component, not by custom filename.");
-        Check(images.paths.at("Logo.LogoRight") == defaults / "Logo/RightFade.png",
+        Check(images.paths.at("Logo.Menu.Button") == defaults / "Logo/Menu/Button.png",
               "Parent traversal must fall back without affecting other components.");
         Check(images.paths.at("InGame.note") == defaults / "InGame/note.png" &&
-                  images.paths.at("Logo.Background").empty() && images.diagnostics.size() == 2,
+                  images.paths.at("MusicSelect.Background").empty() && images.diagnostics.size() == 2,
               "Unspecified scenes and procedural defaults must remain intact.");
-        Write(skin / "skin.ini", "[Folders]\nLogo=C:\\absolute\n[Logo]\nLogoCenter=/rooted.png\n"
-                                 "LogoLeft=../escape.png\nLogoRight=\\\\server\\share.png\n"
-                                 "[Broken\nLogoCenter=wrong.png\n[Logo]\nLogoCenter=\"\n");
+        Write(skin / "skin.ini", "[Folders]\nLogo=C:\\absolute\n[Logo]\nBackground=/rooted.png\n"
+                                 "SelectionCursor=../escape.png\nMenu.Button=\\\\server\\share.png\n"
+                                 "[Broken\nBackground=wrong.png\n[Logo]\nBackground=\"\n");
         const auto invalid = LoadSkinImages(skin, defaults);
-        Check(invalid.paths.at("Logo.LogoCenter") == defaults / "Logo/Center.png" && invalid.diagnostics.size() >= 6,
+        Check(invalid.paths.at("Logo.Background") == defaults / "Logo/Background.png" && invalid.diagnostics.size() >= 6,
               "Invalid paths and sections must not escape into scene loading.");
-        Write(skin / "skin.ini", "[Logo]\nLogoCenter=missing.png\nLogoCenter=other.png\n");
+        Write(skin / "skin.ini", "[Logo]\nBackground=missing.png\nBackground=other.png\n");
         Check(LoadSkinImages(skin, defaults).diagnostics.size() == 2,
               "Duplicate keys and missing files must be diagnosed.");
-        Write(skin / "skin.ini", "[Logo]\nLogoCenter=\xFF\n");
-        Check(LoadSkinImages(skin, defaults).paths.at("Logo.LogoCenter") == defaults / "Logo/Center.png",
+        Write(skin / "skin.ini", "[Logo]\nBackground=\xFF\n");
+        Check(LoadSkinImages(skin, defaults).paths.at("Logo.Background") == defaults / "Logo/Background.png",
               "Invalid UTF-8 must leave the embedded defaults usable.");
         Write(root / "partial/InGame/note.png", "isolated fixture");
         Check(LoadSkinImages(root / "partial", defaults).paths.at("InGame.note") ==
@@ -117,15 +117,14 @@ namespace
     void ViewChecks(const fs::path &repo, const fs::path &skin, const fs::path &defaults)
     {
         Copy(defaults / "Result/Background/Sky.png", skin / "Title/sky.png");
-        Copy(defaults / "Logo/Center.png", skin / "Title/center.png");
         Copy(defaults / "InGame/Progress/Track.png", skin / "Title/button.png");
         Copy(defaults / "InGame/Progress/Fill.png", skin / "Title/hover.png");
         Copy(defaults / "Result/Background/Sky.png", skin / "Select/background.png");
         Copy(defaults / "InGame/Progress/Track.png", skin / "Select/panel.png");
         Copy(defaults / "InGame/note.png", skin / "Play/custom.png");
         Write(skin / "skin.ini", "[Folders]\nLogo=Title\nMusicSelect=Select\nInGame=Play\n"
-                                 "[Logo]\nBackground=sky.png\nLogoCenter=center.png\nStartButton=button.png\n"
-                                 "StartButton.Hovered=hover.png\n[MusicSelect]\nBackground=background.png\n"
+                                 "[Logo]\nBackground=sky.png\nMenu.Button=button.png\n"
+                                 "Menu.Button.Hovered=hover.png\n[MusicSelect]\nBackground=background.png\n"
                                  "Panels.Left=panel.png\nBack=panel.png\nSongCardFocused=panel.png\n"
                                  "DifficultySelected=panel.png\n[InGame]\nnote=custom.png\n");
         auto &selection = SkinSetSelection::Instance();
@@ -146,14 +145,15 @@ namespace
         logo.Initialize(services);
         logo.BeginScene();
         auto &logoRoot = visuals.FindCanvas(1)->Root();
-        auto &start = Find(logoRoot, "YOUMU.GameStart");
+        // Game Start is the chosen item and uses the selected bar; Editor shows the plain bar.
+        auto &start = Find(logoRoot, "YOUMU.Editor");
         const auto &style = start.GetComponent<SpriteVisualComponent>()->Style();
+        const auto customButton = style.normalImage;
         Check(style.normalImage && style.hoveredImage && style.normalImage.value != style.hoveredImage.value &&
-                  style.pressedImage.value == style.normalImage.value,
-              "Buttons must use authored states and normal-image fallback.");
-        Check(Find(logoRoot, "YOUMU.LogoBackground").IsVisible() &&
-                  !Find(logoRoot, "YOUMU.LogoStrip").IsVisible(),
-              "A full-screen logo background must replace the strip rather than be covered by it.");
+                  style.pressedImage && style.pressedImage.value != style.hoveredImage.value,
+              "Buttons must use authored states; a state the skin omits falls back to the built-in part.");
+        Check(Find(logoRoot, "YOUMU.LogoBackground").IsVisible() && Image(Find(logoRoot, "YOUMU.LogoBackground")),
+              "The title shows the skin's full-screen sky.");
         const auto &backgroundStyle = Find(logoRoot, "YOUMU.LogoBackground")
                                           .GetComponent<SpriteVisualComponent>()->Style();
         Check(backgroundStyle.normal.red == 1 && backgroundStyle.normal.green == 1 && backgroundStyle.normal.blue == 1,
@@ -186,10 +186,11 @@ namespace
         Check(selection.Select(L"Default Skin", error), error.c_str());
         visuals.Update(0);
         static_cast<void>(logo.Update(InputState{}, 0));
-        Check(!Image(start) && Image(record) && Image(record).value != customVeil.value &&
+        Check(Image(start) && Image(start).value != customButton.value && Image(record) &&
+                  Image(record).value != customVeil.value &&
                   Image(record).value == visuals.RegisterImage(selection.Image("MusicSelect", "Panels.Left")).value &&
-                  Image(back) && Image(back).value != customVeil.value && Find(logoRoot, "YOUMU.LogoStrip").IsVisible(),
-              "Returning to the default skin must restore the built-in song-select parts and logo panels.");
+                  Image(back) && Image(back).value != customVeil.value && Image(Find(logoRoot, "YOUMU.LogoBackground")),
+              "Returning to the default skin must restore the built-in title and song-select parts.");
         Check(selection.Select(L"Test Skin", error), error.c_str());
         Check(selection.Image("InGame", "note") == defaults / "InGame/note.png",
               "Re-selecting must reload edited configuration and use per-element fallback.");

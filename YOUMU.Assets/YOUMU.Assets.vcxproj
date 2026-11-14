@@ -78,6 +78,7 @@
     <None Include="Assets\Skins\Default Skin\Loading\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\Menu\*.*" />
+    <None Include="Assets\Skins\Default Skin\Logo\Sky\*.*" />
     <None Include="Assets\Skins\Default Skin\MusicSelect\*.*" />
     <None Include="Assets\Skins\Default Skin\MusicSelect\Detail\*.*" />
     <None Include="Assets\Skins\Default Skin\MusicSelect\Panels\*.*" />

@@ -68,26 +68,6 @@
         std::filesystem::path(L"HitSounds") / modeFolder / file);
 }
 
-[[nodiscard]] inline std::filesystem::path LeftFade()
-{
-    return SkinSetSelection::Instance().Image("Logo", "LogoLeft");
-}
-
-[[nodiscard]] inline std::filesystem::path Center()
-{
-    return SkinSetSelection::Instance().Image("Logo", "LogoCenter");
-}
-
-[[nodiscard]] inline std::filesystem::path RightFade()
-{
-    return SkinSetSelection::Instance().Image("Logo", "LogoRight");
-}
-
-[[nodiscard]] inline std::filesystem::path SelectionCursor()
-{
-    return SkinSetSelection::Instance().Image("Logo", "SelectionCursor");
-}
-
 [[nodiscard]] inline std::filesystem::path First()
 {
     return SkinSetSelection::Instance().Resolve(

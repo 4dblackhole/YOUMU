@@ -18,8 +18,8 @@ void LogoView::Initialize(const EngineServices &services)
     width_ = services.windowWidth;
     height_ = services.windowHeight;
 
-    // FixedHeight keeps the logo composition measured against a 720-unit
-    // vertical reference while expanding the logical width for wider screens.
+    // FixedHeight keeps the title measured against a 720-unit vertical
+    // reference while expanding the logical width for wider screens.
     canvasHandle_ = screenVisuals_.CreateOwnedCanvas(
         {{1280.0F, 720.0F}, CanvasScaleMode::FixedHeight});
     canvas_ = canvasHandle_.Get();
@@ -28,13 +28,13 @@ void LogoView::Initialize(const EngineServices &services)
         throw std::runtime_error("Failed to create the logo screen Canvas.");
     }
 
-    CreateLogoStrip();
+    CreateSky();
     CreateMenu();
     skinRevision_ = (std::numeric_limits<std::uint64_t>::max)();
     RefreshSkinImages();
     options_.Initialize(*canvas_, services.audio, services.windowControl);
     ApplyTexts();
-    UpdateLogoStripLayout();
+    UpdateLayout();
 }
 
 void LogoView::BeginScene()
@@ -62,6 +62,7 @@ std::optional<std::size_t> LogoView::Update(const InputState &input,
     if (textRevision_ != texts_.Revision())
         ApplyTexts();
     options_.Update(deltaSeconds);
+    AnimateFeathers(deltaSeconds);
     const bool controlDown =
         input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
     if (!options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
@@ -89,7 +90,7 @@ void LogoView::OnResize(const std::uint32_t width, const std::uint32_t height)
         return;
     }
 
-    UpdateLogoStripLayout();
+    UpdateLayout();
     inputRouter_.InvalidateHitTest();
 }
 
@@ -107,11 +108,10 @@ void LogoView::Shutdown() noexcept
     selectionCursor_ = nullptr;
     menuButtons_ = {};
     menuButtonIds_ = {};
-    rightFade_ = nullptr;
-    centerLogo_ = nullptr;
-    leftFade_ = nullptr;
-    logoStrip_ = nullptr;
+    feathers_ = {};
+    letterbox_ = {};
     background_ = nullptr;
+    board_ = nullptr;
     canvas_ = nullptr;
     canvasHandle_.Reset();
 }

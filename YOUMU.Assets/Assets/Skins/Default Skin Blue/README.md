@@ -15,21 +15,7 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 ## Logo — 타이틀
 
-### `Logo/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Background.png` | 1920×1080 | `Logo.Background` | 타이틀 화면 전체 하늘(그라데이션 + 오른쪽 위 햇살). 구름 · 깃털 없음 |
-
-### `Logo/Menu/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Button.png` | 463×78 | `Logo.StartButton`, `Logo.EditorButton`, `Logo.OptionsButton`, `Logo.ExitButton` | 타이틀 메뉴 버튼 바탕(−14° 사선). Selected = 고른 메뉴(코발트 + 결) |
-| `Button.Hovered.png` | 463×78 |  | 〃 |
-| `Button.Pressed.png` | 463×78 | `Logo.StartButton.Pressed`, `Logo.EditorButton.Pressed`, `Logo.OptionsButton.Pressed`, `Logo.ExitButton.Pressed` | 〃 |
-| `Button.Selected.png` | 463×78 | `Logo.StartButton.Hovered`, `Logo.EditorButton.Hovered`, `Logo.OptionsButton.Hovered`, `Logo.ExitButton.Hovered` | 〃 |
-| `SelectionCursor.png` | 42×42 | `Logo.SelectionCursor` | 고른 메뉴 안 왼쪽의 금빛 깃털 커서 |
+하늘 배경 · 메뉴 막대 · 깃털 커서 · 떠도는 깃털은 내장 Default Skin의 `Logo`로 옮겼습니다. 아래는 음악 플레이어 부품입니다.
 
 ### `Logo/Player/`
 
@@ -42,12 +28,6 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 | `SeekFill.png` | 528×6 |  | 재생 위치 채움(지난 만큼 왼쪽부터 잘라 보임) |
 | `SeekKnob.png` | 6×21 |  | 재생 위치 표시(남색 세로 막대, 채움의 오른쪽 끝) |
 | `SeekTrack.png` | 528×27 |  | 재생 위치 막대 바탕 |
-
-### `Logo/Sky/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Feather.png` | 18×51 |  | 하늘에 떠다니는 깃털 하나(타이틀 7개, 로딩 3개) |
 
 ## MusicSelect — 곡 선택 (게임 · 에디터)
 

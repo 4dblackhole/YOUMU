@@ -3,107 +3,92 @@
 #include "LogoView.h"
 #include "Presentation/SkinVisualComponent.h"
 #include "Texts/GameScene/YOUMULogoScene/LogoTexts.h"
+#include <cmath>
 using namespace PhantomCore;
 
 using namespace logo_ui;
 
-void LogoView::CreateLogoStrip()
+namespace
 {
-    background_ = &CreateSprite(canvas_->AnchorNode(Anchor::Center), {}, {},
-                                               "YOUMU.LogoBackground");
-    RequireComponent<SpriteVisualComponent>(*background_).SetTint({1, 1, 1, 1});
-    background_->SetZIndex(-1);
-    background_->SetVisible(false);
-    auto &strip = canvas_->CreateNode(Anchor::Center, "YOUMU.LogoStrip");
-    strip.SetPivot({0.5F, 0.5F});
-    logoStrip_ = &strip;
+    [[nodiscard]] ImageHandle SkinImage(ScreenVisual2DManager &visuals, const char *key)
+    {
+        const auto path = SkinSetSelection::Instance().Image("Logo", key);
+        return path.empty() ? ImageHandle{} : visuals.RegisterImage(path);
+    }
+} // namespace
 
-    // Every panel receives its own centered pivot. Their positions are then
-    // calculated within the strip, which prevents aspect-ratio changes from
-    // favoring either edge of the composition.
-    leftFade_ = &CreateSprite(
-        strip, {0.0F, 0.0F, 1.0F, 1.0F},
-        screenVisuals_.RegisterImage(LeftFade()),
-        "YOUMU.LeftFade");
-    centerLogo_ = &CreateSprite(
-        strip, {0.0F, 0.0F, 1.0F, 1.0F},
-        screenVisuals_.RegisterImage(Center()),
-        "YOUMU.CenterLogo");
-    rightFade_ = &CreateSprite(
-        strip, {0.0F, 0.0F, 1.0F, 1.0F},
-        screenVisuals_.RegisterImage(RightFade()),
-        "YOUMU.RightFade");
+void LogoView::CreateSky()
+{
+    // The board holds the 16:9-or-wider arrangement; it is scaled as a whole on narrower screens.
+    board_ = &canvas_->CreateNode(Anchor::Center, "YOUMU.Title");
+    board_->SetPivot({0.5F, 0.5F});
+    board_->SetSize(ReferenceSize);
+    background_ = &CreatePanel(*board_, {0.0F, 0.0F, ReferenceSize.width, ReferenceSize.height}, "YOUMU.LogoBackground");
+    auto &sky = RequireComponent<SpriteVisualComponent>(*background_);
+    sky.SetTint(ui_colors::sky::Background);
+    sky.SetCornerRadius(0.0F);
+    background_->SetZIndex(-1);
+
+    // Only feathers drift across the sky; there are no clouds.
+    for (auto &feather : feathers_)
+    {
+        feather = &CreateSprite(*board_, {0.0F, 0.0F, FeatherSize.width, FeatherSize.height}, {}, "YOUMU.Feather");
+        RequireComponent<SpriteVisualComponent>(*feather).SetTint(ui_colors::White);
+        feather->SetZIndex(0);
+    }
+
+    auto &frame = canvas_->CreateNode(Anchor::Center, "YOUMU.Letterbox");
+    frame.SetZIndex(5);
+    for (auto &band : letterbox_)
+    {
+        band = &CreatePanel(frame, {}, "YOUMU.LetterboxBand");
+        auto &visual = RequireComponent<SpriteVisualComponent>(*band);
+        visual.SetTint(ui_colors::theme::Letterbox);
+        visual.SetCornerRadius(0.0F);
+        band->SetVisible(false);
+    }
 }
 
 void LogoView::CreateMenu()
 {
     const auto &text = Logo(texts_);
-    auto &menu = canvas_->CreateNode(Anchor::Center, "YOUMU.Menu");
-    menu.SetPivot({0.5F, 0.5F});
-    menu.SetSize(MenuSize);
-    menu.SetPosition({0.0F, MenuCenterOffsetY});
-    menu.SetZIndex(10);
-    auto &gameStart = CreateButton(
-        menu, {ButtonLeft, MenuSize.height - ButtonHeight, ButtonWidth, ButtonHeight},
-        std::wstring(text.menu[GameStartIndex]), "YOUMU.GameStart");
-    auto &editor = CreateButton(menu,
-                                               {ButtonLeft,
-                                                MenuSize.height - ButtonVerticalStep - ButtonHeight,
-                                                ButtonWidth, ButtonHeight},
-                                               std::wstring(text.menu[EditorIndex]), "YOUMU.Editor");
-    auto &option = CreateButton(
-        menu,
-        {ButtonLeft, MenuSize.height - ButtonVerticalStep * 2.0F - ButtonHeight, ButtonWidth,
-         ButtonHeight},
-        std::wstring(text.menu[OptionIndex]), "YOUMU.Option");
-    auto &exit = CreateButton(
-        menu,
-        {ButtonLeft, MenuSize.height - ButtonVerticalStep * 3.0F - ButtonHeight, ButtonWidth,
-         ButtonHeight},
-        std::wstring(text.menu[ExitIndex]), "YOUMU.Exit");
-    menuButtons_ = {&gameStart, &editor, &option, &exit};
-    menuButtonIds_ = {gameStart.Id(), editor.Id(), option.Id(), exit.Id()};
-
-    for (Visual2DNode *button : menuButtons_)
-    {
-        RequireComponent<TextVisualComponent>(*button).SetFontSize(25.0F);
-    }
-    constexpr std::array keys{"StartButton", "EditorButton", "OptionsButton", "ExitButton"};
+    constexpr std::array names{"YOUMU.GameStart", "YOUMU.Editor", "YOUMU.Option", "YOUMU.Exit"};
     for (std::size_t i = 0; i < menuButtons_.size(); ++i)
-        BindSkinImage(*menuButtons_[i], screenVisuals_, "Logo", keys[i]);
-
-    const ImageHandle cursorImage = screenVisuals_.RegisterImage(
-        SelectionCursor());
-    auto &cursor =
-        CreateSprite(menu, {0.0F, 0.0F, CursorSize.width, CursorSize.height},
-                                    cursorImage, "YOUMU.SelectionCursor");
-    cursor.SetPivot({0.5F, 0.5F});
-    cursor.SetZIndex(2);
-    selectionCursor_ = &cursor;
-
+    {
+        auto &button = CreateButton(*board_, {}, std::wstring(text.menu[i]), names[i]);
+        button.SetZIndex(10);
+        auto &caption = RequireComponent<TextVisualComponent>(button);
+        caption.SetFontSize(20.0F);
+        caption.SetFontWeight(800);
+        caption.SetHorizontalAlignment(TextAlignment::Center);
+        menuButtons_[i] = &button;
+        menuButtonIds_[i] = button.Id();
+    }
+    // The gold feather sits inside the chosen item, at its left.
+    selectionCursor_ = &CreateSprite(*board_, {0.0F, 0.0F, CursorSize.width, CursorSize.height}, {},
+                                     "YOUMU.SelectionCursor");
+    RequireComponent<SpriteVisualComponent>(*selectionCursor_).SetTint(ui_colors::White);
+    selectionCursor_->SetZIndex(11);
     SetSelectedMenuItem(GameStartIndex);
 }
 
 void LogoView::RefreshSkinImages()
 {
     const auto revision = SkinSetSelection::Instance().Revision();
-    if (revision == skinRevision_ || leftFade_ == nullptr || centerLogo_ == nullptr ||
-        rightFade_ == nullptr || selectionCursor_ == nullptr)
+    if (revision == skinRevision_ || background_ == nullptr || selectionCursor_ == nullptr)
         return;
-    RequireComponent<SpriteVisualComponent>(*leftFade_).SetImage(
-        screenVisuals_.RegisterImage(LeftFade()));
-    RequireComponent<SpriteVisualComponent>(*centerLogo_).SetImage(
-        screenVisuals_.RegisterImage(Center()));
-    RequireComponent<SpriteVisualComponent>(*rightFade_).SetImage(
-        screenVisuals_.RegisterImage(RightFade()));
-    RequireComponent<SpriteVisualComponent>(*selectionCursor_).SetImage(
-        screenVisuals_.RegisterImage(SelectionCursor()));
-    const auto background = SkinSetSelection::Instance().Image("Logo", "Background");
-    background_->SetVisible(!background.empty());
-    logoStrip_->SetVisible(background.empty());
-    if (!background.empty())
-        RequireComponent<SpriteVisualComponent>(*background_)
-            .SetImage(screenVisuals_.RegisterImage(background));
+    auto &sky = RequireComponent<SpriteVisualComponent>(*background_);
+    const auto background = SkinImage(screenVisuals_, "Background");
+    sky.SetImage(background);
+    // An authored sky keeps its own colours; without one the flat sky colour remains.
+    sky.SetTint(background ? ui_colors::White : ui_colors::sky::Background);
+    const auto feather = SkinImage(screenVisuals_, "Sky.Feather");
+    for (auto *node : feathers_)
+    {
+        RequireComponent<SpriteVisualComponent>(*node).SetImage(feather);
+        node->SetVisible(static_cast<bool>(feather));
+    }
+    RequireComponent<SpriteVisualComponent>(*selectionCursor_).SetImage(SkinImage(screenVisuals_, "SelectionCursor"));
     for (auto *button : menuButtons_)
         button->GetComponent<SkinVisualComponent>()->Update(0);
     skinRevision_ = revision;
@@ -117,46 +102,80 @@ void LogoView::ApplyTexts()
         auto &component =
             RequireComponent<TextVisualComponent>(*menuButtons_[index]);
         component.SetText(std::wstring(text.menu[index]));
-        texts_.ApplyFont(component);
+        component.SetFont(ui_fonts::Text(text.menu[index]));
     }
     options_.RefreshTexts();
     textRevision_ = texts_.Revision();
 }
 
-void LogoView::UpdateLogoStripLayout()
+void LogoView::UpdateLayout()
 {
-    if (canvas_ == nullptr || logoStrip_ == nullptr || leftFade_ == nullptr ||
-        centerLogo_ == nullptr || rightFade_ == nullptr)
+    if (canvas_ == nullptr || board_ == nullptr || background_ == nullptr)
     {
         return;
     }
+    const Size logical = canvas_->LogicalSize();
+    const TitleFrame frame = CalculateFrame(logical.width);
+    board_->SetSize({frame.width, ReferenceSize.height});
+    board_->SetPosition({0.0F, 0.0F});
+    board_->Transform().SetScale(frame.scale, frame.scale, 1.0F);
+    background_->SetBounds({0.0F, 0.0F, frame.width, ReferenceSize.height});
+    LayoutMenu();
 
-    // The authored panels share one source height, so scale the complete strip
-    // from that height. FixedHeight Canvas scaling then keeps the art exactly
-    // flush with the physical viewport vertically at every window size.
-    // Extra horizontal art remains outside the viewport instead of distorting
-    // the source aspect ratio.
-    const Size logicalSize = canvas_->LogicalSize();
-    background_->SetBounds(
-        {-logicalSize.width * 0.5F, -logicalSize.height * 0.5F, logicalSize.width, logicalSize.height});
-    const float scale = logicalSize.height / StripSourceHeight;
+    const float contentWidth = frame.width * frame.scale, contentHeight = ReferenceSize.height * frame.scale;
+    const float vertical = (logical.height - contentHeight) * 0.5F, horizontal = (logical.width - contentWidth) * 0.5F;
+    const std::array<Rect, 4> bands{Rect{-logical.width * 0.5F, contentHeight * 0.5F, logical.width, vertical},
+                                    Rect{-logical.width * 0.5F, -logical.height * 0.5F, logical.width, vertical},
+                                    Rect{-logical.width * 0.5F, -contentHeight * 0.5F, horizontal, contentHeight},
+                                    Rect{contentWidth * 0.5F, -contentHeight * 0.5F, horizontal, contentHeight}};
+    for (std::size_t i = 0; i < bands.size(); ++i)
+    {
+        const bool visible = bands[i].width > 0.01F && bands[i].height > 0.01F;
+        letterbox_[i]->SetVisible(visible);
+        if (visible)
+            letterbox_[i]->SetBounds(bands[i]);
+    }
+}
 
-    const Size leftSize{LeftFadeSourceSize.width * scale,
-                                       LeftFadeSourceSize.height * scale};
-    const Size centerSize{CenterLogoSourceSize.width * scale,
-                                         CenterLogoSourceSize.height * scale};
-    const Size rightSize{RightFadeSourceSize.width * scale,
-                                        RightFadeSourceSize.height * scale};
-    const Size stripSize{leftSize.width + centerSize.width + rightSize.width,
-                                        leftSize.height};
+void LogoView::LayoutMenu()
+{
+    if (board_ == nullptr || selectionCursor_ == nullptr)
+        return;
+    const Size board = board_->NodeSize();
+    const float left = (board.width - MenuButton.width) * 0.5F + MenuCenterOffsetX - SelectedShift * 0.5F;
+    for (std::size_t i = 0; i < menuButtons_.size(); ++i)
+    {
+        if (menuButtons_[i] == nullptr)
+            continue;
+        const bool selected = i == selectedMenuIndex_;
+        const Rect bounds{left + (selected ? SelectedShift : 0.0F), MenuTop + MenuPitch * static_cast<float>(i),
+                          MenuButton.width, MenuButton.height};
+        menuButtons_[i]->SetBounds(TopLeft(bounds, board.height));
+        if (selected)
+            selectionCursor_->SetBounds(TopLeft({bounds.x + CursorLeft, bounds.y + (bounds.height - CursorSize.height) * 0.5F,
+                                                 CursorSize.width, CursorSize.height},
+                                                board.height));
+    }
+}
 
-    logoStrip_->SetSize(stripSize);
-    logoStrip_->SetPosition({0.0F, 0.0F});
-
-    const float centerY = stripSize.height * 0.5F;
-    SetCenteredImageLayout(*leftFade_, leftSize.width * 0.5F, centerY, leftSize);
-    SetCenteredImageLayout(*centerLogo_, leftSize.width + centerSize.width * 0.5F, centerY,
-                           centerSize);
-    SetCenteredImageLayout(*rightFade_, leftSize.width + centerSize.width + rightSize.width * 0.5F,
-                           centerY, rightSize);
+void LogoView::AnimateFeathers(const double deltaSeconds)
+{
+    if (board_ == nullptr)
+        return;
+    featherSeconds_ += deltaSeconds;
+    const Size board = board_->NodeSize();
+    for (std::size_t i = 0; i < feathers_.size(); ++i)
+    {
+        if (feathers_[i] == nullptr)
+            continue;
+        // Each feather falls slowly on its own column and sways sideways; positions follow
+        // from elapsed time alone, so a resize or a long frame never makes them jump.
+        const auto index = static_cast<float>(i);
+        const float column = (index + 0.5F) / static_cast<float>(feathers_.size());
+        const float speed = 9.0F + 2.5F * static_cast<float>(i % 3);
+        const float travel = board.height + FeatherSize.height * 2.0F;
+        const float fallen = std::fmod(static_cast<float>(featherSeconds_) * speed + index * 137.0F, travel);
+        const float sway = 26.0F * std::sin(static_cast<float>(featherSeconds_) * (0.35F + 0.05F * index) + index * 1.7F);
+        feathers_[i]->SetPosition({board.width * column + sway, board.height + FeatherSize.height - fallen});
+    }
 }

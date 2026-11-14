@@ -10,9 +10,8 @@
 #include <memory>
 #include <optional>
 
-// Presents the YOUMU title screen. The authored image panels remain
-// centered at every viewport aspect ratio, while one Canvas tree owns the
-// mouse/keyboard menu and its movable selection cursor.
+// Presents the YOUMU title screen: a sky with drifting feathers and the main menu.
+// One Canvas tree owns the mouse/keyboard menu and its selection cursor.
 class LogoView final
 {
   public:
@@ -29,10 +28,12 @@ class LogoView final
 
   private:
     std::optional<std::size_t> command_;
-    void CreateLogoStrip();
+    void CreateSky();
     void CreateMenu();
     void ApplyTexts();
-    void UpdateLogoStripLayout();
+    void UpdateLayout();
+    void LayoutMenu();
+    void AnimateFeathers(double deltaSeconds);
     void RefreshSkinImages();
     void ProcessPointer(const PhantomCore::InputState &input);
     void UpdateSelectionFromPointer(const PhantomCore::InputState &input);
@@ -55,11 +56,11 @@ class LogoView final
     PhantomCore::Visual2DCanvas *canvas_{};
     PhantomCore::Visual2DInputRouter inputRouter_;
     std::optional<PhantomCore::Point> canvasPointer_;
-    PhantomCore::Visual2DNode *logoStrip_{};
+    PhantomCore::Visual2DNode *board_{};
     PhantomCore::Visual2DNode *background_{};
-    PhantomCore::Visual2DNode *leftFade_{};
-    PhantomCore::Visual2DNode *centerLogo_{};
-    PhantomCore::Visual2DNode *rightFade_{};
+    std::array<PhantomCore::Visual2DNode *, 7> feathers_{};
+    std::array<PhantomCore::Visual2DNode *, 4> letterbox_{};
+    double featherSeconds_{};
     std::array<PhantomCore::Visual2DNode *, 4> menuButtons_{};
     std::array<PhantomCore::NodeId, 4> menuButtonIds_{};
     PhantomCore::Visual2DNode *selectionCursor_{};

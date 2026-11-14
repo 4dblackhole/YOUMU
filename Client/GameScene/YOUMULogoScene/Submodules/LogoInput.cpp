@@ -110,12 +110,11 @@ void LogoView::SetSelectedMenuItem(const std::size_t index)
     selectedMenuIndex_ = index;
     for (std::size_t buttonIndex = 0; buttonIndex < menuButtons_.size(); ++buttonIndex)
     {
-        ApplyButtonSelectionStyle(*menuButtons_[buttonIndex], buttonIndex == selectedMenuIndex_);
+        ApplyButtonSelectionStyle(*menuButtons_[buttonIndex], screenVisuals_, buttonIndex == selectedMenuIndex_);
     }
-
-    selectionCursor_->SetSize(CursorSize);
-    selectionCursor_->SetPosition({CursorCenterX, MenuSize.height - ButtonHeight * 0.5F -
-                                                      ButtonVerticalStep * static_cast<float>(selectedMenuIndex_)});
+    // The chosen item slides right, so the buttons move and hit-testing must follow.
+    LayoutMenu();
+    inputRouter_.InvalidateHitTest();
 }
 
 void LogoView::ActivateMenuItem(std::size_t index)
