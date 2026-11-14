@@ -26,8 +26,9 @@ namespace
             std::numeric_limits<Representation>::min();
         constexpr Representation Maximum =
             std::numeric_limits<Representation>::max();
-        if ((right > 0 && left > Maximum - right) ||
-            (right < 0 && left < Minimum - right))
+        const bool exceedsMaximum = right > 0 && left > Maximum - right;
+        const bool exceedsMinimum = right < 0 && left < Minimum - right;
+        if (exceedsMaximum || exceedsMinimum)
         {
             throw std::overflow_error("Rational addition overflowed.");
         }
@@ -44,8 +45,9 @@ namespace
             std::numeric_limits<Representation>::max();
         if (left > 0)
         {
-            if ((right > 0 && left > Maximum / right) ||
-                (right < 0 && right < Minimum / left))
+            const bool exceedsMaximum = right > 0 && left > Maximum / right;
+            const bool exceedsMinimum = right < 0 && right < Minimum / left;
+            if (exceedsMaximum || exceedsMinimum)
             {
                 throw std::overflow_error(
                     "Rational multiplication overflowed.");
@@ -53,8 +55,9 @@ namespace
         }
         else if (left < 0)
         {
-            if ((right > 0 && left < Minimum / right) ||
-                (right < 0 && right < Maximum / left))
+            const bool exceedsMinimum = right > 0 && left < Minimum / right;
+            const bool exceedsMaximum = right < 0 && right < Maximum / left;
+            if (exceedsMinimum || exceedsMaximum)
             {
                 throw std::overflow_error(
                     "Rational multiplication overflowed.");

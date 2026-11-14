@@ -29,8 +29,15 @@ bool TryParseMusicalPosition(std::string_view value, const std::int64_t implicit
     std::int64_t numerator = 0;
     std::int64_t denominator = 0;
     if (!ParseInteger(value.substr(0, slash), numerator) ||
-        !ParseInteger(value.substr(slash + 1), denominator) || denominator <= 0 ||
-        numerator < 0 || measure < 0 || measure >= MaximumMeasureCount)
+        !ParseInteger(value.substr(slash + 1), denominator))
+    {
+        return false;
+    }
+    if (denominator <= 0 || numerator < 0)
+    {
+        return false;
+    }
+    if (measure < 0 || measure >= MaximumMeasureCount)
     {
         return false;
     }

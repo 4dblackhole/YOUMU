@@ -23,6 +23,11 @@ namespace
             throw std::overflow_error("Compiled chart time exceeds the microsecond clock range.");
         return Time{static_cast<Time::rep>(std::llround(microseconds))};
     }
+
+    [[nodiscard]] bool IsMeasureInRange(std::int64_t measure)
+    {
+        return measure >= 0 && measure < MaximumMeasureCount;
+    }
 } // namespace
 
 MusicalTimeline::MusicalTimeline(const PatternDocument &pattern, RhythmDuration runtimeOffset,
@@ -110,9 +115,8 @@ std::vector<CompiledEffectCommand> MusicalTimeline::CompileEffects(const EffectD
     for (const EffectCommand &command : effects.commands)
     {
         CheckChartLoadCancellation(stop);
-        if (command.position.measure < 0 || command.position.measure >= MaximumMeasureCount ||
-            (command.endPosition &&
-             (command.endPosition->measure < 0 || command.endPosition->measure >= MaximumMeasureCount)))
+        if (!IsMeasureInRange(command.position.measure) ||
+            (command.endPosition && !IsMeasureInRange(command.endPosition->measure)))
             throw std::invalid_argument("An effect must use a measure in 0..99,999.");
         if (!IsEffectActive(command))
             continue;
@@ -561,8 +565,10 @@ const EffectCommand *MusicalTimeline::FindEffectAt(const EffectDocument &effects
         if (c.type == type && IsEffectActive(c))
         {
             const auto begin = Compile(c.position);
-            if (begin <= time &&
-                (!selected || begin > selectedTime || (begin == selectedTime && selected->position <= c.position)))
+            if (begin > time)
+                continue;
+            const bool startsLater = !selected || begin > selectedTime;
+            if (startsLater || (begin == selectedTime && selected->position <= c.position))
             {
                 selected = &c;
                 selectedTime = begin;

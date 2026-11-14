@@ -1,6 +1,14 @@
 #include "Parsing/Submodules/PatternTiming.h"
 #include <limits>
 
+namespace
+{
+[[nodiscard]] bool IsUsableBackgroundOffset(const double offset)
+{
+    return IsFinite(offset) && std::abs(offset) <= std::numeric_limits<float>::max() / 4.0;
+}
+} // namespace
+
 ParseResult<PatternDocument> ChartParser::ParsePattern(const std::string_view utf8,
                                                        std::filesystem::path source) const
 {
@@ -119,12 +127,11 @@ ParseResult<PatternDocument> ChartParser::ParsePattern(const std::string_view ut
         else if (key == "offset")
         {
             const auto comma = value.find(',');
-            if (comma == std::string_view::npos ||
-                !ParseDouble(Trim(value.substr(0, comma)), result.document.backgroundOffsetX) ||
-                !ParseDouble(Trim(value.substr(comma + 1)), result.document.backgroundOffsetY) ||
-                !IsFinite(result.document.backgroundOffsetX) || !IsFinite(result.document.backgroundOffsetY) ||
-                std::abs(result.document.backgroundOffsetX) > std::numeric_limits<float>::max() / 4.0 ||
-                std::abs(result.document.backgroundOffsetY) > std::numeric_limits<float>::max() / 4.0)
+            const bool parsed = comma != std::string_view::npos &&
+                                ParseDouble(Trim(value.substr(0, comma)), result.document.backgroundOffsetX) &&
+                                ParseDouble(Trim(value.substr(comma + 1)), result.document.backgroundOffsetY);
+            if (!parsed || !IsUsableBackgroundOffset(result.document.backgroundOffsetX) ||
+                !IsUsableBackgroundOffset(result.document.backgroundOffsetY))
                 AddDiagnostic(result.diagnostics, sourcePath, lineNumber,
                               "Background offset requires finite x, y values.");
         }

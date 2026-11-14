@@ -4,6 +4,20 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <string_view>
+
+namespace
+{
+[[nodiscard]] bool IsHitSoundBus(std::string_view target)
+{
+    return target == "HitSound" || target == "TickSound" || target == "UserInputFeedback";
+}
+
+[[nodiscard]] bool RequiresPositiveEndpoints(AutomationCurve curve)
+{
+    return curve == AutomationCurve::Exponential || curve == AutomationCurve::Harmonic;
+}
+} // namespace
 
 void ValidateEffectValue(EffectCommandType type, double value)
 {
@@ -25,14 +39,12 @@ void ValidateEffectCommand(const EffectCommand &command, std::stop_token stop)
     if (command.durationMilliseconds * 1000 >=
         static_cast<double>(std::numeric_limits<RhythmDuration::rep>::max()))
         throw std::invalid_argument("Effect duration exceeds the microsecond clock range.");
-    if (command.type == EffectCommandType::BusVolume && command.target != "HitSound" &&
-        command.target != "TickSound" && command.target != "UserInputFeedback")
+    if (command.type == EffectCommandType::BusVolume && !IsHitSoundBus(command.target))
         throw std::invalid_argument("Volume targets hit sounds, not Music/UI.");
     if (command.endPosition && *command.endPosition <= command.position)
         throw std::invalid_argument("Area end must follow its start.");
-    if (command.endPosition &&
-        (command.curve == AutomationCurve::Exponential || command.curve == AutomationCurve::Harmonic) &&
-        (command.beginValue <= 0 || command.endValue <= 0))
+    const bool nonPositiveEndpoint = command.beginValue <= 0 || command.endValue <= 0;
+    if (command.endPosition && RequiresPositiveEndpoints(command.curve) && nonPositiveEndpoint)
         throw std::invalid_argument("Exponential/Harmonic endpoints must be positive.");
     if (command.endPosition)
     {

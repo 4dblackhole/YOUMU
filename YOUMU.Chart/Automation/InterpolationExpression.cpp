@@ -31,9 +31,13 @@ double Cubic(double t, double a, double b)
 const double v = 1 - t;
 return 3 * v * v * t * a + 3 * v * t * t * b + t * t * t;
 }
+[[nodiscard]] bool IsOutsideUnitInterval(double value)
+{
+return value < 0 || value > 1;
+}
 double Bezier(double u, double x1, double y1, double x2, double y2)
 {
-if (x1 < 0 || x1 > 1 || x2 < 0 || x2 > 1)
+if (IsOutsideUnitInterval(x1) || IsOutsideUnitInterval(x2))
     throw std::invalid_argument("Bezier control point X must be in [0,1].");
 if (u <= 0 || u >= 1)
     return u;

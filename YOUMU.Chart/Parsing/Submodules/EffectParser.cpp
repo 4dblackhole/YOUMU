@@ -13,6 +13,56 @@ if (!ParseInteger(measureText, measure) || measure < 1 || !TryParseMusicalPositi
     throw std::invalid_argument("Expected a one-based measure and N/D position.");
 return position;
 }
+[[nodiscard]] bool IsScrollSpeedTarget(std::string_view target)
+{
+return target == "Whole" || target == "Separate";
+}
+[[nodiscard]] bool IsAudioBusCommand(EffectCommandType type)
+{
+switch (type)
+{
+case EffectCommandType::BusVolume:
+case EffectCommandType::ReverbSend:
+case EffectCommandType::LowPassCutoff:
+case EffectCommandType::HighPassCutoff:
+    return true;
+default:
+    return false;
+}
+}
+[[nodiscard]] bool IsHitSoundBus(std::string_view target)
+{
+return target == "HitSound" || target == "TickSound" || target == "UserInputFeedback";
+}
+[[nodiscard]] bool IsAudioBus(std::string_view target)
+{
+return target == "Music" || IsHitSoundBus(target) || target == "UI";
+}
+// A point takes Value; an area takes From and To.
+[[nodiscard]] bool IsValueOption(std::string_view key, bool area)
+{
+if (area)
+    return key == "From" || key == "To";
+return key == "Value";
+}
+[[nodiscard]] bool HasRequiredValueOptions(const std::set<std::string> &seen, bool area)
+{
+if (!area)
+    return seen.contains("Value");
+return seen.contains("From") && seen.contains("To") && seen.contains("Curve");
+}
+[[nodiscard]] bool IsCommandSection(std::string_view section)
+{
+return section == "Speed" || section == "Sounds" || section == "Zone";
+}
+[[nodiscard]] bool IsKnownSection(std::string_view section)
+{
+return section == "Interpolation" || section == "HitSounds" || IsCommandSection(section);
+}
+[[nodiscard]] bool IsBuiltInCurveName(std::string_view name)
+{
+return name == "Linear" || name == "Exponential" || name == "Harmonic";
+}
 void SetCommandKind(EffectCommand &c, std::string_view section, std::string_view commandText)
 {
 std::istringstream tokens{std::string(commandText)};
@@ -20,7 +70,7 @@ std::string name, extra;
 tokens >> name >> c.target;
 if (tokens >> extra)
     throw std::invalid_argument("Unexpected effect command argument.");
-if (section == "Speed" && name == "#ScrollSpeed" && (c.target == "Whole" || c.target == "Separate"))
+if (section == "Speed" && name == "#ScrollSpeed" && IsScrollSpeedTarget(c.target))
     c.type = c.target == "Whole" ? EffectCommandType::ScrollSpeed : EffectCommandType::NoteSpeed;
 else if (section == "Sounds" && name == "#Volume")
     c.type = EffectCommandType::BusVolume;
@@ -64,15 +114,12 @@ if (flag)
     c.beginValue = c.endValue = c.target == "ON" ? 1 : 0;
     c.target.clear();
 }
-else if (c.type == EffectCommandType::BusVolume || c.type == EffectCommandType::ReverbSend ||
-         c.type == EffectCommandType::LowPassCutoff || c.type == EffectCommandType::HighPassCutoff)
+else if (IsAudioBusCommand(c.type))
 {
-    if (c.type == EffectCommandType::BusVolume && c.target != "HitSound" && c.target != "TickSound" &&
-        c.target != "UserInputFeedback")
+    if (c.type == EffectCommandType::BusVolume && !IsHitSoundBus(c.target))
         throw std::invalid_argument("Volume targets hit sounds: HitSound, "
                                     "TickSound or UserInputFeedback.");
-    if (c.target != "Music" && c.target != "HitSound" && c.target != "TickSound" &&
-        c.target != "UserInputFeedback" && c.target != "UI")
+    if (!IsAudioBus(c.target))
         throw std::invalid_argument("Unknown audio bus.");
 }
 else if (c.type == EffectCommandType::MeasureLineVisible && !c.target.empty())
@@ -99,7 +146,7 @@ for (std::size_t i = commandIndex + 1; i < fields.size(); ++i)
     }
     else if (key == "Curve" && c.endPosition)
         c.curveName = std::string(value);
-    else if (!flag && ((key == "Value" && !c.endPosition) || ((key == "From" || key == "To") && c.endPosition)))
+    else if (!flag && IsValueOption(key, c.endPosition.has_value()))
     {
         double number{};
         if (!ParseDouble(value, number) || !std::isfinite(number))
@@ -114,8 +161,7 @@ for (std::size_t i = commandIndex + 1; i < fields.size(); ++i)
     else
         throw std::invalid_argument("Unsupported option for this effect.");
 }
-if (!flag && ((!c.endPosition && !seen.contains("Value")) ||
-              (c.endPosition && (!seen.contains("From") || !seen.contains("To") || !seen.contains("Curve")))))
+if (!flag && !HasRequiredValueOptions(seen, c.endPosition.has_value()))
     throw std::invalid_argument("Point requires Value; Area requires From, To and Curve.");
 return c;
 }
@@ -164,8 +210,7 @@ for (const auto &[lineNumber, raw] : EnumerateLines(utf8, stop_))
         if (line.front() == '[' && line.back() == ']')
         {
             section = std::string(Trim(line.substr(1, line.size() - 2)));
-            if (section != "Interpolation" && section != "HitSounds" && section != "Speed" && section != "Sounds" &&
-                section != "Zone")
+            if (!IsKnownSection(section))
                 throw std::invalid_argument("Unknown YME section.");
             continue;
         }
@@ -183,13 +228,13 @@ for (const auto &[lineNumber, raw] : EnumerateLines(utf8, stop_))
         }
         else if (section == "Interpolation")
         {
-            if (key.empty() || key == "Linear" || key == "Exponential" || key == "Harmonic" || value.empty() ||
-                !document.interpolations.emplace(std::string(key), std::string(value)).second)
+            const bool usableName = !key.empty() && !IsBuiltInCurveName(key);
+            if (!usableName || value.empty() || !document.interpolations.emplace(std::string(key), std::string(value)).second)
                 throw std::invalid_argument("An interpolation requires a unique "
                                             "non-reserved name and expression.");
             expressions.emplace(std::string(key), std::make_shared<const InterpolationExpression>(value));
         }
-        else if (section == "Speed" || section == "Sounds" || section == "Zone")
+        else if (IsCommandSection(section))
         {
             const auto fields = Split(line, ',');
             if (section == "Sounds" && fields.size() == 3 && fields[2].starts_with("#HitSound "))
@@ -199,8 +244,9 @@ for (const auto &[lineNumber, raw] : EnumerateLines(utf8, stop_))
                 std::istringstream tokens{std::string(fields[2])};
                 std::string command, target, extra;
                 tokens >> command >> target >> c.soundIndex;
-                if (command != "#HitSound" || (target != "Don" && target != "Kat") || c.soundIndex.empty() ||
-                    (tokens >> extra))
+                const bool knownKey = target == "Don" || target == "Kat";
+                const bool wellFormed = command == "#HitSound" && knownKey && !c.soundIndex.empty();
+                if (!wellFormed || (tokens >> extra))
                     throw std::invalid_argument("HitSound requires Don/Kat and a table index.");
                 c.keyType = target == "Don" ? 1 : 2;
                 c.source = {sourcePath, lineNumber, 1};

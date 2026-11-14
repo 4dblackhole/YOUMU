@@ -172,13 +172,29 @@ if (!note.hitSound.empty() && !effects.hitSounds.contains(note.hitSound))
     throw std::invalid_argument("Note references an undefined YME hit sound index.");
 }
 
+[[nodiscard]] bool IsUsableBackgroundOffset(double offset)
+{
+return std::isfinite(offset) && std::abs(offset) <= std::numeric_limits<float>::max() / 4.0;
+}
+
+// A delay may sit exactly on a measure end, which is outside the measure's note range.
+[[nodiscard]] bool IsMeasureEndDelay(const TimingDirective &directive, const MusicalTimeline &timeline)
+{
+if (directive.type != TimingDirectiveType::DelayMilliseconds)
+    return false;
+const MusicalPosition position = directive.position;
+if (position.measure < 0 || position.measure >= MaximumMeasureCount)
+    return false;
+return position.fraction == timeline.MeasureLength(position.measure);
+}
+
 void Validate(const PatternDocument &pattern, const EffectDocument &effects, const MusicalTimeline &timeline)
 {
 const auto background = pattern.backgroundFile.lexically_normal();
-if (background.has_root_path() || std::ranges::find(background, std::filesystem::path{".."}) != background.end() ||
-    !std::isfinite(pattern.backgroundOffsetX) || !std::isfinite(pattern.backgroundOffsetY) ||
-    std::abs(pattern.backgroundOffsetX) > std::numeric_limits<float>::max() / 4.0 ||
-    std::abs(pattern.backgroundOffsetY) > std::numeric_limits<float>::max() / 4.0)
+const bool escapesBackgroundFolder =
+    background.has_root_path() || std::ranges::find(background, std::filesystem::path{".."}) != background.end();
+if (escapesBackgroundFolder || !IsUsableBackgroundOffset(pattern.backgroundOffsetX) ||
+    !IsUsableBackgroundOffset(pattern.backgroundOffsetY))
     throw std::invalid_argument("Background requires a Songs/BG relative path and finite 2D offsets.");
 const auto validPosition = [&timeline](MusicalPosition p) {
     return IsValidPosition(p, timeline);
@@ -186,10 +202,7 @@ const auto validPosition = [&timeline](MusicalPosition p) {
 for (const auto &note : pattern.notes)
     ValidateNote(note, effects, timeline);
 for (const auto &directive : pattern.timing)
-    if (!validPosition(directive.position) &&
-        !(directive.type == TimingDirectiveType::DelayMilliseconds && directive.position.measure >= 0 &&
-          directive.position.measure < MaximumMeasureCount &&
-          directive.position.fraction == timeline.MeasureLength(directive.position.measure)))
+    if (!validPosition(directive.position) && !IsMeasureEndDelay(directive, timeline))
         throw std::invalid_argument("Move the out-of-measure timing directive before changing this signature.");
 ValidateEffectDocument(effects);
 ValidateEffectPositions(effects, timeline);
@@ -329,8 +342,7 @@ return pairs;
 
 CompiledPatternNote ChartEditor::CompileNote(PatternNote note) const
 {
-if (note.position.measure < 0 || note.position.measure >= MaximumMeasureCount || note.position.fraction < Rational{} ||
-    note.position.fraction >= timeline_.MeasureLength(note.position.measure))
+if (!IsValidPosition(note.position, timeline_))
     throw std::invalid_argument("Note is outside its measure.");
 const auto time = timeline_.Compile(note.position);
 const auto speed = ValidatedNoteSpeed(EffectValueAt(EffectCommandType::NoteSpeed, note.position));
@@ -925,8 +937,9 @@ const std::string effectText = WriteEffects(Effects());
 ChartParser parser;
 const auto parsedPattern = parser.ParsePattern(patternText);
 const auto parsedEffects = parser.ParseEffect(effectText);
-if (!parsedPattern.Succeeded() || !parsedEffects.Succeeded() ||
-    WritePattern(parsedPattern.document) != patternText || WriteEffects(parsedEffects.document) != effectText)
+const bool reparsed = parsedPattern.Succeeded() && parsedEffects.Succeeded();
+if (!reparsed || WritePattern(parsedPattern.document) != patternText ||
+    WriteEffects(parsedEffects.document) != effectText)
     throw std::runtime_error("Serialized chart failed validation; originals were not modified.");
 auto historyPaths = PrepareSavedHistoryPaths(savedPattern.effectFile);
 if (!effectPath.parent_path().empty()) std::filesystem::create_directories(effectPath.parent_path());
