@@ -1,5 +1,7 @@
 #include "GameplayProgressView.h"
 #include "App/AssetPaths.h"
+#include "Presentation/UiColors.h"
+#include "Presentation/UiFonts.h"
 #include "Mode/Submodules/PlaySession.h"
 
 #include <algorithm>
@@ -12,7 +14,7 @@ namespace
 {
 
     constexpr float AssetScale = 2.0F / 3.0F;
-    constexpr float TextInset = 12.0F;
+    constexpr float TextInset = 32.0F;
 
     template <typename Component> Component &RequireComponent(Visual2DNode &node)
     {
@@ -77,7 +79,7 @@ void GameplayProgressView::Initialize(ScreenVisual2DManager &visuals,
     Update(RhythmTime::min());
 }
 
-void GameplayProgressView::CreateTimeLabels(TextCatalog &texts)
+void GameplayProgressView::CreateTimeLabels(TextCatalog &)
 {
     const auto total = FormatSeconds(std::max(endTime_.count(), std::int64_t{}) / 1'000'000);
     labelWidth_ = std::max(40.0F, static_cast<float>(total.size()) * 7.0F);
@@ -87,9 +89,11 @@ void GameplayProgressView::CreateTimeLabels(TextCatalog &texts)
     {
         label->SetZIndex(3);
         auto &text = RequireComponent<TextVisualComponent>(*label);
-        texts.ApplyFont(text);
-        text.SetFontSize(16.0F * AssetScale);
-        text.SetTextColor({0.94F, 0.97F, 1.0F, 1.0F});
+        auto face = ui_fonts::Number(800, false);
+        text.SetFont(std::move(face.font));
+        text.SetFontWeight(face.weight);
+        text.SetFontSize(12.0F);
+        text.SetTextColor(ui_colors::theme::InkSoft);
     }
     RequireComponent<TextVisualComponent>(*totalLabel_)
         .SetHorizontalAlignment(TextAlignment::Trailing);

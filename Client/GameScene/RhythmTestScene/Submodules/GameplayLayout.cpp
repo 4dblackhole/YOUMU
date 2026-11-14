@@ -1,6 +1,8 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
 #include "Presentation/AccuracyText.h"
+#include "Presentation/UiColors.h"
+#include "Presentation/UiFonts.h"
 
 using namespace PhantomCore;
 
@@ -42,21 +44,17 @@ void GameplayPresenter::CreatePresentation()
     errorText.SetHorizontalAlignment(TextAlignment::Center);
 
     progressView_.Initialize(screenVisuals_, root, *session_, texts_);
-    hpView_.Initialize(root);
+    hpView_.Initialize(screenVisuals_, root);
 
-    const auto accuracyImage = screenVisuals_.RegisterImage(InGameSkinAssetPath(L"AccuracyIndicator"));
-    const auto accuracySize = ScaledImageSize(screenVisuals_, accuracyImage);
-    const float accuracyWidth = std::max(accuracySize.width, 270.0F);
-    accuracyIndicator_ = &CreateLabel(
-        root,
-        {CanvasReferenceWidth * 0.5F - GearMargin - accuracyWidth,
-         CanvasReferenceHeight * 0.5F - 50.0F - accuracySize.height, accuracyWidth, accuracySize.height},
-        std::wstring(EmptyAccuracyText), "Hud.Accuracy");
+    // Accuracy is fixed in the top-right panel, a number without a label.
+    accuracyIndicator_ = &CreateLabel(root, {}, std::wstring(EmptyAccuracyText), "Hud.Accuracy");
     accuracyIndicator_->SetZIndex(5);
     auto &accuracyText = RequireComponent<TextVisualComponent>(*accuracyIndicator_);
-    texts_.ApplyFont(accuracyText);
+    auto accuracyFace = ui_fonts::Number(800);
+    accuracyText.SetFont(std::move(accuracyFace.font));
+    accuracyText.SetFontWeight(accuracyFace.weight);
     accuracyText.SetFontSize(32.0F);
-    accuracyText.SetTextColor({0.12F, 0.16F, 0.24F, 1.0F});
+    accuracyText.SetTextColor(ui_colors::theme::Ink);
     accuracyText.SetHorizontalAlignment(TextAlignment::Trailing);
 
 #if defined(_DEBUG)
@@ -221,17 +219,16 @@ void GameplayPresenter::UpdatePresentationLayout()
         const auto offset = backgroundImage_.value ? backgroundOffset_ : Point{};
         background_->SetBounds({-width * .5F + offset.x, -height * .5F + offset.y, width, height});
     }
+    // The progress strip spans the bottom edge of the screen.
     progressView_.SetLayout(
-        {-logicalWidth * 0.5F + GearMargin, -CanvasReferenceHeight * 0.5F + 16.0F,
-         std::max(logicalWidth - GearMargin * 2.0F, 1.0F), progressView_.Height()});
-    hpView_.SetLayout(logicalWidth);
+        {-logicalWidth * 0.5F, -CanvasReferenceHeight * 0.5F, std::max(logicalWidth, 1.0F), progressView_.Height()});
+    // Zero of the timing guide is the judgement circle's screen x, directly below it.
+    judgementView_.SetGuidePlacement(-logicalWidth * 0.5F + laneScreenLeft + judgementLocalY_, 0.0F,
+                                     -logicalWidth * 0.5F);
+    hpView_.SetLayout(logicalWidth, gearHeight + GearPadding * 2.0F);
+    statisticsView_.SetLayout(logicalWidth, inputPanelSize_);
     if (accuracyIndicator_ != nullptr)
-    {
-        const auto bounds = accuracyIndicator_->Bounds();
-        accuracyIndicator_->SetBounds({logicalWidth * 0.5F - GearMargin - bounds.width, bounds.y,
-                                       bounds.width, bounds.height});
-        statisticsView_.SetLayout(logicalWidth, inputPanelSize_, accuracyIndicator_->Bounds());
-    }
+        accuracyIndicator_->SetBounds(statisticsView_.AccuracyBounds());
     if (scrollGearBorder_ != nullptr)
     {
         scrollGearBorder_->SetBounds(

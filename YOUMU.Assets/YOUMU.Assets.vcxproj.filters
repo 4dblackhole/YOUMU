@@ -21,6 +21,8 @@
     <Filter Include="Assets\Skins\Default Skin\HitSounds" />
     <Filter Include="Assets\Skins\Default Skin\HitSounds\TaikoMode" />
     <Filter Include="Assets\Skins\Default Skin\InGame" />
+    <Filter Include="Assets\Skins\Default Skin\InGame\Hud" />
+    <Filter Include="Assets\Skins\Default Skin\InGame\Hud\HpGauge" />
     <Filter Include="Assets\Skins\Default Skin\InGame\Judgements" />
     <Filter Include="Assets\Skins\Default Skin\InGame\Progress" />
     <Filter Include="Assets\Skins\Default Skin\Logo" />
@@ -46,6 +48,8 @@
     <None Include="Assets\Skins\Default Skin\*.*"><Filter>Assets\Skins\Default Skin</Filter></None>
     <None Include="Assets\Skins\Default Skin\HitSounds\TaikoMode\*.*"><Filter>Assets\Skins\Default Skin\HitSounds\TaikoMode</Filter></None>
     <None Include="Assets\Skins\Default Skin\InGame\*.*"><Filter>Assets\Skins\Default Skin\InGame</Filter></None>
+    <None Include="Assets\Skins\Default Skin\InGame\Hud\*.*"><Filter>Assets\Skins\Default Skin\InGame\Hud</Filter></None>
+    <None Include="Assets\Skins\Default Skin\InGame\Hud\HpGauge\*.*"><Filter>Assets\Skins\Default Skin\InGame\Hud\HpGauge</Filter></None>
     <None Include="Assets\Skins\Default Skin\InGame\Judgements\*.*"><Filter>Assets\Skins\Default Skin\InGame\Judgements</Filter></None>
     <None Include="Assets\Skins\Default Skin\InGame\Progress\*.*"><Filter>Assets\Skins\Default Skin\InGame\Progress</Filter></None>
     <None Include="Assets\Skins\Default Skin\Logo\*.*"><Filter>Assets\Skins\Default Skin\Logo</Filter></None>

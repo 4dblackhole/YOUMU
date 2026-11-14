@@ -362,7 +362,6 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.h" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.cpp" />
-    <ClInclude Include="Presentation\SpriteNumber.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EditorScene\Submodules\EditorWorkspaceStore.cpp" />

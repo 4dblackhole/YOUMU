@@ -1,6 +1,8 @@
 #include "GameplayJudgementView.h"
 #include "App/AssetPaths.h"
 #include "Presentation/LaneKeyBeam.h"
+#include "Presentation/UiColors.h"
+#include "Presentation/UiFonts.h"
 #include "Texts/GameScene/RhythmTestScene/GameplayTexts.h"
 #include <algorithm>
 #include <cmath>
@@ -12,12 +14,15 @@ using namespace PhantomCore;
 namespace
 {
 
-    constexpr float ReferencePixelsPerMicrosecond = 400.0F / 180'000.0F;
-    constexpr float BarHeight = 8.0F;
+    // The default JudgeLevel 50 guide (BAD +/-90ms plus a 10ms margin each side) is 420 wide.
+    constexpr float ReferencePixelsPerMicrosecond = 420.0F / 200'000.0F;
+    constexpr float BarHeight = 12.0F;
+    // Panel behind the guide: 490x48, 16 below the gear; the bar's bottom is 10 above its bottom.
+    constexpr float PanelWidth = 490.0F, PanelHeight = 48.0F, PanelGap = 16.0F, BarBottomInset = 10.0F;
     constexpr std::array<std::string_view, 8> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
                                                          "BAD", "MISS",    "POOR",  "OK"};
     constexpr std::size_t PoorImageIndex = 6, OkImageIndex = 7;
-    constexpr Color Ink{0.06F, 0.09F, 0.16F, 1.0F};
+    constexpr Color Ink = ui_colors::theme::Ink;
 
     void Tint(Visual2DNode &node, const Color color)
     {
@@ -43,6 +48,7 @@ void GameplayJudgementView::Initialize(ScreenVisual2DManager &visuals, Visual2DC
     for (std::size_t index = 0; index < halfWindows_.size(); ++index)
         halfWindows_[index] = baseRange.Bands()[index].halfWindow;
     displayHalfWindow_ = baseRange.HalfWindow(JudgementGrade::Bad) + RhythmDuration{10'000};
+    visuals_ = &visuals;
     CreateTimingGuide(canvas.Root(), texts);
     CreateJudgementImages(visuals, judgementCircle);
     OnResize(canvas.LogicalSize().width);
@@ -54,6 +60,9 @@ void GameplayJudgementView::CreateTimingGuide(Visual2DNode &root, TextCatalog &t
     guide_ = &root.CreateChild("Hud.JudgementGuide");
     guide_->SetPosition({0.0F, -342.0F});
     guide_->SetZIndex(5);
+    panel_ = &CreateSprite(*guide_, {-PanelWidth * 0.5F, -BarBottomInset, PanelWidth, PanelHeight},
+                           visuals_->RegisterImage(InGame(L"Hud.TimingPanel")), "Judgement.Panel");
+    panel_->SetZIndex(-1);
     CreateTimingBands();
     CreateTimingCaptions(texts);
     CreateTimingMarker();
@@ -63,7 +72,7 @@ void GameplayJudgementView::CreateTimingBands()
 {
     const float halfWidth = static_cast<float>(displayHalfWindow_.count()) * ReferencePixelsPerMicrosecond;
     margin_ = &CreatePanel(*guide_, {-halfWidth, 0.0F, halfWidth * 2.0F, BarHeight}, "Judgement.Margin");
-    Tint(*margin_, {0.38F, 0.43F, 0.50F, 1.0F});
+    Tint(*margin_, ui_colors::Rgb(0xC6D3E1));
     // Wide outer bands first; smaller bands cover the centre without gaps.
     for (std::size_t reverse = bands_.size(); reverse > 0; --reverse)
     {
@@ -83,9 +92,11 @@ void GameplayJudgementView::CreateTimingCaptions(TextCatalog &texts)
         labels_[index] =
             &CreateLabel(*guide_, {}, std::wstring(captions[index]), "Judgement.Caption." + std::to_string(index));
         auto &label = *labels_[index]->GetComponent<TextVisualComponent>();
-        texts.ApplyFont(label);
+        auto face = ui_fonts::Number(700, false);
+        label.SetFont(std::move(face.font));
+        label.SetFontWeight(face.weight);
         label.SetFontSize(12.0F);
-        label.SetTextColor(Ink);
+        label.SetTextColor(ui_colors::theme::InkSoft);
         label.SetHorizontalAlignment(index == 0   ? TextAlignment::Leading
                                      : index == 1 ? TextAlignment::Center
                                                   : TextAlignment::Trailing);
@@ -148,10 +159,19 @@ void GameplayJudgementView::OnResize(const float logicalWidth)
         const float width = static_cast<float>(halfWindows_[index].count()) * pixelsPerMicrosecond_ * 2.0F;
         bands_[index]->SetBounds({-width * 0.5F, 0.0F, width, BarHeight});
     }
-    labels_[0]->SetBounds({-halfWidth, 12.0F, 80.0F, 16.0F});
-    labels_[1]->SetBounds({-20.0F, 12.0F, 40.0F, 16.0F});
-    labels_[2]->SetBounds({halfWidth - 80.0F, 12.0F, 80.0F, 16.0F});
+    labels_[0]->SetBounds({-halfWidth, BarHeight + 4.0F, 80.0F, 16.0F});
+    labels_[1]->SetBounds({-20.0F, BarHeight + 4.0F, 40.0F, 16.0F});
+    labels_[2]->SetBounds({halfWidth - 80.0F, BarHeight + 4.0F, 80.0F, 16.0F});
     UpdateMarkerPositions();
+}
+
+void GameplayJudgementView::SetGuidePlacement(float zeroX, float gearBottom, float screenLeft)
+{
+    if (guide_ == nullptr)
+        return;
+    const float panelBottom = gearBottom - PanelGap - PanelHeight;
+    guide_->SetPosition({zeroX, panelBottom + BarBottomInset});
+    panel_->SetBounds({screenLeft - zeroX, -BarBottomInset, PanelWidth, PanelHeight});
 }
 
 void GameplayJudgementView::PositionMarker(TimingMarker &marker)

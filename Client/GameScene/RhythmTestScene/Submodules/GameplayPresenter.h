@@ -45,7 +45,7 @@ class GameplayPresenter final
     void ApplyFeedback(const GameplayFeedback &feedback);
     void PresentErrorMessage(const std::string_view message);
     void UpdatePresentation(const RhythmTime time);
-    void UpdateHp(double percent) { hpView_.Update(percent); }
+    void UpdateHp(const GameplayHpState &state) { hpView_.Update(state); }
     void SetDebugVisible(bool visible);
     [[nodiscard]] RhythmTime InitialTimelineTime() const;
     void UpdateInputPresentation(const PhantomCore::InputState &input, const double deltaSeconds);

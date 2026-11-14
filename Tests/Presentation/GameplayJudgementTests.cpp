@@ -54,6 +54,7 @@ namespace
     {
       public:
         std::size_t loads{};
+        std::map<std::uint64_t, std::filesystem::path> paths;
         ImageHandle LoadImageFile(const std::filesystem::path &path) override
         {
             // Read the real embedded/fallback PNG metadata, without a GPU.
@@ -70,6 +71,7 @@ namespace
                        static_cast<std::uint32_t>(header[offset + 3]);
             };
             const auto id = ++loads;
+            paths[id] = path;
             sizes_[id] = {static_cast<float>(dimension(16)), static_cast<float>(dimension(20))};
             return {id};
         }
@@ -129,8 +131,8 @@ namespace
         auto &marker = Node(root, "Judgement.Marker");
         auto &bad = Node(root, "Judgement.Band.4");
         auto &margin = Node(root, "Judgement.Margin");
-        Check(!marker.IsVisible() && Near(bad.NodeSize().width, 400.0F), "Initial guide uses base BAD +/-90ms.");
-        Check(Near(margin.NodeSize().width, 444.44445F), "Guide includes 10ms margin on each side.");
+        Check(!marker.IsVisible() && Near(bad.NodeSize().width, 378.0F), "Initial guide uses base BAD +/-90ms.");
+        Check(Near(margin.NodeSize().width, 420.0F), "Guide includes 10ms margin on each side.");
         for (std::size_t index = 0; index < base.Bands().size(); ++index)
         {
             auto &band = Node(root, "Judgement.Band." + std::to_string(index));
@@ -199,7 +201,7 @@ namespace
         synced.judgement = sync.Evaluate({}, RhythmTime{60'000});
         view.Present(synced);
         CheckOverlay(root, "GOOD");
-        Check(Near(bad.NodeSize().width, 400.0F), "Syncopation must not resize the base guide.");
+        Check(Near(bad.NodeSize().width, 378.0F), "Syncopation must not resize the base guide.");
         view.Reset();
         view.Present(Event(NoteEventType::InputRejected, JudgementGrade::Bad, RhythmDuration{500'000}));
         Check(Near(marker.Bounds().x, margin.NodeSize().width * 0.5F), "Marker must be clamped to the visible guide.");
@@ -207,7 +209,7 @@ namespace
         Check(Near(margin.NodeSize().width, 160.0F), "Wide ranges must fit a narrow viewport.");
         Check(Near(marker.Bounds().x, 80.0F), "Resize must preserve the timing position.");
         view.OnResize(1280.0F);
-        Check(Near(bad.NodeSize().width, 400.0F), "Resize restores the fixed time scale.");
+        Check(Near(bad.NodeSize().width, 378.0F), "Resize restores the fixed time scale.");
         Check(NodeCount(root) == count && renderer.loads == loads, "Repeated hits/resize must reuse nodes and images.");
         view.Reset();
         for (int i = 0; i < 32; ++i)
@@ -217,7 +219,7 @@ namespace
               "All 32 retained hits persist without retiring a slot early.");
         for (int i = 32; i < 41; ++i)
             view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Great, RhythmDuration{i * 1000}));
-        Check(Near(marker.Bounds().x, 32 * 1000 * 400.0F / 180'000), "Ring wrap must replace the oldest hit.");
+        Check(Near(marker.Bounds().x, 32 * 1000 * 420.0F / 200'000), "Ring wrap must replace the oldest hit.");
         for (int i = 0; i < 8; ++i)
             Check(Node(root, "Judgement.RetiringMarker." + std::to_string(i)).IsVisible(),
                   "At most eight displaced hits have reusable fade slots.");
@@ -238,7 +240,7 @@ namespace
         auto &strictCircle = CreateSprite(strictCanvas.Root(), {0.0F, 0.0F, 96.0F, 96.0F}, {}, "Circle");
         GameplayJudgementView strictView;
         strictView.Initialize(visuals, strictCanvas, strictCircle, AccuracyRange{"strict", 100}, texts);
-        Check(Near(Node(strictCanvas.Root(), "Judgement.Band.4").NodeSize().width, 200.0F),
+        Check(Near(Node(strictCanvas.Root(), "Judgement.Band.4").NodeSize().width, 189.0F),
               "JudgeLevel 100 must halve the base BAD band length.");
         strictView.Shutdown();
     }
@@ -378,8 +380,8 @@ namespace
                   "Background offsets must follow the engine's +Y-up coordinate system.");
             checkFraction(.5F);
             CheckGearTransform(root);
-            Check(Near(progress.Bounds().width, std::max(viewport.width / viewport.height * 720 - 40, 1.0F)),
-                  "Progress must fit the actual logical viewport width.");
+            Check(Near(progress.Bounds().width, viewport.width / viewport.height * 720) && Near(progress.Bounds().y, -360),
+                  "The progress strip spans the bottom edge at the actual logical viewport width.");
             Check(marker.Bounds().x >= 0 && marker.Bounds().x + marker.Bounds().width <= progress.NodeSize().width,
                   "Marker must remain inside the bar after resize.");
         }
@@ -815,17 +817,8 @@ namespace
     }
     std::string Number(Visual2DNode &root, std::string_view name)
     {
-        std::string value;
-        for (const auto &child : Node(root, name).Children())
-        {
-            if (!child->IsVisible()) continue;
-            const auto &sprite = *child->GetComponent<SpriteVisualComponent>();
-            const auto offset = sprite.UvOffset();
-            Check(Near(sprite.UvScale().x, .2F) && Near(sprite.UvScale().y, .5F),
-                  "Number glyphs must sample one cell from the 5x2 atlas.");
-            value += static_cast<char>('0' + std::lround(offset.x * 5) + std::lround(offset.y * 2) * 5);
-        }
-        return value;
+        const auto text = Node(root, std::string(name)).GetComponent<TextVisualComponent>()->Text();
+        return std::string(text.begin(), text.end());
     }
     void TestStatisticsHud()
     {
@@ -849,17 +842,11 @@ namespace
             static_cast<void>(loaded.session->ProcessInput(key, InputEdge::Pressed, RhythmTime{time}));
             static_cast<void>(loaded.session->ProcessInput(key, InputEdge::Released, RhythmTime{time}));
         };
-        const auto numberNodes = [&]
-        {
-            auto count = NodeCount(Node(root, "Hud.Combo")) + NodeCount(Node(root, "Hud.Score"));
-            for (std::size_t i = 0; i < 8; ++i)
-                count += NodeCount(Node(root, "Hud.JudgementCount" + std::to_string(i)));
-            return count;
-        };
+        const auto numberNodes = [&] { return NodeCount(Node(root, "Hud.JudgeCountsPanel")) + NodeCount(Node(root, "Hud.ScorePanel")); };
         const auto nodes = numberNodes(), loads = renderer.loads;
         presenter.UpdatePresentation({});
         Check(Number(root, "Hud.Combo") == "0" && Number(root, "Hud.Score") == "0",
-              "New attempts show zero combo/score using images.");
+              "New attempts show zero combo/score.");
         Check(Find(Node(root, "Input.Panel"), "Hud.Combo") != nullptr,
               "Combo must belong to the key layout and inherit its transform.");
         const auto combo = Node(root, "Hud.Combo").Bounds();
@@ -895,8 +882,8 @@ namespace
                           bounds.x + bounds.width <= static_cast<float>(width) * .5F,
                       "Counters must wrap within narrow and wide viewports.");
                 if (width >= 1280)
-                    Check(bounds.x >= static_cast<float>(width) * .5F - 380,
-                          "The compact right-hand counters must leave the central processing area free.");
+                    Check(bounds.x >= static_cast<float>(width) * .5F - 496 && bounds.y + bounds.height <= -232,
+                          "The bottom-right count panel must leave the central processing area free.");
             }
         }
         loaded.session->Reset();
@@ -905,34 +892,56 @@ namespace
                   Number(root, "Hud.JudgementCount0") == "0", "Reset clears every visible statistic.");
         Check(numberNodes() == nodes && renderer.loads == loads,
               "Updates/resizes reuse every number node and image independently of note pooling.");
+        const auto accuracy = Node(root, "Hud.Accuracy").BoundsInCanvas();
+        const auto panel = Node(root, "Hud.ScorePanel").BoundsInCanvas();
+        Check(Near(panel.y + panel.height, 360 - 24) && accuracy.x >= panel.x && Near(accuracy.width, 133) &&
+                  accuracy.x + accuracy.width <= Node(root, "Hud.Score").BoundsInCanvas().x,
+              "Accuracy keeps a fixed 100.00% width in the top-right panel, left of the score.");
         presenter.Shutdown();
     }
-    void TestHpRectangles()
+    void TestHpGauge()
     {
+        AssetRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280.0F, 720.0F});
         Visual2DCanvas canvas;
         const auto baseline = NodeCount(canvas.Root());
         GameplayHpView view;
-        view.Initialize(canvas.Root());
-        view.SetLayout(1280);
-        auto &track = Node(canvas.Root(), "Hud.HP.Track");
+        view.Initialize(visuals, canvas.Root());
+        view.SetLayout(1280, 160);
+        auto &frame = Node(canvas.Root(), "Hud.HP.Frame");
         auto &fill = Node(canvas.Root(), "Hud.HP.Fill");
-        Check(NodeCount(canvas.Root()) == baseline + 2 && track.Children().size() == 1,
-              "HP consists only of a track and fill.");
-        Check(Near(track.Bounds().x, -486) && Near(track.Bounds().y, 179.333333F) &&
-                  Near(track.Bounds().width, 413.333333F) && Near(track.Bounds().height, 13.333333F),
-              "HP must match the latest Penpot placement at 1280x720.");
-        Check(!fill.IsVisible(), "Starting HP is zero.");
+        auto &marker = Node(canvas.Root(), "Hud.HP.ClearMarker");
+        auto &lock = Node(canvas.Root(), "Hud.HP.Lock");
+        Check(NodeCount(canvas.Root()) == baseline + 4 && frame.Children().size() == 3,
+              "HP consists of the frame, one fill, the clear marker and the lock.");
+        Check(Near(frame.Bounds().x, -640) && Near(frame.Bounds().y, 176) && Near(frame.Bounds().width, 490) &&
+                  Near(frame.Bounds().height, 24),
+              "The HP frame starts at the left screen edge, 16 above the gear.");
+        Check(!fill.IsVisible() && !lock.IsVisible(), "Starting HP is zero and unlocked.");
+        const auto image = [&](Visual2DNode &node)
+        { return renderer.paths.at(node.GetComponent<SpriteVisualComponent>()->Style().normalImage.value).filename().wstring(); };
         const auto nodes = NodeCount(canvas.Root());
-        for (const auto percent : {30.0, 60.0, 100.0, 0.0})
+        for (const auto percent : {30.0, 59.9, 60.0, 100.0, 0.0})
         {
-            view.Update(percent);
-            Check(Near(fill.Bounds().width, track.Bounds().width * static_cast<float>(percent / 100)),
-                  "The HP fill reflects the live gauge value.");
+            view.Update({percent, 60.0, false});
+            const auto *sprite = fill.GetComponent<SpriteVisualComponent>();
+            Check(Near(fill.Bounds().x, 32) && Near(fill.Bounds().width, 454 * static_cast<float>(percent / 100)) &&
+                      Near(sprite->UvScale().x, static_cast<float>(percent / 100)),
+                  "The fill is cropped from the left to the live gauge value, never stretched.");
+            Check(percent == 0 || image(fill) == (percent >= 60.0 ? L"FillClear.png" : L"FillLow.png"),
+                  "The fill switches to the Clear picture at the clear threshold.");
         }
-        view.Update(60);
-        view.SetLayout(800);
-        Check(Near(fill.Bounds().width, track.Bounds().width * .6F) && NodeCount(canvas.Root()) == nodes,
-              "Resizing preserves HP without allocating new nodes.");
+        Check(Near(marker.Bounds().x + marker.Bounds().width / 2, 32 + 454 * .6F),
+              "The clear marker sits at the gauge's clear threshold.");
+        view.Update({60, 80.0, true});
+        Check(Near(marker.Bounds().x + marker.Bounds().width / 2, 32 + 454 * .8F) && image(fill) == L"FillLow.png" &&
+                  lock.IsVisible(),
+              "Another gauge threshold moves the marker; the lock appears once HP is disabled.");
+        view.SetLayout(800, 160);
+        Check(Near(frame.Bounds().x, -400) && Near(fill.Bounds().width, 454 * .6F) && lock.IsVisible() &&
+                  NodeCount(canvas.Root()) == nodes,
+              "Resizing preserves HP and the lock without allocating new nodes.");
         view.Shutdown();
     }
 } // namespace
@@ -945,7 +954,7 @@ int main()
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestGuideAndOverlays();
         TestGameplayProgress();
-        TestHpRectangles();
+        TestHpGauge();
         TestStatisticsHud();
         TestSlowNotesDoNotExpandAllVisuals();
         TestMeasureLinesShareNoteMotion();

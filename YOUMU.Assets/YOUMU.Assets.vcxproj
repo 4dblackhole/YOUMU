@@ -70,6 +70,8 @@
     <None Include="Assets\Skins\Default Skin\*.*" />
     <None Include="Assets\Skins\Default Skin\HitSounds\TaikoMode\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\*.*" />
+    <None Include="Assets\Skins\Default Skin\InGame\Hud\*.*" />
+    <None Include="Assets\Skins\Default Skin\InGame\Hud\HpGauge\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\Judgements\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\Progress\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\*.*" />

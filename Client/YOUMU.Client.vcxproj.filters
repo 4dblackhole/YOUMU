@@ -271,7 +271,6 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
-    <ClInclude Include="Presentation\SpriteNumber.h"><Filter>Presentation</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EditorScene\Submodules\EditorWorkspaceStore.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>

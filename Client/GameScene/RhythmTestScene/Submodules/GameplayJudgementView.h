@@ -14,6 +14,9 @@ class GameplayJudgementView final
                     PhantomCore::Visual2DNode &judgementCircle, const AccuracyRange &baseRange,
                     TextCatalog &texts);
     void OnResize(float logicalWidth);
+    // Places the guide directly under the judgement circle: zero is the Canvas x of
+    // the circle centre and the panel starts at the left screen edge below the gear.
+    void SetGuidePlacement(float zeroX, float gearBottom, float screenLeft);
     void Present(const NoteEvent &event);
     void PresentCompletion(bool success);
     void Update(double deltaSeconds);
@@ -43,8 +46,10 @@ class GameplayJudgementView final
     std::array<RhythmDuration, AccuracyRange::BandCount> halfWindows_{};
     RhythmDuration displayHalfWindow_{};
     float pixelsPerMicrosecond_{};
+    PhantomCore::ScreenVisual2DManager *visuals_{};
     PhantomCore::Visual2DNode *guide_{};
     PhantomCore::Visual2DNode *margin_{};
+    PhantomCore::Visual2DNode *panel_{};
     std::array<PhantomCore::Visual2DNode *, AccuracyRange::BandCount> bands_{};
     std::array<PhantomCore::Visual2DNode *, 3> labels_{};
     // Fixed circular buffers: 32 retained hits plus at most 8 retiring hits.

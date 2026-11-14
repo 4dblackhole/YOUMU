@@ -84,6 +84,10 @@ class PlaySession final
     {
         return !hpDisabled_ && PlayableNoteCount() != 0;
     }
+    [[nodiscard]] bool HpDisabled() const noexcept
+    {
+        return hpDisabled_;
+    }
     void SetResultCollector(std::unique_ptr<IPlayResultCollector> collector);
     void SetResultInitialTime(RhythmTime time) noexcept;
     std::unique_ptr<IPlayResult> TakeResult(PlayEndReason reason, RhythmTime time);

@@ -146,21 +146,12 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 | 파일 | 크기 | 키 | 부품 |
 | --- | --- | --- | --- |
 | `HitCountBadge.png` | 141×90 |  | 연타 남은 타격 수 배지(남색 블록 + 금빛 표지). 숫자는 게임이 그림 |
-| `JudgeCountsPanel.png` | 744×114 |  | 오른쪽 아래 판정 수 판 |
-| `ScorePanel.png` | 351×84 |  | 오른쪽 위 정확도 · 점수 판(왼쪽 사선) |
 | `TimingBar.png` | 630×18 |  | 타이밍 막대(판정 구간 색, 가운데 0선) |
 | `TimingMarker.png` | 9×39 |  | 타이밍 표시(마지막 타격의 오차 자리) |
-| `TimingPanel.png` | 735×72 |  | 기어 아래 타이밍 인디케이터 판(오른쪽 사선) |
 
 ### `InGame/Hud/HpGauge/`
 
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `ClearMarker.png` | 15×41 |  | 클리어선(남색 선 + 틀 위로 나온 역삼각). 게이지 종류의 클리어 기준 자리 |
-| `FillClear.png` | 681×27 |  | HP 채움 · 클리어 기준 이상(새벽 금빛). 잘라 보임 |
-| `FillLow.png` | 681×27 |  | HP 채움 · 클리어 기준 전(코발트). HP만큼 왼쪽부터 잘라 보임, 늘이지 않음 |
-| `Frame.png` | 735×36 |  | HP 게이지 틀(항상 같음). 왼쪽 48px = 자물쇠 받침, 흰 칸 681×27(10% 눈금) 시작 x = 48 |
-| `Lock.png` | 45×45 |  | 자물쇠: 일시정지 메뉴나 Rewind를 쓴 뒤 그 시도의 HP가 꺼짐. 틀의 받침 위 |
+HP 게이지 부품 다섯 개(틀 · 채움 두 종류 · 클리어선 · 자물쇠)는 내장 Default Skin의 `InGame/Hud/HpGauge`로 옮겼습니다.
 
 ### `InGame/Pause/`
 
@@ -176,12 +167,7 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 ### `InGame/Progress/`
 
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Background.png` | 1920×54 | `InGame.Progress.Background` | 맨 아래 진행 막대 띠 |
-| `Fill.png` | 1670×9 | `InGame.Progress.Fill` | 진행 막대 채움(잘라 보임) |
-| `Marker.png` | 21×21 | `InGame.Progress.Marker` | 진행 막대 현재 위치 표시 |
-| `Track.png` | 1670×9 | `InGame.Progress.Track` | 진행 막대 레일 |
+진행 막대 부품 네 개와 HUD 판 세 개(정확도 · 판정 수 · 타이밍)는 내장 Default Skin의 `InGame`으로 옮겼습니다.
 
 ### `InGame/Replay/`
 

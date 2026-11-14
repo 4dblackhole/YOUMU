@@ -262,7 +262,8 @@ void RhythmTestScene::Render(const RenderContext &)
 {
     if (presentationReady_)
     {
-        view_->UpdateHp(hpGauges_.front()->State().percent);
+        const auto hp = hpGauges_.front()->State();
+        view_->UpdateHp({hp.percent, hp.clearPercent, controller_->HpDisabled()});
         view_->UpdatePresentation(controller_->Time());
     }
 }

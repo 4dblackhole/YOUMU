@@ -66,6 +66,8 @@ class GameplaySessionController final
         return *session_;
     }
     void SetHpGauges(std::span<IHpGauge *const> gauges) { session_->SetHpGauges(gauges); }
+    // True once the pause menu or Rewind disabled HP for this attempt.
+    [[nodiscard]] bool HpDisabled() const noexcept { return session_ && session_->HpDisabled(); }
     RhythmTime Time() const noexcept
     {
         return time_;

@@ -24,8 +24,9 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
     if (preparingImages_.empty())
     {
         GameplayNoteView::AppendImagePaths(preparingImages_);
-        for (const auto file : {L"AccuracyIndicator",
-                                L"HudDigits",
+        for (const auto file : {L"Hud.TimingPanel",
+                                L"Hud.ScorePanel",
+                                L"Hud.JudgeCountsPanel",
                                 L"InputPanel",
                                 L"LaneLight",
                                 L"JudgementCircle",
@@ -41,6 +42,11 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
                                 L"Progress.Track",
                                 L"Progress.Fill",
                                 L"Progress.Marker",
+                                L"Hud.HpGauge.Frame",
+                                L"Hud.HpGauge.FillLow",
+                                L"Hud.HpGauge.FillClear",
+                                L"Hud.HpGauge.ClearMarker",
+                                L"Hud.HpGauge.Lock",
                                 L"Judgements.MAX",
                                 L"Judgements.PERFECT",
                                 L"Judgements.GREAT",
