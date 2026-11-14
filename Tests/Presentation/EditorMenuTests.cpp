@@ -31,7 +31,8 @@ void TestEditorMenu()
     auto *edit = Find(canvas.Root(), "Editor.Menu.Edit");
     auto *popup = Find(canvas.Root(), "Editor.Menu.Popup");
     auto *caption = Find(canvas.Root(), "Editor.Menu.Caption.0");
-    if (!bar || !file || !edit || !popup || !caption) throw std::runtime_error("Editor menu nodes are missing.");
+    if (!bar || !file || !edit) throw std::runtime_error("Editor menu nodes are missing.");
+    if (!popup || !caption) throw std::runtime_error("Editor menu nodes are missing.");
     Check(!popup->IsVisible(), "Menus must start closed.");
     Check(file->GetComponent<TextVisualComponent>()->Text() == L"File" &&
           edit->GetComponent<TextVisualComponent>()->Text() == L"Edit" &&

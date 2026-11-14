@@ -182,7 +182,9 @@ namespace
         { ending.Update(h.Context(idle)); std::this_thread::sleep_for(std::chrono::milliseconds{2}); }
         const bool completed = ending.ShouldShowResult();
         auto ended = completed ? ending.TakeResult() : nullptr;
-        if (!completed || ending.Time() < RhythmTime{6'000'000} || !ended || ended->Summary().CanUseHp())
+        const bool reachedSongEnd = completed && ending.Time() >= RhythmTime{6'000'000};
+        const bool outsideHp = ended && !ended->Summary().CanUseHp();
+        if (!reachedSongEnd || !outsideHp)
             std::fprintf(stderr, "Empty Test: state=%d, time=%lld, result=%d, HP=%d, error=%.*s\n",
                 static_cast<int>(ending.CurrentState()), static_cast<long long>(ending.Time().count()),
                 ended != nullptr, ended ? ended->Summary().CanUseHp() : false,

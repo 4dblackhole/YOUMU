@@ -982,8 +982,9 @@ int main()
             source->measuredSize = Size{180, 20};
             marquee.Update(1.3);
             const auto moved = canvas.BuildDrawList();
-            if (moved.size() != 2 || moved[0].text != source || moved[1].text != source || moved[0].textOffset.x >= 0 ||
-                moved[1].textOffset.x <= 0 || source->value != unicode)
+            if (moved.size() != 2 || moved[0].text != source || moved[1].text != source)
+                throw std::runtime_error("Marquee must preserve its Unicode content and share its repeated layout.");
+            if (moved[0].textOffset.x >= 0 || moved[1].textOffset.x <= 0 || source->value != unicode)
                 throw std::runtime_error("Marquee must preserve its Unicode content and share its repeated layout.");
             if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, source->value.data(),
                                     static_cast<int>(source->value.size()), nullptr, 0, nullptr, nullptr) <= 0)

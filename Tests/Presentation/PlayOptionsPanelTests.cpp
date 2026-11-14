@@ -249,7 +249,8 @@ void TestPlayOptionsPanel()
     MSG message{};
     while (PeekMessageW(&message, nullptr, WM_QUIT, WM_QUIT, PM_REMOVE)) {}
     const auto result = Run(std::make_unique<NativeClient>(report));
-    if (result != 0 || !report.tested || !report.rendered || !report.cleaned)
+    const bool nativeChecksPassed = report.tested && report.rendered && report.cleaned;
+    if (result != 0 || !nativeChecksPassed)
         std::cerr << "Native Play options result/tested/rendered/cleaned: " << result << '/' << report.tested
                   << '/' << report.rendered << '/' << report.cleaned << '\n';
     Check(result == 0 && report.tested && report.rendered && report.cleaned,

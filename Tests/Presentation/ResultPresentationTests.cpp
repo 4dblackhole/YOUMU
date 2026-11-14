@@ -617,7 +617,9 @@ namespace
         const auto *artist = FindText(canvas->Root(), L"Recorded artist");
         const auto *creator = FindText(canvas->Root(), L"Recorded creator");
         const auto *rank = FindNode(canvas->Root(), "Result.RankRing");
-        if (!banner || !song || !artist || !creator || !rank)
+        if (!banner || !song || !artist)
+            throw std::runtime_error("Result must retain each metadata element independently.");
+        if (!creator || !rank)
             throw std::runtime_error("Result must retain each metadata element independently.");
         namespace layout = taiko_result_ui::layout;
         const auto columns = layout::ColumnsFor(1280);

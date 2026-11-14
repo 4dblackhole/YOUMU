@@ -32,6 +32,14 @@ namespace
                         return *part;
         throw std::runtime_error("Actual gameplay must create the progress fill.");
     }
+    // Without a filter, the replay uses its default song.
+    bool MatchesSongFilter(const std::filesystem::path &metadataPath, const std::string &songFilter)
+    {
+        if (songFilter.empty())
+            return metadataPath.filename() == "angel dream hand shaking.ymm";
+        return metadataPath.generic_u8string().find(
+                   std::u8string_view{reinterpret_cast<const char8_t*>(songFilter.c_str())}) != std::u8string::npos;
+    }
     class ReplayGame final : public IGameClient
     {
       public:
@@ -61,9 +69,7 @@ namespace
             const auto catalog = SongCatalog{}.Load(root);
             const SongCatalogEntry *song = nullptr;
             for (const auto &entry : catalog.songs)
-                if ((!songFilter_.empty() && entry.metadataPath.generic_u8string().find(
-                        std::u8string_view{reinterpret_cast<const char8_t*>(songFilter_.c_str())}) != std::u8string::npos) ||
-                    (songFilter_.empty() && entry.metadataPath.filename() == "angel dream hand shaking.ymm"))
+                if (MatchesSongFilter(entry.metadataPath, songFilter_))
                     song = &entry;
             if (!song)
                 throw std::runtime_error("Actual engine replay requires the selected catalog song.");

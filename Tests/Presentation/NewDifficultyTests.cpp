@@ -32,14 +32,12 @@ namespace
     {
         if (!window || !user) return TRUE;
         wchar_t className[32]{};
-        if (GetClassNameW(window, className, 32) != 0 &&
-            std::wstring_view(className) == L"#32770" &&
-            GetDlgItem(window, 100) && GetDlgItem(window, 103) && GetDlgItem(window, 105))
-        {
-            *reinterpret_cast<HWND*>(user) = window;
-            return FALSE;
-        }
-        return TRUE;
+        if (GetClassNameW(window, className, 32) == 0 || std::wstring_view(className) != L"#32770")
+            return TRUE;
+        if (!GetDlgItem(window, 100) || !GetDlgItem(window, 103) || !GetDlgItem(window, 105))
+            return TRUE;
+        *reinterpret_cast<HWND*>(user) = window;
+        return FALSE;
     }
     HWND OwnDifficultyDialog()
     {
