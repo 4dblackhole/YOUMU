@@ -135,8 +135,8 @@ FMOD DLL을 동봉할 수 있는 조건과 크레딧/로고는 [FMOD 라이선�
 ```text
 My Skin/
   skin.ini
-  Logo/center.png
-       Menu/start.png
+  Logo/sky.png
+       Menu/bar.png
   InGame/circle.png
   MusicSelect/background.png
   Result/sky.png
@@ -150,9 +150,9 @@ MusicSelect=MusicSelect
 Result=Result
 
 [Logo]
-LogoCenter=center.png
-StartButton=Menu/start.png
-StartButton.Hovered=Menu/start-hover.png
+Background=sky.png
+Menu.Button=Menu/bar.png
+Menu.Button.Hovered=Menu/bar-hover.png
 
 [InGame]
 note=circle.png
@@ -164,7 +164,7 @@ Background=background.png
 Background.Sky=sky.png
 ```
 
-`Folders.Logo`는 **skin.ini 폴더 기준**, `Logo.LogoCenter`는 **지정된 Logo 폴더 기준**입니다.
+`Folders.Logo`는 **skin.ini 폴더 기준**, `Logo.Background`는 **지정된 Logo 폴더 기준**입니다.
 씬 폴더도 `Images/Title`처럼 바꿀 수 있습니다. 절대/드라이브 경로와 `..`는 허용하지 않습니다.
 `/`와 역슬래시를 모두 경로 구분자로 사용할 수 있습니다. 섹션/키는 대소문자를 구분합니다.
 경로는 한글·공백을 지원하고 따옴표로 감쌀 수 있습니다. 역슬래시는 이스케이프하지 않습니다.
@@ -179,7 +179,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 
 | 섹션 | 이미지 항목 |
 | --- | --- |
-| `Logo` | `LogoCenter/LogoLeft/LogoRight`, `SelectionCursor`; 선택 `Background`, `StartButton/EditorButton/OptionsButton/ExitButton` |
+| `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor` |
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | `Background`, `Panels.Left/Right`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `ScrollbarTrack/ScrollbarHandle`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
@@ -192,7 +192,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 생략한 상태는 기본 이미지를 사용하고 원래 RGB와 기존 불투명도를 적용합니다.
 기본 이미지가 없는 키는 상태 이미지만으로 활성화되지 않습니다. 언어별 문구는 PNG에 굽지 않는 것을 권장합니다.
 부모 패널에 이미지를 지정하면 내부 단색 채움만 숨겨 PNG가 가려지지 않게 합니다.
-로고 `Background`는 기존 세 장의 로고 스트립 대신 화면 전체에 표시합니다.
+타이틀 `Background`는 화면 전체에 표시하고 메뉴 네 항목은 같은 막대 그림을 씁니다(고른 항목은 `Menu.ButtonSelected`).
 
 `SkinSetSelection`은 INI와 파일 경로를 선택 revision당 한 번 캐시합니다.
 프레임마다 파일을 읽거나 탐색하지 않습니다. 살아 있는 로고/곡 선택의 버튼·패널은 노드가
