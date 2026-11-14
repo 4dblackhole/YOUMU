@@ -325,7 +325,8 @@ void PlayOptionsPanel::ProcessInput(const InputState &input, std::optional<Point
         submit |= field->TakeSubmit();
         cancel |= field->TakeCancel();
     }
-    if (cancel || submit || (!focused && (input.WasKeyPressed(VK_ESCAPE) || input.WasKeyPressed(VK_RETURN))))
+    const bool closeKey = !focused && (input.WasKeyPressed(VK_ESCAPE) || input.WasKeyPressed(VK_RETURN));
+    if (cancel || submit || closeKey)
     { Close(); return; }
     if (pointer && viewport_->BoundsInCanvas().Contains(*pointer) && input.MouseWheelDelta() != 0)
     {

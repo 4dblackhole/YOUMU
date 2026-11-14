@@ -49,8 +49,9 @@ namespace
                 else Skip(0);
             });
             Whitespace();
-            if (!input_.empty() || !version || !success || !files || !result.sourceObjects || !result.noteRows ||
-                result.music.empty() || result.pattern.empty() || result.effects.empty()) Fail();
+            if (!input_.empty() || !version || !success) Fail();
+            if (!files || !result.sourceObjects || !result.noteRows) Fail();
+            if (result.music.empty() || result.pattern.empty() || result.effects.empty()) Fail();
             return result;
         }
 
@@ -156,9 +157,9 @@ namespace
         std::filesystem::path Path()
         {
             const auto value = String();
-            if (value.find('\0') != value.npos || value.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
-                (!value.empty() && !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
-                                                       static_cast<int>(value.size()), nullptr, 0))) Fail();
+            if (value.find('\0') != value.npos || value.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) Fail();
+            if (!value.empty() && !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
+                                                      static_cast<int>(value.size()), nullptr, 0)) Fail();
             return std::filesystem::path(std::u8string_view(reinterpret_cast<const char8_t *>(value.data()), value.size()));
         }
         std::string_view Number()
@@ -166,7 +167,8 @@ namespace
             Whitespace();
             const auto end = input_.find_first_of(" \t\r\n,}]");
             const auto value = input_.substr(0, end);
-            if (value.empty() || (value[0] != '-' && (value[0] < '0' || value[0] > '9'))) Fail();
+            if (value.empty()) Fail();
+            if (value[0] != '-' && (value[0] < '0' || value[0] > '9')) Fail();
             std::size_t index = value[0] == '-' ? 1 : 0;
             const auto digit = [&](std::size_t i) { return i < value.size() && value[i] >= '0' && value[i] <= '9'; };
             if (!digit(index)) Fail();

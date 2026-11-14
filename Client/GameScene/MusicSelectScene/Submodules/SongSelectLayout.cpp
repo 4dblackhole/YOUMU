@@ -6,10 +6,19 @@ using namespace PhantomCore;
 
 using namespace song_select;
 
+namespace
+{
+    // Checks the nodes from left to right, as a chain of null checks would.
+    template <typename... Nodes>
+    [[nodiscard]] bool AllCreated(const Nodes *...nodes) noexcept
+    {
+        return ((nodes != nullptr) && ...);
+    }
+}
+
 void MusicSelectView::UpdateResponsiveLayout()
 {
-    if (canvas_ == nullptr || board_ == nullptr || background_ == nullptr || informationPanel_ == nullptr ||
-        browserPanel_ == nullptr || backButton_ == nullptr || goButton_ == nullptr)
+    if (!AllCreated(canvas_, board_, background_, informationPanel_, browserPanel_, backButton_, goButton_))
     {
         return;
     }
@@ -73,9 +82,8 @@ void MusicSelectView::UpdateRecordPanelLayout()
 
 void MusicSelectView::UpdateSongInformationLayout()
 {
-    if (informationPanel_ == nullptr || selectedSongLabel_ == nullptr || selectedArtistLabel_ == nullptr ||
-        selectedCreatorLabel_ == nullptr || difficultyBlock_ == nullptr || selectedPatternLabel_ == nullptr ||
-        levelBadge_ == nullptr || creatorIcon_ == nullptr)
+    if (!AllCreated(informationPanel_, selectedSongLabel_, selectedArtistLabel_, selectedCreatorLabel_,
+                    difficultyBlock_, selectedPatternLabel_, levelBadge_, creatorIcon_))
     {
         return;
     }
@@ -142,8 +150,7 @@ void MusicSelectView::UpdateSongBrowserLayout()
 
 void MusicSelectView::UpdateFooterLayout(const SongSelectFrame &frame)
 {
-    if (footerBar_ == nullptr || optionButton_ == nullptr || backButton_ == nullptr || backLabel_ == nullptr ||
-        goButton_ == nullptr || goLabel_ == nullptr || goError_ == nullptr || goErrorLabel_ == nullptr)
+    if (!AllCreated(footerBar_, optionButton_, backButton_, backLabel_, goButton_, goLabel_, goError_, goErrorLabel_))
     {
         return;
     }

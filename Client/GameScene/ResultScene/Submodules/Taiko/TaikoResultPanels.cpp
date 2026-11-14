@@ -73,8 +73,9 @@ void TaikoResultView::BuildHpGraph(Visual2DNode &root)
     // The title row carries the failure mark and the pause/Rewind usage so
     // nothing is written over the curve.
     Label(root, {Margin, 107, 24, 16}, std::wstring(texts_.Get("Result.hp")), {13, 700, Caption});
-    if (summary.endReason == PlayEndReason::Completed && summary.CanUseHp() && !summary.IsCleared() &&
-        std::ranges::any_of(summary.hpGauges, [](const auto &hp) { return hp.applicable; }))
+    const bool failedCompletedPlay =
+        summary.endReason == PlayEndReason::Completed && summary.CanUseHp() && !summary.IsCleared();
+    if (failedCompletedPlay && std::ranges::any_of(summary.hpGauges, [](const auto &hp) { return hp.applicable; }))
     {
         const std::wstring failed(text.failed);
         const float chipWidth = EstimateTextWidth(failed, 12) + 16;

@@ -120,9 +120,9 @@ void PlayRecordStore::Save(const PlayRecord &r) const
     r.options.Validate();
     if (r.patternPath.empty() || r.mode.empty())
         throw std::invalid_argument("A record requires a real pattern and mode.");
+    const bool judgeOverrideMismatch = r.options.judgeLevel && *r.options.judgeLevel != r.judgeLevel;
     if (r.processedNotes > r.totalNotes ||
-        r.totalNotes > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) ||
-        (r.options.judgeLevel && *r.options.judgeLevel != r.judgeLevel))
+        r.totalNotes > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) || judgeOverrideMismatch)
         throw std::invalid_argument("Inconsistent play record summary.");
     auto db = Open(path_);
     auto s = Prepare(db.get(), "INSERT INTO Plays VALUES(NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
@@ -188,8 +188,9 @@ std::vector<PlayRecord> PlayRecordStore::Query(const std::filesystem::path &patt
         r.playedAtMilliseconds = integer(1);
         r.patternPath = pattern;
         r.mode = mode;
-        if (integer(4) < 0 || integer(4) > AccuracyScore::MaximumUnits || integer(5) < 0 || integer(6) < 0 ||
-            integer(6) > integer(5))
+        const bool accuracyInRange = integer(4) >= 0 && integer(4) <= AccuracyScore::MaximumUnits;
+        const bool noteCountsValid = integer(5) >= 0 && integer(6) >= 0 && integer(6) <= integer(5);
+        if (!accuracyInRange || !noteCountsValid)
             throw std::runtime_error("Invalid stored accuracy or note count. Records were preserved.");
         for (const int column : {7, 8, 9, 12, 13, 14, 15, 16, 20, 21, 22})
             if (integer(column) != 0 && integer(column) != 1)

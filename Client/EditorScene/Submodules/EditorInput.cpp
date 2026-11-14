@@ -148,16 +148,17 @@ bool EditorView::UpdateKeyboard(const InputState &input)
             leave = true;
     }
     const bool controlDown = input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
+    const bool altDown = input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU);
     if (input.WasKeyPressed(VK_DELETE))
         state_.DeleteSelection();
-    if (!controlDown && !input.IsKeyDown(VK_LMENU) && !input.IsKeyDown(VK_RMENU))
+    if (!controlDown && !altDown)
     {
         if (input.WasKeyPressed('Z'))
             state_.SeekFirstNote();
         if (input.WasKeyPressed('X'))
             state_.SeekLastNote();
     }
-    if (state_.Tab() == EditorTab::Pattern && !controlDown && !input.IsKeyDown(VK_LMENU) && !input.IsKeyDown(VK_RMENU))
+    if (state_.Tab() == EditorTab::Pattern && !controlDown && !altDown)
         state_.Mode().HandleToolKeys(state_, input);
     if (input.WasKeyPressed(VK_LEFT))
     {
@@ -193,23 +194,24 @@ void EditorView::UpdatePointer(const UpdateContext &context)
         else
             state_.Mode().EditScore(state_, point, true);
     }
-    if (input.WasMouseButtonPressed(MouseButton::Left) &&
-        sliderInput_.CapturedNode() != divisionSliderNode_->Id() &&
-        sliderInput_.CapturedNode() != timelineSliderNode_->Id() &&
-        sliderInput_.CapturedNode() != playbackRateSliderNode_->Id())
+    if (!input.WasMouseButtonPressed(MouseButton::Left))
+        return;
+    // A press that grabbed a slider belongs to that slider.
+    const auto captured = sliderInput_.CapturedNode();
+    if (captured == divisionSliderNode_->Id() || captured == timelineSliderNode_->Id() ||
+        captured == playbackRateSliderNode_->Id())
+        return;
+    auto found = std::find_if(controls.rbegin(), controls.rend(),
+                              [point](const Control &c) { return c.rect.Contains(point); });
+    if (found != controls.rend())
     {
-        auto found = std::find_if(controls.rbegin(), controls.rend(),
-                                  [point](const Control &c) { return c.rect.Contains(point); });
-        if (found != controls.rend())
-        {
-            auto action = found->click;
-            action();
-        }
-        else if (state_.Tab() == EditorTab::Pattern && !buildFailed_)
-        {
-            if (!state_.Mode().BeginScoreSelection(state_, point))
-                state_.Mode().EditScore(state_, point, false);
-        }
+        auto action = found->click;
+        action();
+    }
+    else if (state_.Tab() == EditorTab::Pattern && !buildFailed_)
+    {
+        if (!state_.Mode().BeginScoreSelection(state_, point))
+            state_.Mode().EditScore(state_, point, false);
     }
 }
 

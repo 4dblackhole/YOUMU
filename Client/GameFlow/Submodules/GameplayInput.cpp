@@ -130,8 +130,9 @@ void GameplaySessionController::ProcessRhythmInput(const UpdateContext &context,
         const auto &event = events[eventIndex];
         if (event.performanceCounterTicks < gameplayStartTicks_)
             continue;
-        if ((exitTicks && event.performanceCounterTicks > *exitTicks) ||
-            (event.type == InputEventType::KeyPressed && event.code == VK_ESCAPE))
+        if (exitTicks && event.performanceCounterTicks > *exitTicks)
+            break;
+        if (event.type == InputEventType::KeyPressed && event.code == VK_ESCAPE)
             break;
         if (event.type != InputEventType::KeyPressed &&
             event.type != InputEventType::KeyReleased)

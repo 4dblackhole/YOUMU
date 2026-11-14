@@ -14,6 +14,14 @@ namespace
 
     constexpr std::array<GameplayPauseAction, 4> Actions{GameplayPauseAction::Resume, GameplayPauseAction::Rewind,
                                                          GameplayPauseAction::Retry, GameplayPauseAction::Retire};
+
+    // Only pointer movement retargets the focused row, so keyboard focus survives a still mouse.
+    [[nodiscard]] bool PointerMoved(const Point current, const std::optional<Point> &previous) noexcept
+    {
+        if (!previous)
+            return true;
+        return current.x != previous->x || current.y != previous->y;
+    }
 } // namespace
 void GameplayPauseMenu::Show(std::uint32_t width, std::uint32_t height, bool canResume, std::size_t measureCount)
 {
@@ -146,14 +154,14 @@ void GameplayPauseMenu::ProcessPointer(const InputState &input)
                              {static_cast<float>(input.MousePositionX()), static_cast<float>(input.MousePositionY())},
                              {static_cast<float>(width_), static_cast<float>(height_)}, canvas)
                        : std::nullopt;
-    if (p && (!lastPointer_ || p->x != lastPointer_->x || p->y != lastPointer_->y))
+    if (p && PointerMoved(*p, lastPointer_))
         for (std::size_t i = 0; i < rows_.size(); ++i)
         {
             const auto *row = canvas.FindNode(frames_[i]);
             if (!row)
                 continue;
             const auto b = row->BoundsInCanvas();
-            if (p->x >= b.x && p->x <= b.x + b.width && p->y >= b.y && p->y <= b.y + b.height)
+            if (b.Contains(*p))
                 focus_ = i;
         }
     lastPointer_ = p;

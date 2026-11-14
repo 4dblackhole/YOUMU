@@ -38,7 +38,9 @@ namespace taiko_result_ui
         std::size_t total = 0;
         for (const auto count : counts)
             total += count;
-        if (total == 0 || !(outerRadius > innerRadius) || !(innerRadius >= 0) || !(rowHeight > 0))
+        if (total == 0)
+            return ring;
+        if (!(outerRadius > innerRadius) || !(innerRadius >= 0) || !(rowHeight > 0))
             return ring;
 
         std::size_t accumulated = 0;

@@ -92,7 +92,9 @@ void EditorMenuBar::Resize()
 
 void EditorMenuBar::Refresh(bool dirty)
 {
-    if (!canvas_ || (labelsInitialized_ && dirty_ == dirty && textRevision_ == texts_->Revision()))
+    if (!canvas_)
+        return;
+    if (labelsInitialized_ && dirty_ == dirty && textRevision_ == texts_->Revision())
         return;
     const auto items = Items(open_ == Menu::Edit);
     const float width = open_ == Menu::Edit ? 430.0F : 320.0F;

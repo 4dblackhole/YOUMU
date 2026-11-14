@@ -198,15 +198,19 @@ void TaikoEditorMode::DrawOverview(IEditorModeCanvas &canvas, IEditorContext &st
         noteHits_.push_back({{x, y}, n.sourceOrder});
     }
     for (const auto &t : state.Document().Timing())
-        if (t.type == TimingDirectiveType::Bpm && timeline.IsPositionActive(t.position) &&
-            t.position.measure >= state.Score().firstMeasure &&
-            t.position.measure < state.Score().firstMeasure + MeasuresPerRow * VisibleRows)
-            canvas.Text({xAt(t.position),
-                         200 + static_cast<float>((t.position.measure - state.Score().firstMeasure) / MeasuresPerRow) *
-                                   RowHeight,
-                         140, 24},
-                        std::wstring(catalog.Get("Editor.bpm")) + L" " + std::to_wstring(static_cast<int>(t.value)), 15,
-                        Blue);
+    {
+        if (t.type != TimingDirectiveType::Bpm || !timeline.IsPositionActive(t.position))
+            continue;
+        if (t.position.measure < state.Score().firstMeasure ||
+            t.position.measure >= state.Score().firstMeasure + MeasuresPerRow * VisibleRows)
+            continue;
+        canvas.Text({xAt(t.position),
+                     200 + static_cast<float>((t.position.measure - state.Score().firstMeasure) / MeasuresPerRow) *
+                               RowHeight,
+                     140, 24},
+                    std::wstring(catalog.Get("Editor.bpm")) + L" " + std::to_wstring(static_cast<int>(t.value)), 15,
+                    Blue);
+    }
 }
 
 void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &state,
@@ -255,7 +259,8 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
         if (span.end < visibleBegin || span.begin > visibleEnd)
             continue;
         const float barX = xAtTime(span.begin);
-        if (span.end > span.begin && barX >= RealtimeLane.x && barX <= RealtimeLane.x + RealtimeLane.width &&
+        const bool barInLane = barX >= RealtimeLane.x && barX <= RealtimeLane.x + RealtimeLane.width;
+        if (span.end > span.begin && barInLane &&
             state.Document().EffectValueAt(EffectCommandType::MeasureLineVisible, span.sourceBegin) >= .5)
             canvas.Box({barX, 361, measureWidth, 202}, White);
         float lastDrawnX = -std::numeric_limits<float>::infinity();
@@ -386,8 +391,9 @@ void TaikoEditorMode::EditScore(IEditorContext &state, Point point, bool erase)
     {
         const int row = static_cast<int>((point.y - RowTop) / RowHeight),
                   col = static_cast<int>((point.x - ScoreLeft) / MeasureWidth);
-        if (point.x < ScoreLeft || point.x >= ScoreRight || point.y < RowTop || row >= VisibleRows ||
-            point.y - (RowTop + row * RowHeight) > StaffHeight)
+        if (point.x < ScoreLeft || point.x >= ScoreRight)
+            return;
+        if (point.y < RowTop || row >= VisibleRows || point.y - (RowTop + row * RowHeight) > StaffHeight)
             return;
         p.measure = state.Score().firstMeasure + row * MeasuresPerRow + col;
         if (p.measure >= MaximumMeasureCount)

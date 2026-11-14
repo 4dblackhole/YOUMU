@@ -138,22 +138,20 @@ inline void SetColor(PhantomCore::Visual2DNode &node, const PhantomCore::Color c
 [[nodiscard]] inline PhantomCore::Color AmbientColor(
     const NoteVisualKind visualKind) noexcept
 {
-    if (visualKind == NoteVisualKind::Purple)
+    switch (visualKind)
     {
+    case NoteVisualKind::Purple:
         return {0.65F, 0.25F, 0.90F, 1.0F};
-    }
-    if (visualKind == NoteVisualKind::Kat ||
-        visualKind == NoteVisualKind::BigKat ||
-        visualKind == NoteVisualKind::KatBuzz)
-    {
+    case NoteVisualKind::Kat:
+    case NoteVisualKind::BigKat:
+    case NoteVisualKind::KatBuzz:
         return KatBlue;
-    }
-    if (visualKind == NoteVisualKind::Roll ||
-        visualKind == NoteVisualKind::BigRoll ||
-        visualKind == NoteVisualKind::Balloon ||
-        visualKind == NoteVisualKind::DengDeng)
-    {
+    case NoteVisualKind::Roll:
+    case NoteVisualKind::BigRoll:
+    case NoteVisualKind::Balloon:
+    case NoteVisualKind::DengDeng:
         return RollGold;
+    default:
+        return DonRed;
     }
-    return DonRed;
 }

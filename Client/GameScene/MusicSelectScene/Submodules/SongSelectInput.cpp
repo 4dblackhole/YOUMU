@@ -22,20 +22,22 @@ void MusicSelectView::ProcessPointer(const InputState &input)
     pointer.leftButtonReleased = input.WasMouseButtonReleased(MouseButton::Left);
     pointer.wheelDelta = input.MouseWheelDelta();
     pointer.timestampTicks = LatestPointerTimestamp(input);
-    if (additionMenu_ && additionMenu_->IsVisible() &&
-        (!canvasPointer_ || !additionMenu_->BoundsInCanvas().Contains(*canvasPointer_)))
+    if (IsAdditionMenuOpen() && (!canvasPointer_ || !additionMenu_->BoundsInCanvas().Contains(*canvasPointer_)))
         inputRouter_.Reset(*canvas_);
     else
         inputRouter_.Process(*canvas_, pointer);
 
+    // The wheel scrolls tabs first, then the song list, unless an overlay owns the pointer.
+    const bool overlayOpen = IsSelectionModalVisible() || options_.IsVisible() || IsAdditionMenuOpen();
     bool tabsScrolled = false;
-    if (!IsSelectionModalVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) && input.MouseWheelDelta() != 0)
+    if (!overlayOpen && input.MouseWheelDelta() != 0)
     {
         tabsScrolled = canvasPointer_ && favoriteTabs_.Scroll(*canvasPointer_, input.MouseWheelDelta());
     }
-    if (!tabsScrolled && !IsSelectionModalVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) &&
-        canvasPointer_.has_value() &&
-        songList_.Viewport() != nullptr && songList_.Viewport()->BoundsInCanvas().Contains(*canvasPointer_) &&
+    if (tabsScrolled || overlayOpen || !canvasPointer_.has_value())
+        return;
+    const auto *viewport = songList_.Viewport();
+    if (viewport != nullptr && viewport->BoundsInCanvas().Contains(*canvasPointer_) &&
         std::abs(input.MouseWheelDelta()) > 0.0F)
         songList_.ScrollBy(-input.MouseWheelDelta() * layout::ScrollStep);
 }

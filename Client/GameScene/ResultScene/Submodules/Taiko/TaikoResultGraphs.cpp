@@ -77,8 +77,9 @@ namespace taiko_result_ui
     std::vector<RectanglePrimitive> BuildHpCurve(const PlayResultSummary &result, Rect plot)
     {
         std::vector<RectanglePrimitive> rectangles;
-        if (!result.hpHistory || result.hpGauges.empty() || !result.hpGauges.front().applicable ||
-            plot.width <= 0 || plot.height <= 0)
+        if (!result.hpHistory || result.hpGauges.empty() || !result.hpGauges.front().applicable)
+            return rectangles;
+        if (plot.width <= 0 || plot.height <= 0)
             return rectangles;
         const auto firstControl = std::ranges::find_if(result.controls, [](const auto &control)
             { return control.pauseMenuShown || control.type == PlayControlType::Rewind; });

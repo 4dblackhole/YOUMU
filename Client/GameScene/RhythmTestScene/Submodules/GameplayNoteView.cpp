@@ -496,7 +496,8 @@ void GameplayNoteView::UpdateNote(const INote &model, const RhythmTime time, con
         focusClaimed = true;
     }
 
-    if (presentation != nullptr && presentation->hasEndTime && layers.body != nullptr && layers.tail != nullptr)
+    const bool hasLongNoteParts = layers.body != nullptr && layers.tail != nullptr;
+    if (presentation != nullptr && presentation->hasEndTime && hasLongNoteParts)
         UpdateLongNoteParts(layers, *presentation, time, targetTime, position.y, speed, note.processedTicks);
 }
 

@@ -12,6 +12,11 @@ namespace
 {
     constexpr std::size_t Rows = 6;
     void Text(Visual2DNode &node, std::wstring text) { RequireComponent<TextVisualComponent>(node).SetText(std::move(text)); }
+    bool IsConfirmOrCancelKeyActive(const InputState &input)
+    {
+        if (input.IsKeyDown(VK_RETURN) || input.IsKeyDown(VK_ESCAPE)) return true;
+        return input.WasKeyPressed(VK_RETURN) || input.WasKeyPressed(VK_ESCAPE);
+    }
 }
 Visual2DNode &SongFavoritesPanel::Button(Visual2DNode &parent, std::string name)
 {
@@ -239,7 +244,7 @@ void SongFavoritesPanel::ProcessInput(const InputState &input, std::optional<Poi
     if (discardKeys_) { discardKeys_ = false; return; }
     if (waitRelease_)
     {
-        if (!input.IsKeyDown(VK_RETURN) && !input.IsKeyDown(VK_ESCAPE) && !input.WasKeyPressed(VK_RETURN) && !input.WasKeyPressed(VK_ESCAPE))
+        if (!IsConfirmOrCancelKeyActive(input))
             waitRelease_ = false;
         return;
     }

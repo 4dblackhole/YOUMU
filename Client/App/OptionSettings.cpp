@@ -98,27 +98,53 @@ namespace
                                    });
     }
 
+    bool IsSupportedLanguage(const Language language)
+    {
+        switch (language)
+        {
+        case Language::Korean:
+        case Language::English:
+        case Language::Japanese:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool IsValidWindowExtent(const std::uint32_t extent)
+    {
+        return extent != 0 && extent <= 16384;
+    }
+
+    // Layouts that allow unassigned auxiliary keys store those slots as 0.
+    bool IsInvalidSavedKey(const std::uint16_t key, const bool allowUnassigned)
+    {
+        if (key == 0 && allowUnassigned)
+            return false;
+        return key < 8 || key > 254;
+    }
+
     void Validate(const OptionValues &values)
     {
-        if (values.language != Language::Korean &&
-            values.language != Language::English && values.language != Language::Japanese)
+        if (!IsSupportedLanguage(values.language))
             throw std::runtime_error("Invalid language option.");
-        if (values.driverIndex < -1 || !IsSingleLine(values.audioMiddleware) ||
-            !IsSingleLine(values.driverName) || values.audioMiddleware.empty())
+        const bool validMiddleware = IsSingleLine(values.audioMiddleware) && !values.audioMiddleware.empty();
+        const bool validDriver = values.driverIndex >= -1 && IsSingleLine(values.driverName);
+        if (!validMiddleware || !validDriver)
             throw std::runtime_error("Invalid audio option.");
         const auto skin = EncodeUtf8(values.skinSet);
         if (!IsSingleLine(EncodeUtf8(values.songsPath.wstring())))
             throw std::runtime_error("Songs path must fit a single UTF-8 INI line.");
         if (!values.songsPath.is_absolute() && values.songsPath.has_root_path())
             throw std::runtime_error("Songs path must be fully absolute or relative to the executable directory.");
-        if (skin.empty() || !IsSingleLine(skin) || values.skinSet == L"." ||
-            values.skinSet == L".." || values.skinSet.find_first_of(L"/\\") != std::wstring::npos)
+        const bool singleLineSkin = !skin.empty() && IsSingleLine(skin);
+        const bool dotSkin = values.skinSet == L"." || values.skinSet == L"..";
+        if (!singleLineSkin || dotSkin || values.skinSet.find_first_of(L"/\\") != std::wstring::npos)
             throw std::runtime_error("The skin option must name one folder.");
         if (values.audioMiddleware != "FMOD")
             throw std::runtime_error("Only the FMOD audio middleware is installed.");
         static_cast<void>(OutputName(values.audioOutput));
-        if (!values.windowWidth || !values.windowHeight || values.windowWidth > 16384 ||
-            values.windowHeight > 16384)
+        if (!IsValidWindowExtent(values.windowWidth) || !IsValidWindowExtent(values.windowHeight))
             throw std::runtime_error("Window dimensions must be within 1..16384 pixels.");
         const auto layouts = AvailableInputLayouts();
         for (const auto &[mode, bindings] : values.modeKeys)
@@ -130,8 +156,8 @@ namespace
             for (const auto &[id, keys] : bindings)
             {
                 if (!IsIdentifier(id) || keys.empty() ||
-                    std::ranges::any_of(keys, [allowUnassigned](auto key) {
-                        return (key != 0 || !allowUnassigned) && (key < 8 || key > 254);
+                    std::ranges::any_of(keys, [allowUnassigned](const std::uint16_t key) {
+                        return IsInvalidSavedKey(key, allowUnassigned);
                     }))
                     throw std::runtime_error("Invalid mode input keys.");
             }

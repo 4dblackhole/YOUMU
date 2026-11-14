@@ -16,14 +16,21 @@ namespace
         return !relative.empty() && !relative.has_root_path() &&
                std::ranges::none_of(relative, [](const auto &part) { return part == L".."; });
     }
+    bool IsFilenameComponent(std::string_view name)
+    {
+        if (name.empty() || name.find_first_of("<>:\"/\\|?*\r\n\t") != name.npos)
+            return false;
+        if (name.front() == ' ' || name.back() == ' ' || name.back() == '.')
+            return false;
+        return std::ranges::none_of(name, [](unsigned char c) { return c < 32; });
+    }
     fs::path DifficultyName(std::string_view name)
     {
-        if (name.empty() || name.find_first_of("<>:\"/\\|?*\r\n\t") != name.npos || name.front() == ' ' ||
-            name.back() == ' ' || name.back() == '.' ||
-            std::ranges::any_of(name, [](unsigned char c) { return c < 32; }))
+        if (!IsFilenameComponent(name))
             throw Error(Failure::InvalidName, "Difficulty name must be one valid filename component.");
         const auto path = fs::path(std::u8string(reinterpret_cast<const char8_t *>(name.data()), name.size()));
-        if (path.has_root_path() || path != path.filename() || path == L"." || path == L"..")
+        const bool dotPath = path == L"." || path == L"..";
+        if (path.has_root_path() || path != path.filename() || dotPath)
             throw Error(Failure::InvalidName, "Difficulty name must not be a path.");
         return path;
     }

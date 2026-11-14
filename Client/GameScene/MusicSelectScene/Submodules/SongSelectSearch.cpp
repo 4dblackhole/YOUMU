@@ -56,7 +56,8 @@ void MusicSelectView::UpdateSearchInputVisibility()
 
 void MusicSelectView::UpdateSearchInputLayout()
 {
-    if (!searchInput_ || !canvas_ || !searchField_ || height_ == 0) return;
+    if (!searchInput_ || !canvas_) return;
+    if (!searchField_ || height_ == 0) return;
     const auto field = searchField_->BoundsInCanvas();
     const auto &text = RequireComponent<TextVisualComponent>(*searchField_);
     const auto content = text.ContentBounds();

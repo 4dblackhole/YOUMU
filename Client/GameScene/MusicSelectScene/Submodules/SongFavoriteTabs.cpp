@@ -91,7 +91,8 @@ void SongFavoriteTabs::AddTab(std::uint64_t id, std::wstring name, bool selected
 }
 void SongFavoriteTabs::Refresh(const SongFavorites &favorites, std::uint64_t selected)
 {
-    if (!root_ || (revision_ == favorites.Revision() && selected_ == selected && textRevision_ == texts_->Revision())) return;
+    if (!root_) return;
+    if (revision_ == favorites.Revision() && selected_ == selected && textRevision_ == texts_->Revision()) return;
     for (const auto &tab : tabs_) static_cast<void>(content_->RemoveChild(tab.node));
     tabs_.clear();
     float x{};

@@ -86,32 +86,37 @@ void YOUMUGame::RegisterScenes(SceneManager &scenes)
     // stays selected between them. Editor song select keeps its own list and preview.
     songLibrary_ = std::make_shared<SongLibrary>(AudioPlayback(), optionSettings_);
     auto editorSongLibrary = std::make_shared<SongLibrary>(AudioPlayback(), optionSettings_);
-    if (!scenes.RegisterScene<YOUMULogoScene>(std::string(LogoSceneId),
-                                                   SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
-                                                   std::ref(texts_), std::ref(optionSettings_), songLibrary_) ||
-        !scenes.RegisterScene<MusicSelectScene>(std::string(LobbySceneId),
-                                                SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
-                                                songLibrary_, launchRequest_, SongSelectPurpose::Gameplay,
-                                                std::ref(texts_), std::ref(optionSettings_)) ||
-        !scenes.RegisterScene<MusicSelectScene>(std::string(EditorSongSelectSceneId),
-                                                SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
-                                                std::move(editorSongLibrary), launchRequest_, SongSelectPurpose::Editor,
-                                                std::ref(texts_), std::ref(optionSettings_)) ||
-        !scenes.RegisterScene<EditorScene>(std::string(EditorSceneId),
-                                           SceneRetention::DestroyOnExit, std::ref(ScreenVisuals()),
-                                           launchRequest_, std::ref(texts_), editorWorkspaceStore_) ||
-        !scenes.RegisterScene<RhythmTestScene>(std::string(RhythmTestSceneId),
-                                               // Gameplay routes keep only their factory while inactive. The
-                                               // concrete mode Scene is constructed on entry and destroyed as
-                                               // soon as it transfers its result.
-                                               SceneRetention::DestroyOnExit, launchRequest_,
-                                               std::ref(AudioPlayback()), std::ref(ScreenVisuals()), rhythmDebugMode_,
-                                               std::ref(texts_), std::ref(pendingResult_)) ||
-        !scenes.RegisterScene(std::string(ResultSceneId), SceneRetention::DestroyOnExit,
-                              [this] { return CreateResultScene(); }))
+    // Registration stops at the first failure.
+    const auto requireRegistered = [](const bool registered)
     {
-        throw std::runtime_error("Failed to register the game Scenes.");
-    }
+        if (!registered)
+            throw std::runtime_error("Failed to register the game Scenes.");
+    };
+    requireRegistered(scenes.RegisterScene<YOUMULogoScene>(std::string(LogoSceneId),
+                                                           SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
+                                                           std::ref(texts_), std::ref(optionSettings_), songLibrary_));
+    requireRegistered(scenes.RegisterScene<MusicSelectScene>(std::string(LobbySceneId),
+                                                             SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
+                                                             songLibrary_, launchRequest_, SongSelectPurpose::Gameplay,
+                                                             std::ref(texts_), std::ref(optionSettings_)));
+    requireRegistered(scenes.RegisterScene<MusicSelectScene>(std::string(EditorSongSelectSceneId),
+                                                             SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
+                                                             std::move(editorSongLibrary), launchRequest_,
+                                                             SongSelectPurpose::Editor, std::ref(texts_),
+                                                             std::ref(optionSettings_)));
+    requireRegistered(scenes.RegisterScene<EditorScene>(std::string(EditorSceneId),
+                                                        SceneRetention::DestroyOnExit, std::ref(ScreenVisuals()),
+                                                        launchRequest_, std::ref(texts_), editorWorkspaceStore_));
+    requireRegistered(scenes.RegisterScene<RhythmTestScene>(std::string(RhythmTestSceneId),
+                                                            // Gameplay routes keep only their factory while inactive.
+                                                            // The concrete mode Scene is constructed on entry and
+                                                            // destroyed as soon as it transfers its result.
+                                                            SceneRetention::DestroyOnExit, launchRequest_,
+                                                            std::ref(AudioPlayback()), std::ref(ScreenVisuals()),
+                                                            rhythmDebugMode_, std::ref(texts_),
+                                                            std::ref(pendingResult_)));
+    requireRegistered(scenes.RegisterScene(std::string(ResultSceneId), SceneRetention::DestroyOnExit,
+                                           [this] { return CreateResultScene(); }));
 }
 
 std::unique_ptr<GameScene> YOUMUGame::CreateResultScene()

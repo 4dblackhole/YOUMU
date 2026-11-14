@@ -43,7 +43,9 @@ bool TaikoEditorMode::CancelInteraction() noexcept
 }
 bool TaikoEditorMode::OpenToolMenu(Point point)
 {
-    if (point.x < 24 || point.x >= 94 || point.y < 202 || point.y >= 682)
+    const bool outsideToolColumn = point.x < 24 || point.x >= 94;
+    const bool outsideToolRows = point.y < 202 || point.y >= 682;
+    if (outsideToolColumn || outsideToolRows)
         return false;
     popup_ = static_cast<int>((point.y - 202) / 80);
     pending_.reset();

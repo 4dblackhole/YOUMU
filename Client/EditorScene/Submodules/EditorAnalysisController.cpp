@@ -195,7 +195,9 @@ std::optional<double> EditorAnalysisController::MusicDurationSeconds() const
 {
     // Old FFT data may stay visible while a new source is analyzed, but it
     // must never supply a seek destination for the replacement music file.
-    if (analysisDirty || job_ || !analysis_ || analyzedFilesRevision_ != filesRevision_)
+    if (analysisDirty || job_)
+        return std::nullopt;
+    if (!analysis_ || analyzedFilesRevision_ != filesRevision_)
         return std::nullopt;
     const auto music = analysis_->sounds.find("Music");
     return music == analysis_->sounds.end() ? std::nullopt : std::optional{music->second.durationSeconds};
@@ -223,8 +225,9 @@ void EditorAnalysisController::StopSpectrum() noexcept
 void EditorAnalysisController::PrepareSpectrumTiles(std::span<const EditorSpectrumRequest> requests)
 {
     if (!analysis_) return;
-    if (spectrumAnalysisRevision_ != analysisRevision_ || spectrumDocument_ != audioMarkerDocument ||
-        spectrumMarkerRevision_ != audioMarkerRevision || !spectrumMarkers_)
+    const bool markersChanged =
+        spectrumDocument_ != audioMarkerDocument || spectrumMarkerRevision_ != audioMarkerRevision;
+    if (spectrumAnalysisRevision_ != analysisRevision_ || markersChanged || !spectrumMarkers_)
     {
         StopSpectrum();
         spectrumAnalysisRevision_ = analysisRevision_;

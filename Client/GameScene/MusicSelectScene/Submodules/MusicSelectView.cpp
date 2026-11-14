@@ -76,13 +76,17 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     playOptionsPanel_.Update(deltaSeconds);
     const bool controlDown =
         input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
-    if (!IsSelectionModalVisible() && !options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
+    const bool optionsShortcut = controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O'));
+    if (!IsSelectionModalVisible() && !options_.OwnsKeyboard() && optionsShortcut)
     {
         CloseAdditionMenu();
         options_.Toggle();
     }
     ProcessPointer(input);
-    if (ProcessPlayOptionsPanel(input) || ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input) || ProcessFilterPanel(input))
+    // Panels are processed in order; the first one that consumes input stops the rest.
+    const bool panelConsumed =
+        ProcessPlayOptionsPanel(input) || ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input);
+    if (panelConsumed || ProcessFilterPanel(input))
     {
         UpdateSearchInputVisibility();
         return command_;

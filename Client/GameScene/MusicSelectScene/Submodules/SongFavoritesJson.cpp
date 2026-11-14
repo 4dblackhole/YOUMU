@@ -178,14 +178,15 @@ void ValidateSongFavorites(const SongFavoritesValues &values)
     std::set<std::uint64_t> ids;
     for (const auto &folder : values.folders)
     {
-        if (folder.id == 0 || folder.id >= values.nextId || !ids.insert(folder.id).second ||
-            SongFavoritesValues::FolderName(folder.name) != folder.name) Invalid();
+        if (folder.id == 0 || folder.id >= values.nextId) Invalid();
+        if (!ids.insert(folder.id).second || SongFavoritesValues::FolderName(folder.name) != folder.name) Invalid();
         static_cast<void>(Utf8(folder.name));
         for (const auto &key : folder.patternKeys)
         {
             const auto wide = Wide(key);
             const std::filesystem::path path{wide};
-            if (wide.empty() || wide.find(L'\0') != wide.npos || !path.is_absolute() || SongFavorites::PatternKey(path) != key) Invalid();
+            if (wide.empty() || wide.find(L'\0') != wide.npos) Invalid();
+            if (!path.is_absolute() || SongFavorites::PatternKey(path) != key) Invalid();
         }
     }
     if (values.nextId == 0) Invalid();

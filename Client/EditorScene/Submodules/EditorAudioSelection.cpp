@@ -30,7 +30,8 @@ void EditorView::UpdateAudioSelection(Visual2DNode &target, const PointerEvent &
         return;
     const bool press = event.type == PointerEventType::Press && event.button == PointerButton::Left;
     const bool release = event.type == PointerEventType::Release && event.button == PointerButton::Left;
-    if (!press && !release && (event.type != PointerEventType::Move || !target.IsPressed()))
+    const bool drag = event.type == PointerEventType::Move && target.IsPressed();
+    if (!press && !release && !drag)
         return;
     if (press)
     {

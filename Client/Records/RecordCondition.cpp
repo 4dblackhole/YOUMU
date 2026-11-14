@@ -1,14 +1,58 @@
 #include "RecordCondition.h"
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
+#include <string_view>
 #include <unordered_map>
 
 namespace
 {
+    [[nodiscard]] bool IsSignOrDot(const unsigned char ch)
+    {
+        return ch == '.' || ch == '-' || ch == '+';
+    }
+    // Words hold field names, numbers and literals; '_' may continue a word but not start one.
+    [[nodiscard]] bool StartsWord(const unsigned char ch)
+    {
+        return std::isalnum(ch) || IsSignOrDot(ch);
+    }
+    [[nodiscard]] bool ContinuesWord(const unsigned char ch)
+    {
+        return StartsWord(ch) || ch == '_';
+    }
+    [[nodiscard]] bool StartsComparison(const char ch)
+    {
+        switch (ch)
+        {
+        case '<':
+        case '>':
+        case '=':
+        case '!':
+            return true;
+        default:
+            return false;
+        }
+    }
+    // Second characters of <=, >=, ==, != and <>.
+    [[nodiscard]] bool CompletesComparison(const char first, const char second)
+    {
+        return second == '=' || (first == '<' && second == '>');
+    }
+    [[nodiscard]] bool IsEqualityOperator(const std::string_view op)
+    {
+        constexpr std::array<std::string_view, 4> Operators{"=", "==", "!=", "<>"};
+        return std::ranges::find(Operators, op) != Operators.end();
+    }
+    [[nodiscard]] bool IsOrderingOperator(const std::string_view op)
+    {
+        constexpr std::array<std::string_view, 4> Operators{">", ">=", "<", "<="};
+        return std::ranges::find(Operators, op) != Operators.end();
+    }
+
     class Parser
     {
       public:
@@ -40,12 +84,12 @@ namespace
             if (source_.empty())
                 return;
             const char first = source_.front();
-            if (std::isalnum(static_cast<unsigned char>(first)) || first == '.' || first == '-' || first == '+')
+            if (StartsWord(static_cast<unsigned char>(first)))
             {
                 while (!source_.empty())
                 {
                     const auto ch = static_cast<unsigned char>(source_.front());
-                    if (!std::isalnum(ch) && ch != '.' && ch != '_' && ch != '-' && ch != '+')
+                    if (!ContinuesWord(ch))
                         break;
                     token_ += static_cast<char>(std::tolower(ch));
                     source_.remove_prefix(1);
@@ -55,8 +99,7 @@ namespace
             {
                 token_ += first;
                 source_.remove_prefix(1);
-                if (!source_.empty() && (first == '<' || first == '>' || first == '=' || first == '!') &&
-                    (source_.front() == '=' || (first == '<' && source_.front() == '>')))
+                if (!source_.empty() && StartsComparison(first) && CompletesComparison(first, source_.front()))
                 {
                     token_ += source_.front();
                     source_.remove_prefix(1);
@@ -127,10 +170,9 @@ namespace
             const auto kind = field->second.second;
             Next();
             const auto op = token_;
-            if (op != "=" && op != "==" && op != "!=" && op != "<>" && op != ">" && op != ">=" && op != "<" &&
-                op != "<=")
+            if (!IsEqualityOperator(op) && !IsOrderingOperator(op))
                 Fail();
-            if (kind != 'n' && op != "=" && op != "==" && op != "!=" && op != "<>")
+            if (kind != 'n' && !IsEqualityOperator(op))
                 Fail();
             Next();
             std::string value = token_;

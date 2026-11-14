@@ -293,8 +293,11 @@ void MusicSelectView::ApplyTexts()
 
 void MusicSelectView::RefreshSelectionPresentation()
 {
-    if (selectedSongLabel_ == nullptr || selectedArtistLabel_ == nullptr ||
-        selectedPatternLabel_ == nullptr || selectedCreatorLabel_ == nullptr || difficultyBlock_ == nullptr)
+    if (selectedSongLabel_ == nullptr || selectedArtistLabel_ == nullptr || selectedPatternLabel_ == nullptr)
+    {
+        return;
+    }
+    if (selectedCreatorLabel_ == nullptr || difficultyBlock_ == nullptr)
     {
         return;
     }

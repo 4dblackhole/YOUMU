@@ -197,8 +197,9 @@ void EditorWorkspace::PasteSelection(bool includeBlanks)
         return;
     if (clipboard_->tab != tab_)
         throw std::invalid_argument("Paste into the same editor tab as the copied items.");
-    if (!includeBlanks && clipboard_->notes.empty() && clipboard_->timing.empty() && clipboard_->effects.empty() &&
-        clipboard_->sounds.empty())
+    const bool noNotesOrTiming = clipboard_->notes.empty() && clipboard_->timing.empty();
+    const bool noEffectsOrSounds = clipboard_->effects.empty() && clipboard_->sounds.empty();
+    if (!includeBlanks && noNotesOrTiming && noEffectsOrSounds)
         return;
     const auto &timeline = Document().Timeline();
     const auto divisions = static_cast<std::int64_t>(score_.division) * 4;

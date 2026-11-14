@@ -83,6 +83,7 @@ class MusicSelectView final
     void OpenFavoritesPanel();
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
     { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || records_.FilterVisible() || playOptionsPanel_.IsVisible(); }
+    [[nodiscard]] bool IsAdditionMenuOpen() const { return additionMenu_ && additionMenu_->IsVisible(); }
     void RefreshFilterButton();
     bool ProcessKeyboard(const PhantomCore::InputState &input);
     bool ProcessSearchKeyboard(const PhantomCore::InputState &input);

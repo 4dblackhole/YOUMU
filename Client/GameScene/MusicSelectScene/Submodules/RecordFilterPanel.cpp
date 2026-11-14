@@ -16,6 +16,11 @@ namespace
         "PlayOptions.musicPitch", "PlayOptions.hitPitch", "PlayOptions.overrideJudge", "PlayOptions.scrollUnit"};
     void Text(Visual2DNode &node, std::wstring_view text)
     { RequireComponent<TextVisualComponent>(node).SetText(std::wstring{text}); }
+    bool IsConfirmOrCancelKeyActive(const InputState &input)
+    {
+        if (input.IsKeyDown(VK_RETURN) || input.IsKeyDown(VK_ESCAPE)) return true;
+        return input.WasKeyPressed(VK_RETURN) || input.WasKeyPressed(VK_ESCAPE);
+    }
     std::string ConditionAscii(std::wstring_view text)
     {
         std::string value;
@@ -259,7 +264,7 @@ void RecordFilterPanel::ProcessInput(const InputState &input)
     if (discardKeys_) { discardKeys_ = false; return; }
     if (waitRelease_)
     {
-        if (!input.IsKeyDown(VK_RETURN) && !input.IsKeyDown(VK_ESCAPE) && !input.WasKeyPressed(VK_RETURN) && !input.WasKeyPressed(VK_ESCAPE)) waitRelease_ = false;
+        if (!IsConfirmOrCancelKeyActive(input)) waitRelease_ = false;
         return;
     }
     if (cancel || (!focus && input.WasKeyPressed(VK_ESCAPE))) Close();

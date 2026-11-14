@@ -58,8 +58,8 @@ bool MusicSelectView::ProcessAdditionMenu(const InputState &input)
     }
     const bool outside = input.WasMouseButtonPressed(MouseButton::Left) &&
                          (!canvasPointer_ || !additionMenu_->BoundsInCanvas().Contains(*canvasPointer_));
-    if (command_ != SongSelectCommand::None || outside || input.WasKeyPressed(VK_ESCAPE) ||
-        input.WasMouseButtonPressed(MouseButton::Right))
+    const bool dismissed = input.WasKeyPressed(VK_ESCAPE) || input.WasMouseButtonPressed(MouseButton::Right);
+    if (command_ != SongSelectCommand::None || outside || dismissed)
         CloseAdditionMenu();
     return true; // An open menu consumes input, including clicks which dismiss it.
 }

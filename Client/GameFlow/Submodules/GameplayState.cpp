@@ -7,8 +7,9 @@ using namespace PhantomCore;
 
 void GameplaySessionController::SetEditorTestRate(double rate, const UpdateContext &context)
 {
-    if (!launchRequest_.editorTestStart || !std::isfinite(rate) ||
-        rate < GameplayLaunchRequest::EditorTestMinimumRate || rate > GameplayLaunchRequest::EditorTestMaximumRate)
+    const bool rateInRange = std::isfinite(rate) && rate >= GameplayLaunchRequest::EditorTestMinimumRate &&
+                             rate <= GameplayLaunchRequest::EditorTestMaximumRate;
+    if (!launchRequest_.editorTestStart || !rateInRange)
         throw std::invalid_argument("Editor Test rate must be within 0.25..2.0.");
     if (rate == playbackRate_ || state_ == PlayState::Ending) return;
     const auto clock = context.audio.CaptureClockSnapshot();

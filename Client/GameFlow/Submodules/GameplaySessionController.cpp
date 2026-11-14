@@ -151,11 +151,12 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
             PauseAt(*exitTicks, true);
         return;
     }
-    if (launchRequest_.editorTestStart && !pauseMenuOpen_ &&
-        timer_.CurrentState() == RhythmTimer::State::Running && time_ >= testEndTime_ && IsPatternComplete())
+    // Completion is only detected while the song clock runs without the pause menu.
+    if (pauseMenuOpen_ || timer_.CurrentState() != RhythmTimer::State::Running)
+        return;
+    if (launchRequest_.editorTestStart && time_ >= testEndTime_ && IsPatternComplete())
         EnterEnding(PlayEndReason::Completed);
-    else if (!launchRequest_.editorTestStart && !debugMode_ && !pauseMenuOpen_ && timer_.CurrentState() == RhythmTimer::State::Running &&
-        IsPatternComplete())
+    else if (!launchRequest_.editorTestStart && !debugMode_ && IsPatternComplete())
     {
         completedElapsedSeconds_ += context.deltaSeconds;
         if (completedElapsedSeconds_ >= 3.0)

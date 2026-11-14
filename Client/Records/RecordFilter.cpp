@@ -34,11 +34,17 @@ namespace
     }
     template<class T> std::wstring Text(const std::optional<T> &value)
     { return value ? std::format(L"{}", *value) : L""; }
+    bool IsRejectedBound(double value, double lower, double upper, bool positive)
+    {
+        if (!std::isfinite(value) || value < lower || value > upper)
+            return true;
+        return positive && value == 0;
+    }
     void ValidateRange(const std::optional<double> &minimum, const std::optional<double> &maximum,
                        double lower, double upper, const char *error, bool positive = false)
     {
         for (const auto value : {minimum, maximum})
-            if (value && (!std::isfinite(*value) || *value < lower || *value > upper || (positive && *value == 0)))
+            if (value && IsRejectedBound(*value, lower, upper, positive))
                 throw std::invalid_argument(error);
         if (minimum && maximum && *minimum > *maximum)
             throw std::invalid_argument("Minimum must not exceed maximum.");

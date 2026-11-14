@@ -253,8 +253,8 @@ bool OptionsPanel::ProcessInput(const InputState &input,
     }
     if (const auto *overlay = VisibleKeyOverlay())
         return !canvasPointer || !overlay->panel->BoundsInCanvas().Contains(*canvasPointer);
-    if (!IsVisible() || panel_ == nullptr || !canvasPointer.has_value() ||
-        !panel_->BoundsInCanvas().Contains(*canvasPointer))
+    const bool panelShown = IsVisible() && panel_ != nullptr;
+    if (!panelShown || !canvasPointer.has_value() || !panel_->BoundsInCanvas().Contains(*canvasPointer))
     {
         dragging_ = false;
         previousDragPoint_.reset();
@@ -510,6 +510,14 @@ void OptionsPanel::RefreshStatus()
     const auto &text = Options(texts_);
     std::wstring value;
     const auto &saved = options_.Values();
+    // A saved name identifies the driver; without one, a saved index must still be active.
+    const auto savedDriverUnavailable = [&]
+    {
+        const auto active = audio_->ActiveDriverIndex();
+        if (!saved.driverName.empty())
+            return saved.driverName != DriverName(active);
+        return saved.driverIndex >= 0 && saved.driverIndex != active;
+    };
     if (status_ == Status::SaveFailed)
         value = text.saveError;
     else if (status_ == Status::AudioFailed)
@@ -520,9 +528,7 @@ void OptionsPanel::RefreshStatus()
         value = text.inputError;
     else if (audio_->RequestedOutput() != saved.audioOutput)
         value = std::wstring(text.outputFallback) + L" " + OutputName(audio_->ActiveOutput(), text);
-    else if ((!saved.driverName.empty() && saved.driverName != DriverName(audio_->ActiveDriverIndex())) ||
-             (saved.driverName.empty() && saved.driverIndex >= 0 &&
-              saved.driverIndex != audio_->ActiveDriverIndex()))
+    else if (savedDriverUnavailable())
         value = text.driverUnavailable;
     if (!statusDetail_.empty())
         value += L"\n" + WideText(statusDetail_);

@@ -1,6 +1,7 @@
 #include "SkinManifest.h"
 #include <Windows.h>
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -26,15 +27,25 @@ namespace
         return first == value.npos ? std::wstring_view{}
                                    : value.substr(first, value.find_last_not_of(L" \t\r") - first + 1);
     }
+    bool IsIdentifierCharacter(const wchar_t c)
+    {
+        if (c >= L'a' && c <= L'z')
+            return true;
+        if (c >= L'A' && c <= L'Z')
+            return true;
+        if (c >= L'0' && c <= L'9')
+            return true;
+        return c == L'.' || c == L'_' || c == L'-';
+    }
+    bool IsSceneSection(const std::string_view section)
+    {
+        constexpr std::array<std::string_view, 7> Sections{"Folders", "Logo",   "InGame", "MusicSelect",
+                                                            "Result",  "Common", "Loading"};
+        return std::ranges::find(Sections, section) != Sections.end();
+    }
     std::string Identifier(std::wstring_view value)
     {
-        if (value.empty() || !std::ranges::all_of(value,
-                                                  [](wchar_t c)
-                                                  {
-                                                      return (c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') ||
-                                                             (c >= L'0' && c <= L'9') || c == L'.' || c == L'_' ||
-                                                             c == L'-';
-                                                  }))
+        if (value.empty() || !std::ranges::all_of(value, IsIdentifierCharacter))
             return {};
         std::string result;
         result.reserve(value.size());
@@ -96,8 +107,7 @@ namespace
             if (line.starts_with(L'['))
             {
                 section = line.ends_with(L']') ? Identifier(Trim(line.substr(1, line.size() - 2))) : "";
-                if (section != "Folders" && section != "Logo" && section != "InGame" && section != "MusicSelect" &&
-                    section != "Result" && section != "Common" && section != "Loading")
+                if (!IsSceneSection(section))
                 {
                     Diagnose(diagnostics, lineNumber, "Unknown scene section.");
                     section.clear();

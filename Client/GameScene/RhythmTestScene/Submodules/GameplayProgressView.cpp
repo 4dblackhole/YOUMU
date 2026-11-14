@@ -65,7 +65,8 @@ void GameplayProgressView::Initialize(ScreenVisual2DManager &visuals,
     trackHeight_ = visuals.GetImageSize(track).height * AssetScale;
     const auto markerNative = visuals.GetImageSize(marker);
     markerSize_ = {markerNative.width * AssetScale, markerNative.height * AssetScale};
-    if (height_ <= 0 || trackHeight_ <= 0 || markerSize_.width <= 0 || markerSize_.height <= 0)
+    const bool emptyMarker = markerSize_.width <= 0 || markerSize_.height <= 0;
+    if (height_ <= 0 || trackHeight_ <= 0 || emptyMarker)
         throw std::logic_error("Progress skin images must have a non-zero size.");
 
     root_ = &CreateSprite(parent, {}, background, "Hud.GameProgress");
