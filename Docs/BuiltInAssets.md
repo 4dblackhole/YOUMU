@@ -183,6 +183,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | 배경·카테고리·기록/곡정보/브라우저 패널, 검색/정렬 필드, 스크롤바, `OptionSelect/Back/Go`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
+| `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
 | `Common` | `Icons.<이름>` 37개(흰색 36px 선 아이콘, 게임이 글자색을 곱해 씀) |
 
 표의 `/`는 여러 키를 줄여 쓴 것입니다. 정확한 키는 내장 INI를 참조합니다.
