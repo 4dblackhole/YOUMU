@@ -4,7 +4,7 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $testRoot = Join-Path $repoRoot ('build/skin-tests/' + [guid]::NewGuid().ToString('N') + '/deployment/game')
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
-$units = @('Pch', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'LogoView', 'LogoLayout', 'LogoInput', 'LogoTexts',
+$units = @('Pch', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'LogoView', 'LogoLayout', 'LogoInput', 'LogoTexts', 'TitlePlayerView',
     'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongListView', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'SongSelectRecords', 'SongRecordView', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'EditorOsuImport', 'OsuImportValidation', 'MusicSelectTexts',
     'OptionsPanel', 'OptionsTabs', 'OptionsDisplay', 'OptionsKeys', 'ModePresentation', 'OptionsOffset', 'OptionsSongs', 'OptionSettings',
     'OptionTexts', 'TextCatalog', 'LanguageFile')

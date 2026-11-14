@@ -1,5 +1,6 @@
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorTool.h"
 #include "GameFlow/GameplayLaunchStore.h"
+#include "GameScene/MusicSelectScene/Submodules/MusicPlayerState.h"
 #include "GameScene/MusicSelectScene/Submodules/SongSelectionState.h"
 #include "TestSupport.h"
 #include <limits>
@@ -183,6 +184,90 @@ namespace tests
         search(L"", {0, 1, 2, 3, 4});
         state.catalog_.songs.clear();
         search(L"angel dream", {});
+    }
+
+    void TestMusicPlayerTransport()
+    {
+        MusicPlayerState player;
+        Require(player.Transport() == MusicTransport::Stopped && player.PositionMicroseconds() == 0 &&
+                    !player.DurationMicroseconds(),
+                "A player without a song is stopped at the start with no length.");
+        player.BeginTrack();
+        player.Advance(1.5);
+        Require(player.IsPlaying() && player.PositionMicroseconds() == 1'500'000,
+                "A new song plays from its start and counts elapsed playback time.");
+        player.SetDuration(104'000'000);
+        player.Pause();
+        player.Advance(10.0);
+        Require(player.Transport() == MusicTransport::Paused && player.PositionMicroseconds() == 1'500'000,
+                "Pause keeps the position and stops counting.");
+        player.TogglePlay();
+        Require(player.IsPlaying(), "Play/pause resumes a paused song.");
+        player.TogglePlay();
+        Require(player.Transport() == MusicTransport::Paused, "Play/pause pauses a playing song.");
+        player.Stop();
+        Require(player.Transport() == MusicTransport::Stopped && player.PositionMicroseconds() == 0 &&
+                    player.DurationMicroseconds() == 104'000'000,
+                "Stop rewinds to the start, unlike pause, and keeps the known length.");
+        player.Seek(40'000'000);
+        Require(player.Transport() == MusicTransport::Paused && player.PositionMicroseconds() == 40'000'000,
+                "Seeking a stopped song leaves it paused at the new position.");
+        player.Seek(500'000'000);
+        Require(player.PositionMicroseconds() < 104'000'000 && player.PositionMicroseconds() >= 103'000'000,
+                "A seek past the end lands just before it, where the audio can still start.");
+        player.Play();
+        player.Advance(60.0);
+        Require(player.PositionMicroseconds() == 104'000'000, "Elapsed time never runs past the length.");
+
+        player.BeginTrack();
+        Require(player.IsPlaying() && player.PositionMicroseconds() == 0 && !player.DurationMicroseconds(),
+                "Another song starts playing from its start with an unknown length.");
+        player.Advance(3.0);
+        Require(!player.PreviousRestartsTrack(), "Within three seconds the previous key goes to the previous song.");
+        player.Advance(0.001);
+        Require(player.PreviousRestartsTrack(), "After three seconds the previous key restarts the current song.");
+        player.Advance(-1.0);
+        Require(player.PositionMicroseconds() == 3'001'000, "A negative frame time never rewinds the song.");
+    }
+
+    void TestMusicPlaylistSteps()
+    {
+        Require(!StepPlaylist(0, 0, 1) && !StepPlaylist(0, 0, -1), "An empty playlist has no next or previous song.");
+        Require(StepPlaylist(3, 0, 1) == 1U && StepPlaylist(3, 2, 1) == 0U, "Next wraps from the last song to the first.");
+        Require(StepPlaylist(3, 0, -1) == 2U && StepPlaylist(3, 1, -1) == 0U, "Previous wraps from the first song to the last.");
+        Require(StepPlaylist(1, 0, 1) == 0U && StepPlaylist(1, 0, -1) == 0U, "A one-song playlist steps onto itself.");
+        Require(StepPlaylist(3, 9, 1) == 0U, "A stale position steps from the last song.");
+        Require(StepPlaylist(4, 1, -9) == 0U, "Steps larger than the playlist wrap around.");
+        Require(FormatPlayerTime(0) == L"0:00" && FormatPlayerTime(104'999'999) == L"1:44" &&
+                    FormatPlayerTime(3'600'000'000) == L"60:00",
+                "Player times show whole minutes and two-digit seconds.");
+
+        // The title player and song select follow the focused song; a rescan of the same folder
+        // must keep it focused so its audio path, and therefore the sound, stays the same.
+        SongSelectionState state;
+        SongCatalogEntry first, second, third;
+        first.metadataPath = "a/song.ymm";
+        first.audioPath = "a/song.ogg";
+        second.metadataPath = "b/song.ymm";
+        second.audioPath = "b/song.ogg";
+        third.metadataPath = "c/song.ymm";
+        third.audioPath = "c/song.ogg";
+        for (auto *song : {&first, &second, &third})
+            song->patterns.resize(1);
+        state.catalog_.songs = {first, second};
+        state.RebuildVisibleSongs();
+        state.SelectVisibleSong(1);
+        std::vector<SongCatalogEntry> rescanned{third, second};
+        state.MergeCatalogProgress(rescanned);
+        const auto focusedAudio = [&state] {
+            return state.catalog_.songs[state.visibleSongIndices_[state.focusedSongPosition_]].audioPath;
+        };
+        Require(focusedAudio() == "b/song.ogg", "Rescanned entries keep the focused song while they arrive.");
+        SongCatalogLoadResult finished;
+        finished.songs = {third, second, first};
+        state.FinishCatalog(std::move(finished));
+        Require(focusedAudio() == "b/song.ogg" && state.visibleSongIndices_.size() == 3,
+                "A finished rescan in another order keeps the focused song.");
     }
 
     void TestSceneStateBoundaries()

@@ -3,6 +3,7 @@
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
 #include "Texts/TextCatalog.h"
+#include "TitlePlayerView.h"
 
 #include <array>
 #include <cstddef>
@@ -10,8 +11,15 @@
 #include <memory>
 #include <optional>
 
-// Presents the YOUMU title screen: a sky with drifting feathers and the main menu.
-// One Canvas tree owns the mouse/keyboard menu and its selection cursor.
+// One frame's intents: a chosen menu item and/or a music player request.
+struct LogoCommand
+{
+    std::optional<std::size_t> menu;
+    std::optional<TitlePlayerRequest> player;
+};
+
+// Presents the YOUMU title screen: a sky with drifting feathers, the music player and the main menu.
+// One Canvas tree owns the mouse/keyboard menu, its selection cursor and the player's controls.
 class LogoView final
 {
   public:
@@ -21,13 +29,14 @@ class LogoView final
     void Initialize(const PhantomCore::EngineServices &services);
     void BeginScene();
     void EndScene() noexcept;
-    std::optional<std::size_t> Update(const PhantomCore::InputState &input,
-                                      double deltaSeconds);
+    // Shows the shared song library's current song; call before Update each frame.
+    void SetPlayer(const TitlePlayerDisplay &display);
+    LogoCommand Update(const PhantomCore::InputState &input, double deltaSeconds);
     void OnResize(std::uint32_t width, std::uint32_t height);
     void Shutdown() noexcept;
 
   private:
-    std::optional<std::size_t> command_;
+    LogoCommand command_;
     void CreateSky();
     void CreateMenu();
     void ApplyTexts();
@@ -38,6 +47,7 @@ class LogoView final
     void ProcessPointer(const PhantomCore::InputState &input);
     void UpdateSelectionFromPointer(const PhantomCore::InputState &input);
     void HandleKeyboard(const PhantomCore::InputState &input);
+    void HandlePlayerKeyboard(const PhantomCore::InputState &input);
     [[nodiscard]] bool ApplyMenuActions();
     void SetSelectedMenuItem(std::size_t index);
     void ActivateMenuItem(std::size_t index);
@@ -65,4 +75,5 @@ class LogoView final
     std::array<PhantomCore::NodeId, 4> menuButtonIds_{};
     PhantomCore::Visual2DNode *selectionCursor_{};
     std::size_t selectedMenuIndex_{};
+    TitlePlayerView player_;
 };

@@ -7,193 +7,373 @@ namespace
     constexpr double PreviewFadeSeconds = 0.2;
 }
 
-std::optional<std::uint64_t> SongPreviewController::DurationFor(std::size_t catalogIndex) const
+void SongPreviewController::SyncTrack(const std::filesystem::path &audioPath, const bool resume)
 {
-    for (const auto &slot : previewSlots_)
+    if (audioSystem_ == nullptr)
+        return;
+    if (audioPath != trackPath_)
     {
-        if (slot.clip && slot.catalogIndex == catalogIndex && slot.durationMicroseconds)
-            return slot.durationMicroseconds;
+        BeginTrack(audioPath);
+        return;
     }
-    return {};
+    // Song select keeps its song audible, but never retries a file that already failed every frame.
+    const bool idle = !transport_.IsPlaying() && !trackFailed_;
+    if (resume && idle)
+        Play();
 }
 
-void SongPreviewController::SyncPreviewToFocusedSong(const SongSelectionState &selection,
-                                                     bool active)
+void SongPreviewController::BeginTrack(const std::filesystem::path &audioPath)
 {
-    if (!active || audioSystem_ == nullptr)
+    FadeOutCurrent();
+    trackPath_ = audioPath;
+    trackFailed_ = false;
+    if (trackPath_.empty())
     {
+        if (pendingPreviewSlot_)
+            StopPreviewSlot(previewSlots_[*pendingPreviewSlot_]);
+        pendingPreviewSlot_.reset();
+        transport_ = {};
         return;
     }
+    transport_.BeginTrack();
+    LoadTrack();
+}
 
-    if (selection.visibleSongIndices_.empty() ||
-        selection.focusedSongPosition_ >= selection.visibleSongIndices_.size())
-    {
-        if (currentPreviewSlot_.has_value())
-        {
-            previewSlots_[*currentPreviewSlot_].targetVolume = 0.0F;
-            currentPreviewSlot_.reset();
-        }
+void SongPreviewController::RestartTrack()
+{
+    if (trackPath_.empty() || audioSystem_ == nullptr)
         return;
+    trackFailed_ = false;
+    if (auto *slot = CurrentSlot())
+    {
+        // The open voice rewinds in place, so the known length stays.
+        transport_.Stop();
+        transport_.Play();
+        if (RestartVoice(*slot))
+            return;
+        StopPreviewSlot(*slot);
+        currentPreviewSlot_.reset();
     }
+    transport_.BeginTrack();
+    LoadTrack();
+}
 
-    const std::size_t catalogIndex = selection.visibleSongIndices_[selection.focusedSongPosition_];
+void SongPreviewController::LoadTrack()
+{
     if (pendingPreviewSlot_)
     {
-        auto &pending = previewSlots_[*pendingPreviewSlot_];
-        std::string error;
-        const auto state = pending.clip->LoadState(error);
-        if (state == AudioClipLoadState::Loading)
-            return;
-        const auto slot = *pendingPreviewSlot_;
+        StopPreviewSlot(previewSlots_[*pendingPreviewSlot_]);
         pendingPreviewSlot_.reset();
-        if (pending.catalogIndex == catalogIndex && state == AudioClipLoadState::Ready)
-        {
-            std::uint64_t duration{};
-            if (pending.clip->GetDurationMicroseconds(duration, error)) pending.durationMicroseconds = duration;
-            PlayPendingPreview(slot);
-            return;
-        }
-        if (pending.catalogIndex == catalogIndex)
-            failedPreviewIndex_ = catalogIndex;
-        StopPreviewSlot(pending);
     }
-    if (failedPreviewIndex_ == catalogIndex)
-        return;
-    failedPreviewIndex_.reset();
-    if (currentPreviewSlot_.has_value())
-    {
-        const PreviewSlot &current = previewSlots_[*currentPreviewSlot_];
-        if (current.catalogIndex == catalogIndex &&
-            current.playbackId != InvalidAudioPlaybackId)
-        {
-            return;
-        }
-    }
-
-    StartSongPreview(selection, catalogIndex);
-}
-
-void SongPreviewController::StartSongPreview(const SongSelectionState &selection,
-                                             const std::size_t catalogIndex)
-{
-    if (audioSystem_ == nullptr || catalogIndex >= selection.catalog_.songs.size())
-    {
-        return;
-    }
-
-    if (currentPreviewSlot_.has_value())
-    {
-        previewSlots_[*currentPreviewSlot_].targetVolume = 0.0F;
-    }
-
-    const std::size_t nextSlotIndex =
+    // The other slot may still be fading the previous song out; it yields to the new song.
+    const std::size_t slotIndex =
         currentPreviewSlot_.has_value()
             ? 1U - *currentPreviewSlot_
-            : (previewSlots_[0].playbackId == InvalidAudioPlaybackId ? 0U : 1U);
-    PreviewSlot &nextSlot = previewSlots_[nextSlotIndex];
-    StopPreviewSlot(nextSlot);
+            : (previewSlots_[0].playbackId == InvalidAudioPlaybackId && !previewSlots_[0].clip ? 0U : 1U);
+    PreviewSlot &slot = previewSlots_[slotIndex];
+    StopPreviewSlot(slot);
 
     std::string errorMessage;
     std::unique_ptr<AudioClip> loadedClip =
-        audioSystem_->LoadSound(selection.catalog_.songs[catalogIndex].audioPath,
-                                AudioLoadMode::StreamAsync, errorMessage);
+        audioSystem_->LoadSound(trackPath_, AudioLoadMode::StreamAsync, errorMessage);
     if (loadedClip == nullptr)
     {
-        failedPreviewIndex_ = catalogIndex;
+        trackFailed_ = true;
+        transport_.Stop();
         return;
     }
-
-    nextSlot.clip = std::shared_ptr<AudioClip>(std::move(loadedClip));
-    nextSlot.catalogIndex = catalogIndex;
-    pendingPreviewSlot_ = nextSlotIndex;
+    slot.clip = std::shared_ptr<AudioClip>(std::move(loadedClip));
+    slot.audioPath = trackPath_;
+    pendingPreviewSlot_ = slotIndex;
 }
 
-void SongPreviewController::PlayPendingPreview(std::size_t slotIndex)
+void SongPreviewController::PollPendingTrack()
 {
-    auto &nextSlot = previewSlots_[slotIndex];
-    std::string errorMessage;
-    AudioPlaybackSettings settings;
-    settings.volume = 0.0F;
-    const AudioPlaybackId playbackId =
-        audioPlayback_.Play(nextSlot.clip, settings, nullptr, errorMessage);
-    if (playbackId == InvalidAudioPlaybackId)
+    if (!pendingPreviewSlot_)
+        return;
+    auto &pending = previewSlots_[*pendingPreviewSlot_];
+    std::string error;
+    const auto state = pending.clip->LoadState(error);
+    if (state == AudioClipLoadState::Loading)
+        return;
+    const auto slotIndex = *pendingPreviewSlot_;
+    pendingPreviewSlot_.reset();
+    const bool current = pending.audioPath == trackPath_;
+    if (current && state == AudioClipLoadState::Ready)
     {
-        failedPreviewIndex_ = nextSlot.catalogIndex;
-        StopPreviewSlot(nextSlot);
+        std::uint64_t duration{};
+        if (pending.clip->GetDurationMicroseconds(duration, error))
+            transport_.SetDuration(duration);
+        PlayPendingPreview(slotIndex);
         return;
     }
+    if (current)
+    {
+        trackFailed_ = true;
+        transport_.Stop();
+    }
+    StopPreviewSlot(pending);
+}
 
-    nextSlot.playbackId = playbackId;
-    nextSlot.volume = 0.0F;
-    nextSlot.targetVolume = 1.0F;
+void SongPreviewController::PlayPendingPreview(const std::size_t slotIndex)
+{
+    auto &slot = previewSlots_[slotIndex];
+    // A song paused or seeked while it opened starts where the transport says.
+    const bool seeks = transport_.PositionMicroseconds() > 0;
+    AudioPlaybackSettings settings;
+    settings.volume = 0.0F;
+    settings.startPositionMicroseconds = transport_.PositionMicroseconds();
+    settings.startPaused = seeks || !transport_.IsPlaying();
+    std::string errorMessage;
+    const AudioPlaybackId playbackId = audioPlayback_.Play(slot.clip, settings, nullptr, errorMessage);
+    if (playbackId == InvalidAudioPlaybackId)
+    {
+        trackFailed_ = true;
+        transport_.Stop();
+        StopPreviewSlot(slot);
+        return;
+    }
+    slot.playbackId = playbackId;
+    slot.volume = 0.0F;
+    slot.targetVolume = 1.0F;
+    slot.awaitingPreparation = seeks;
     currentPreviewSlot_ = slotIndex;
 }
 
-void SongPreviewController::UpdatePreviewAudio(const double deltaSeconds)
+bool SongPreviewController::RestartVoice(PreviewSlot &slot)
+{
+    // Rewinding or seeking reuses the channel. It resumes once the stream has reached the new position.
+    AudioPlaybackSettings settings;
+    settings.volume = slot.volume;
+    settings.startPositionMicroseconds = transport_.PositionMicroseconds();
+    settings.startPaused = true;
+    std::string errorMessage;
+    if (!audioPlayback_.Restart(slot.playbackId, settings, nullptr, errorMessage))
+        return false;
+    slot.awaitingPreparation = true;
+    return true;
+}
+
+bool SongPreviewController::UpdatePreparation(PreviewSlot &slot)
+{
+    AudioVoice *const voice = audioPlayback_.FindVoice(slot.playbackId);
+    if (voice == nullptr)
+        return true;
+    std::string error;
+    const auto state = voice->PreparationState(error);
+    if (state == AudioPreparationState::Loading)
+        return true;
+    slot.awaitingPreparation = false;
+    if (state == AudioPreparationState::Failed)
+        return false;
+    const bool current = currentPreviewSlot_ && &previewSlots_[*currentPreviewSlot_] == &slot;
+    if (current && transport_.IsPlaying())
+        static_cast<void>(voice->SetPaused(false, error));
+    return true;
+}
+
+void SongPreviewController::Play()
+{
+    if (trackPath_.empty() || audioSystem_ == nullptr)
+        return;
+    transport_.Play();
+    if (auto *slot = CurrentSlot())
+    {
+        if (slot->awaitingPreparation)
+            return;
+        std::string error;
+        AudioVoice *const voice = audioPlayback_.FindVoice(slot->playbackId);
+        if (voice != nullptr && voice->SetPaused(false, error))
+            return;
+        StopPreviewSlot(*slot);
+        currentPreviewSlot_.reset();
+    }
+    if (pendingPreviewSlot_)
+        return;
+    // Released or failed audio opens again from the remembered position.
+    trackFailed_ = false;
+    LoadTrack();
+}
+
+void SongPreviewController::Pause()
+{
+    transport_.Pause();
+    if (auto *slot = CurrentSlot())
+    {
+        std::string error;
+        if (AudioVoice *const voice = audioPlayback_.FindVoice(slot->playbackId))
+            static_cast<void>(voice->SetPaused(true, error));
+    }
+}
+
+void SongPreviewController::TogglePlay()
+{
+    if (transport_.IsPlaying())
+        Pause();
+    else
+        Play();
+}
+
+void SongPreviewController::Stop()
+{
+    if (trackPath_.empty())
+        return;
+    transport_.Stop();
+    auto *slot = CurrentSlot();
+    if (slot == nullptr)
+        return;
+    std::string error;
+    if (AudioVoice *const voice = audioPlayback_.FindVoice(slot->playbackId))
+        static_cast<void>(voice->SetPaused(true, error));
+    if (RestartVoice(*slot))
+        return;
+    StopPreviewSlot(*slot);
+    currentPreviewSlot_.reset();
+}
+
+void SongPreviewController::Seek(const std::uint64_t positionMicroseconds)
+{
+    if (trackPath_.empty())
+        return;
+    transport_.Seek(positionMicroseconds);
+    auto *slot = CurrentSlot();
+    if (slot == nullptr || RestartVoice(*slot))
+        return;
+    StopPreviewSlot(*slot);
+    currentPreviewSlot_.reset();
+    if (transport_.IsPlaying() && !pendingPreviewSlot_)
+        LoadTrack();
+}
+
+bool SongPreviewController::UpdatePreviewAudio(const double deltaSeconds, const EndBehavior endBehavior)
 {
     PollRetiredClips();
+    PollPendingTrack();
     const float fadeStep = static_cast<float>(std::max(deltaSeconds, 0.0) / PreviewFadeSeconds);
 
+    bool currentEnded = false;
     for (std::size_t index = 0; index < previewSlots_.size(); ++index)
     {
         PreviewSlot &slot = previewSlots_[index];
         if (slot.playbackId == InvalidAudioPlaybackId)
+            continue;
+        const bool current = currentPreviewSlot_ == index;
+        if (slot.awaitingPreparation && !UpdatePreparation(slot))
         {
+            // A seek the stream could not reach fails the song like a file that would not open.
+            StopPreviewSlot(slot);
+            if (current)
+            {
+                currentPreviewSlot_.reset();
+                trackFailed_ = true;
+                transport_.Stop();
+            }
             continue;
         }
-
         AudioVoice *const voice = audioPlayback_.FindVoice(slot.playbackId);
         if (voice == nullptr)
         {
+            // The manager drops a voice once its stream has played out.
             StopPreviewSlot(slot);
-            if (currentPreviewSlot_ == index)
+            if (current)
             {
                 currentPreviewSlot_.reset();
+                currentEnded = true;
             }
             continue;
         }
 
         const float previousVolume = slot.volume;
         if (slot.volume < slot.targetVolume)
-        {
             slot.volume = std::min(slot.volume + fadeStep, slot.targetVolume);
-        }
         else if (slot.volume > slot.targetVolume)
-        {
             slot.volume = std::max(slot.volume - fadeStep, slot.targetVolume);
-        }
 
         std::string errorMessage;
-        if (slot.volume != previousVolume && !voice->SetVolume(slot.volume, errorMessage))
+        const bool volumeFailed = slot.volume != previousVolume && !voice->SetVolume(slot.volume, errorMessage);
+        const bool fadedOut = slot.targetVolume <= 0.0F && slot.volume <= 0.0F;
+        if (volumeFailed || fadedOut)
         {
             StopPreviewSlot(slot);
-            if (currentPreviewSlot_ == index)
-            {
+            if (current)
                 currentPreviewSlot_.reset();
-            }
-            continue;
-        }
-
-        if (slot.targetVolume <= 0.0F && slot.volume <= 0.0F)
-        {
-            StopPreviewSlot(slot);
-            if (currentPreviewSlot_ == index)
-            {
-                currentPreviewSlot_.reset();
-            }
         }
     }
+
+    if (currentEnded)
+    {
+        // Only a playing song reaches its end; a paused voice the mixer dropped reopens on Play.
+        if (!transport_.IsPlaying())
+            return false;
+        if (endBehavior == EndBehavior::Repeat)
+        {
+            transport_.BeginTrack();
+            LoadTrack();
+            return false;
+        }
+        transport_.Stop();
+        return true;
+    }
+    const auto *slot = CurrentSlot();
+    if (slot != nullptr && !slot->awaitingPreparation)
+        transport_.Advance(deltaSeconds);
+    return false;
+}
+
+void SongPreviewController::FadeOutCurrent() noexcept
+{
+    if (currentPreviewSlot_.has_value())
+    {
+        previewSlots_[*currentPreviewSlot_].targetVolume = 0.0F;
+        currentPreviewSlot_.reset();
+    }
+}
+
+SongPreviewController::PreviewSlot *SongPreviewController::CurrentSlot() noexcept
+{
+    if (!currentPreviewSlot_)
+        return nullptr;
+    auto &slot = previewSlots_[*currentPreviewSlot_];
+    return slot.playbackId == InvalidAudioPlaybackId ? nullptr : &slot;
+}
+
+void SongPreviewController::ReleaseAudio() noexcept
+{
+    ReleaseSlots();
+    transport_.Stop();
+    trackFailed_ = false;
 }
 
 void SongPreviewController::StopPreviewAudio() noexcept
 {
-    for (PreviewSlot &slot : previewSlots_)
+    ReleaseSlots();
+    trackPath_.clear();
+    transport_ = {};
+    trackFailed_ = false;
+}
+
+void SongPreviewController::Shutdown() noexcept
+{
+    StopPreviewAudio();
+    if (audioSystem_ == nullptr)
+        return;
+    try
     {
-        StopPreviewSlot(slot);
+        for (auto &clip : retiredClips_)
+            audioSystem_->RetireClip(std::move(clip));
+        retiredClips_.clear();
     }
+    catch (...)
+    {
+    }
+}
+
+void SongPreviewController::ReleaseSlots() noexcept
+{
+    for (PreviewSlot &slot : previewSlots_)
+        StopPreviewSlot(slot);
     currentPreviewSlot_.reset();
     pendingPreviewSlot_.reset();
-    failedPreviewIndex_.reset();
 }
 
 void SongPreviewController::StopPreviewSlot(PreviewSlot &slot) noexcept
@@ -220,7 +400,9 @@ void SongPreviewController::StopPreviewSlot(PreviewSlot &slot) noexcept
             if (state == AudioClipLoadState::Loading || state == AudioClipLoadState::Playing)
                 retiredClips_.push_back(std::move(slot.clip));
         }
-        catch (...) {}
+        catch (...)
+        {
+        }
     }
     slot = {};
 }

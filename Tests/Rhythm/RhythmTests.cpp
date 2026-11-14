@@ -68,6 +68,8 @@ int main(const int argumentCount, char *arguments[])
         {"TestEditorCompiledSpeedBounds", TestEditorCompiledSpeedBounds},
         {"TestEffectValidationConsistency", TestEffectValidationConsistency},
         {"TestSceneStateBoundaries", TestSceneStateBoundaries},
+        {"TestMusicPlayerTransport", TestMusicPlayerTransport},
+        {"TestMusicPlaylistSteps", TestMusicPlaylistSteps},
         {"TestJudgementScalingAndInterpolation", TestJudgementScalingAndInterpolation},
         {"TestRhythmTimerClockMapping", TestRhythmTimerClockMapping},
         {"TestLaneFocusRules", TestLaneFocusRules},

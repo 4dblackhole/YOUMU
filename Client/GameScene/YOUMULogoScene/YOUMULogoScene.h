@@ -11,14 +11,18 @@
 
 // Presents the YOUMU title screen. The authored image panels remain
 // centered at every viewport aspect ratio, while one Canvas tree owns the
-// mouse/keyboard menu and its movable selection cursor.
+// mouse/keyboard menu, its movable selection cursor and the music player.
+// The player plays the song library the game song select shares.
 class LogoView;
+class SongLibrary;
+struct TitlePlayerRequest;
 class YOUMULogoScene final : public PhantomCore::GameScene
 {
   public:
     YOUMULogoScene(PhantomCore::ScreenVisual2DManager &screenVisuals,
                         TextCatalog &texts,
-                        OptionSettings &options);
+                        OptionSettings &options,
+                        std::shared_ptr<SongLibrary> library);
 
     ~YOUMULogoScene() override;
     void Initialize(const PhantomCore::EngineServices &services) override;
@@ -30,5 +34,12 @@ class YOUMULogoScene final : public PhantomCore::GameScene
     void Shutdown() noexcept override;
 
   private:
+    void ApplyPlayerRequest(const TitlePlayerRequest &request);
+    void ShowPlayer();
+    void RunMenuItem(std::size_t index, PhantomCore::SceneManager &scenes);
+
+    std::shared_ptr<SongLibrary> library_;
     std::unique_ptr<LogoView> view_;
+    // Game Start hands the song to song select; every other exit silences it.
+    bool keepPlaybackOnExit_{};
 };

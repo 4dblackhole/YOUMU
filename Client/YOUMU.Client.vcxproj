@@ -173,6 +173,8 @@
     <ClCompile Include="GameScene\YOUMULogoScene\YOUMULogoScene.cpp" />
     <ClInclude Include="GameScene\YOUMULogoScene\YOUMULogoScene.h" />
     <ClCompile Include="GameScene\YOUMULogoScene\Submodules\LogoInput.cpp" />
+    <ClCompile Include="GameScene\YOUMULogoScene\Submodules\TitlePlayerView.cpp" />
+    <ClInclude Include="GameScene\YOUMULogoScene\Submodules\TitlePlayerView.h" />
     <ClCompile Include="GameScene\YOUMULogoScene\Submodules\LogoLayout.cpp" />
     <ClInclude Include="GameScene\YOUMULogoScene\Submodules\LogoStyle.h" />
     <ClCompile Include="GameScene\YOUMULogoScene\Submodules\LogoView.cpp" />
@@ -193,6 +195,7 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectInput.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectSearch.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.h" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\MusicPlayerState.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFilter.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFavorites.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFavoriteTabs.h" />
@@ -236,6 +239,8 @@
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayPauseAction.h" />
     <ClInclude Include="GameFlow\GameplaySessionController.h" />
     <ClInclude Include="GameFlow\PlaySessionLoader.h" />
+    <ClCompile Include="GameFlow\SongLibrary.cpp" />
+    <ClInclude Include="GameFlow\SongLibrary.h" />
     <ClCompile Include="GameFlow\Submodules\GameplaySessionFactory.cpp" />
     <ClInclude Include="GameFlow\Submodules\GameplaySessionFactory.h" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplaySupport.h" />

@@ -347,17 +347,16 @@ int main(int argc, char** argv)
             AudioPlaybackManager playback;
             SongPreviewController preview(playback);
             preview.Initialize(previewAudio);
-            SongSelectionState selection;
-            selection.catalog_.songs.resize(2);
-            selection.catalog_.songs[0].audioPath = song.audioPath;
-            selection.catalog_.songs[1].audioPath = song.audioPath / "not-a-file";
-            selection.visibleSongIndices_ = {0, 1};
+            // The preview follows a song by its audio path, as song select and the title player drive it.
+            const std::filesystem::path missing = song.audioPath / "not-a-file";
+            std::filesystem::path focused = song.audioPath;
+            bool resume = true;
             previewLoadCalls = 0;
             const auto poll = [&] {
                 previewAudio.Update();
                 playback.Update();
-                preview.UpdatePreviewAudio(.02);
-                preview.SyncPreviewToFocusedSong(selection, true);
+                preview.SyncTrack(focused, resume);
+                static_cast<void>(preview.UpdatePreviewAudio(.02, SongPreviewController::EndBehavior::Repeat));
                 std::this_thread::sleep_for(std::chrono::milliseconds{1});
             };
             const auto awaitVoice = [&] {
@@ -365,17 +364,89 @@ int main(int argc, char** argv)
                 do { poll(); } while (!playback.PlaybackCount() && std::chrono::steady_clock::now() < deadline);
                 Check(playback.PlaybackCount() == 1, "Prepared preview must start one managed voice");
             };
+            const auto awaitPosition = [&](const std::uint64_t beyond) {
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
+                do { poll(); } while (preview.State().PositionMicroseconds() <= beyond && std::chrono::steady_clock::now() < deadline);
+                return preview.State().PositionMicroseconds() > beyond;
+            };
             awaitVoice();
             Check(previewLoadCalls == 1, "Focused ready preview must not reload");
-            selection.focusedSongPosition_ = 1;
-            for (int i = 0; i < 100; ++i) poll();
-            Check(previewLoadCalls == 2, "Failed preview must not reopen its file every Update");
-            selection.focusedSongPosition_ = 0;
+            Check(preview.State().IsPlaying() && preview.State().DurationMicroseconds().value_or(0) > 2'000'000,
+                  "An opened song plays and reports its length");
+            Check(awaitPosition(0), "A playing song advances its position");
+
+            resume = false;
+            preview.Pause();
+            const auto paused = preview.State().PositionMicroseconds();
+            for (int i = 0; i < 20; ++i) poll();
+            Check(preview.State().Transport() == MusicTransport::Paused && preview.State().PositionMicroseconds() == paused &&
+                      playback.PlaybackCount() == 1,
+                  "Pause keeps the voice and its position without resuming on the title");
+            const auto middle = *preview.State().DurationMicroseconds() / 2;
+            preview.Seek(middle);
+            for (int i = 0; i < 20; ++i) poll();
+            Check(preview.State().PositionMicroseconds() == middle && playback.PlaybackCount() == 1 && previewLoadCalls == 1,
+                  "Seeking a paused song moves it in place without reopening the file");
+            preview.Play();
+            Check(awaitPosition(middle), "A seeked song resumes from the new position");
+            preview.Stop();
+            for (int i = 0; i < 20; ++i) poll();
+            Check(preview.State().Transport() == MusicTransport::Stopped && preview.State().PositionMicroseconds() == 0 &&
+                      playback.PlaybackCount() == 1 && previewLoadCalls == 1,
+                  "Stop rewinds and keeps the voice ready without reopening the file");
+            resume = true;
+            Check(awaitPosition(0) && previewLoadCalls == 1, "Song select resumes a stopped song in place");
+            preview.RestartTrack();
+            Check(preview.State().PositionMicroseconds() == 0 && previewLoadCalls == 1,
+                  "Restarting the same song rewinds it without reopening the file");
+
+            // The end of a song: the title is told so it can step on; song select starts it over.
+            const auto nearEnd = *preview.State().DurationMicroseconds() - 300'000;
+            // Report: true once the song played out. Repeat: true once it was reopened from the start.
+            const auto awaitEnd = [&](const SongPreviewController::EndBehavior behavior) {
+                const auto loads = previewLoadCalls;
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
+                while (std::chrono::steady_clock::now() < deadline)
+                {
+                    previewAudio.Update();
+                    playback.Update();
+                    if (preview.UpdatePreviewAudio(.02, behavior))
+                        return true;
+                    if (previewLoadCalls > loads)
+                        return true;
+                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                }
+                return false;
+            };
+            preview.Seek(nearEnd);
+            Check(awaitEnd(SongPreviewController::EndBehavior::Report) &&
+                      preview.State().Transport() == MusicTransport::Stopped && playback.PlaybackCount() == 0,
+                  "A song that plays out reports its end once and stops");
+            preview.RestartTrack();
             awaitVoice();
-            Check(previewLoadCalls == 3, "Changing selection must allow preview loading again");
+            Check(previewLoadCalls == 2, "Restarting a song that played out reopens it once");
+            preview.Seek(nearEnd);
+            Check(awaitEnd(SongPreviewController::EndBehavior::Repeat) && preview.State().IsPlaying() &&
+                      preview.State().PositionMicroseconds() == 0 && previewLoadCalls == 3,
+                  "Song select starts a song that played out again from its beginning");
+            awaitVoice();
+
+            focused = missing;
+            for (int i = 0; i < 100; ++i) poll();
+            Check(previewLoadCalls == 4 && preview.TrackFailed(), "Failed preview must not reopen its file every Update");
+            focused = song.audioPath;
+            awaitVoice();
+            Check(previewLoadCalls == 5, "Changing selection must allow preview loading again");
+            preview.ReleaseAudio();
+            Check(playback.PlaybackCount() == 0 && preview.CurrentTrack() == song.audioPath &&
+                      preview.State().Transport() == MusicTransport::Stopped,
+                  "Leaving for play or the editor releases the voice but keeps the song");
+            awaitVoice();
+            Check(previewLoadCalls == 6, "Returning to song select reopens the released song");
             preview.StopPreviewAudio();
-            Check(playback.PlaybackCount() == 0, "Leaving preview must stop its own voice");
-            for (int i = 0; i < 10; ++i) preview.UpdatePreviewAudio(.02);
+            Check(playback.PlaybackCount() == 0 && preview.CurrentTrack().empty(), "Stopping preview must stop its own voice");
+            for (int i = 0; i < 10; ++i) static_cast<void>(preview.UpdatePreviewAudio(.02, SongPreviewController::EndBehavior::Repeat));
+            preview.Shutdown();
         }
         // Cancellation must leave the shared queue available for the next real
         // analysis, including when the requesting editor has been destroyed.

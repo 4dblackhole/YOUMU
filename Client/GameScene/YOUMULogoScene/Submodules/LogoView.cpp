@@ -9,7 +9,7 @@ using namespace logo_ui;
 
 LogoView::LogoView(ScreenVisual2DManager &screenVisuals,
                    TextCatalog &texts, OptionSettings &options) noexcept
-    : screenVisuals_(screenVisuals), texts_(texts), options_(texts, options, &screenVisuals)
+    : screenVisuals_(screenVisuals), texts_(texts), options_(texts, options, &screenVisuals), player_(screenVisuals)
 {
 }
 
@@ -30,6 +30,7 @@ void LogoView::Initialize(const EngineServices &services)
 
     CreateSky();
     CreateMenu();
+    player_.Create(*board_);
     skinRevision_ = (std::numeric_limits<std::uint64_t>::max)();
     RefreshSkinImages();
     options_.Initialize(*canvas_, services.audio, services.windowControl);
@@ -52,10 +53,14 @@ void LogoView::EndScene() noexcept
     static_cast<void>(canvasHandle_.SetVisible(false));
 }
 
-std::optional<std::size_t> LogoView::Update(const InputState &input,
-                                            const double deltaSeconds)
+void LogoView::SetPlayer(const TitlePlayerDisplay &display)
 {
-    command_.reset();
+    player_.SetDisplay(display);
+}
+
+LogoCommand LogoView::Update(const InputState &input, const double deltaSeconds)
+{
+    command_ = {};
     if (!canvas_)
         return command_;
     RefreshSkinImages();
@@ -70,13 +75,20 @@ std::optional<std::size_t> LogoView::Update(const InputState &input,
     ProcessPointer(input);
     if (options_.ProcessInput(input, canvasPointer_, inputRouter_.HoveredNode(), inputRouter_))
     {
+        player_.CancelSeek();
         static_cast<void>(canvas_->TakeActions());
         return command_;
     }
     const bool handled = ApplyMenuActions();
-    if (!options_.IsVisible())
-        UpdateSelectionFromPointer(input);
-    if (!handled && !options_.IsVisible())
+    if (options_.IsVisible())
+    {
+        player_.CancelSeek();
+        return command_;
+    }
+    if (auto seek = player_.ProcessSeekPointer(input, canvasPointer_, inputRouter_.HoveredNode()))
+        command_.player = seek;
+    UpdateSelectionFromPointer(input);
+    if (!handled)
         HandleKeyboard(input);
     return command_;
 }
@@ -102,6 +114,7 @@ void LogoView::Shutdown() noexcept
     }
 
     options_.Shutdown();
+    player_.Reset();
     canvasPointer_.reset();
     // Nodes are owned by the Canvas. Clear observers before its tree is
     // destroyed so this Scene never retains dangling node pointers.

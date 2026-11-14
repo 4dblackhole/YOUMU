@@ -121,6 +121,7 @@ void LogoView::UpdateLayout()
     board_->Transform().SetScale(frame.scale, frame.scale, 1.0F);
     background_->SetBounds({0.0F, 0.0F, frame.width, ReferenceSize.height});
     LayoutMenu();
+    player_.Layout(board_->NodeSize());
 
     const float contentWidth = frame.width * frame.scale, contentHeight = ReferenceSize.height * frame.scale;
     const float vertical = (logical.height - contentHeight) * 0.5F, horizontal = (logical.width - contentWidth) * 0.5F;

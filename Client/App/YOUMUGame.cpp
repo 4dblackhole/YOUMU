@@ -4,6 +4,7 @@
 #include "Catalog/SongCatalog.h"
 #include "EditorScene/EditorScene.h"
 #include "EditorScene/Submodules/EditorWorkspaceStore.h"
+#include "GameFlow/SongLibrary.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "GameScene/YOUMULogoScene/YOUMULogoScene.h"
 #include "GameScene/MusicSelectScene/MusicSelectScene.h"
@@ -81,16 +82,20 @@ void YOUMUGame::RegisterScenes(SceneManager &scenes)
         smokeRequest.songsRoot = optionSettings_.SongsRoot();
         launchRequest_->Set(std::move(smokeRequest));
     }
+    // The title and the game song select share one song library, so a song keeps playing and
+    // stays selected between them. Editor song select keeps its own list and preview.
+    songLibrary_ = std::make_shared<SongLibrary>(AudioPlayback(), optionSettings_);
+    auto editorSongLibrary = std::make_shared<SongLibrary>(AudioPlayback(), optionSettings_);
     if (!scenes.RegisterScene<YOUMULogoScene>(std::string(LogoSceneId),
                                                    SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
-                                                   std::ref(texts_), std::ref(optionSettings_)) ||
+                                                   std::ref(texts_), std::ref(optionSettings_), songLibrary_) ||
         !scenes.RegisterScene<MusicSelectScene>(std::string(LobbySceneId),
                                                 SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
-                                                std::ref(AudioPlayback()), launchRequest_, SongSelectPurpose::Gameplay,
+                                                songLibrary_, launchRequest_, SongSelectPurpose::Gameplay,
                                                 std::ref(texts_), std::ref(optionSettings_)) ||
         !scenes.RegisterScene<MusicSelectScene>(std::string(EditorSongSelectSceneId),
                                                 SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
-                                                std::ref(AudioPlayback()), launchRequest_, SongSelectPurpose::Editor,
+                                                std::move(editorSongLibrary), launchRequest_, SongSelectPurpose::Editor,
                                                 std::ref(texts_), std::ref(optionSettings_)) ||
         !scenes.RegisterScene<EditorScene>(std::string(EditorSceneId),
                                            SceneRetention::DestroyOnExit, std::ref(ScreenVisuals()),

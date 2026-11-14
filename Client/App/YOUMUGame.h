@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 class EditorWorkspaceStore;
+class SongLibrary;
 
 // The Client root for YOUMU.  The Engine owns the platform loop while
 // this class selects the game window policy and registers game-owned Scenes.
@@ -45,6 +46,7 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     std::string initialSceneId_;
     std::shared_ptr<GameplayLaunchStore> launchRequest_;
     std::shared_ptr<EditorWorkspaceStore> editorWorkspaceStore_;
+    std::shared_ptr<SongLibrary> songLibrary_;
     std::unique_ptr<IPlayResult> pendingResult_;
     TextCatalog texts_;
     OptionSettings optionSettings_;

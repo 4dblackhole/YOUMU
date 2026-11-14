@@ -57,10 +57,24 @@ void LogoView::HandleKeyboard(const InputState &input)
         SetSelectedMenuItem((selectedMenuIndex_ + 1) % menuButtons_.size());
     }
 
-    if (input.WasKeyPressed(VK_RETURN) || input.WasKeyPressed(VK_SPACE))
+    if (input.WasKeyPressed(VK_RETURN))
     {
         ActivateMenuItem(selectedMenuIndex_);
     }
+    HandlePlayerKeyboard(input);
+}
+
+void LogoView::HandlePlayerKeyboard(const InputState &input)
+{
+    // Space belongs to the player now; Enter alone runs the menu. Without a song the keys do nothing.
+    if (!player_.HasSong())
+        return;
+    if (input.WasKeyPressed(VK_SPACE))
+        command_.player = TitlePlayerRequest{TitlePlayerAction::TogglePlay};
+    else if (input.WasKeyPressed(VK_LEFT))
+        command_.player = TitlePlayerRequest{TitlePlayerAction::Previous};
+    else if (input.WasKeyPressed(VK_RIGHT))
+        command_.player = TitlePlayerRequest{TitlePlayerAction::Next};
 }
 
 bool LogoView::ApplyMenuActions()
@@ -81,6 +95,11 @@ bool LogoView::ApplyMenuActions()
         if (options_.IsVisible())
         {
             continue;
+        }
+        if (auto request = player_.ProcessAction(action))
+        {
+            command_.player = request;
+            return true;
         }
         if (action.type != ActionType::Clicked)
         {
@@ -124,7 +143,7 @@ void LogoView::ActivateMenuItem(std::size_t index)
         options_.Toggle();
         return;
     }
-    command_ = index;
+    command_.menu = index;
 }
 
 bool LogoView::HasPointerActivity(const InputState &input) noexcept

@@ -19,6 +19,7 @@
     <ClInclude Include="GameFlow\GameplayLaunchStore.h" />
     <ClInclude Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorTool.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.h" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\MusicPlayerState.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFilter.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongFavorites.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongFavorites.cpp" />
@@ -26,6 +27,7 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongFavoritesJson.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongFilter.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.cpp" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\MusicPlayerState.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionText.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

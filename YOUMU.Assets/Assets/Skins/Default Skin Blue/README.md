@@ -15,19 +15,7 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 ## Logo — 타이틀
 
-하늘 배경 · 메뉴 막대 · 깃털 커서 · 떠도는 깃털은 내장 Default Skin의 `Logo`로 옮겼습니다. 아래는 음악 플레이어 부품입니다.
-
-### `Logo/Player/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `ArtFrame.png` | 255×255 |  | 음악 플레이어 앨범 아트 틀(흰 테두리 + 아래 오른쪽 그림자 블록). 아트는 그 곡 패턴의 BG |
-| `PlayButton.png` | 102×66 |  | 음악 플레이어 재생/일시정지 버튼 바탕(코발트 평행사변형). 아이콘은 Common/Icons/play · pause |
-| `PlayButton.Hovered.png` | 102×66 |  | 〃 |
-| `PlayButton.Pressed.png` | 102×66 |  | 〃 |
-| `SeekFill.png` | 528×6 |  | 재생 위치 채움(지난 만큼 왼쪽부터 잘라 보임) |
-| `SeekKnob.png` | 6×21 |  | 재생 위치 표시(남색 세로 막대, 채움의 오른쪽 끝) |
-| `SeekTrack.png` | 528×27 |  | 재생 위치 막대 바탕 |
+타이틀 부품(하늘 배경 · 메뉴 막대 · 깃털 커서 · 떠도는 깃털 · 음악 플레이어)은 모두 내장 Default Skin의 `Logo`로 옮겼습니다.
 
 ## MusicSelect — 곡 선택 (게임 · 에디터)
 

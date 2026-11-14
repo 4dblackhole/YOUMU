@@ -4,20 +4,19 @@
 #include "Submodules/SongSelectPurpose.h"
 #include "Texts/TextCatalog.h"
 #include "App/OptionSettings.h"
-#include "Submodules/SongCatalogLoader.h"
 #include "Submodules/EditorOsuImport.h"
 #include "GameFlow/PlaySessionLoader.h"
 #include <memory>
 
-class SongSelectionState;
 class MusicSelectView;
-class SongPreviewController;
+class SongLibrary;
+class SongSelectionState;
 
 class MusicSelectScene final : public PhantomCore::GameScene
 {
   public:
     explicit MusicSelectScene(PhantomCore::ScreenVisual2DManager &screenVisuals,
-                              PhantomCore::AudioPlaybackManager &audioPlayback,
+                              std::shared_ptr<SongLibrary> library,
                               std::shared_ptr<GameplayLaunchStore> launchRequest,
                               SongSelectPurpose purpose,
                               TextCatalog &texts,
@@ -44,13 +43,14 @@ class MusicSelectScene final : public PhantomCore::GameScene
     SongSelectPurpose purpose_;
     OptionSettings &options_;
     TextCatalog &texts_;
-    std::unique_ptr<SongSelectionState> selection_;
+    // Game song select borrows the library the title shares; editor song select owns its own.
+    std::shared_ptr<SongLibrary> library_;
+    SongSelectionState &selection_;
     std::unique_ptr<MusicSelectView> view_;
-    std::unique_ptr<SongPreviewController> preview_;
     bool active_{};
     bool firstEntry_{true};
-    SongCatalogLoader catalogLoader_;
-    std::filesystem::path catalogRoot_;
+    // Returning to the title keeps the song playing; every other exit silences it.
+    bool keepPlaybackOnExit_{};
     EditorOsuImport osuImport_;
     PlaySessionLoader patternLoader_;
     std::optional<GameplayLaunchRequest> pendingLaunch_;

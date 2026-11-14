@@ -37,6 +37,8 @@ namespace tests
     void TestEffectValidationConsistency();
     void TestYmeEffects(const std::filesystem::path &songsRoot);
     void TestSceneStateBoundaries();
+    void TestMusicPlayerTransport();
+    void TestMusicPlaylistSteps();
     void TestJudgementScalingAndInterpolation();
     void TestRhythmTimerClockMapping();
     void TestLaneFocusRules();

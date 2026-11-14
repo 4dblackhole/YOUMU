@@ -29,6 +29,7 @@
     <Filter Include="Assets\Skins\Default Skin\Loading" />
     <Filter Include="Assets\Skins\Default Skin\Logo" />
     <Filter Include="Assets\Skins\Default Skin\Logo\Menu" />
+    <Filter Include="Assets\Skins\Default Skin\Logo\Player" />
     <Filter Include="Assets\Skins\Default Skin\Logo\Sky" />
     <Filter Include="Assets\Skins\Default Skin\MusicSelect" />
     <Filter Include="Assets\Skins\Default Skin\MusicSelect\Detail" />
@@ -63,6 +64,7 @@
     <None Include="Assets\Skins\Default Skin\Logo\*.*"><Filter>Assets\Skins\Default Skin\Logo</Filter></None>
     <None Include="Assets\Skins\Default Skin\Logo\Sky\*.*"><Filter>Assets\Skins\Default Skin\Logo\Sky</Filter></None>
     <None Include="Assets\Skins\Default Skin\Logo\Menu\*.*"><Filter>Assets\Skins\Default Skin\Logo\Menu</Filter></None>
+    <None Include="Assets\Skins\Default Skin\Logo\Player\*.*"><Filter>Assets\Skins\Default Skin\Logo\Player</Filter></None>
     <None Include="Assets\Skins\Default Skin\MusicSelect\*.*"><Filter>Assets\Skins\Default Skin\MusicSelect</Filter></None>
     <None Include="Assets\Skins\Default Skin\MusicSelect\Detail\*.*"><Filter>Assets\Skins\Default Skin\MusicSelect\Detail</Filter></None>
     <None Include="Assets\Skins\Default Skin\MusicSelect\Panels\*.*"><Filter>Assets\Skins\Default Skin\MusicSelect\Panels</Filter></None>
