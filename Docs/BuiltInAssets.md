@@ -179,7 +179,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 
 | 섹션 | 이미지 항목 |
 | --- | --- |
-| `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor` |
+| `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | `Background`, `Panels.Left/Right`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `ScrollbarTrack/ScrollbarHandle`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |

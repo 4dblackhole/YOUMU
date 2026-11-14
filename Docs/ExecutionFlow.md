@@ -50,6 +50,9 @@ flowchart TD
 3. `Run`이 `GetEngineConfig`를 읽어 창, 렌더러, Raw Input과 오디오를
    초기화합니다. 창 제목은 공통 `Texts/GameIdentity.h`의 `GameName`을 사용합니다.
 4. `RegisterScenes`가 Logo, Lobby, EditorSongSelect, Editor, RhythmTest, Result route를 등록합니다.
+   이때 Logo와 Lobby가 함께 쓸 `SongLibrary`(곡 목록·선택 상태·미리듣기)를 만들어 `YOUMUGame`이 보관하고,
+   EditorSongSelect에는 따로 하나를 만들어 넘깁니다. 목록 탐색은 그 `SongLibrary`를 처음 Initialize한
+   Scene(보통 Logo, smoke는 Lobby/EditorSongSelect)에서 시작합니다.
 5. `SceneManager`가 최초 Scene을 활성화하고 `Initialize`를 한 번 호출합니다.
    Client 초기화 hook은 첫 update/render 전에 현재 출력 장치 목록에서 저장된
    드라이버를 찾아 적용합니다. 출력 방식이 fallback됐으면 다른 API의 장치 번호를 사용하지 않습니다.
@@ -76,17 +79,19 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 
 ## Scene 흐름
 
-- Logo에서 Game Start를 누르면 Lobby로 이동합니다.
+- Logo에서 Game Start를 누르면 Lobby로 이동합니다. 타이틀 플레이어의 곡이 선택된 채로 들어가며 소리가 끊기지 않고,
+  Lobby의 Back으로 돌아올 때도 같습니다. 그 밖의 출구(Editor·Exit, 로딩·플레이·결과·에디터)는 `EndScene`에서
+  소리를 멈추되 곡 선택은 남깁니다([곡 선택](SongSelect.md#미리듣기와-타이틀-플레이어)).
 - Logo의 옵션 버튼 또는 Logo/Lobby의 `Ctrl+O`는 공통 왼쪽 옵션 패널을 열며,
   언어 변경은 `TextCatalog` revision을 통해 활성 화면과 이후 Scene에 반영됩니다.
   스킨 변경은 폴더 이름을 저장하고 이후 자산 로드에 적용합니다.
   공통 패널의 오디오 ComboBox 3개는 미들웨어(FMOD만 설치)·출력 방식·드라이버입니다.
   출력 방식/드라이버는 기존 오디오 객체를 유지하면서 즉시 적용하고 Option.ini에 저장합니다.
   같은 옵션 버튼이나 ESC로 닫습니다. Songs 폴더 변경은 OptionSettings가 저장하고,
-  활성 곡 선택 Scene은 루트 변경을 감지해 미리듣기를 정지하고 카탈로그를 다시 요청합니다.
+  활성 타이틀·곡 선택 Scene은 루트 변경을 감지해 미리듣기를 정지하고 카탈로그를 다시 요청합니다.
   카탈로그는 이전 루트 작업에 취소를 요청하고 최신 루트의 부분/최종 결과만 게시합니다.
 - Logo에서 Editor를 누르면 기록 패널이 없는 EditorSongSelect로 이동합니다.
-  이 Scene은 Lobby의 카탈로그·미리듣기·검색·정렬·곡/난이도 탐색을 공유하며,
+  이 Scene은 Lobby와 같은 카탈로그·미리듣기·검색·정렬·곡/난이도 탐색 코드를 쓰되 자기 `SongLibrary`를 가지며,
   난이도를 확정하면 선택 경로를 기록하고 Editor Scene으로 이동합니다.
   카드의 +는 New Difficulty/Convert .osu 팝업을 엽니다. 전자는 NewDifficultyDialog에서
   메타데이터를 입력받고 EditorPatternCreation이 새 YMP/YME를 생성한 다음 같은 진입

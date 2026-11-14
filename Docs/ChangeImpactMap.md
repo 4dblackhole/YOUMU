@@ -13,7 +13,8 @@
 | 선곡 화면 틀·대표 이름·기록 줄·하단 띠 | SongSelectLayout(열·하단 띠 좌표, 레터박스 배율, 글자 도우미), SongSelectPanels(막·곡 정보·하단 띠 생성과 갱신), SongRecordView, SongFavoriteTabs, `Presentation/RankName.h`(결과 화면과 공유) | RunMusicSelectViewTests, RunSkinTests, ResultPresentationTests |
 | 선택 채보 BG의 선곡·로딩·플레이·리절트 배경 | SongBackgroundPreview, RhythmTestScene의 초기 BG 준비, YOUMUGame의 Result context, TaikoResultView; Presentation/BackgroundLayout | MusicSelectViewTests, GameplayPauseTests(초기화 중 BG 재사용·준비 순서), ResultPresentationTests, GameplayJudgementTests |
 | 곡 목록·디스크 캐시·비동기 패턴 로딩 | ChartLoadJob, SongCatalogLoader, `YOUMU.Chart/Catalog`, PlaySessionLoader, GameplaySessionFactory | ChartLoadingTests(취소·worker 수명·부분 목록 선택), 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
-| 미리듣기 | SongPreviewController | MusicSelectViewTests, 엔진 오디오 계약 |
+| 미리듣기·공유 곡 목록 | `GameFlow/SongLibrary`(목록 로더·선택 상태·미리듣기 묶음, 타이틀·게임 곡 선택 공유), SongPreviewController, MusicPlayerState(재생 상태·재생 목록 순환) | SceneStateTests(TestMusicPlayerTransport·TestMusicPlaylistSteps), RunEditorPresentationTests(실제 미리듣기 재생·이동·곡 끝), MusicSelectViewTests, 엔진 오디오 계약 |
+| 타이틀 음악 플레이어 | `YOUMULogoScene/Submodules/TitlePlayerView`, LogoView/LogoInput(키·Space/Enter 분리), YOUMULogoScene(요청 실행·화면 전환 때 소리 유지/정지) | RunTitlePlayerTests, RunSkinTests, 화면 캡처 |
 | 새 난이도·.osu 가져오기 | NewDifficultyDialog, EditorPatternCreation, EditorOsuImport, OsuImportValidation | RunNewDifficultyTests, RunOsuImportValidationTests |
 | 전역 옵션·탭·모드별 키 편집·Option.ini | `Client/Presentation/OptionsPanel`의 OptionsTabs/OptionsKeys(모드별 키 오버레이)/각 필드, `Client/App/OptionSettings` | RunOptionsPanelTests(탭·스크롤·숨긴 입력·ja 저장·표현 등록부 정합), OptionTimingTests |
 | 모드 등록·키 정책·레인 입력 | `YOUMU.Modes/Mode`: PlayGameModeFactory, ModeInputLayout, `Submodules/PlaySession`의 행동→레인 라우팅 | ModeRegistryTests, LaneRoutingTests, OptionTimingTests |

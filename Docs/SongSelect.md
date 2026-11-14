@@ -3,7 +3,8 @@
 수정 진입점: `Client/GameScene/MusicSelectScene/Submodules`.
 배치는 SongSelectLayout/패널은 SongSelectPanels/곡 목록 카드·스크롤은 SongListView,
 선택 정책은 SongSelectionState, 미리듣기는 SongPreviewController를 읽습니다.
-MusicSelectScene은 View와 상태·오디오를 조립하고 View의 전환 의도를 처리합니다.
+목록 로더·선택 상태·미리듣기는 `GameFlow/SongLibrary`로 묶여 있고, MusicSelectScene은 그것을 빌려
+View와 조립하고 View의 전환 의도를 처리합니다([미리듣기와 타이틀 플레이어](#미리듣기와-타이틀-플레이어)).
 
 노트 종류 비율 그래프와 NPS(초당 노트 수) 그래프는 사용자 지시로 폐기했습니다.
 두 그래프 및 이를 위한 분석 버튼/패널은 선곡 화면의 구현 범위에서 제외합니다.
@@ -211,7 +212,9 @@ Catalog 탐색은 파일별 오류를 격리하므로 손상된 YMM/YMP/YME 또�
 진단을 남기고 해당 항목만 제외한다. `GO` 직전에도 선택 패턴을 한 번 검증하며,
 실패하면 Scene을 전환하지 않고 GO 바로 위 말풍선에 오류를 표시한다. 성공하면 검증한
 PlaySession의 소유권을 gameplay controller로 한 번 넘겨 같은 파일을 다시 읽지 않는다.
-첫 진입의 Initialize에서 카탈로그 worker를 시작하고 재진입에서도 외부 편집을 반영한다.
+카탈로그 worker는 공유 `SongLibrary`가 처음 초기화될 때(보통 타이틀 첫 진입, smoke처럼 곡 선택에 바로 들어오면
+그 Initialize) 시작하고, 곡 선택 재진입에서도 외부 편집을 반영한다. 같은 Songs 폴더를 다시 훑을 때는 지금 목록과
+선택을 그대로 둔 채 새 항목으로 갈아 끼우고, 폴더가 바뀌면 빈 목록에서 다시 시작한다.
 SongCatalogLoader는 복사한 경로와 파서 캐시만 worker에 넘기며 Scene/엔진 pointer를
 참조하지 않는다. 검증이 끝난 곡 메타데이터와 패턴을 탐색 중 바로 추가하고 첫 로딩 전용 문구를
 두지 않는다(LOAD-01). 첫 탐색 중 곡이 아직 없으면 목록을 비워 두고, 패턴이 추가되지 않은 곡은 `NO DIFFICULTIES`로
@@ -227,7 +230,25 @@ GO의 검증·세션 생성도 `PlaySessionLoader` worker에서 실행하고 완
 대기 중 다른 패턴으로 이동하거나 화면에서 나가면 이전 진입 결과는 적용하지 않는다.
 MusicSelectView는 행 배치 metadata와 실제 카드를 구분하여 viewport 인근 행만 만든다.
 포커스/검색/정렬/스크롤/resize는 기존 조작 규칙을 유지한다.
-미리듣기는 엔진의 StreamAsync로 열고 준비가 끝난 다음 기존 200ms fade로 재생한다.
-선택이 바뀌면 이전 로딩의 완료를 확인해 폐기하고 최신 선택을 시작한다. 로딩/정지 직후의
-clip은 안전한 release 상태가 될 때까지 보관한다. 실패 파일은 매 Update 재시도하지 않고
-다른 선택이나 Scene 재진입에서 다시 시도한다.
+
+## 미리듣기와 타이틀 플레이어
+
+`YOUMUGame`이 `SongLibrary`(SongCatalogLoader·SongSelectionState·SongPreviewController·Songs 루트) 하나를 갖고
+타이틀(`YOUMULogoScene`)과 게임 곡 선택(`LobbySceneId`)이 함께 쓴다. 에디터 곡 선택은 자기 `SongLibrary`를 따로 가지며
+타이틀의 곡을 이어받지 않고 그 화면의 선택 곡을 새로 재생한다. 켜져 있는 화면이 목록 진행분 반영·완료 처리와
+재생 갱신을 같은 코드로 돌리므로, 어느 쪽이 먼저 열려도(smoke 경로 포함) 동작한다.
+
+- 재생기는 곡을 catalog 인덱스가 아니라 음원 경로로 식별한다. 목록이 갱신되거나 순서가 바뀌어도 같은 곡이면 소리가
+  끊기지 않는다. 포커스한 곡 = 재생할 곡이며, 타이틀의 현재 곡이 곧 곡 선택의 선택 곡이다.
+- 미리듣기는 엔진의 StreamAsync로 열고 준비가 끝난 다음 200ms fade로 재생한다. 선택이 바뀌면 이전 로딩의 완료를
+  확인해 폐기하고 최신 선택을 시작한다. 로딩/정지 직후의 clip은 안전한 release 상태가 될 때까지 보관하고, 종료 때 남은
+  것은 `AudioSystem::RetireClip`에 넘긴다. 실패 파일은 매 Update 재시도하지 않고 다른 선택·재생 버튼·Scene 재진입에서
+  다시 시도한다.
+- 재생 상태(`MusicPlayerState`): 재생/일시정지, 정지(멈추고 처음으로), 위치 이동, 현재 위치·길이. 위치는 재생 중
+  흐른 시간을 누적해 얻고, 이동은 같은 voice를 `startPositionMicroseconds`로 다시 시작해 스트림이 준비된 뒤 이어 재생한다.
+- 곡 끝: 곡 선택은 그 곡을 처음부터 반복하고, 타이틀은 다음 곡으로 넘어간다. 화면이 바뀌는 즉시 그 화면의 규칙을 따른다.
+- 곡 선택은 들어올 때 일시정지·정지된 곡도 다시 재생한다(포커스한 곡이 없으면 소리를 끈다).
+- 화면 간 연결: 타이틀 → 게임 곡 선택(Game Start)과 게임 곡 선택 → 타이틀(Back)은 곡과 소리를 그대로 이어 간다.
+  로딩·플레이·결과·에디터 곡 선택·에디터·`.osu` 가져오기·새 난이도로 갈 때는 소리를 멈추되 곡 선택은 남긴다.
+  결과에서 곡 선택으로 돌아오면 그 곡을 처음부터 다시 재생한다.
+- 곡 목록의 "재생 중" 표시는 아직 없다(공용 부품 묶음 몫).

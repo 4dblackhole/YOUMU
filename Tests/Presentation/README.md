@@ -27,7 +27,10 @@ quarter/double speed, Space pause/resume, Debug-seek isolation, rate bounds, rep
 Esc round trips, natural completion without Result, empty-Test HP exclusion,
 localization and retained editor Undo. It writes only its `build/fixtures` data.
 `RunEditorPresentationTests.ps1` also checks the actual Test button and native Save
-Yes/No/error paths; `-SongFilter --test-launch` selects those focused checks.
+Yes/No/error paths; `-SongFilter --test-launch` selects those focused checks. Its preview section plays the
+bundled song through SongPreviewController by audio path: no reload for the focused song, pause and stop
+keeping the voice, seeking in place, the end of a song reported once (title) or restarted (song select),
+failed files not reopened every frame, and released audio reopening on return.
 
 ## Lane key beam regression test
 
@@ -410,6 +413,22 @@ The test source uses MSVC Code Analysis and does not write user options/songs/sk
 This is automation, not a manual pixel/physical keyboard/mouse/listening check.
 ESC routing is connected in production; its interrupted scoring and tied-us input
 order are covered by domain tests, without claiming a physical ESC test.
+
+## Title music player
+
+```powershell
+./Tests/Presentation/RunTitlePlayerTests.ps1 -Configuration Debug
+./Tests/Presentation/RunTitlePlayerTests.ps1 -Configuration Release
+```
+
+Links the production LogoView/TitlePlayerView and drives them with synthesized window input. Checks that
+Space, Left and Right request play/pause, previous and next song while Enter alone runs the menu; that the
+play/pause, stop and next buttons and seek-bar clicks report their intents; that dragging previews the
+position and seeks only on release (also when dragged off the bar); that the bar does not seek before the
+length is known; that an empty playlist blanks the captions, shows the empty art box and disables every
+control and key; that the album art is square-cropped; and that the options panel keeps the player keys.
+Audio transport (pause, seek, stop, end of song) is covered with real NoSound FMOD playback in
+`RunEditorPresentationTests.ps1`. Listening and physical input remain manual checks.
 
 ## Skin manifest and scene images
 
