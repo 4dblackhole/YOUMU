@@ -78,9 +78,12 @@ aspect/offset framing across resize, same-path offset changes and clearing/fallb
 Song-list regressions verify no thumbnail nodes or BG requests for collapsed cards,
 one-line title/artist captions and unchanged selected-chart jacket rendering.
 Frame tests resize to narrow/normal/wide: the three columns are plain nodes without panel sprites,
-the veils exist (no record veil in the editor), no ALL bar exists, the board keeps the 16:9-or-wider
+one sheet starts at x 362 with its shadow band and reaches the right screen edge (game and editor alike,
+the extension only on a wider screen), a thin rule separates details and list, no veils or ALL bar exist,
+record rows, the notice and the page controls sit on plates of one width from the left screen edge,
+the board keeps the 16:9-or-wider
 arrangement and scales as a whole below 16:9 with letterbox bands, and the song list stays on the right edge.
-Skin tests check that a selected skin replaces the veil/button/card images and that returning to
+Skin tests check that a selected skin replaces the sheet/button/card images and that returning to
 the default skin restores the built-in parts.
 ResultPresentationTests checks the BG value snapshot, reference-height offset conversion,
 resize/language rebuild, image failure fallback and actual D3D12 retention after gameplay destruction.
@@ -440,7 +443,7 @@ Audio transport (pause, seek, stop, end of song) is covered with real NoSound FM
 Links production SkinManifest/selection/binding and Logo/MusicSelect views in an isolated
 deployment directory, without writing user skins or Option.ini. Checks UTF-8/BOM/CRLF/Unicode paths,
 scene-folder/image relativity, invalid paths/encoding/duplicates, per-component embedded fallback,
-partial skins, cache/reload, button states, full-screen logo replacement, song-select veil/button
+partial skins, cache/reload, button states, full-screen logo replacement, song-select sheet/button
 replacement and restoration, and virtualized song-card bindings using the real bundled catalog.
 The test source uses MSVC Code Analysis. Native captures/manual input are reported separately.
 

@@ -28,7 +28,6 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 | `SortSelector.Open.png` | 372×48 | 펼친 정렬 드롭다운 상자 |
 | `SongCardPlaying.png` | 20×18 | 선택한 곡 제목 앞 재생 중 막대 3개 |
 | `Panels/Transparent.png` | 1×1 | 쓰지 않음(가운데 열은 이제 패널이 없음) |
-| `Records/Best.png` | 432×84 | BEST 칸(왼쪽 코발트 줄) |
 | `Records/Status.Failed.png` | 62×30 | 기록 상태 칩 바탕: Failed |
 
 ## Loading — 로딩

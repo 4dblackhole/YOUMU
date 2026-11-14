@@ -3,5 +3,5 @@ Their keys are listed under [MusicSelect] in ../skin.ini; a state image uses the
 plus .Hovered, .Pressed or .Disabled. Text, layout, input and song data stay runtime UI.
 
 Detail/   jacket frame, empty jacket, difficulty block and its value badge
-Panels/   white veils behind the record column and the song list
-Records/  record row and status chips
+Panels/   sheet under the song details and the song list, and its edge shadow
+Records/  record-type selector, record row plate and status chips

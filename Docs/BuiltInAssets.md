@@ -181,7 +181,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | --- | --- |
 | `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
-| `MusicSelect` | `Background`, `Panels.Left/Right`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `ScrollbarTrack/ScrollbarHandle`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
+| `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `ScrollbarTrack/ScrollbarHandle`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
 | `Common` | `Icons.<이름>` 37개(흰색 36px 선 아이콘, 게임이 글자색을 곱해 씀) |
@@ -190,6 +190,8 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 버튼/패널 PNG는 기존 영역에 맞춰 표시하고 배치·입력 영역·런타임 텍스트는 유지합니다.
 `키.Hovered`, `키.Pressed`, `키.Disabled`로 상태별 이미지를 지정할 수 있습니다.
 생략한 상태는 기본 이미지를 사용하고 원래 RGB와 기존 불투명도를 적용합니다.
+곡 선택의 부품과 타이틀 메뉴 막대(`BindSkinPart`)는 그림의 불투명도를 그대로 씁니다. 그림이 없을 때 쓰는 대체 색의 알파는 그림에 곱하지 않으며,
+꺼진 상태 그림이 없는 부품만 꺼졌을 때 0.45로 흐리게 그립니다. `BindSkinImage`로 연결한 나머지 그림은 대체 색의 알파를 그림에 곱합니다.
 기본 이미지가 없는 키는 상태 이미지만으로 활성화되지 않습니다. 언어별 문구는 PNG에 굽지 않는 것을 권장합니다.
 부모 패널에 이미지를 지정하면 내부 단색 채움만 숨겨 PNG가 가려지지 않게 합니다.
 타이틀 `Background`는 화면 전체에 표시하고 메뉴 네 항목은 같은 막대 그림을 씁니다(고른 항목은 `Menu.ButtonSelected`).
@@ -218,7 +220,10 @@ fallback을 사용합니다. 인디케이터는 별도 색 구간 요소로 구�
 내장 원본은 `YOUMU.Assets/Assets/Skins/Default Skin` 아래 실제 폴더/VS 필터로 정리합니다.
 플레이는 `InGame`, 로고는 `Logo`, 곡 선택은 `MusicSelect`, 리절트는 `Result`를 사용합니다.
 각 폴더는 루트의 `skin.ini`와 같은 레벨입니다. 곡 선택의 부품은 UI 시안에서 1080p 기준(논리 × 1.5)으로 뽑은 PNG이며
-`MusicSelect` 아래 `Detail`(재킷 틀·빈 재킷·난이도 블록·값 배지), `Panels`(양옆 막), `Records`(기록 줄·상태 칩) 폴더로 나뉩니다.
+`MusicSelect` 아래 `Detail`(재킷 틀·빈 재킷·난이도 블록·값 배지), `Panels`(곡 정보·곡 목록 아래의 면과 가장자리 그림자 띠),
+`Records`(기록 선택 상자·기록 줄 판·상태 칩) 폴더로 나뉩니다. `Panels/Sheet.png`(1377×1080)는 논리 x 362부터 16:9 화면의 오른쪽 끝까지,
+`Panels/SheetEdge.png`(54×1080)는 논리 x 352에 놓이고 `Records/Row.png`(504×78)는 화면 왼쪽 끝에서 시작하는 기록 줄 판입니다.
+`Records/Selector.png`(372×48)는 정렬 선택 상자와 같은 모양에 바탕만 불투명한 스킨 바탕색입니다.
 `Background`와 `PlayOptions`는 내장 그림이 없어 단색 배경과 글자 버튼으로 그립니다.
 일시정지의 `InGame/Pause/Backdrop.png`는 사선 결이 있는 남색 58% 덮개(1920×1080)이며 화면 전체에 확장하여
 Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54, 화살표 포함)·준비 중 띠(746×9)도 같은 폴더의 PNG입니다.
