@@ -176,7 +176,7 @@ After a solution build, run in an x64 developer PowerShell with `FMOD_ROOT` set:
 ```
 
 The test links production pause/menu/controller/audio objects and uses MSVC `/analyze`.
-It verifies Penpot row dimensions/gaps, keyboard focus, bounded adjustments, pointer Resume/Retry/Retire,
+It verifies the redesigned row dimensions/gaps, the PAUSED title and preparing band, keyboard focus, bounded adjustments, pointer Resume/Retry/Retire,
 selector clicks that only change values, language changes,
 portrait/wide resizing, preparation gating and owned Canvas cleanup. Hidden D3D12
 execution checks clock freezing, Resume preserving grades, four-measure Rewind with

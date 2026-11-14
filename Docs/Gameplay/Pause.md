@@ -32,28 +32,22 @@ R 초기화는 유지합니다. 디버그 시간 조작은 [Debugging](Debugging
 
 ## 일시정지 화면
 
-확정 리디자인([UI-02](../DesignDecisions.md#ui-02-ui-리디자인), 미구현)은 `PAUSED` 제목과 Retry·Retire 설명을 두고 준비 중에는 진행 띠를
-표시합니다. 세부는 [UI 리디자인](../UIRedesign.md#일시정지)이며 아래는 현재 구현입니다.
+[UI-02](../DesignDecisions.md#ui-02-ui-리디자인)의 배치입니다. 사선 결이 있는 남색 덮개(`PauseBackdrop`) 위, 화면 가운데의 폭 520 카드에
+큰 기울인 `PAUSED` 제목과 네 행을 둡니다. 행은 533×52이고 카드 왼쪽으로 6.5 튀어나옵니다. Resume·Rewind 사이는 10,
+Rewind와 Retry 사이에는 구분선을 두고 Retry·Retire를 떨어뜨립니다. 선택 행은 코발트 면과 금빛 왼쪽 줄(`Pause.Row.Selected`)에
+흰 글자, 나머지는 밝은 면(`Pause.Row`)에 짙은 글자이며 Retire 이름은 위험 색입니다. Retry·Retire 행 오른쪽에는
+선택 언어의 짧은 설명(`Pause.retryDescription`·`Pause.retireDescription`)을 둡니다.
 
-Penpot `Gameplay · Sky`의 `인게임 일시정지 · Pause Controls · 1920×1080` 보드를 따릅니다.
-화면 중앙에 네 액션만 배치하며, 1080p 기준 전체 720×336px, 각 행 720×72px,
-행 간격 16px, 모서리 반경 20px입니다. 선택 행은 Result와 같은 하늘색/흰색 글자,
-다른 행은 밝은 바탕/하늘색 테두리/짙은 글자이며 배경은 #17344E의 38% 덮개입니다.
-Noto Sans KR 700을 내장 폰트에서 공유하고 제목/설명/별도 큰 패널은 표시하지 않습니다.
-
-Resume/Rewind 오른쪽에는 앞·뒤 화살표와 현재 값이 있는 선택기를 둡니다.
+Resume/Rewind 오른쪽에는 앞·뒤 화살표와 현재 값이 있는 선택기(`Pause.Stepper`)를 둡니다.
 화살표 클릭은 키보드 ←→와 같은 `AdjustValue`를 사용하여 값만 바꾸고 게임을 재개하지 않습니다.
-왼쪽 액션 영역 클릭이나 Enter가 동작을 실행합니다. 준비 중에는 두 액션과 선택기를 비활성화합니다.
-좁은 화면에서는 메뉴 부모를 함께 축소하여 버튼·선택기·텍스트가 화면 안에 남습니다.
+행의 왼쪽 영역 클릭이나 Enter가 동작을 실행합니다. 준비 중에는 `PAUSED` 아래에 가는 진행 띠(`Pause.PrepTrack`·`Pause.PrepFill`)가
+움직이고 두 행과 선택기는 꺼집니다(바탕은 그대로, 글자·선택기 40%). 준비가 끝나면 띠가 사라지고 두 행이 다시 켜집니다.
+좁은 화면에서는 메뉴 부모를 함께 축소하여 행·선택기·글자가 화면 안에 남습니다.
 
-`GameplayPauseLayout`은 Canvas 노드와 배치를, `GameplayPauseMenu`는 포커스·값·입력 의도를
-관리합니다. 세션·오디오 변경은 기존 Controller에 남습니다. 기본 모양과 화살표는 기존
-Sprite/Transform으로 구성하고 기존 `skin.ini`의 PausePanel/PauseResume/Rewind/Retry/Retire
-매핑을 유지합니다. 반투명 배경은 `InGame/Pause/Backdrop.png`의 1×1 RGBA 이미지를
-화면 전체로 확장하며 `PauseBackdrop` 매핑으로 교체합니다. 화면용 단색 Panel의 불투명
-경로 대신 기존 이미지 Sprite의 알파 합성을 사용합니다.
-선택기 문구는 언어 INI의 `Pause.resumeValueFormat`/`rewindValueFormat`이며
-누락 시 내장 영어를 사용합니다. 개발 폴더의 기존 편집 언어파일은 빌드로 덮어쓰지 않습니다.
+`GameplayPauseLayout`은 Canvas 노드와 배치를, `GameplayPauseMenu`는 포커스·값·입력 의도와 행 상태 그림을
+관리합니다. 세션·오디오 변경은 기존 Controller에 남습니다. 글꼴은 영어 문구 Nunito, 제목·값은 Barlow Semi Condensed,
+한글·일본어 설명은 Noto Sans KR입니다. 선택기 문구는 언어 INI의 `Pause.resumeValueFormat`/`rewindValueFormat`이며
+누락 시 내장 영어를 사용합니다.
 
 ## 모든 모드의 실행 상태
 
