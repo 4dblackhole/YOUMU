@@ -8,61 +8,62 @@ using namespace song_select;
 
 void MusicSelectView::UpdateResponsiveLayout()
 {
-    if (canvas_ == nullptr || board_ == nullptr || background_ == nullptr ||
-        categoryBar_ == nullptr || (!IsEditorSongSelect() && recordPanel_ == nullptr) ||
-        informationPanel_ == nullptr || browserPanel_ == nullptr || optionButton_ == nullptr ||
-        backButton_ == nullptr || goButton_ == nullptr)
+    if (canvas_ == nullptr || board_ == nullptr || background_ == nullptr || informationPanel_ == nullptr ||
+        browserPanel_ == nullptr || backButton_ == nullptr || goButton_ == nullptr)
     {
         return;
     }
 
     const Size canvasSize = canvas_->LogicalSize();
-    const ResponsiveSongSelectLayout responsive =
-        CalculateResponsiveLayout(canvasSize.width, IsEditorSongSelect());
-    board_->SetSize(canvasSize);
+    const SongSelectFrame frame = CalculateFrame(canvasSize.width);
+    const float height = layout::CanvasSize.height;
+    // The board holds the 16:9-or-wider arrangement and is scaled as a whole on narrower screens.
+    board_->SetSize({frame.width, height});
     board_->SetPosition({0.0F, 0.0F});
-    background_->SetBounds(responsive.background);
-    artwork_.LayoutBackground(canvasSize);
+    board_->Transform().SetScale(frame.scale, frame.scale, 1.0F);
+    background_->SetBounds({0.0F, 0.0F, frame.width, height});
+    artwork_.LayoutBackground({frame.width, height});
+    UpdateLetterbox(canvasSize, frame);
 
-    ResizeBorderedPanel(*categoryBar_, responsive.category, 3.0F);
+    if (recordVeil_ != nullptr)
+        recordVeil_->SetBounds({0.0F, 0.0F, layout::LeftVeilWidth, height});
+    if (listVeil_ != nullptr)
+        listVeil_->SetBounds({frame.width - layout::RightVeilWidth, 0.0F, layout::RightVeilWidth, height});
     if (recordPanel_ != nullptr)
-    {
-        ResizeBorderedPanel(*recordPanel_, responsive.record, 3.0F);
-    }
-    ResizeBorderedPanel(*informationPanel_, responsive.information, 3.0F);
-    ResizeBorderedPanel(*browserPanel_, responsive.browser, 3.0F);
-    categoryBar_->SetClipRect(
-        {0.0F, 0.0F, categoryBar_->NodeSize().width, categoryBar_->NodeSize().height});
-    if (recordPanel_ != nullptr)
-    {
-        recordPanel_->SetClipRect(
-            {0.0F, 0.0F, recordPanel_->NodeSize().width, recordPanel_->NodeSize().height});
-    }
-    informationPanel_->SetClipRect(
-        {0.0F, 0.0F, informationPanel_->NodeSize().width, informationPanel_->NodeSize().height});
-    browserPanel_->SetClipRect(
-        {0.0F, 0.0F, browserPanel_->NodeSize().width, browserPanel_->NodeSize().height});
+        recordPanel_->SetBounds(TopLeft(frame.record, height));
+    informationPanel_->SetBounds(TopLeft(frame.detail, height));
+    browserPanel_->SetBounds(TopLeft(frame.list, height));
 
     UpdateRecordPanelLayout();
     UpdateSongInformationLayout();
     UpdateSongBrowserLayout();
-
-    if (IsEditorSongSelect()) ResizeBorderedPanel(*optionButton_, responsive.option, 3.0F);
-    else
-    {
-        const float gap = 8.0F;
-        const float half = std::max((responsive.option.width - gap) / 2, 1.0F);
-        if (modeSelector_) modeSelector_->SetBounds({responsive.option.x, responsive.option.y, half, responsive.option.height});
-        ResizeBorderedPanel(*optionButton_, {responsive.option.x + half + gap, responsive.option.y, half, responsive.option.height}, 3.0F);
-    }
-    backButton_->SetBounds(responsive.back);
-    goButton_->SetBounds(responsive.go);
-    UpdateFooterLayout();
+    UpdateFooterLayout(frame);
     UpdateSearchInputLayout();
     filterPanel_.SetViewport(width_, height_);
     playOptionsPanel_.SetViewport(height_);
     records_.SetViewport(height_);
     favoritesPanel_.SetViewport();
+}
+
+void MusicSelectView::UpdateLetterbox(const Size canvasSize, const SongSelectFrame &frame)
+{
+    const float contentWidth = frame.width * frame.scale, contentHeight = layout::CanvasSize.height * frame.scale;
+    const float vertical = (canvasSize.height - contentHeight) * 0.5F;
+    const float horizontal = (canvasSize.width - contentWidth) * 0.5F;
+    const std::array<Rect, 4> bands{
+        Rect{-canvasSize.width * 0.5F, contentHeight * 0.5F, canvasSize.width, vertical},
+        Rect{-canvasSize.width * 0.5F, -canvasSize.height * 0.5F, canvasSize.width, vertical},
+        Rect{-canvasSize.width * 0.5F, -contentHeight * 0.5F, horizontal, contentHeight},
+        Rect{contentWidth * 0.5F, -contentHeight * 0.5F, horizontal, contentHeight}};
+    for (std::size_t i = 0; i < bands.size(); ++i)
+    {
+        if (letterbox_[i] == nullptr)
+            continue;
+        const bool visible = bands[i].width > 0.01F && bands[i].height > 0.01F;
+        letterbox_[i]->SetVisible(visible);
+        if (visible)
+            letterbox_[i]->SetBounds(bands[i]);
+    }
 }
 
 void MusicSelectView::UpdateRecordPanelLayout()
@@ -72,147 +73,103 @@ void MusicSelectView::UpdateRecordPanelLayout()
 
 void MusicSelectView::UpdateSongInformationLayout()
 {
-    if (informationPanel_ == nullptr || selectedSongLabel_ == nullptr ||
-        selectedArtistLabel_ == nullptr || difficultyInformation_ == nullptr ||
-        difficultyHeading_ == nullptr || creatorHeading_ == nullptr ||
-        selectedPatternLabel_ == nullptr || selectedCreatorLabel_ == nullptr ||
-        informationDivider_ == nullptr || selectedDetailsLabel_ == nullptr)
+    if (informationPanel_ == nullptr || selectedSongLabel_ == nullptr || selectedArtistLabel_ == nullptr ||
+        selectedCreatorLabel_ == nullptr || difficultyBlock_ == nullptr || selectedPatternLabel_ == nullptr ||
+        levelBadge_ == nullptr || creatorIcon_ == nullptr)
     {
         return;
     }
 
-    const float panelWidth = informationPanel_->NodeSize().width / DesignToCanvasScale;
-    const float previewWidth = artwork_.LayoutPreview(panelWidth, informationPanel_->NodeSize().height);
-    const float detailsX = previewWidth > 0.0F ? 24.0F + (previewWidth + 20.0F) : 24.0F;
+    // Jacket, names and figures share one vertical axis through the middle of the column.
+    const Size panel = informationPanel_->NodeSize();
+    const float center = panel.width * 0.5F;
+    const float textWidth = std::max(panel.width - 32.0F, 1.0F);
+    const auto row = [&](const float top, const float rowHeight) {
+        return TopLeft({center - textWidth * 0.5F, top, textWidth, rowHeight}, panel.height);
+    };
+    artwork_.LayoutPreview(TopLeft(
+        {center - layout::JacketSize * 0.5F, layout::JacketTop, layout::JacketSize, layout::JacketSize}, panel.height));
+    selectedArtistLabel_->SetBounds(row(layout::ArtistTop, 22.0F));
+    selectedSongLabel_->SetBounds(row(layout::TitleTop, 36.0F));
+    selectedSongLabel_->SetClipRect({0.0F, 0.0F, textWidth, 36.0F});
+    selectedCreatorLabel_->SetBounds(row(layout::CreatorTop, 20.0F));
 
-    const float detailsWidth = std::max(panelWidth - detailsX - 24.0F, 1.0F);
-    selectedSongLabel_->SetBounds(ScaleTopLeftBounds(
-        {detailsX, layout::SelectedSong.y, detailsWidth, layout::SelectedSong.height},
-        informationPanel_->NodeSize().height));
-    selectedArtistLabel_->SetBounds(ScaleTopLeftBounds(
-        {detailsX, layout::SelectedArtist.y, detailsWidth, layout::SelectedArtist.height},
-        informationPanel_->NodeSize().height));
-    ResizeBorderedPanel(*difficultyInformation_,
-                        ScaleTopLeftBounds({detailsX, layout::DifficultyInformation.y, detailsWidth,
-                                            layout::DifficultyInformation.height},
-                                           informationPanel_->NodeSize().height),
-                        1.0F);
+    // The quill sits right before the centred creator name.
+    const auto &creator = RequireComponent<TextVisualComponent>(*selectedCreatorLabel_);
+    const float creatorWidth = std::min(EstimateCaptionWidth(creator.Text(), 14.0F), textWidth);
+    creatorIcon_->SetBounds(
+        TopLeft({center - creatorWidth * 0.5F - 20.0F, layout::CreatorTop + 2.0F, 16.0F, 16.0F}, panel.height));
 
-    const float headingGap = std::clamp((detailsWidth - 32.0F) * 0.03F, 2.0F, 8.71F);
-    const float headingWidth = std::max((detailsWidth - 32.0F - headingGap) * 0.5F, 1.0F);
-    const float creatorX = 16.0F + headingWidth + headingGap;
-    difficultyHeading_->SetBounds(ScaleTopLeftBounds(
-        {16.0F, layout::DifficultyHeading.y, headingWidth, layout::DifficultyHeading.height},
-        difficultyInformation_->NodeSize().height));
-    creatorHeading_->SetBounds(ScaleTopLeftBounds(
-        {creatorX, layout::CreatorHeading.y, headingWidth, layout::CreatorHeading.height},
-        difficultyInformation_->NodeSize().height));
-    selectedPatternLabel_->SetBounds(ScaleTopLeftBounds(
-        {16.0F, layout::SelectedDifficulty.y, headingWidth, layout::SelectedDifficulty.height},
-        difficultyInformation_->NodeSize().height));
-    selectedCreatorLabel_->SetBounds(ScaleTopLeftBounds(
-        {creatorX, layout::SelectedCreator.y, headingWidth, layout::SelectedCreator.height},
-        difficultyInformation_->NodeSize().height));
-    const float informationInnerWidth = std::max(detailsWidth - 32.0F, 1.0F);
-    informationDivider_->SetBounds(
-        ScaleTopLeftBounds({16.0F, layout::InformationDivider.y, informationInnerWidth,
-                            layout::InformationDivider.height},
-                           difficultyInformation_->NodeSize().height));
-    selectedDetailsLabel_->SetBounds(ScaleTopLeftBounds(
-        {16.0F, layout::SelectedDetails.y, informationInnerWidth, layout::SelectedDetails.height},
-        difficultyInformation_->NodeSize().height));
-    for (std::size_t i = 0; i < extraDetailsLabels_.size(); ++i)
-        extraDetailsLabels_[i]->SetBounds(ScaleTopLeftBounds(
-            {16.0F, layout::ExtraDetails.y + 24.0F * static_cast<float>(i), informationInnerWidth, 22.0F},
-            difficultyInformation_->NodeSize().height));
+    // The block grows with the chart name and keeps the value badge at its right end.
+    constexpr float badgeWidth = 40.0F, badgeHeight = 22.0F, nameLeft = 16.0F, badgeGap = 8.0F, blockRight = 14.0F;
+    const auto &name = RequireComponent<TextVisualComponent>(*selectedPatternLabel_);
+    const float nameWidth = std::min(EstimateCaptionWidth(name.Text(), 15.0F) + 4.0F, textWidth - 96.0F);
+    const float blockWidth =
+        std::max(layout::DifficultyBlock.width, nameLeft + nameWidth + badgeGap + badgeWidth + blockRight);
+    const float blockHeight = layout::DifficultyBlock.height;
+    difficultyBlock_->SetBounds(
+        TopLeft({center - blockWidth * 0.5F, layout::DifficultyBlockTop, blockWidth, blockHeight}, panel.height));
+    selectedPatternLabel_->SetBounds({nameLeft, 0.0F, std::max(blockWidth - nameLeft - badgeGap - badgeWidth - blockRight, 1.0F),
+                                      blockHeight});
+    levelBadge_->SetBounds({blockWidth - blockRight - badgeWidth, (blockHeight - badgeHeight) * 0.5F, badgeWidth,
+                            badgeHeight});
+    levelBadge_->Children().front()->SetBounds({0.0F, 0.0F, badgeWidth, badgeHeight});
+
+    const float gridLeft = center - layout::StatWidth * 1.5F;
+    for (std::size_t i = 0; i < statCaptions_.size(); ++i)
+    {
+        if (statCaptions_[i] == nullptr || statValues_[i] == nullptr)
+            continue;
+        const float x = gridLeft + layout::StatWidth * static_cast<float>(i % 3);
+        const float top = layout::StatTop + layout::StatPitch * static_cast<float>(i / 3);
+        statCaptions_[i]->SetBounds(TopLeft({x, top, layout::StatWidth, 18.0F}, panel.height));
+        statValues_[i]->SetBounds(TopLeft({x, top + 18.0F, layout::StatWidth, 30.0F}, panel.height));
+    }
 }
 
 void MusicSelectView::UpdateSongBrowserLayout()
 {
-    if (browserPanel_ == nullptr || searchField_ == nullptr || searchCountLabel_ == nullptr ||
-        sortSelector_ == nullptr || filterButton_ == nullptr || songList_.Viewport() == nullptr ||
-        browserHint_ == nullptr)
+    if (browserPanel_ == nullptr || searchField_ == nullptr || songList_.Viewport() == nullptr)
     {
         return;
     }
-
-    const float panelWidth = browserPanel_->NodeSize().width / DesignToCanvasScale;
-    const float innerWidth = std::max(panelWidth - 28.0F, 1.0F);
-    constexpr float tabsHeight = 64;
-    favoriteTabs_.SetBounds(ScaleTopLeftBounds({14, 14, innerWidth, 54}, browserPanel_->NodeSize().height));
-    searchField_->SetBounds(
-        ScaleTopLeftBounds({14.0F, layout::SearchField.y + tabsHeight, innerWidth, layout::SearchField.height},
-                           browserPanel_->NodeSize().height));
-    auto &searchText = RequireComponent<TextVisualComponent>(*searchField_);
-    const float countWidth = std::min(96.0F, innerWidth);
-    const float searchTextWidth = std::max(innerWidth - countWidth - 18.0F, 1.0F);
-    searchText.SetContentBounds(
-        ScaleTopLeftBounds({14.0F, 0.0F, searchTextWidth, layout::SearchField.height},
-                           searchField_->NodeSize().height));
-    searchCountLabel_->SetBounds(
-        ScaleTopLeftBounds({std::max(innerWidth - countWidth - 17.0F, 0.0F), 0.0F, countWidth,
-                            layout::SearchCount.height},
-                           searchField_->NodeSize().height));
-
-    const float filterWidth = std::min(90.0F, innerWidth * .3F);
-    const float sortWidth = std::max(innerWidth - filterWidth - 10.0F, 1.0F);
-    sortSelector_->SetBounds(
-        ScaleTopLeftBounds({14.0F, layout::SortSelector.y + tabsHeight, sortWidth, layout::SortSelector.height},
-                           browserPanel_->NodeSize().height));
-    filterButton_->SetBounds(
-        ScaleTopLeftBounds({14.0F + sortWidth + 10.0F, layout::SortSelector.y + tabsHeight, filterWidth, layout::SortSelector.height},
-                           browserPanel_->NodeSize().height));
-    ResizeBorderedPanel(
-        *songList_.Viewport(),
-        ScaleTopLeftBounds({14.0F, layout::SongViewport.y + tabsHeight, innerWidth, layout::SongViewport.height - tabsHeight},
-                           browserPanel_->NodeSize().height),
-        1.5F);
-    songList_.SetLayout(innerWidth);
-    browserHint_->SetBounds(
-        ScaleTopLeftBounds({18.0F, layout::BrowserHint.y, std::max(panelWidth - 36.0F, 1.0F),
-                            layout::BrowserHint.height},
-                           browserPanel_->NodeSize().height));
+    const float height = browserPanel_->NodeSize().height;
+    favoriteTabs_.SetBounds(TopLeft(layout::Tabs, height));
+    songList_.Viewport()->SetBounds(
+        TopLeft({0.0F, layout::ViewportTop, layout::ListWidth, layout::BodyHeight - layout::ViewportTop}, height));
+    songList_.SetLayout();
 }
 
-void MusicSelectView::UpdateFooterLayout()
+void MusicSelectView::UpdateFooterLayout(const SongSelectFrame &frame)
 {
-    if (optionButton_ == nullptr || optionLabel_ == nullptr || backButton_ == nullptr ||
-        backFill_ == nullptr || backLabel_ == nullptr || goButton_ == nullptr ||
-        goFill_ == nullptr || goLabel_ == nullptr)
+    if (footerBar_ == nullptr || optionButton_ == nullptr || backButton_ == nullptr || backLabel_ == nullptr ||
+        goButton_ == nullptr || goLabel_ == nullptr || goError_ == nullptr || goErrorLabel_ == nullptr)
     {
         return;
     }
-    optionLabel_->SetBounds(
-        {0.0F, 0.0F, optionButton_->NodeSize().width, optionButton_->NodeSize().height});
+    const float height = layout::CanvasSize.height;
+    footerBar_->SetBounds(TopLeft(frame.footer, height));
+    backButton_->SetBounds(TopLeft(frame.back, height));
+    // The block's right edge is slanted, so the caption centres on the solid part.
+    backLabel_->SetBounds({0.0F, 0.0F, frame.back.width - 16.0F, frame.back.height});
+    goButton_->SetBounds(TopLeft(frame.go, height));
+    goLabel_->SetBounds({24.0F, 0.0F, frame.go.width - 24.0F, frame.go.height});
+    goError_->SetBounds(TopLeft({frame.width - layout::GoError.width - 16.0F, frame.go.y - layout::GoError.height - 10.0F,
+                                 layout::GoError.width, layout::GoError.height},
+                                height));
+    goErrorLabel_->SetBounds({14.0F, 0.0F, layout::GoError.width - 24.0F, layout::GoError.height});
 
-    const auto resizeEdgeButton = [](Visual2DNode &button,
-                                     Visual2DNode &fill,
-                                     Visual2DNode &label) {
-        const Size buttonSize = button.NodeSize();
-        const float padding = std::min(
-            {4.0F * DesignToCanvasScale, buttonSize.width * 0.1F, buttonSize.height * 0.1F});
-        fill.SetBounds({padding, padding, std::max(buttonSize.width - padding * 2.0F, 1.0F),
-                        std::max(buttonSize.height - padding * 2.0F, 1.0F)});
-        label.SetBounds({0.0F, 0.0F, buttonSize.width, buttonSize.height});
-    };
-    resizeEdgeButton(*backButton_, *backFill_, *backLabel_);
-    resizeEdgeButton(*goButton_, *goFill_, *goLabel_);
-}
-
-void MusicSelectView::ResizeBorderedPanel(Visual2DNode &panel,
-                                          const Rect bounds,
-                                          const float penpotBorderWidth)
-{
-    panel.SetBounds(bounds);
-    const float borderWidth = penpotBorderWidth * DesignToCanvasScale;
-    for (const auto &child : panel.Children())
+    // Mode, Play options and the gear sit side by side in the middle of the band.
+    const float cellTop = frame.footer.y + (layout::FooterHeight - layout::Gear.height) * 0.5F;
+    const float total = modeSelector_ ? layout::ModeChip.width + layout::PlayOptions.width + layout::Gear.width
+                                      : layout::Gear.width;
+    float x = (frame.width - total) * 0.5F;
+    if (modeSelector_ != nullptr && playOptionsButton_ != nullptr)
     {
-        if (child->Name() == "Surface")
-        {
-            child->SetBounds({borderWidth, borderWidth,
-                              std::max(panel.NodeSize().width - borderWidth * 2.0F, 1.0F),
-                              std::max(panel.NodeSize().height - borderWidth * 2.0F, 1.0F)});
-            break;
-        }
+        modeSelector_->SetBounds(TopLeft({x, cellTop, layout::ModeChip.width, layout::ModeChip.height}, height));
+        x += layout::ModeChip.width;
+        playOptionsButton_->SetBounds(TopLeft({x, cellTop, layout::PlayOptions.width, layout::PlayOptions.height}, height));
+        x += layout::PlayOptions.width;
     }
+    optionButton_->SetBounds(TopLeft({x, cellTop, layout::Gear.width, layout::Gear.height}, height));
 }

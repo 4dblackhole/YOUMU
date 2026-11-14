@@ -1,7 +1,7 @@
-The default song-selection UI uses procedural panels and buttons.
-Set the optional image keys in ../skin.ini to replace their backgrounds.
-Text, layout, input and song data remain runtime UI elements.
+The song-selection parts are transparent PNGs authored at 1080p (logical size x 1.5).
+Their keys are listed under [MusicSelect] in ../skin.ini; a state image uses the key
+plus .Hovered, .Pressed or .Disabled. Text, layout, input and song data stay runtime UI.
 
-PanelFill.png is an internal opaque white texel for the three main panels' 90%
-fills. It selects the renderer's existing alpha-blended image material; it is
-not a song image or a configurable skin key. Custom panel PNGs still replace it.
+Detail/   jacket frame, empty jacket, difficulty block and its value badge
+Panels/   white veils behind the record column and the song list
+Records/  record row and status chips

@@ -34,6 +34,8 @@ public:
 
 private:
     void Show(const std::vector<PlayRecord>& records);
+    void ShowPager(bool visible);
+    void SetMessage(std::wstring message);
     TextCatalog& texts_;
     PhantomCore::ScreenVisual2DManager& visuals_;
     std::filesystem::path database_;
@@ -46,5 +48,5 @@ private:
     std::uint64_t revision_{1}, jobRevision_{}, displayRevision_{};
     bool next_{};
     PhantomCore::Visual2DNode *panel_{}, *selector_{}, *emptyMessage_{};
-    PhantomCore::Visual2DNode *queryButton_{}, *previousButton_{}, *nextButton_{}, *rows_{};
+    PhantomCore::Visual2DNode *queryButton_{}, *previousButton_{}, *nextButton_{}, *rows_{}, *pageLabel_{};
 };

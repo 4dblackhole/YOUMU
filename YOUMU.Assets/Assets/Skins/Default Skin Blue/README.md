@@ -51,77 +51,17 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 ## MusicSelect — 곡 선택 (게임 · 에디터)
 
-### `MusicSelect/`
+곡 선택 부품은 내장 Default Skin의 `MusicSelect`로 옮겼습니다. 아래는 아직 읽는 키가 없어 이 폴더에 남긴 파일입니다.
 
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `AddDifficulty.png` | 48×48 | `MusicSelect.AddDifficulty` | 에디터 선곡 카드의 + 버튼, 아이콘 포함. Highlight = 패턴 없는 곡(금빛 밑줄) |
-| `AddDifficulty.Highlight.png` | 48×48 |  | 〃 |
-| `AddDifficulty.Hovered.png` | 48×48 | `MusicSelect.AddDifficulty.Hovered` | 〃 |
-| `Back.png` | 203×81 | `MusicSelect.Back` | Back: 왼쪽 아래 모서리 남색 블록. Focused = 키보드 포커스 |
-| `Back.Focused.png` | 203×81 |  | 〃 |
-| `Back.Hovered.png` | 203×81 | `MusicSelect.Back.Hovered` | 〃 |
-| `Back.Pressed.png` | 203×81 | `MusicSelect.Back.Pressed` | 〃 |
-| `BottomBar.png` | 1920×96 |  | 아래 띠(Back · 모드 · Play options · 옵션 · GO 뒤) |
-| `Category.Hovered.png` | 131×51 |  | 폴더 탭 밑줄(고른 탭 · 마우스 올림). 탭 바탕은 없음 |
-| `Category.Selected.png` | 34×51 |  | 〃 |
-| `Difficulty.png` | 432×48 | `MusicSelect.Difficulty` | 펼친 카드 안 난이도 행 |
-| `Difficulty.Hovered.png` | 432×48 | `MusicSelect.Difficulty.Hovered` | 〃 |
-| `DifficultySelected.png` | 432×48 | `MusicSelect.DifficultySelected` | 고른 난이도 행(흰 면) |
-| `Go.png` | 402×96 | `MusicSelect.Go` | GO: 오른쪽 아래에서 띠 위로 솟은 코발트 블록 |
-| `Go.Disabled.png` | 402×96 | `MusicSelect.Go.Disabled` | 〃 |
-| `Go.Focused.png` | 402×96 |  | 〃 |
-| `Go.Hovered.png` | 402×99 | `MusicSelect.Go.Hovered` | 〃 |
-| `Go.Pressed.png` | 402×99 | `MusicSelect.Go.Pressed` | 〃 |
-| `GoError.png` | 480×57 |  | GO 위 오류 말풍선 바탕 |
-| `ModeSelector.png` | 203×81 |  | 게임 모드 선택 칩 바탕 |
-| `ModeSelector.Hovered.png` | 203×81 |  | 〃 |
-| `ModeSelector.Pressed.png` | 203×81 |  | 〃 |
-| `OptionSelect.png` | 96×81 | `MusicSelect.OptionSelect` | 옵션(톱니) 버튼, 아이콘 포함 |
-| `OptionSelect.Hovered.png` | 96×81 | `MusicSelect.OptionSelect.Hovered` | 〃 |
-| `OptionSelect.Pressed.png` | 96×81 | `MusicSelect.OptionSelect.Pressed` | 〃 |
-| `ScrollbarHandle.png` | 18×96 | `MusicSelect.ScrollbarHandle` | 스크롤바 막대(보이는 폭 6 → 9px, 양옆 투명, 세로로 늘림) |
-| `ScrollbarHandle.Hovered.png` | 18×96 | `MusicSelect.ScrollbarHandle.Hovered` | 〃 |
-| `ScrollbarHandle.Pressed.png` | 18×96 | `MusicSelect.ScrollbarHandle.Pressed` | 〃 |
-| `ScrollbarTrack.png` | 18×96 | `MusicSelect.ScrollbarTrack` | 스크롤바 레일(잡는 폭 12 → 18px, 세로로 늘림) |
-| `SearchField.png` | 504×60 | `MusicSelect.SearchField` | 검색창(밑줄 입력, 돋보기 아이콘 포함). Focused = 코발트 밑줄 |
-| `SearchField.Focused.png` | 504×60 |  | 〃 |
-| `SongCard.png` | 519×87 | `MusicSelect.SongCard` | 곡 카드(오른쪽 끝까지 이어진 흰 막대) |
-| `SongCard.Hovered.png` | 519×87 | `MusicSelect.SongCard.Hovered` | 〃 |
-| `SongCardFocused.png` | 549×258 | `MusicSelect.SongCardFocused` | 선택한 곡 카드(왼쪽으로 튀어나온 코발트 + 금빛 왼쪽 줄). 난이도 수만큼 세로로 늘어남 |
-| `SongCardPlaying.png` | 20×18 |  | 선택한 곡 제목 앞 재생 중 막대 3개 |
-| `SortSelector.png` | 372×48 | `MusicSelect.SortSelector` | 정렬 드롭다운 상자(화살표 포함). Open = 펼친 상태 |
-| `SortSelector.Focused.png` | 372×48 |  | 〃 |
-| `SortSelector.Hovered.png` | 372×48 | `MusicSelect.SortSelector.Hovered` | 〃 |
-| `SortSelector.Open.png` | 372×48 |  | 〃 |
-
-### `MusicSelect/Detail/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `DifficultyBlock.png` | 196×48 |  | 곡 정보의 난이도 블록(코발트 평행사변형) |
-| `Jacket.png` | 309×309 |  | 곡 정보 재킷 틀(그림 없음). 그림은 패턴 BG를 정사각으로 잘라 안에 |
-| `JacketEmpty.png` | 309×309 |  | BG가 없는 곡의 재킷(곡 색 + 흐린 날개) |
-| `LevelBadge.png` | 60×33 |  | 난이도 값 배지(새벽 금빛) |
-
-### `MusicSelect/Panels/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Left.png` | 660×1080 | `MusicSelect.RecordPanel` | 왼쪽 기록 열 뒤 흰 막(화면 왼쪽 끝 → 오른쪽으로 옅어짐) |
-| `Right.png` | 750×1080 | `MusicSelect.SongBrowser` | 오른쪽 곡 목록 뒤 흰 막(화면 오른쪽 끝 → 왼쪽으로 옅어짐) |
-| `Transparent.png` | 1×1 | `MusicSelect.SongInformation` | 투명 1×1(가운데 곡 정보 패널을 숨김) |
-
-### `MusicSelect/Records/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Best.png` | 432×84 |  | BEST 칸(왼쪽 코발트 줄) |
-| `Row.png` | 432×78 |  | 기록 한 줄(아래 구분선) |
-| `Status.Clear.png` | 62×30 |  | 기록 상태 칩 바탕: Clear · Failed · Practice · Retired |
-| `Status.Failed.png` | 62×30 |  | 〃 |
-| `Status.Practice.png` | 62×30 |  | 〃 |
-| `Status.Retired.png` | 62×30 |  | 〃 |
+| 파일 | 크기 | 부품 |
+| --- | --- | --- |
+| `AddDifficulty.Highlight.png` | 48×48 | 패턴 없는 곡의 +(금빛 밑줄) |
+| `Back.Focused.png` · `Go.Focused.png` · `SearchField.Focused.png` · `SortSelector.Focused.png` |  | 키보드 포커스 상태 |
+| `SortSelector.Open.png` | 372×48 | 펼친 정렬 드롭다운 상자 |
+| `SongCardPlaying.png` | 20×18 | 선택한 곡 제목 앞 재생 중 막대 3개 |
+| `Panels/Transparent.png` | 1×1 | 쓰지 않음(가운데 열은 이제 패널이 없음) |
+| `Records/Best.png` | 432×84 | BEST 칸(왼쪽 코발트 줄) |
+| `Records/Status.Failed.png` | 62×30 | 기록 상태 칩 바탕: Failed |
 
 ## Loading — 로딩
 

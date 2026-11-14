@@ -1,4 +1,5 @@
 #include "TaikoResultView.h"
+#include "Presentation/RankName.h"
 #include "App/AssetPaths.h"
 #include "Judgement/AccuracyScore.h"
 #include "Presentation/BackgroundLayout.h"
@@ -17,30 +18,9 @@ using namespace taiko_result_ui::layout;
 
 namespace
 {
-    std::wstring_view RankImageKey(const AccuracyScore accuracy) noexcept
+    std::wstring RankImageKey(const AccuracyScore accuracy)
     {
-        struct RankThreshold
-        {
-            std::uint32_t minimumPercent;
-            std::wstring_view imageKey;
-        };
-        static constexpr std::array<RankThreshold, 10> ranks{{
-            {100, L"Rank.Y"},
-            {99, L"Rank.X"},
-            {98, L"Rank.SS"},
-            {96, L"Rank.S"},
-            {93, L"Rank.AA"},
-            {90, L"Rank.A"},
-            {85, L"Rank.B"},
-            {80, L"Rank.C"},
-            {75, L"Rank.D"},
-            {70, L"Rank.E"},
-        }};
-        // Compare the recorded six-decimal units, never the truncated display text.
-        for (const auto &rank : ranks)
-            if (accuracy.Units() >= rank.minimumPercent * 1'000'000U)
-                return rank.imageKey;
-        return L"Rank.F";
+        return L"Rank." + std::wstring(RankName(accuracy));
     }
     constexpr Color White{1, 1, 1, 1};
 } // namespace

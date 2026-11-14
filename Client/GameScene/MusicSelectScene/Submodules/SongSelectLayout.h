@@ -3,10 +3,9 @@
 #include "Catalog/SongCatalog.h"
 #include "Texts/TextCatalog.h"
 #include "PhantomCore.h"
-#include "Presentation/MarqueeTextComponent.h"
-#include "Presentation/ScrollableTextComponent.h"
 #include "Presentation/SkinVisualComponent.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiFonts.h"
 #include <algorithm>
 #include <cmath>
 #include <cwctype>
@@ -17,40 +16,9 @@
 
 namespace song_select
 {
-    constexpr float DesignToCanvasScale = 2.0F / 3.0F;
     constexpr double PreviewFadeSeconds = 0.2;
 
-    [[nodiscard]] constexpr float ReadableFontScale(const float penpotFontSize) noexcept
-    {
-        if (penpotFontSize <= 10.0F)
-        {
-            return 1.45F;
-        }
-        if (penpotFontSize <= 13.0F)
-        {
-            return 1.30F;
-        }
-        if (penpotFontSize <= 18.0F)
-        {
-            return 1.15F;
-        }
-        if (penpotFontSize <= 20.0F)
-        {
-            return 1.08F;
-        }
-        return 1.0F;
-    }
-
-    [[nodiscard]] constexpr float CanvasFontSize(const float penpotFontSize) noexcept
-    {
-        return penpotFontSize * DesignToCanvasScale * ReadableFontScale(penpotFontSize);
-    }
-
-    [[nodiscard]] inline PhantomCore::Visual2DNode& CreateSongLabel(
-        PhantomCore::Visual2DNode& parent, const PhantomCore::Rect bounds, std::wstring text,
-        float fontSize, PhantomCore::Color color, std::string name, TextCatalog& texts,
-        PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading);
-
+    // Popups that still use the earlier sky palette (filters, favourites, creation menu).
     constexpr auto CanvasBlue = ui_colors::sky::Background, PanelWhite = ui_colors::sky::Surface;
     constexpr auto PureWhite = ui_colors::White, AccentBlue = ui_colors::sky::Accent;
     constexpr auto AccentHover = ui_colors::sky::AccentHover, BorderBlue = ui_colors::sky::Accent;
@@ -60,171 +28,112 @@ namespace song_select
     constexpr auto DeepBlue = ui_colors::sky::Ink, MutedBlue = ui_colors::sky::Muted;
     constexpr auto SoftTextBlue = ui_colors::sky::SoftText, DisabledBlue = ui_colors::sky::Disabled;
 
+    // Song select (UI-02) is authored in logical pixels on a 1280x720 screen with a
+    // top-left origin. The screen keeps that height; a wider screen only widens the middle.
     namespace layout
     {
         constexpr PhantomCore::Size CanvasSize{1280.0F, 720.0F};
-        constexpr PhantomCore::Rect DesignBoard{0.0F, 0.0F, 1920.0F, 1080.0F};
+        constexpr float MaximumWidth = 2560.0F; // 32:9. Wider screens get side bands.
+        constexpr float Margin = 32.0F;
+        constexpr float BodyTop = 24.0F;
+        constexpr float BodyHeight = 608.0F;
+        constexpr float RecordWidth = 320.0F;
+        constexpr float ListWidth = 400.0F;
+        constexpr float ColumnGap = 16.0F;
+        constexpr float FooterHeight = 64.0F;
 
-        constexpr PhantomCore::Rect CategoryBar{54.0F, 20.0F, 1285.71F, 56.0F};
-        constexpr PhantomCore::Rect AllCategory{16.0F, 9.0F, 86.0F, 38.0F};
+        // Veils behind the side columns, measured from the screen edges.
+        constexpr float LeftVeilWidth = 440.0F;
+        constexpr float RightVeilWidth = 500.0F;
 
-        constexpr PhantomCore::Rect RecordPanel{54.0F, 94.0F, 506.29F, 852.0F};
-        constexpr PhantomCore::Rect RecordSelector{22.0F, 22.0F, 462.29F, 44.0F};
-        constexpr PhantomCore::Rect EmptyRecordMessage{22.0F, 400.0F, 462.29F, 54.0F};
+        // Song list column (local to the list column).
+        constexpr PhantomCore::Rect Tabs{16.0F, 16.0F, 336.0F, 34.0F};
+        constexpr PhantomCore::Rect SearchField{16.0F, 68.0F, 336.0F, 40.0F};
+        constexpr PhantomCore::Rect SortSelector{16.0F, 118.0F, 248.0F, 32.0F};
+        constexpr PhantomCore::Rect FilterButton{272.0F, 118.0F, 80.0F, 32.0F};
+        constexpr float ViewportTop = 160.0F;
+        constexpr float ContentTop = 4.0F;
+        constexpr float SongLeft = 38.0F;
+        constexpr float SongWidth = 334.0F;
+        constexpr float SongHeight = 58.0F;
+        constexpr float SongPitch = 64.0F;
+        constexpr float FocusedOutset = 20.0F; // The selected card sticks out to the left.
+        constexpr float DifficultyTop = 58.0F;
+        constexpr float DifficultyHeight = 32.0F;
+        constexpr float DifficultyPitch = 36.0F;
+        constexpr float DifficultyWidth = 276.0F;
+        constexpr float FocusedPadding = 6.0F;
+        constexpr float ScrollStep = 64.0F;
+        constexpr float ScrollbarWidth = 12.0F;
 
-        constexpr PhantomCore::Rect InformationPanel{580.29F, 94.0F, 759.43F, 852.0F};
-        constexpr PhantomCore::Rect Preview{24.0F, 24.0F, 360.0F, 360.0F};
-        constexpr PhantomCore::Rect PreviewTitle{54.0F, 190.0F, 300.0F, 28.0F};
-        constexpr PhantomCore::Rect PreviewEmpty{54.0F, 224.0F, 300.0F, 20.0F};
-        constexpr PhantomCore::Rect SelectedSong{404.0F, 38.0F, 331.43F, 96.0F};
-        constexpr PhantomCore::Rect SelectedArtist{404.0F, 146.0F, 331.43F, 66.0F};
-        constexpr PhantomCore::Rect DifficultyInformation{404.0F, 236.0F, 331.43F, 264.0F};
-        constexpr PhantomCore::Rect DifficultyHeading{16.0F, 14.0F, 145.0F, 16.0F};
-        constexpr PhantomCore::Rect CreatorHeading{169.71F, 14.0F, 145.0F, 16.0F};
-        constexpr PhantomCore::Rect SelectedDifficulty{16.0F, 32.0F, 145.0F, 28.0F};
-        constexpr PhantomCore::Rect SelectedCreator{169.71F, 32.0F, 145.0F, 72.0F};
-        constexpr PhantomCore::Rect InformationDivider{16.0F, 114.0F, 299.43F, 1.0F};
-        constexpr PhantomCore::Rect SelectedDetails{16.0F, 130.0F, 299.43F, 22.0F};
-        constexpr PhantomCore::Rect ExtraDetails{16.0F, 156.0F, 299.43F, 96.0F};
+        // Song detail column (local to the detail column, centred horizontally).
+        constexpr float JacketSize = 196.0F;
+        constexpr float JacketTop = 51.5F;
+        constexpr float ArtistTop = 265.5F;
+        constexpr float TitleTop = 293.5F;
+        constexpr float CreatorTop = 335.5F;
+        constexpr float DifficultyBlockTop = 367.5F;
+        constexpr PhantomCore::Size DifficultyBlock{196.0F / 1.5F, 32.0F};
+        constexpr float StatWidth = 400.0F / 3.0F;
+        constexpr float StatTop = 429.5F;
+        constexpr float StatPitch = 69.0F;
 
-        constexpr PhantomCore::Rect BrowserPanel{1359.71F, 20.0F, 506.29F, 926.0F};
-        constexpr PhantomCore::Rect SearchField{14.0F, 22.0F, 478.29F, 54.0F};
-        constexpr PhantomCore::Rect SearchCount{365.0F, 0.0F, 96.0F, 54.0F};
-        constexpr PhantomCore::Rect SortSelector{14.0F, 88.0F, 478.29F, 42.0F};
-        constexpr PhantomCore::Rect SongViewport{14.0F, 142.0F, 478.29F, 734.0F};
-        constexpr PhantomCore::Rect EmptySongMessage{28.0F, 320.0F, 422.29F, 46.0F};
-        constexpr PhantomCore::Rect BrowserHint{18.0F, 884.0F, 470.29F, 22.0F};
-
-        constexpr float ContentLeft = 8.0F;
-        constexpr float ContentTop = 14.0F;
-        constexpr float ContentBottom = 720.0F;
-        constexpr float ViewportVisibleHeight = ContentBottom - ContentTop;
-        constexpr float SongGap = 12.0F;
-        constexpr float NormalSongHeight = 128.0F;
-        constexpr float ExpandedBaseHeight = 176.0F;
-        constexpr float DifficultyRowHeight = 34.0F;
-        constexpr float DifficultyRowStep = 42.0F;
-        constexpr float ScrollStep = 84.0F;
-        constexpr PhantomCore::Rect ScrollbarTrack{469.29F, 14.0F, 5.0F, 706.0F};
-
-        constexpr PhantomCore::Rect OptionButton{612.0F, 972.0F, 696.0F, 60.0F};
-        constexpr PhantomCore::Rect BackButton{-24.0F, 1006.0F, 280.0F, 82.0F};
-        constexpr PhantomCore::Rect BackLabel{34.0F, 10.0F, 210.0F, 44.0F};
-        constexpr PhantomCore::Rect GoButton{1664.0F, 1006.0F, 280.0F, 82.0F};
-        constexpr PhantomCore::Rect GoLabel{36.0F, 10.0F, 208.0F, 44.0F};
+        // Footer.
+        constexpr PhantomCore::Size Back{203.0F / 1.5F, 54.0F};
+        constexpr PhantomCore::Size Go{268.0F, 64.0F};
+        constexpr float GoRise = 20.0F; // GO stands above the footer band.
+        constexpr PhantomCore::Size ModeChip{203.0F / 1.5F, 54.0F};
+        constexpr PhantomCore::Size PlayOptions{160.0F, 54.0F};
+        constexpr PhantomCore::Size Gear{64.0F, 54.0F};
+        constexpr PhantomCore::Size GoError{320.0F, 38.0F};
     } // namespace layout
 
-    struct ResponsiveSongSelectLayout
+    // Top-left rectangles of the three columns and the footer for one logical width.
+    struct SongSelectFrame
     {
-        PhantomCore::Rect background;
-        PhantomCore::Rect category;
+        float width{};
+        float scale{};
         PhantomCore::Rect record;
-        PhantomCore::Rect information;
-        PhantomCore::Rect browser;
-        PhantomCore::Rect option;
+        PhantomCore::Rect detail;
+        PhantomCore::Rect list;
+        PhantomCore::Rect footer;
         PhantomCore::Rect back;
         PhantomCore::Rect go;
     };
 
-    [[nodiscard]] constexpr PhantomCore::Rect CanvasTopLeftBounds(const float x, const float top,
-                                                                    const float width,
-                                                                    const float height) noexcept
+    // The 16:9 arrangement is never squeezed: a narrower screen scales it down between
+    // top and bottom bands, and a screen wider than 32:9 keeps the 32:9 arrangement.
+    [[nodiscard]] constexpr SongSelectFrame CalculateFrame(const float logicalWidth) noexcept
     {
-        return {x, layout::CanvasSize.height - top - height, width, height};
+        const float width = std::clamp(logicalWidth, layout::CanvasSize.width, layout::MaximumWidth);
+        const float scale = std::min(1.0F, std::max(logicalWidth, 1.0F) / layout::CanvasSize.width);
+        const float height = layout::CanvasSize.height;
+        const float detailX = layout::Margin + layout::RecordWidth + layout::ColumnGap;
+        const float listX = width - layout::ListWidth;
+        return {width,
+                scale,
+                {layout::Margin, layout::BodyTop, layout::RecordWidth, layout::BodyHeight},
+                {detailX, layout::BodyTop, listX - layout::ColumnGap - detailX, layout::BodyHeight},
+                {listX, layout::BodyTop, layout::ListWidth, layout::BodyHeight},
+                {0.0F, height - layout::FooterHeight, width, layout::FooterHeight},
+                {0.0F, height - layout::Back.height, layout::Back.width, layout::Back.height},
+                {width - layout::Go.width, height - layout::FooterHeight - layout::GoRise, layout::Go.width,
+                 layout::Go.height + layout::GoRise}};
     }
 
-    [[nodiscard]] constexpr ResponsiveSongSelectLayout CalculateResponsiveLayout(
-        const float logicalWidth, const bool editorSongSelect = false) noexcept
+    constexpr SongSelectFrame ReferenceFrame = CalculateFrame(1280.0F);
+    static_assert(ReferenceFrame.scale == 1.0F && ReferenceFrame.detail.x == 368.0F &&
+                  ReferenceFrame.detail.width == 496.0F && ReferenceFrame.list.x == 880.0F);
+    constexpr SongSelectFrame NarrowFrame = CalculateFrame(960.0F);
+    static_assert(NarrowFrame.width == 1280.0F && NarrowFrame.scale == 0.75F);
+    constexpr SongSelectFrame UltrawideFrame = CalculateFrame(3000.0F);
+    static_assert(UltrawideFrame.width == layout::MaximumWidth && UltrawideFrame.scale == 1.0F);
+
+    // Converts a top-left rectangle into the parent's lower-left, Y-up coordinates.
+    [[nodiscard]] constexpr PhantomCore::Rect TopLeft(const PhantomCore::Rect bounds,
+                                                       const float parentHeight) noexcept
     {
-        constexpr float ReferenceOuterMargin = 54.0F * DesignToCanvasScale;
-        constexpr float ReferenceColumnGap = 20.0F * DesignToCanvasScale;
-        constexpr float ReferenceSideWidth = layout::RecordPanel.width * DesignToCanvasScale;
-        constexpr float ReferenceInformationWidth =
-            layout::InformationPanel.width * DesignToCanvasScale;
-        constexpr float ReferenceColumnWidth =
-            ReferenceSideWidth * 2.0F + ReferenceInformationWidth;
-
-        // Keep the Penpot panel widths at 16:9 and wider. For narrower aspect
-        // ratios, shrink the complete three-column composition uniformly so
-        // its ownership and ordering remain unambiguous even in portrait.
-        const float chromeScale = std::min(1.0F, logicalWidth / 960.0F);
-        const float outerMargin = ReferenceOuterMargin * chromeScale;
-        const float columnGap = ReferenceColumnGap * chromeScale;
-        const float availableWidth =
-            std::max(logicalWidth - outerMargin * 2.0F - columnGap * 2.0F, 1.0F);
-        const float columnScale = std::min(1.0F, availableWidth / ReferenceColumnWidth);
-        const float sideWidth = ReferenceSideWidth * columnScale;
-        const float informationWidth = std::max(availableWidth - sideWidth * 2.0F, 1.0F);
-        const float recordX = outerMargin;
-        const float informationX = recordX + sideWidth + columnGap;
-        const float browserX = logicalWidth - outerMargin - sideWidth;
-
-        constexpr float MainTop = 94.0F * DesignToCanvasScale;
-        constexpr float MainHeight = 852.0F * DesignToCanvasScale;
-        constexpr float BrowserTop = 20.0F * DesignToCanvasScale;
-        constexpr float BrowserHeight = 926.0F * DesignToCanvasScale;
-        constexpr float CategoryHeight = 56.0F * DesignToCanvasScale;
-        const float categoryWidth = std::max(browserX - columnGap - recordX, 1.0F);
-
-        const float footerScale = std::min(1.0F, logicalWidth / 640.0F);
-        const float edgeWidth = layout::BackButton.width * DesignToCanvasScale * footerScale;
-        const float edgeOverflow = -layout::BackButton.x * DesignToCanvasScale * footerScale;
-        const float footerGap = ReferenceColumnGap * chromeScale;
-        const float optionWidth =
-            std::min(layout::OptionButton.width * DesignToCanvasScale,
-                     std::max(logicalWidth - 2.0F * (edgeWidth - edgeOverflow + footerGap), 1.0F));
-        const float optionX = (logicalWidth - optionWidth) * 0.5F;
-
-        ResponsiveSongSelectLayout result{
-            {0.0F, 0.0F, logicalWidth, layout::CanvasSize.height},
-            CanvasTopLeftBounds(recordX, BrowserTop, categoryWidth, CategoryHeight),
-            CanvasTopLeftBounds(recordX, MainTop, sideWidth, MainHeight),
-            CanvasTopLeftBounds(informationX, MainTop, informationWidth, MainHeight),
-            CanvasTopLeftBounds(browserX, BrowserTop, sideWidth, BrowserHeight),
-            CanvasTopLeftBounds(optionX, layout::OptionButton.y * DesignToCanvasScale, optionWidth,
-                                layout::OptionButton.height * DesignToCanvasScale),
-            CanvasTopLeftBounds(-edgeOverflow, layout::BackButton.y * DesignToCanvasScale,
-                                edgeWidth, layout::BackButton.height * DesignToCanvasScale),
-            CanvasTopLeftBounds(logicalWidth - edgeWidth + edgeOverflow,
-                                layout::GoButton.y * DesignToCanvasScale, edgeWidth,
-                                layout::GoButton.height * DesignToCanvasScale)};
-        if (editorSongSelect)
-        {
-            result.information.x = result.record.x;
-            result.information.width =
-                std::max(result.browser.x - columnGap - result.record.x, 1.0F);
-        }
-        return result;
-    }
-
-    constexpr ResponsiveSongSelectLayout PortraitLayout = CalculateResponsiveLayout(405.0F);
-    static_assert(PortraitLayout.record.x >= 0.0F);
-    static_assert(PortraitLayout.record.x + PortraitLayout.record.width <
-                  PortraitLayout.information.x);
-    static_assert(PortraitLayout.information.x + PortraitLayout.information.width <
-                  PortraitLayout.browser.x);
-    static_assert(PortraitLayout.browser.x + PortraitLayout.browser.width <= 405.0F);
-    static_assert(PortraitLayout.back.x + PortraitLayout.back.width < PortraitLayout.option.x);
-    static_assert(PortraitLayout.option.x + PortraitLayout.option.width < PortraitLayout.go.x);
-
-    constexpr ResponsiveSongSelectLayout UltrawideLayout = CalculateResponsiveLayout(1680.0F);
-    static_assert(UltrawideLayout.information.width >
-                  layout::InformationPanel.width * DesignToCanvasScale);
-    static_assert(UltrawideLayout.option.x + UltrawideLayout.option.width * 0.5F == 840.0F);
-
-    constexpr ResponsiveSongSelectLayout EditorReferenceLayout =
-        CalculateResponsiveLayout(1280.0F, true);
-    static_assert(EditorReferenceLayout.information.x == EditorReferenceLayout.record.x);
-    static_assert(EditorReferenceLayout.information.x + EditorReferenceLayout.information.width <
-                  EditorReferenceLayout.browser.x);
-
-    [[nodiscard]] inline PhantomCore::Rect ScaleTopLeftBounds(const PhantomCore::Rect bounds,
-                                                                const float parentHeight) noexcept
-    {
-        const float scaledHeight = bounds.height * DesignToCanvasScale;
-        return {bounds.x * DesignToCanvasScale,
-                parentHeight - bounds.y * DesignToCanvasScale - scaledHeight,
-                bounds.width * DesignToCanvasScale, scaledHeight};
+        return {bounds.x, parentHeight - bounds.y - bounds.height, bounds.width, bounds.height};
     }
 
     [[nodiscard]] inline std::wstring BpmText(const double bpm)
@@ -284,10 +193,22 @@ namespace song_select
         RequireComponent<PhantomCore::TextVisualComponent>(node).SetTextColor(textColor);
     }
 
-    inline void SetCornerRadius(PhantomCore::Visual2DNode &node, const float penpotRadius)
+    inline void SetCornerRadius(PhantomCore::Visual2DNode &node, const float radius)
     {
-        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetCornerRadius(
-            penpotRadius * DesignToCanvasScale);
+        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetCornerRadius(radius);
+    }
+
+    // A skinned part: the image supplies the whole shape, so the node itself is plain white.
+    // Without the image the fallback colour keeps the control visible.
+    inline void ApplySkinPart(PhantomCore::Visual2DNode &node, PhantomCore::ScreenVisual2DManager &visuals,
+                              const std::string_view key, const PhantomCore::Color fallback)
+    {
+        PhantomCore::VisualStyle style{};
+        style.normal = style.hovered = style.pressed = fallback;
+        style.disabled = {fallback.red, fallback.green, fallback.blue, fallback.alpha * 0.45F};
+        SetSkinBaseStyle(node, style);
+        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetCornerRadius(2.0F);
+        BindSkinImage(node, visuals, "MusicSelect", std::string(key));
     }
 
     [[nodiscard]] inline std::int64_t LatestPointerTimestamp(
@@ -305,47 +226,71 @@ namespace song_select
         }
         return result;
     }
-    inline PhantomCore::Visual2DNode& CreateSongLabel(
-        PhantomCore::Visual2DNode& parent, const PhantomCore::Rect bounds, std::wstring text,
-        float fontSize, PhantomCore::Color color, std::string name, TextCatalog& texts,
-        PhantomCore::TextAlignment alignment)
+
+    // Caption text: Nunito, or Noto Sans KR when the string holds Hangul/Kana/Han.
+    inline void StyleText(PhantomCore::TextVisualComponent &text, const float size, const std::uint16_t weight,
+                          const PhantomCore::Color color,
+                          const PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading)
     {
-        auto& label = PhantomCore::CreateLabel(parent,
-            ScaleTopLeftBounds(bounds, parent.NodeSize().height), std::move(text), std::move(name));
-        auto& content = RequireComponent<PhantomCore::TextVisualComponent>(label);
-        content.SetFontSize(CanvasFontSize(fontSize));
-        texts.ApplyFont(content);
-        content.SetTextColor(color);
-        content.SetHorizontalAlignment(alignment);
+        text.SetFont(ui_fonts::Text(text.Text()));
+        text.SetFontSize(size);
+        text.SetFontWeight(weight);
+        text.SetTextColor(color);
+        text.SetHorizontalAlignment(alignment);
+    }
+
+    // Number text: Barlow Semi Condensed, italic unless stated.
+    inline void StyleNumber(PhantomCore::TextVisualComponent &text, const float size, const std::uint16_t weight,
+                            const PhantomCore::Color color,
+                            const PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading,
+                            const bool italic = true)
+    {
+        auto face = ui_fonts::Number(weight, italic);
+        text.SetFont(std::move(face.font));
+        text.SetFontSize(size);
+        text.SetFontWeight(face.weight);
+        text.SetTextColor(color);
+        text.SetHorizontalAlignment(alignment);
+    }
+
+    // Replaces caption text and re-selects the face, because the new string may need CJK glyphs.
+    inline void SetCaption(PhantomCore::Visual2DNode &node, std::wstring value)
+    {
+        auto &text = RequireComponent<PhantomCore::TextVisualComponent>(node);
+        text.SetFont(ui_fonts::Text(value));
+        text.SetText(std::move(value));
+    }
+
+    [[nodiscard]] inline PhantomCore::Visual2DNode &CreateCaption(
+        PhantomCore::Visual2DNode &parent, const PhantomCore::Rect topLeftBounds, std::wstring text,
+        const float size, const std::uint16_t weight, const PhantomCore::Color color, std::string name,
+        const PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading)
+    {
+        auto &label = PhantomCore::CreateLabel(parent, TopLeft(topLeftBounds, parent.NodeSize().height),
+                                               std::move(text), std::move(name));
+        StyleText(RequireComponent<PhantomCore::TextVisualComponent>(label), size, weight, color, alignment);
         return label;
     }
 
-    // Penpot-sized flat panel. Named panels bind their MusicSelect skin image;
-    // card surfaces and button fills are tinted by their owner instead.
-    inline PhantomCore::Visual2DNode &CreateSongPanel(
-        PhantomCore::ScreenVisual2DManager &visuals, PhantomCore::Visual2DNode &parent,
-        const PhantomCore::Rect penpotBounds, const PhantomCore::Color color, std::string name,
-        const float penpotCornerRadius = 0.0F)
+    [[nodiscard]] inline PhantomCore::Visual2DNode &CreateNumber(
+        PhantomCore::Visual2DNode &parent, const PhantomCore::Rect topLeftBounds, std::wstring text,
+        const float size, const std::uint16_t weight, const PhantomCore::Color color, std::string name,
+        const PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading,
+        const bool italic = true)
     {
-        auto &panel = PhantomCore::CreatePanel(
-            parent, ScaleTopLeftBounds(penpotBounds, parent.NodeSize().height), std::move(name));
-        ApplyFlatStyle(panel, color);
-        SetCornerRadius(panel, penpotCornerRadius);
-        if (panel.Name() != "Surface" && !panel.Name().ends_with(".Fill"))
-            BindSkinImage(panel, visuals, "MusicSelect", panel.Name());
-        return panel;
+        auto &label = PhantomCore::CreateLabel(parent, TopLeft(topLeftBounds, parent.NodeSize().height),
+                                               std::move(text), std::move(name));
+        StyleNumber(RequireComponent<PhantomCore::TextVisualComponent>(label), size, weight, color, alignment,
+                    italic);
+        return label;
     }
 
-    // Multi-line text that scrolls inside its own bounds on wheel input.
-    inline PhantomCore::Visual2DNode &CreateScrollableSongLabel(
-        PhantomCore::Visual2DNode &parent, const PhantomCore::Rect bounds, std::wstring text,
-        const float fontSize, const PhantomCore::Color color, std::string name, TextCatalog &texts)
+    // Rough caption width for sizing tabs before the engine has measured the glyphs.
+    [[nodiscard]] inline float EstimateCaptionWidth(const std::wstring_view text, const float size) noexcept
     {
-        auto &node = parent.CreateChild(std::move(name));
-        node.SetBounds(ScaleTopLeftBounds(bounds, parent.NodeSize().height));
-        auto &scroll = node.AddComponent<ScrollableTextComponent>();
-        scroll.SetStyle(texts.CurrentProfile().font, CanvasFontSize(fontSize), color);
-        scroll.SetText(std::move(text));
-        return node;
+        float width{};
+        for (const wchar_t character : text)
+            width += size * (character >= 0x1100 ? 1.0F : (character == L' ' ? 0.3F : 0.58F));
+        return width;
     }
 } // namespace song_select

@@ -8,7 +8,6 @@
 #include "GameFlow/PlaySessionLoader.h"
 #include "Judgement/AccuracyRange.h"
 #include "Presentation/MarqueeTextComponent.h"
-#include "Presentation/ScrollableTextComponent.h"
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -203,51 +202,42 @@ namespace
         {
             visuals.OnResize(width,720);
             view.OnResize(width,720);
-            const auto packets = canvas->BuildDrawList();
+            static_cast<void>(canvas->BuildDrawList());
             for (const auto *name : {"RecordPanel","SongInformation","SongBrowser"})
             {
                 auto *panel = Find(canvas->Root(),name);
-                if (!panel) { Check(purpose==SongSelectPurpose::Editor, "Gameplay keeps its assigned record area."); continue; }
-                const auto *sprite = panel->GetComponent<SpriteVisualComponent>();
-                Check(sprite && std::abs(sprite->Style().normal.alpha-.9F)<.0001F,
-                      "Only the main panel background uses 90 percent opacity.");
-                const auto bounds=panel->BoundsInCanvas();
-                const Point interior{bounds.x+5,bounds.y+100}, edge{bounds.x+1,bounds.y+100};
-                int fills=0; bool interiorBorder=false, edgeBorder=false;
-                for (const auto &packet : packets)
-                {
-                    const auto inverse=Inverse(packet.nodeTransform);
-                    const auto point=[&](Point p) {
-                        const auto local=TransformPoint({p.x,p.y,0},inverse);
-                        return Point{local.x,local.y};
-                    };
-                    if (packet.type==DrawPacketType::Image && packet.bounds.Contains(point(interior)) &&
-                        std::abs(packet.color.alpha-.9F)<.0001F) ++fills;
-                    if (packet.type==DrawPacketType::RectangleBatch && packet.rectangles)
-                        for (const auto &rectangle : *packet.rectangles)
-                        {
-                            interiorBorder=interiorBorder || rectangle.bounds.Contains(point(interior));
-                            edgeBorder=edgeBorder || (rectangle.color.alpha==1 && rectangle.bounds.Contains(point(edge)));
-                        }
-                }
-                Check(fills==1 && !interiorBorder && edgeBorder,
-                      "A single translucent fill covers the interior; the opaque outline leaves that interior empty after resize.");
+                if (!panel) { Check(purpose==SongSelectPurpose::Editor && std::string_view(name)=="RecordPanel", "Gameplay keeps its assigned record area."); continue; }
+                Check(!panel->GetComponent<SpriteVisualComponent>(),
+                      "Columns are not framed panels; side veils and the open middle group them.");
+            }
+            Check((Find(canvas->Root(),"RecordVeil")!=nullptr)==(purpose==SongSelectPurpose::Gameplay) &&
+                      Find(canvas->Root(),"ListVeil") && !Find(canvas->Root(),"Categories"),
+                  "Veils back the side columns, the editor has no record veil and no ALL bar exists.");
+            {
+                const auto *board=Find(canvas->Root(),purpose==SongSelectPurpose::Editor?"YOUMU.EditorSongSelect.Board":"YOUMU.SongSelect.Board");
+                if (!board) throw std::runtime_error("Song-select board missing.");
+                const auto bounds=board->BoundsInCanvas();
+                const auto logical=canvas->LogicalSize();
+                Check(std::abs(bounds.width-logical.width)<.01F &&
+                          std::abs(bounds.width/bounds.height-std::max(logical.width,1280.0F)/720.0F)<.01F,
+                      "A screen narrower than 16:9 scales the whole 16:9 arrangement instead of squeezing columns.");
+                const auto *browser=Find(canvas->Root(),"SongBrowser");
+                const auto list=browser->BoundsInCanvas();
+                Check(std::abs(list.x+list.width-logical.width/2)<.01F,
+                      "The song list stays attached to the right screen edge.");
             }
             for (const auto &card : Find(canvas->Root(),"SongContent")->Children())
             {
                 if (!card->Name().starts_with("Song.")) continue;
                 auto *title=Find(*card,"Title"), *artist=Find(*card,"Artist");
                 if (!title || !artist) throw std::runtime_error("Card metadata fields missing.");
-                const float expected=card->NodeSize().width-(purpose==SongSelectPurpose::Editor?76.0F:28.0F)*2/3;
-                Check(!Find(*card,"Thumbnail") && std::abs(title->Bounds().x-14.0F*2/3)<.001F &&
-                          std::abs(title->NodeSize().width-std::max(expected,1.0F))<.001F &&
+                Check(!Find(*card,"Thumbnail") && title->GetComponent<TextVisualComponent>() && title->NodeSize().height==20 &&
                           artist->Bounds().x==title->Bounds().x,
-                      "Every card restores the full title/artist area without a BG thumbnail or reserved gap.");
+                      "Every card shows one title line and one artist line without a BG thumbnail.");
             }
             auto *button=Find(canvas->Root(),"FilterButton");
-            Check(button && button->GetComponent<SpriteVisualComponent>()->Style().normal.alpha==1 &&
-                      button->GetComponent<TextVisualComponent>()->TextColor().alpha==1,
-                  "Panel translucency does not fade child controls.");
+            Check(button && button->GetComponent<TextVisualComponent>()->TextColor().alpha==1,
+                  "Translucent control surfaces keep opaque captions.");
         }
         Check(renderer.loaded.size()==1,"Resizing list cards must not request unselected chart BGs.");
         view.Shutdown();
@@ -337,8 +327,17 @@ namespace
                     throw std::runtime_error("Clickable difficulty missing.");
                 Click(*canvas, *difficulty);
                 InputState noKeys;
+                if (attempt == 0)
+                {
+                    Check(clickable.Update(noKeys, 0) == SongSelectCommand::None && selection.selectedPatternIndex_ == 1,
+                          "The first click on a difficulty only selects it.");
+                    difficulty = Find(canvas->Root(), "Difficulty.1");
+                    if (!difficulty)
+                        throw std::runtime_error("Selected difficulty missing.");
+                    Click(*canvas, *difficulty);
+                }
                 Check(clickable.Update(noKeys, 0) == SongSelectCommand::Launch && selection.selectedPatternIndex_ == 1,
-                      "A difficulty click must select that pattern and launch, including an already selected pattern.");
+                      "Clicking the selected difficulty starts it.");
                 Check(clickable.Update(noKeys, 0) == SongSelectCommand::None,
                       "A difficulty click must emit the launch command only once.");
             }
@@ -353,68 +352,6 @@ namespace
             }
             clickable.Shutdown();
         }
-    }
-    void MeasureText(Visual2DCanvas &canvas, std::wstring_view text, Size size)
-    {
-        bool found = false;
-        for (const auto &packet : canvas.BuildDrawList())
-            if (packet.text && packet.text->value == text)
-            {
-                packet.text->measuredSize = size;
-                found = true;
-            }
-        Check(found, "The complete multiline text must reach the renderer.");
-    }
-    void TestScrollableText()
-    {
-        Visual2DCanvas canvas;
-        auto &field = canvas.Root().CreateChild("Field");
-        field.SetBounds({-100, -100, 100, 60});
-        auto &scroll = field.AddComponent<ScrollableTextComponent>();
-        scroll.SetStyle({TextFontSource::System, L"Segoe UI"}, 12, {0, 0, 0, 1});
-        const std::wstring text = L"天使の夢\n한글 \U0001F3B5\nAngel Dream\nMaker";
-        scroll.SetText(text);
-        scroll.SetClickTarget(777);
-        MeasureText(canvas, text, {400, 120});
-        scroll.Update(0);
-        Check(scroll.Scroll(-1) && scroll.ScrollPosition().y > 0 && scroll.ScrollPosition().x == 0,
-              "Wheel scrolling moves multiline text vertically.");
-        Check(scroll.Scroll(-1, true) && scroll.ScrollPosition().x > 0,
-              "Long lines can scroll horizontally without truncating Unicode.");
-        Check(scroll.Text() == text && WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-                  scroll.Text().data(), static_cast<int>(scroll.Text().size()), nullptr, 0, nullptr, nullptr) > 0,
-              "Scrolling preserves every Unicode line and surrogate pair.");
-        auto *thumb = Find(field, "TextScroll.VerticalThumb");
-        auto *track = Find(field, "TextScroll.VerticalTrack");
-        if (!thumb || !track) throw std::runtime_error("Multiline scrollbar missing.");
-        Visual2DInputRouter router;
-        PointerInput pointer{};
-        const auto bounds = thumb->BoundsInCanvas();
-        const auto trackBounds = track->BoundsInCanvas();
-        pointer.available = true;
-        pointer.position = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
-        pointer.leftButtonDown = pointer.leftButtonPressed = true;
-        router.Process(canvas, pointer);
-        pointer.leftButtonPressed = false;
-        pointer.position.y = trackBounds.y;
-        router.Process(canvas, pointer);
-        pointer.leftButtonDown = false;
-        pointer.leftButtonReleased = true;
-        router.Process(canvas, pointer);
-        Check(scroll.ScrollPosition().y == scroll.ScrollRange().height && canvas.TakeActions().empty(),
-              "Dragging the thumb reaches the bottom without selecting the enclosing card.");
-        Click(canvas, Point{-80, -80});
-        const auto actions = canvas.TakeActions();
-        Check(actions.size() == 1 && actions[0].source == 777,
-              "Clicking ordinary text retains the enclosing song-card action.");
-        field.SetSize({1000, 1000});
-        scroll.Update(0);
-        Check(scroll.ScrollRange().width == 0 && scroll.ScrollRange().height == 0 &&
-                  scroll.ScrollPosition().x == 0 && scroll.ScrollPosition().y == 0,
-              "Growing a field removes obsolete overflow and clamps both offsets.");
-        scroll.SetText(L"New");
-        Check(scroll.ScrollPosition().x == 0 && scroll.ScrollPosition().y == 0,
-              "Changing metadata starts at the beginning of the new text.");
     }
     void TestMetadataLines()
     {
@@ -447,60 +384,34 @@ namespace
             view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
             auto *canvas = visuals.FindCanvas(1);
             if (!canvas) throw std::runtime_error("Metadata-lines Canvas missing.");
-            const auto field = [&](Visual2DNode &parent, const char *name) -> ScrollableTextComponent &
+            const auto field = [&](Visual2DNode &parent, const char *name) -> std::wstring_view
             {
                 auto *node = Find(parent, name);
                 if (!node) throw std::runtime_error("Metadata field missing.");
-                auto *component = node->GetComponent<ScrollableTextComponent>();
-                if (!component) throw std::runtime_error("Metadata scroll component missing.");
-                return *component;
+                auto *component = node->GetComponent<TextVisualComponent>();
+                if (!component) throw std::runtime_error("Metadata text component missing.");
+                return component->Text();
             };
-            const std::wstring title = L"Angel Dream\n天使の夢\n천사의 꿈\nAlias four\nAlias five";
-            Check(field(canvas->Root(), "SelectedSong").Text() == title &&
-                      field(canvas->Root(), "SelectedArtist").Text() == L"Artist A\nArtist B\nArtist C\nArtist D\nArtist E" &&
-                      field(canvas->Root(), "SelectedCreator").Text() == L"Maker A\nMaker B\nMaker C\nMaker D",
-                  "All registered names, artists and makers appear in file order as separate lines.");
+            Check(field(canvas->Root(), "SelectedSong") == L"Angel Dream" &&
+                      field(canvas->Root(), "SelectedArtist") == L"Artist A" &&
+                      field(canvas->Root(), "SelectedCreator") == L"Maker A",
+                  "Song details show only the representative name, artist and maker, one line each.");
             auto *card = Find(canvas->Root(), "Song.0");
             auto *content = Find(canvas->Root(), "SongContent");
             if (!card || !content) throw std::runtime_error("Metadata song card missing.");
-            auto *caption = Find(*card, "Title");
-            if (!caption) throw std::runtime_error("Card title missing.");
-            auto &cardText = field(*card, "Title");
-            Check(cardText.Text() == title, "Song cards retain every title alias as well as the detail view.");
-            const auto captionBounds = caption->BoundsInCanvas();
+            Check(field(*card, "Title") == L"Angel Dream" && field(*card, "Artist") == L"Artist A",
+                  "Song cards show the same representative names as the detail view.");
+            const auto captionBounds = Find(*card, "Title")->BoundsInCanvas();
             const Point point{captionBounds.x + 5, captionBounds.y + captionBounds.height / 2};
             const float originalY = content->Bounds().y;
             InputState input;
-            InputStateTestAccess::Mouse(input, point, -1);
-            static_cast<void>(view.Update(input, 0));
-            Check(cardText.ScrollPosition().y > 0 && content->Bounds().y == originalY,
-                  "Wheeling an overflowing card caption scrolls only that caption.");
-            input = {};
-            InputStateTestAccess::Mouse(input, point, -1000);
-            static_cast<void>(view.Update(input, 0));
-            Check(cardText.ScrollPosition().y == cardText.ScrollRange().height && content->Bounds().y == originalY,
-                  "A caption at its limit must not start scrolling the song list.");
-            MeasureText(*canvas, title, {1500, 300});
-            cardText.Update(0);
-            const float previousTextY = cardText.ScrollPosition().y;
-            input = {};
-            InputStateTestAccess::Key(input, VK_LSHIFT, true);
-            InputStateTestAccess::Mouse(input, point, -1);
-            static_cast<void>(view.Update(input, 0));
-            Check(cardText.ScrollPosition().x > 0 && cardText.ScrollPosition().y == previousTextY &&
-                      content->Bounds().y == originalY,
-                  "Shift+wheel scrolls only the long line horizontally.");
-            input = {};
             InputStateTestAccess::Key(input, VK_LCONTROL, true);
             InputStateTestAccess::Key(input, 'O', true);
             static_cast<void>(view.Update(input, .3));
-            const auto beforeModalWheel = cardText.ScrollPosition();
             input = {};
             InputStateTestAccess::Mouse(input, point, -1);
             static_cast<void>(view.Update(input, .3));
-            Check(cardText.ScrollPosition().x == beforeModalWheel.x &&
-                      cardText.ScrollPosition().y == beforeModalWheel.y && content->Bounds().y == originalY,
-                  "Global options prevent background text and list scrolling.");
+            Check(content->Bounds().y == originalY, "Global options prevent background list scrolling.");
             input = {};
             InputStateTestAccess::Key(input, VK_LCONTROL, true);
             InputStateTestAccess::Key(input, 'O', true);
@@ -508,19 +419,18 @@ namespace
             input = {};
             static_cast<void>(view.Update(input, .3));
             input = {};
-            const auto cardBounds = card->BoundsInCanvas();
-            InputStateTestAccess::Mouse(input, {cardBounds.x + 1, point.y}, -1);
+            InputStateTestAccess::Mouse(input, point, -1);
             static_cast<void>(view.Update(input, 0));
-            Check(content->Bounds().y != originalY, "The surrounding song list still scrolls outside text fields.");
+            Check(content->Bounds().y != originalY, "Wheeling over a card caption scrolls the song list.");
             state.SelectPattern(1);
             view.RefreshSelectionPresentation();
-            Check(field(canvas->Root(), "SelectedCreator").Text() == L"Other maker",
-                  "Changing the pattern refreshes its complete maker list.");
+            Check(field(canvas->Root(), "SelectedCreator") == L"Other maker",
+                  "Changing the pattern refreshes its maker.");
             state.catalog_.songs.clear();
             view.RebuildVisibleSongs();
-            Check(field(canvas->Root(), "SelectedArtist").Text().empty() &&
-                      field(canvas->Root(), "SelectedCreator").Text() == L"—",
-                  "Empty selection clears previous multiline metadata.");
+            Check(field(canvas->Root(), "SelectedSong").empty() && field(canvas->Root(), "SelectedArtist").empty() &&
+                      field(canvas->Root(), "SelectedCreator").empty(),
+                  "An empty catalog leaves the detail column empty.");
             view.Shutdown();
         }
     }
@@ -694,6 +604,9 @@ namespace
                       Find(canvas->Root(), "Difficulty.2"), "Only matching actual pattern rows are drawn.");
             Click(*canvas, *Find(canvas->Root(), "Difficulty.2"));
             InputState input;
+            Check(view.Update(input, 0) == SongSelectCommand::None && state.selectedPatternIndex_ == 2,
+                  "The first click on a projected pattern selects its original catalog index.");
+            Click(*canvas, *Find(canvas->Root(), "Difficulty.2"));
             Check(view.Update(input, 0) == SongSelectCommand::Launch && state.selectedPatternIndex_ == 2,
                   "Clicking a projected pattern launches its original catalog index.");
             Check(view.Update(input, 0) == SongSelectCommand::None, "Filtered clicks launch only once.");
@@ -752,35 +665,35 @@ namespace
             view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
             auto *canvas = visuals.FindCanvas(1);
             if (!canvas) throw std::runtime_error("HP information Canvas missing.");
-            auto *hp = Find(canvas->Root(), "ExtraDetails1");
+            auto *hp = Find(canvas->Root(), "Detail.HP.Value");
             if (!hp) throw std::runtime_error("HP information label missing.");
             auto *value = hp->GetComponent<TextVisualComponent>();
             if (!value) throw std::runtime_error("HP information text missing.");
-            Check(value->Text() == L"HP level  17.25", "Song details show the selected pattern's exact HP level.");
+            Check(value->Text() == L"17.25", "Song details show the selected pattern's exact HP level.");
             selection.SelectPattern(1);
             view.RefreshSelectionPresentation();
-            Check(value->Text() == L"HP level  9.00", "Unspecified HP displays the existing 9.00 default.");
+            Check(value->Text() == L"9.00", "Unspecified HP displays the existing 9.00 default.");
             texts.SetLanguage(Language::English);
             InputState input;
             static_cast<void>(view.Update(input, 0));
-            Check(value->Text() == L"HP level  9.00", "Language switching refreshes HP without changing its value.");
-            auto *panel = Find(canvas->Root(), "DifficultyInformation");
-            if (!panel) throw std::runtime_error("Pattern information panel missing.");
+            Check(value->Text() == L"9.00", "Language switching refreshes HP without changing its value.");
+            auto *panel = Find(canvas->Root(), "SongInformation");
+            if (!panel) throw std::runtime_error("Song information column missing.");
             for (const auto width : {900U, 1280U, 1920U})
             {
                 visuals.OnResize(width, 720);
                 view.OnResize(width, 720);
                 const auto bounds = panel->BoundsInCanvas();
-                float previousBottom = bounds.y + bounds.height;
-                for (std::size_t i = 0; i < 4; ++i)
+                float previousRight = bounds.x;
+                for (const auto *name : {"Detail.BPM.Value", "Detail.Length.Value", "Detail.Notes.Value"})
                 {
-                    auto *row = Find(canvas->Root(), "ExtraDetails" + std::to_string(i));
-                    if (!row) throw std::runtime_error("Pattern information row missing.");
-                    const auto actual = row->BoundsInCanvas();
-                    Check(actual.x >= bounds.x && actual.x + actual.width <= bounds.x + bounds.width + .01F &&
-                              actual.y >= bounds.y && actual.y + actual.height <= previousBottom + .01F,
-                          "All four information rows fit inside the responsive panel without overlap.");
-                    previousBottom = actual.y;
+                    auto *cell = Find(canvas->Root(), name);
+                    if (!cell) throw std::runtime_error("Pattern figure missing.");
+                    const auto actual = cell->BoundsInCanvas();
+                    Check(actual.x >= previousRight - .01F && actual.x + actual.width <= bounds.x + bounds.width + .01F &&
+                              actual.y >= bounds.y && actual.y + actual.height <= bounds.y + bounds.height + .01F,
+                          "The figures sit side by side inside the detail column without overlap.");
+                    previousRight = actual.x + actual.width;
                 }
             }
             selection.catalog_.songs[0].patterns.clear();
@@ -828,10 +741,10 @@ namespace
             if (!node || !node->GetComponent<TextVisualComponent>()) throw std::runtime_error("Missing detail label.");
             return node->GetComponent<TextVisualComponent>()->Text();
         };
-        Check(detail("ExtraDetails0") == L"JudgeLevel  40.37" &&
-              detail("ExtraDetails1") == L"HP level  9.00" &&
-              detail("ExtraDetails2") == L"BPM range  120 – 180" &&
-              detail("ExtraDetails3") == L"Length  2:05", "Selected pattern details use real data.");
+        Check(detail("Detail.JudgeLevel.Value") == L"40.37" &&
+              detail("Detail.HP.Value") == L"9.00" &&
+              detail("Detail.BPM.Value") == L"120–180" &&
+              detail("Detail.Length.Value") == L"2:05", "Selected pattern details use real data.");
         const auto *keyPanel = Find(canvas->Root(), "Options.Taiko.Keys");
         const auto *keyBackground = Find(canvas->Root(), "Options.Taiko.KeyLayout");
         if (!keyPanel || !keyBackground)
@@ -855,10 +768,8 @@ namespace
         }
         Check(keyIndex == gameplayKeys.size(), "Taiko settings must display all four Gameplay key images.");
         auto *image = Find(canvas->Root(), "PreviewImage");
-        auto *empty = Find(canvas->Root(), "PreviewEmpty");
-        auto *title = Find(canvas->Root(), "PreviewTitle");
         auto *preview = Find(canvas->Root(), "BackgroundPreview");
-        if (!image || !empty || !title || !preview) throw std::runtime_error("Background nodes missing.");
+        if (!image || !preview) throw std::runtime_error("Background nodes missing.");
         auto *sprite = image->GetComponent<SpriteVisualComponent>();
         if (!sprite) throw std::runtime_error("Background sprite missing.");
         auto *pageBackground = Find(canvas->Root(), "SongBackground");
@@ -879,8 +790,8 @@ namespace
         tick();
         Check(renderer.loaded.size() == 2 && renderer.loaded.back() == options.SongsRoot() / L"BG" / L"preview-portrait.jpg",
               "Changing a difficulty must load the selected pattern from Songs/BG.");
-        Check(image->IsVisible() && !empty->IsVisible() && !title->IsVisible() && sprite->Style().normalImage.value,
-              "Ready artwork must replace the placeholder.");
+        Check(image->IsVisible() && sprite->Style().normalImage.value,
+              "Ready artwork fills the jacket.");
         Check(std::abs(sprite->UvScale().x - 1) < .001F && std::abs(sprite->UvScale().y - .5625F) < .001F &&
                   std::abs(sprite->UvOffset().y - .21875F) < .001F,
               "Portrait artwork must use a centered aspect-preserving crop.");
@@ -898,21 +809,27 @@ namespace
         {
             visuals.OnResize(width, 720);
             view.OnResize(width, 720);
-            Check(image->NodeSize().width == preview->NodeSize().width &&
-                      image->NodeSize().height == preview->NodeSize().height,
-                  "Artwork must follow the existing responsive preview bounds.");
+            Check(image->NodeSize().width == 196 && image->NodeSize().height == 196 &&
+                      preview->NodeSize().width == 206,
+                  "The square jacket keeps its size inside the frame's rim on every screen width.");
             const auto bg = pageBackground->BoundsInCanvas();
             const auto size = canvas->LogicalSize();
-            Check(bg.x <= -size.width / 2 && bg.x + bg.width >= size.width / 2 &&
-                      bg.y <= -size.height / 2 && bg.y + bg.height >= size.height / 2 &&
+            // Narrower than 16:9, the 16:9 arrangement is scaled down between letterbox bands.
+            const float scale = std::min(1.0F, size.width / 1280.0F);
+            const float coveredWidth = std::max(size.width, 1280.0F) * scale, coveredHeight = 720.0F * scale;
+            Check(bg.x <= -coveredWidth / 2 + .01F && bg.x + bg.width >= coveredWidth / 2 - .01F &&
+                      bg.y <= -coveredHeight / 2 + .01F && bg.y + bg.height >= coveredHeight / 2 - .01F &&
                       std::abs(bg.width / bg.height - 1600.0F / 900) < .001F,
-                  "Selected artwork covers the whole responsive screen with its source aspect ratio.");
-            Check(std::abs(bg.x + bg.width / 2 - 35) < .01F && std::abs(bg.y + bg.height / 2 + 15) < .01F,
+                  "Selected artwork covers the whole 16:9-or-wider arrangement with its source aspect ratio.");
+            Check(std::abs(bg.x + bg.width / 2 - 35 * scale) < .01F && std::abs(bg.y + bg.height / 2 + 15 * scale) < .01F,
                   "Changing authored offsets for the same BG updates its framing without another image load.");
+            const auto *band = Find(canvas->Root(), "SongSelect.LetterboxBand");
+            Check(band && band->IsVisible() == (scale < 1.0F),
+                  "Letterbox bands appear only when the screen is narrower than 16:9.");
         }
         select(2);
         tick();
-        Check(!image->IsVisible() && empty->IsVisible() && !sprite->Style().normalImage.value,
+        Check(!image->IsVisible() && !sprite->Style().normalImage.value,
               "An unassigned background must clear the previous image.");
         Check(!pageBackground->IsVisible() && !pageSprite->Style().normalImage,
               "An unassigned BG restores the skin background instead of leaving the previous chart image.");
@@ -920,7 +837,7 @@ namespace
         {
             select(index);
             tick();
-            Check(!image->IsVisible() && empty->IsVisible(), "Decode/upload errors must preserve NO IMAGE.");
+            Check(!image->IsVisible(), "Decode/upload errors keep the empty jacket.");
             Check(!pageBackground->IsVisible(), "Failed BG loads also preserve the screen's existing background.");
             const auto failedCalls = renderer.loaded.size();
             tick();
@@ -931,7 +848,7 @@ namespace
         tick();
         selection.searchText_ = L"no match";
         view.RebuildVisibleSongs();
-        Check(!image->IsVisible() && empty->IsVisible(), "Empty search results must clear the selected artwork.");
+        Check(!image->IsVisible(), "Empty search results must clear the selected artwork.");
         Check(!pageBackground->IsVisible(), "Empty search results clear the full-screen selected BG.");
         view.Shutdown();
         Check(visuals.CanvasCount() == 0, "Background shutdown must release the Canvas.");
@@ -1014,7 +931,7 @@ namespace
                   selection.focusedSongPosition_==selectedSong && selection.selectedPatternIndex_==selectedPattern,
               "Applying a record filter preserves song list scroll, search and the selected chart.");
         for(const auto &row:Find(canvas->Root(),"RecordRows")->Children())
-            Check(row->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only matching effective JudgeLevel records appear.");
+            Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only matching effective JudgeLevel records appear.");
         selection.selectedPatternIndex_=1;view.RefreshSelectionPresentation();static_cast<void>(view.Update(input,0));wait(0);
         view.Shutdown();
     }
@@ -1025,7 +942,11 @@ namespace
         if (!button || !panel)
             throw std::runtime_error("Options toggle controls missing.");
         const auto *mode = Find(canvas.Root(), "GameModeSelect");
-        Check(mode && mode->BoundsInCanvas().x + mode->BoundsInCanvas().width <= button->BoundsInCanvas().x, "Mode and play option controls must have separate footer bounds.");
+        Check(mode && mode->BoundsInCanvas().x + mode->BoundsInCanvas().width <= button->BoundsInCanvas().x, "Mode and the gear must have separate footer bounds.");
+        const auto *playOptions = Find(canvas.Root(), "PlayOptions");
+        Check(playOptions && mode->BoundsInCanvas().x + mode->BoundsInCanvas().width <= playOptions->BoundsInCanvas().x &&
+                  playOptions->BoundsInCanvas().x + playOptions->BoundsInCanvas().width <= button->BoundsInCanvas().x,
+              "Mode, Play options and the gear sit side by side in the footer.");
         Check(Find(canvas.Root(), "RecordQuery") != nullptr, "History panel exposes its condition query action.");
         InputState keys;
         InputStateTestAccess::Key(keys,VK_LCONTROL,true);
@@ -1079,7 +1000,6 @@ int main()
         }
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
-        TestScrollableText();
         TestMetadataLines();
         TestBaseBpmSortView();
         TestFilterProjection();

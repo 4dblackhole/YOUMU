@@ -62,14 +62,17 @@ void MusicSelectView::UpdateSearchInputLayout()
     const auto content = text.ContentBounds();
     const auto logical = canvas_->LogicalSize();
     const float scale = static_cast<float>(height_) / logical.height;
-    const auto fontHeight = static_cast<std::uint32_t>(std::max(1.0F, std::round(text.FontSize() * scale)));
+    // The board is scaled down on screens narrower than 16:9; the native edit follows it.
+    const float boardScale = CalculateFrame(logical.width).scale;
+    const auto fontHeight =
+        static_cast<std::uint32_t>(std::max(1.0F, std::round(text.FontSize() * scale * boardScale)));
     const float editHeight = std::min(field.height * scale, static_cast<float>(fontHeight) + 4.0F);
     // Canvas is centered/Y-up; native control bounds are top-left physical pixels.
-    const float x = (field.x + content.x + logical.width / 2.0F) * scale;
+    const float x = (field.x + content.x * boardScale + logical.width / 2.0F) * scale;
     const float y = (logical.height / 2.0F - field.y - field.height / 2.0F) * scale - editHeight / 2.0F;
     searchInput_->SetBounds({static_cast<std::int32_t>(std::round(x)),
                             static_cast<std::int32_t>(std::round(y)),
-                            static_cast<std::uint32_t>(std::max(1.0F, std::round(content.width * scale))),
+                            static_cast<std::uint32_t>(std::max(1.0F, std::round(content.width * scale * boardScale))),
                             static_cast<std::uint32_t>(std::max(1.0F, std::round(editHeight)))});
     const auto &font = text.Font();
     searchInput_->SetFont(font.source == TextFontSource::System ? std::wstring_view(font.value) : L"Segoe UI", fontHeight);

@@ -25,16 +25,20 @@ void MusicSelectView::Initialize(const EngineServices &services)
     board_->SetSize(layout::CanvasSize);
     board_->SetPosition({0.0F, 0.0F});
 
-    background_ = &AddPanel(*board_, layout::DesignBoard, CanvasBlue, "Background");
+    background_ = &CreatePanel(*board_, {0.0F, 0.0F, layout::CanvasSize.width, layout::CanvasSize.height}, "Background");
+    ApplyFlatStyle(*background_, CanvasBlue);
+    SetCornerRadius(*background_, 0.0F);
+    BindSkinImage(*background_, screenVisuals_, "MusicSelect", "Background");
     artwork_.CreateBackground(*board_);
-    CreateCategoryBar();
+    CreateVeils();
+    CreateLetterbox();
     if (!IsEditorSongSelect())
     {
         CreateRecordPanel();
     }
     CreateSongInformationPanel();
     CreateSongBrowser();
-    favoriteTabs_.Initialize(*browserPanel_, texts_);
+    favoriteTabs_.Initialize(*browserPanel_, screenVisuals_, texts_);
     CreateFooter();
     CreateAdditionMenu();
     options_.Initialize(*canvas_, services.audio, services.windowControl);
@@ -132,37 +136,38 @@ void MusicSelectView::Shutdown() noexcept
     additionMenu_ = newDifficultyItem_ = convertOsuItem_ = nullptr;
     canvasPointer_.reset();
     songList_.Shutdown();
+    goErrorLabel_ = nullptr;
+    goError_ = nullptr;
     goLabel_ = nullptr;
-    goFill_ = nullptr;
     goButton_ = nullptr;
     backLabel_ = nullptr;
-    backFill_ = nullptr;
     backButton_ = nullptr;
-    optionLabel_ = nullptr;
     optionButton_ = nullptr;
+    playOptionsButton_ = nullptr;
+    playOptionsButtonId_ = 0;
     modeSelector_ = nullptr;
     modeSelectorId_ = 0;
-    selectedDetailsLabel_ = nullptr;
-    extraDetailsLabels_ = {};
+    statCaptions_ = {};
+    statValues_ = {};
+    creatorIcon_ = nullptr;
+    levelBadge_ = nullptr;
+    difficultyBlock_ = nullptr;
     selectedCreatorLabel_ = nullptr;
     selectedPatternLabel_ = nullptr;
     selectedArtistLabel_ = nullptr;
     selectedSongLabel_ = nullptr;
-    browserHint_ = nullptr;
     sortSelector_ = nullptr;
     filterButton_ = nullptr;
     searchCountLabel_ = nullptr;
     searchField_ = nullptr;
     browserPanel_ = nullptr;
-    informationDivider_ = nullptr;
-    creatorHeading_ = nullptr;
-    difficultyHeading_ = nullptr;
-    difficultyInformation_ = nullptr;
     artwork_.Reset();
     informationPanel_ = nullptr;
     recordPanel_ = nullptr;
-    categoryBar_ = nullptr;
-    categoryLabel_ = nullptr;
+    letterbox_ = {};
+    footerBar_ = nullptr;
+    listVeil_ = nullptr;
+    recordVeil_ = nullptr;
     background_ = nullptr;
     board_ = nullptr;
     canvas_ = nullptr;
@@ -212,8 +217,16 @@ bool MusicSelectView::ProcessPlayOptionsPanel(const InputState &input)
 void MusicSelectView::RefreshFilterButton()
 {
     if (!filterButton_) return;
-    ApplyButtonStyle(*filterButton_, selection_.filter_.IsActive() ? AccentBlue : PureWhite,
-                     PaleBlue, selection_.filter_.IsActive() ? PureWhite : DeepBlue);
+    // An active filter fills the button with cobalt so it reads as "on".
+    const bool active = selection_.filter_.IsActive();
+    VisualStyle style{};
+    style.normal = active ? ui_colors::theme::Brand : Color{1.0F, 1.0F, 1.0F, 0.72F};
+    style.hovered = active ? ui_colors::theme::BrandDeep : PureWhite;
+    style.pressed = ui_colors::theme::BrandDeep;
+    style.disabled = style.normal;
+    RequireComponent<SpriteVisualComponent>(*filterButton_).SetStyle(style);
+    RequireComponent<TextVisualComponent>(*filterButton_)
+        .SetTextColor(active ? PureWhite : ui_colors::theme::BrandText);
 }
 
 bool MusicSelectView::IsEditorSongSelect() const noexcept
@@ -226,4 +239,19 @@ void MusicSelectView::RefreshSelection()
     songList_.Rebuild();
     RefreshSelectionPresentation();
     songList_.EnsureFocusedVisible();
+}
+
+void MusicSelectView::CreateLetterbox()
+{
+    // Bands outside the scaled 16:9 arrangement. They sit above the board and below every popup.
+    auto &frame = canvas_->CreateNode(Anchor::Center, "SongSelect.Letterbox");
+    frame.SetZIndex(5);
+    for (auto &band : letterbox_)
+    {
+        band = &CreatePanel(frame, {}, "SongSelect.LetterboxBand");
+        auto &visual = RequireComponent<SpriteVisualComponent>(*band);
+        visual.SetTint(ui_colors::theme::Letterbox);
+        visual.SetCornerRadius(0.0F);
+        band->SetVisible(false);
+    }
 }

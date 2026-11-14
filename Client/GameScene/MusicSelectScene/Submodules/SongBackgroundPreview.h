@@ -2,18 +2,17 @@
 #include "PhantomCore.h"
 #include <filesystem>
 
-class TextCatalog;
-
 class SongBackgroundPreview final
 {
   public:
     explicit SongBackgroundPreview(PhantomCore::ScreenVisual2DManager &visuals) : visuals_(visuals) {}
     void CreateBackground(PhantomCore::Visual2DNode &board);
-    void BindPreview(PhantomCore::Visual2DNode &panel, PhantomCore::Visual2DNode &image, PhantomCore::Visual2DNode &title, PhantomCore::Visual2DNode &empty);
+    // The jacket frame is a skinned sprite; the square-cropped chart BG sits inside it.
+    void BindPreview(PhantomCore::Visual2DNode &frame, PhantomCore::Visual2DNode &image);
     void SetImage(const std::filesystem::path &path, PhantomCore::Size viewport, double offsetX = 0, double offsetY = 0);
     void LayoutBackground(PhantomCore::Size viewport);
-    [[nodiscard]] float LayoutPreview(float panelWidth, float parentHeight);
-    void ApplyTexts(const TextCatalog &texts);
+    // bounds: the picture square in its parent's coordinates.
+    void LayoutPreview(PhantomCore::Rect bounds);
     void Reset() noexcept;
 
   private:
@@ -26,6 +25,4 @@ class SongBackgroundPreview final
     PhantomCore::Visual2DNode *chartBackground_{};
     PhantomCore::Visual2DNode *preview_{};
     PhantomCore::Visual2DNode *previewImage_{};
-    PhantomCore::Visual2DNode *previewTitle_{};
-    PhantomCore::Visual2DNode *previewEmpty_{};
 };

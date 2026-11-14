@@ -36,19 +36,18 @@ class SongListView final
     {
     }
 
-    // The viewport is a clipped bordered panel created by the browser panel.
+    // The viewport is a clipped node created by the browser column.
     void Attach(PhantomCore::Visual2DCanvas &canvas, PhantomCore::Visual2DInputRouter &router,
                 PhantomCore::Visual2DNode &viewport);
     [[nodiscard]] PhantomCore::Visual2DNode *Viewport() const noexcept { return viewport_; }
-    // Call after the viewport was resized. innerWidth is the browser panel's
-    // inner design width.
-    void SetLayout(float innerWidth);
+    // Call after the viewport was resized.
+    void SetLayout();
 
     // Rebuilds rows from the visible songs and the current focus.
     void Rebuild();
     void EnsureFocusedVisible();
     void ResetScroll() noexcept { scrollOffset_ = 0.0F; }
-    void ScrollBy(float designPixels);
+    void ScrollBy(float pixels);
     // Restyles difficulty buttons after the selected pattern changed.
     void RefreshPatternSelection();
     [[nodiscard]] ActionResult ProcessAction(const PhantomCore::Action &action) const;
@@ -91,5 +90,4 @@ class SongListView final
     bool cardsDirty_{true};
     float scrollOffset_{};
     float contentHeight_{};
-    float contentWidth_{454.29F};
 };

@@ -79,6 +79,9 @@
     <None Include="Assets\Skins\Default Skin\Logo\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\Menu\*.*" />
     <None Include="Assets\Skins\Default Skin\MusicSelect\*.*" />
+    <None Include="Assets\Skins\Default Skin\MusicSelect\Detail\*.*" />
+    <None Include="Assets\Skins\Default Skin\MusicSelect\Panels\*.*" />
+    <None Include="Assets\Skins\Default Skin\MusicSelect\Records\*.*" />
     <None Include="Assets\Skins\Default Skin\NumberImage\*.*" />
     <None Include="Assets\Skins\Default Skin\Common\Icons\*.*" />
     <None Include="Assets\Skins\Default Skin\Result\*.*" />

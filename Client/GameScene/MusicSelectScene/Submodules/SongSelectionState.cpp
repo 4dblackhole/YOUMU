@@ -116,7 +116,13 @@ void SongSelectionState::MoveDifficultyFocus(const int delta)
         }
         if (focusedSongPosition_ > 0)
         {
+            // Moving up from a song's first difficulty lands on the previous song's last one.
             SelectVisibleSong(focusedSongPosition_ - 1);
+            const auto previous = VisiblePatternIndices(visibleSongIndices_[focusedSongPosition_]);
+            if (!previous.empty())
+            {
+                SelectPattern(previous.back());
+            }
         }
         return;
     }

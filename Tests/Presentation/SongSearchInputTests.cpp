@@ -2,7 +2,6 @@
 #include "SongSearchInputTests.h"
 #include "App/AssetPaths.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
-#include "Presentation/ScrollableTextComponent.h"
 #include <Windows.h>
 #include <algorithm>
 #include <vector>
@@ -319,10 +318,9 @@ namespace
                 if (!canvas) throw std::runtime_error("Rendered metadata Canvas missing.");
                 auto *title = Find(canvas->Root(), "SelectedSong");
                 if (!title) throw std::runtime_error("Rendered metadata title missing.");
-                auto *scroll = title->GetComponent<ScrollableTextComponent>();
-                Check(scroll && scroll->Text() == L"Angel Dream\n天使の夢\n천사의 꿈" &&
-                          scroll->ScrollRange().height > 0,
-                      "Real DirectWrite multiline measurement drives the selected title scrollbar.");
+                const auto *caption = title->GetComponent<TextVisualComponent>();
+                Check(caption && caption->Text() == L"Angel Dream",
+                      "The real renderer shows the representative title on one line.");
                 auto *card = Find(canvas->Root(), "Song.0");
                 Check(card && !Find(*card, "Thumbnail"), "The real renderer must not create song-list artwork.");
                 auto *preview = Find(canvas->Root(), "PreviewImage");

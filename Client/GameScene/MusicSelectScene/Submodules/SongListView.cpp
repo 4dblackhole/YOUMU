@@ -7,6 +7,43 @@ using namespace PhantomCore;
 
 using namespace song_select;
 
+namespace
+{
+    namespace theme = ui_colors::theme;
+
+    constexpr Color TranslucentRow{1.0F, 1.0F, 1.0F, 0.16F};
+    constexpr Color CardWhite{1.0F, 1.0F, 1.0F, 0.70F};
+    constexpr Color FocusedArtist{0.949F, 0.969F, 1.0F, 1.0F};
+
+    [[nodiscard]] std::wstring FirstArtist(const SongCatalogEntry &song)
+    {
+        for (const auto &artist : song.music.artists)
+            if (!artist.empty())
+                return DecodeDisplayText(artist);
+        return {};
+    }
+
+    // Height of the selected card: its heading plus one row per difficulty. A song
+    // without charts keeps one row for the NO DIFFICULTIES line.
+    [[nodiscard]] constexpr float FocusedHeight(const std::size_t difficulties) noexcept
+    {
+        return layout::DifficultyTop + layout::DifficultyPitch * static_cast<float>(std::max<std::size_t>(difficulties, 1)) +
+               layout::FocusedPadding;
+    }
+    static_assert(FocusedHeight(3) == 172.0F);
+
+    void StyleDifficulty(Visual2DNode &button, ScreenVisual2DManager &visuals, const bool selected)
+    {
+        ApplySkinPart(button, visuals, selected ? "DifficultySelected" : "Difficulty",
+                      selected ? PureWhite : TranslucentRow);
+        const Color color = selected ? theme::Brand : PureWhite;
+        RequireComponent<TextVisualComponent>(button).SetTextColor(color);
+        for (const auto &child : button.Children())
+            if (child->Name() == "Level")
+                RequireComponent<TextVisualComponent>(*child).SetTextColor(color);
+    }
+} // namespace
+
 void SongListView::Attach(Visual2DCanvas &canvas, Visual2DInputRouter &router, Visual2DNode &viewport)
 {
     canvas_ = &canvas;
@@ -17,25 +54,23 @@ void SongListView::Attach(Visual2DCanvas &canvas, Visual2DInputRouter &router, V
     content_->SetSize(viewport.NodeSize());
     content_->SetPosition({0.0F, 0.0F});
     content_->SetZIndex(1);
-    scrollbarTrack_ = &CreateSongPanel(visuals_, viewport, layout::ScrollbarTrack, {0.835F, 0.910F, 0.957F, 1.0F},
-                                       "ScrollbarTrack", 3.0F);
+    scrollbarTrack_ = &CreatePanel(viewport, {}, "ScrollbarTrack");
+    ApplySkinPart(*scrollbarTrack_, visuals_, "ScrollbarTrack", {0.122F, 0.298F, 0.6F, 0.14F});
     scrollbarTrack_->SetZIndex(2);
-    scrollbarHandle_ = &CreateSongPanel(visuals_, viewport, layout::ScrollbarTrack, AccentBlue, "ScrollbarHandle", 3.0F);
+    scrollbarHandle_ = &CreatePanel(viewport, {}, "ScrollbarHandle");
+    ApplySkinPart(*scrollbarHandle_, visuals_, "ScrollbarHandle", theme::Brand);
     scrollbarHandle_->SetZIndex(3);
 }
 
-void SongListView::SetLayout(const float innerWidth)
+void SongListView::SetLayout()
 {
     if (viewport_ == nullptr)
         return;
-    viewport_->SetClipRect({0.0F, 0.0F, viewport_->NodeSize().width, viewport_->NodeSize().height});
-    content_->SetSize(viewport_->NodeSize());
-    contentWidth_ = std::max(innerWidth - 24.0F, 1.0F);
-    constexpr float tabsHeight = 64;
-    const float trackX = std::max(innerWidth - 9.0F, 0.0F);
-    scrollbarTrack_->SetBounds(ScaleTopLeftBounds(
-        {trackX, layout::ScrollbarTrack.y, layout::ScrollbarTrack.width, layout::ScrollbarTrack.height - tabsHeight},
-        viewport_->NodeSize().height));
+    const Size size = viewport_->NodeSize();
+    viewport_->SetClipRect({0.0F, 0.0F, size.width, size.height});
+    content_->SetSize(size);
+    scrollbarTrack_->SetBounds({size.width - layout::ScrollbarWidth - 4.0F, layout::ContentTop, layout::ScrollbarWidth,
+                                std::max(size.height - layout::ContentTop * 2.0F, 1.0F)});
     UpdateScrollbar();
 }
 
@@ -65,14 +100,12 @@ void SongListView::Rebuild()
     {
         const auto index = selection_.visibleSongIndices_[position];
         const bool focused = position == selection_.focusedSongPosition_;
-        const float height = focused ? layout::ExpandedBaseHeight +
-                                           layout::DifficultyRowStep *
-                                               static_cast<float>(selection_.VisiblePatternCount(index))
-                                     : layout::NormalSongHeight;
+        const float height = focused ? FocusedHeight(selection_.VisiblePatternCount(index)) : layout::SongHeight;
         rows_.push_back({index, top, height, nullptr, nullptr, nullptr, position});
-        top += height + layout::SongGap;
+        top += height + (layout::SongPitch - layout::SongHeight);
     }
-    contentHeight_ = rows_.empty() ? VisibleBottom() : top - layout::SongGap + layout::ContentTop;
+    contentHeight_ = rows_.empty() ? VisibleBottom()
+                                   : top - (layout::SongPitch - layout::SongHeight) + layout::ContentTop;
     cardsDirty_ = true;
     EnsureFocusedVisible();
 }
@@ -81,8 +114,8 @@ void SongListView::UpdateVisibleCards()
 {
     if (!content_ || !canvas_)
         return;
-    const float begin = layout::ContentTop + scrollOffset_ - layout::NormalSongHeight;
-    const float end = VisibleBottom() + scrollOffset_ + layout::NormalSongHeight;
+    const float begin = layout::ContentTop + scrollOffset_ - layout::SongPitch;
+    const float end = VisibleBottom() + scrollOffset_ + layout::SongPitch;
     const auto first =
         std::ranges::lower_bound(rows_, begin, {}, [](const SongCard &row) { return row.top + row.height; });
     const auto last = std::ranges::upper_bound(first, rows_.end(), end, {}, &SongCard::top);
@@ -103,12 +136,14 @@ void SongListView::UpdateVisibleCards()
         CreateCard(*row, row->visiblePosition == selection_.focusedSongPosition_);
     if (rows_.empty())
     {
+        // An empty catalog shows one line; an empty search or filter result names the cause.
+        // The first catalog load shows no message at all.
         const auto &text = MusicSelect(texts_);
-        static_cast<void>(CreateSongLabel(*content_,
-                        {layout::EmptySongMessage.x, layout::EmptySongMessage.y, std::max(contentWidth_ - 32.0F, 1.0F),
-                         layout::EmptySongMessage.height},
-                        std::wstring(selection_.catalogLoading_ ? text.noDifficulties : text.noSongsAvailable), 20.0F,
-                        DeepBlue, "NoSongs", texts_, TextAlignment::Center));
+        const bool catalogEmpty = selection_.catalog_.songs.empty();
+        if (!(catalogEmpty && selection_.catalogLoading_))
+            static_cast<void>(CreateNumber(*content_, {layout::SongLeft, 120.0F, layout::SongWidth, 28.0F},
+                                       std::wstring(catalogEmpty ? text.noDifficulties : text.noSongsAvailable), 20.0F,
+                                       700, theme::Caption, "NoSongs", TextAlignment::Center, false));
     }
     firstVisibleRow_ = firstIndex;
     lastVisibleRow_ = lastIndex;
@@ -121,54 +156,50 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
     const auto &text = MusicSelect(texts_);
     const auto &song = selection_.catalog_.songs[row.catalogIndex];
     const float height = row.height;
-    auto &button = CreateButton(
-        *content_, ScaleTopLeftBounds({layout::ContentLeft, row.top, contentWidth_, height}, content_->NodeSize().height),
-        L"", std::format("Song.{}", row.visiblePosition));
-    ApplyButtonStyle(button, focused ? BorderBlue : PaleBorder, BorderBlue, DeepBlue);
-    SetCornerRadius(button, 14.0F);
-    CreateSongPanel(visuals_, button, {2.0F, 2.0F, std::max(contentWidth_ - 4.0F, 1.0F), height - 4.0F},
-                    focused ? FocusBlue : RowBlue, "Surface", 12.0F);
-    BindSkinImage(button, visuals_, "MusicSelect", focused ? "SongCardFocused" : "SongCard", "Surface");
+    const float left = focused ? layout::SongLeft - layout::FocusedOutset : layout::SongLeft;
+    const float width = focused ? layout::SongWidth + layout::FocusedOutset : layout::SongWidth;
+    auto &button = CreateButton(*content_, TopLeft({left, row.top, width, height}, content_->NodeSize().height), L"",
+                                std::format("Song.{}", row.visiblePosition));
+    ApplySkinPart(button, visuals_, focused ? "SongCardFocused" : "SongCard", focused ? theme::Brand : CardWhite);
 
-    const float titleWidth = std::max(contentWidth_ - 28.0F, 1.0F);
-    const float headingWidth = editor_ ? std::max(titleWidth - 48.0F, 1.0F) : titleWidth;
-    auto &title = CreateScrollableSongLabel(button, {14.0F, focused ? 16.0F : 10.0F, headingWidth, focused ? 60.0F : 56.0F},
-                                            DisplayLines(song.music.names, song.metadataPath.stem().wstring()),
-                                            focused ? 20.0F : 16.0F, DeepBlue, "Title", texts_);
-    auto &artist = CreateScrollableSongLabel(button, {14.0F, focused ? 82.0F : 72.0F, headingWidth, focused ? 48.0F : 44.0F},
-                                             DisplayLines(song.music.artists), focused ? 12.0F : 11.0F, MutedBlue,
-                                             "Artist", texts_);
-    RequireComponent<ScrollableTextComponent>(title).SetClickTarget(button.Id());
-    RequireComponent<ScrollableTextComponent>(artist).SetClickTarget(button.Id());
+    // One line each: the representative title and artist. The editor keeps room for its + button.
+    const float textLeft = focused ? 34.0F : 28.0F;
+    const float textWidth = std::max(width - textLeft - (editor_ ? 56.0F : 44.0F), 1.0F);
+    auto &title = CreateCaption(button, {textLeft, 10.0F, textWidth, 20.0F}, SongTitle(song), focused ? 17.0F : 15.0F,
+                                focused ? std::uint16_t{900} : std::uint16_t{800}, focused ? PureWhite : theme::Ink,
+                                "Title");
+    title.SetClipRect({0.0F, 0.0F, textWidth, 20.0F});
+    auto &artist = CreateCaption(button, {textLeft, 30.0F, textWidth, 18.0F}, FirstArtist(song), 13.0F, 600,
+                                 focused ? FocusedArtist : theme::Caption, "Artist");
+    artist.SetClipRect({0.0F, 0.0F, textWidth, 18.0F});
 
     if (focused)
     {
-        CreateSongPanel(visuals_, button, {14.0F, 140.0F, titleWidth, 1.0F}, PaleBorder, "Divider");
+        const float rowLeft = 34.0F;
         if (song.patterns.empty())
-            static_cast<void>(CreateSongLabel(button, {14.0F, 152.0F, titleWidth, 24.0F},
-                                              std::wstring(text.noDifficulties), 12.0F, MutedBlue,
-                                              "NoDifficulties", texts_, TextAlignment::Center));
+            static_cast<void>(CreateNumber(button, {rowLeft, layout::DifficultyTop, layout::DifficultyWidth,
+                                                    layout::DifficultyHeight},
+                                           std::wstring(text.noDifficulties), 14.0F, 700, PureWhite,
+                                           "NoDifficulties", TextAlignment::Leading, false));
         const auto visiblePatterns = selection_.VisiblePatternIndices(row.catalogIndex);
         for (std::size_t patternRow = 0; patternRow < visiblePatterns.size(); ++patternRow)
         {
             const auto index = visiblePatterns[patternRow];
             auto &difficulty = CreateButton(
                 button,
-                ScaleTopLeftBounds({14.0F, 152.0F + layout::DifficultyRowStep * static_cast<float>(patternRow),
-                                    titleWidth, layout::DifficultyRowHeight},
-                                   button.NodeSize().height),
+                TopLeft({rowLeft, layout::DifficultyTop + layout::DifficultyPitch * static_cast<float>(patternRow),
+                         layout::DifficultyWidth, layout::DifficultyHeight},
+                        button.NodeSize().height),
                 PatternName(song.patterns[index]), std::format("Difficulty.{}", index));
-            const bool selected = index == selection_.selectedPatternIndex_;
-            ApplyButtonStyle(difficulty, selected ? AccentBlue : PureWhite, selected ? AccentHover : PaleBlue,
-                             selected ? PureWhite : DeepBlue);
-            SetCornerRadius(difficulty, 8.0F);
-            BindSkinImage(difficulty, visuals_, "MusicSelect", selected ? "DifficultySelected" : "Difficulty");
             auto &difficultyText = RequireComponent<TextVisualComponent>(difficulty);
-            difficultyText.SetFontSize(CanvasFontSize(12.0F));
-            texts_.ApplyFont(difficultyText);
-            difficultyText.SetHorizontalAlignment(TextAlignment::Leading);
-            difficultyText.SetContentBounds(ScaleTopLeftBounds({12.0F, 0.0F, titleWidth - 24.0F, layout::DifficultyRowHeight},
-                                                               difficulty.NodeSize().height));
+            StyleText(difficultyText, 13.0F, 800, PureWhite);
+            difficultyText.SetContentBounds({20.0F, 0.0F, layout::DifficultyWidth - 20.0F - 60.0F, layout::DifficultyHeight});
+            // A chart without a calculated difficulty shows a dash.
+            const auto &level = song.patterns[index].calculatedDifficulty;
+            static_cast<void>(CreateNumber(difficulty, {layout::DifficultyWidth - 60.0F, 0.0F, 48.0F, layout::DifficultyHeight},
+                                           level ? std::format(L"{:.2f}", *level) : std::wstring(L"—"), 14.0F, 800,
+                                           PureWhite, "Level", TextAlignment::Trailing));
+            StyleDifficulty(difficulty, visuals_, index == selection_.selectedPatternIndex_);
             difficultyButtonIds_.push_back({difficulty.Id(), index});
         }
     }
@@ -178,19 +209,15 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
 
 NodeId SongListView::CreateDifficultyButton(Visual2DNode &card, const std::size_t visiblePosition)
 {
-    const float size = std::min(36.0F, std::max(contentWidth_ - 28.0F, 1.0F));
-    auto &button = CreateButton(
-        card,
-        ScaleTopLeftBounds({std::max(contentWidth_ - size - 14.0F, 0.0F), 14.0F, size, size}, card.NodeSize().height),
-        std::wstring(MusicSelect(texts_).addDifficulty), std::format("AddDifficulty.{}", visiblePosition));
-    ApplyButtonStyle(button, PaleBlue, FocusBlue, AccentBlue);
-    SetCornerRadius(button, 8.0F);
-    auto &caption = RequireComponent<TextVisualComponent>(button);
-    caption.SetFontSize(CanvasFontSize(28.0F));
-    texts_.ApplyFont(caption);
+    constexpr float size = 32.0F;
+    auto &button = CreateButton(card, TopLeft({card.NodeSize().width - size - 12.0F, 13.0F, size, size}, card.NodeSize().height),
+                                L"", std::format("AddDifficulty.{}", visiblePosition));
+    ApplySkinPart(button, visuals_, "AddDifficulty", PureWhite);
+    auto &plus = CreateSprite(button, {(size - 16.0F) * 0.5F, (size - 16.0F) * 0.5F, 16.0F, 16.0F},
+                              visuals_.RegisterImage(Common(L"Icons.plus")), "Icon");
+    RequireComponent<SpriteVisualComponent>(plus).SetTint(theme::BrandText);
     button.SetZIndex(3);
     button.SetEnabled(!selection_.catalogLoading_);
-    BindSkinImage(button, visuals_, "MusicSelect", "AddDifficulty");
     return button.Id();
 }
 
@@ -199,15 +226,8 @@ void SongListView::RefreshPatternSelection()
     if (!canvas_)
         return;
     for (const auto [id, patternIndex] : difficultyButtonIds_)
-    {
         if (auto *button = canvas_->FindNode(id))
-        {
-            const bool selected = patternIndex == selection_.selectedPatternIndex_;
-            ApplyButtonStyle(*button, selected ? AccentBlue : PureWhite, selected ? AccentHover : PaleBlue,
-                             selected ? PureWhite : DeepBlue);
-            BindSkinImage(*button, visuals_, "MusicSelect", selected ? "DifficultySelected" : "Difficulty");
-        }
-    }
+            StyleDifficulty(*button, visuals_, patternIndex == selection_.selectedPatternIndex_);
 }
 
 SongListView::ActionResult SongListView::ProcessAction(const Action &action) const
@@ -229,9 +249,8 @@ SongListView::ActionResult SongListView::ProcessAction(const Action &action) con
 
 float SongListView::VisibleBottom() const noexcept
 {
-    return viewport_ ? std::max(viewport_->NodeSize().height / DesignToCanvasScale - layout::ContentTop,
-                                layout::ContentTop + 1)
-                     : layout::ContentBottom;
+    return viewport_ ? std::max(viewport_->NodeSize().height - layout::ContentTop, layout::ContentTop + 1.0F)
+                     : layout::BodyHeight - layout::ViewportTop - layout::ContentTop;
 }
 
 void SongListView::EnsureFocusedVisible()
@@ -252,9 +271,9 @@ void SongListView::EnsureFocusedVisible()
     ApplyScrollOffset();
 }
 
-void SongListView::ScrollBy(const float designPixels)
+void SongListView::ScrollBy(const float pixels)
 {
-    scrollOffset_ += designPixels;
+    scrollOffset_ += pixels;
     ApplyScrollOffset();
 }
 
@@ -263,7 +282,7 @@ void SongListView::ApplyScrollOffset()
     const float maximum = std::max(contentHeight_ - VisibleBottom(), 0.0F);
     scrollOffset_ = std::clamp(scrollOffset_, 0.0F, maximum);
     if (content_ != nullptr)
-        content_->SetPosition({0.0F, scrollOffset_ * DesignToCanvasScale});
+        content_->SetPosition({0.0F, scrollOffset_});
     UpdateScrollbar();
     UpdateVisibleCards();
     if (router_ != nullptr)
@@ -272,18 +291,20 @@ void SongListView::ApplyScrollOffset()
 
 void SongListView::UpdateScrollbar()
 {
-    if (scrollbarHandle_ == nullptr || viewport_ == nullptr)
+    if (scrollbarHandle_ == nullptr || scrollbarTrack_ == nullptr || viewport_ == nullptr)
         return;
     const float maximum = std::max(contentHeight_ - VisibleBottom(), 0.0F);
+    // Nothing to scroll: the rail and bar disappear instead of showing a full-length bar.
+    scrollbarTrack_->SetVisible(maximum > 0.0F);
+    scrollbarHandle_->SetVisible(maximum > 0.0F);
+    if (maximum <= 0.0F)
+        return;
+    const Rect track = scrollbarTrack_->Bounds();
     const float visibleHeight = std::max(VisibleBottom() - layout::ContentTop, 1.0F);
-    const float trackHeight = visibleHeight;
     const float handleHeight =
-        maximum <= 0.0F
-            ? trackHeight
-            : std::max(48.0F, trackHeight * visibleHeight / std::max(contentHeight_ - layout::ContentTop, visibleHeight));
-    const float travel = trackHeight - handleHeight;
-    const float handleTop = layout::ScrollbarTrack.y + (maximum <= 0.0F ? 0.0F : travel * scrollOffset_ / maximum);
-    const float trackX = std::max(viewport_->NodeSize().width / DesignToCanvasScale - 9.0F, 0.0F);
-    scrollbarHandle_->SetBounds(ScaleTopLeftBounds({trackX, handleTop, layout::ScrollbarTrack.width, handleHeight},
-                                                   viewport_->NodeSize().height));
+        std::max(32.0F, track.height * visibleHeight / std::max(contentHeight_ - layout::ContentTop, visibleHeight));
+    const float travel = std::max(track.height - handleHeight, 0.0F);
+    // Bounds are Y-up: offset zero puts the bar at the top of the rail.
+    scrollbarHandle_->SetBounds(
+        {track.x, track.y + travel * (1.0F - scrollOffset_ / maximum), track.width, handleHeight});
 }

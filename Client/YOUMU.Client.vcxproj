@@ -248,14 +248,13 @@
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayProgressView.h" />
     <ClInclude Include="Presentation\LaneKeyBeam.h" />
     <ClInclude Include="Presentation\BackgroundLayout.h" />
-    <ClCompile Include="Presentation\MarqueeTextComponent.cpp" />
-    <ClCompile Include="Presentation\ScrollableTextComponent.cpp" />
-    <ClInclude Include="Presentation\MarqueeTextComponent.h" />
-    <ClInclude Include="Presentation\ScrollableTextComponent.h" />
     <ClCompile Include="Presentation\OptionsPanel.cpp" />
     <ClInclude Include="Presentation\OptionsPanel.h" />
     <ClInclude Include="Presentation\UiColors.h" />
+    <ClCompile Include="Presentation\MarqueeTextComponent.cpp" />
+    <ClInclude Include="Presentation\MarqueeTextComponent.h" />
     <ClInclude Include="Presentation\AccuracyText.h" />
+    <ClInclude Include="Presentation\RankName.h" />
     <ClInclude Include="Presentation\UiFonts.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />
     <ClCompile Include="Presentation\ModePresentation.cpp" />

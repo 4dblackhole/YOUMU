@@ -209,8 +209,9 @@ namespace tests
         Require(state.focusedSongPosition_ == 1 && state.selectedPatternIndex_ == 0,
                 "Down at the final difficulty selects the next song's first difficulty.");
         state.MoveDifficultyFocus(-1);
-        Require(state.focusedSongPosition_ == 0 && state.selectedPatternIndex_ == 0,
-                "Up at the first difficulty preserves the existing previous-song policy.");
+        Require(state.focusedSongPosition_ == 0 && state.selectedPatternIndex_ == 1,
+                "Up at the first difficulty selects the previous song's last difficulty.");
+        state.MoveDifficultyFocus(-1);
         state.sortMode_ = SongSelectionState::SortMode::Title;
         state.RebuildVisibleSongs();
         Require(state.visibleSongIndices_ == std::vector<std::size_t>{1, 0} && state.focusedSongPosition_ == 1,

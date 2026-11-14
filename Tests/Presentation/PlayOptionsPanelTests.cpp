@@ -162,7 +162,7 @@ namespace
             view_->Initialize(services); canvas_ = visuals_.FindCanvas(1);
             Check(canvas_ != nullptr, "Native play options share the song selection Canvas.");
             parent_ = FindWindowW(nullptr, L"YOUMU.PlayOptions.Test");
-            Click("OptionSelect");
+            Click("PlayOptions");
             Check(Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible(), "Footer opens the new in-game panel.");
             Check(view_->Update({}, .2) == SongSelectCommand::None, "Opening does not launch a chart.");
             const auto speed = Editor("PlayOptions.scrollSpeed.Field");
@@ -188,12 +188,12 @@ namespace
                   "Actual native Esc closes/applies once without also going Back.");
             Check(selection_.searchText_ == L"Alpha" && selection_.focusedSongPosition_ == 0 && selection_.selectedPatternIndex_ == 0,
                   "Closing preserves search and selected song/chart.");
-            Click("OptionSelect"); static_cast<void>(view_->Update({}, .2));
+            Click("PlayOptions"); static_cast<void>(view_->Update({}, .2));
             Check(GetWindowTextLengthW(Editor("PlayOptions.scrollSpeed.Field")) == 4, "Reopening shows the applied value.");
             Click("PlayOptions.Reset"); Click("PlayOptions.Close");
             Check(selection_.playOptions_.scrollSpeed == 1 && !Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible(),
                   "Actual pointer Reset then Close applies the default.");
-            Click("OptionSelect"); static_cast<void>(view_->Update({}, .2));
+            Click("PlayOptions"); static_cast<void>(view_->Update({}, .2));
             report_.tested = true;
         }
         catch (const std::exception &error) { std::cerr << "Native Play options: " << error.what() << '\n'; throw; }

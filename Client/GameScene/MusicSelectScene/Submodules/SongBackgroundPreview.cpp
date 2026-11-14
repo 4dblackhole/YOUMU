@@ -1,7 +1,6 @@
 #include "SongBackgroundPreview.h"
 #include "Presentation/BackgroundLayout.h"
 #include "SongSelectLayout.h"
-#include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 
 using namespace PhantomCore;
 
@@ -13,13 +12,17 @@ void SongBackgroundPreview::CreateBackground(Visual2DNode &board)
     chartBackground_->SetVisible(false);
 }
 
-void SongBackgroundPreview::BindPreview(Visual2DNode &panel, Visual2DNode &image,
-                                        Visual2DNode &title, Visual2DNode &empty)
+namespace
 {
-    preview_ = &panel;
+    // The exported frame is 309px for a 196px picture at 1.5x: 5 logical px of rim per side.
+    constexpr float JacketRim = 5.0F;
+}
+
+void SongBackgroundPreview::BindPreview(Visual2DNode &frame, Visual2DNode &image)
+{
+    preview_ = &frame;
     previewImage_ = &image;
-    previewTitle_ = &title;
-    previewEmpty_ = &empty;
+    BindSkinImage(frame, visuals_, "MusicSelect", "Detail.JacketEmpty");
 }
 
 void SongBackgroundPreview::SetImage(const std::filesystem::path &path, Size viewport,
@@ -37,8 +40,7 @@ void SongBackgroundPreview::SetImage(const std::filesystem::path &path, Size vie
     RequireComponent<SpriteVisualComponent>(*previewImage_).SetImage({});
     chartBackground_->SetVisible(false);
     RequireComponent<SpriteVisualComponent>(*chartBackground_).SetImage({});
-    previewTitle_->SetVisible(true);
-    previewEmpty_->SetVisible(true);
+    BindSkinImage(*preview_, visuals_, "MusicSelect", "Detail.JacketEmpty");
     if (path.empty())
         return;
     try
@@ -58,12 +60,11 @@ void SongBackgroundPreview::SetImage(const std::filesystem::path &path, Size vie
         chartBackground_->SetVisible(true);
         LayoutImage();
         previewImage_->SetVisible(true);
-        previewTitle_->SetVisible(false);
-        previewEmpty_->SetVisible(false);
+        BindSkinImage(*preview_, visuals_, "MusicSelect", "Detail.Jacket");
     }
     catch (const std::exception &)
     {
-        // Missing/corrupt artwork keeps NO IMAGE until the selected path changes.
+        // Missing/corrupt artwork keeps the empty jacket until the selected path changes.
     }
 }
 
@@ -81,8 +82,9 @@ void SongBackgroundPreview::LayoutImage()
 {
     if (previewImage_ == nullptr)
         return;
-    const auto size = preview_->NodeSize();
-    previewImage_->SetBounds({0, 0, size.width, size.height});
+    const Size size{std::max(preview_->NodeSize().width - JacketRim * 2, 1.0F),
+                    std::max(preview_->NodeSize().height - JacketRim * 2, 1.0F)};
+    previewImage_->SetBounds({JacketRim, JacketRim, size.width, size.height});
     if (previewImageSize_.width <= 0 || previewImageSize_.height <= 0)
         return;
     const auto scale = std::max(size.width / previewImageSize_.width,
@@ -93,43 +95,13 @@ void SongBackgroundPreview::LayoutImage()
         uvScale, {(1 - uvScale.x) * .5F, (1 - uvScale.y) * .5F});
 }
 
-float SongBackgroundPreview::LayoutPreview(float panelWidth, float parentHeight)
-{
-    if (!preview_)
-        return 0.0F;
-    const bool showPreview = panelWidth >= 500.0F;
-    preview_->SetVisible(showPreview);
-    if (!showPreview)
-        return 0.0F;
-
-    const float previewWidth =
-        std::clamp(layout::Preview.width * panelWidth / layout::InformationPanel.width, 160.0F,
-                   layout::Preview.width);
-    preview_->SetBounds(ScaleTopLeftBounds({24.0F, 24.0F, previewWidth, previewWidth}, parentHeight));
-    previewTitle_->SetBounds(ScaleTopLeftBounds(
-        {20.0F, layout::PreviewTitle.y * previewWidth / layout::Preview.width,
-         std::max(previewWidth - 40.0F, 1.0F), layout::PreviewTitle.height},
-        preview_->NodeSize().height));
-    previewEmpty_->SetBounds(ScaleTopLeftBounds(
-        {20.0F, layout::PreviewEmpty.y * previewWidth / layout::Preview.width,
-         std::max(previewWidth - 40.0F, 1.0F), layout::PreviewEmpty.height},
-        preview_->NodeSize().height));
-    LayoutImage();
-    return previewWidth;
-}
-
-void SongBackgroundPreview::ApplyTexts(const TextCatalog &texts)
+void SongBackgroundPreview::LayoutPreview(const Rect bounds)
 {
     if (!preview_)
         return;
-
-    const auto &text = MusicSelect(texts);
-    auto &title = RequireComponent<TextVisualComponent>(*previewTitle_);
-    title.SetText(std::wstring(text.backgroundPreview));
-    texts.ApplyFont(title);
-    auto &empty = RequireComponent<TextVisualComponent>(*previewEmpty_);
-    empty.SetText(std::wstring(text.noImage));
-    texts.ApplyFont(empty);
+    preview_->SetBounds({bounds.x - JacketRim, bounds.y - JacketRim, bounds.width + JacketRim * 2,
+                         bounds.height + JacketRim * 2});
+    LayoutImage();
 }
 
 void SongBackgroundPreview::Reset() noexcept
@@ -137,5 +109,5 @@ void SongBackgroundPreview::Reset() noexcept
     previewPath_.clear();
     previewImageSize_ = {};
     chartBackgroundOffset_ = {};
-    chartBackground_ = preview_ = previewImage_ = previewTitle_ = previewEmpty_ = nullptr;
+    chartBackground_ = preview_ = previewImage_ = nullptr;
 }

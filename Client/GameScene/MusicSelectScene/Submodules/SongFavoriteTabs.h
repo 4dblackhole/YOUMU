@@ -7,7 +7,7 @@
 class SongFavoriteTabs final
 {
   public:
-    void Initialize(PhantomCore::Visual2DNode &parent, TextCatalog &texts);
+    void Initialize(PhantomCore::Visual2DNode &parent, PhantomCore::ScreenVisual2DManager &visuals, TextCatalog &texts);
     void Shutdown() noexcept;
     void SetBounds(PhantomCore::Rect bounds);
     void Refresh(const SongFavorites &favorites, std::uint64_t selected);
@@ -16,11 +16,19 @@ class SongFavoriteTabs final
     bool Scroll(PhantomCore::Point position, float wheel);
 
   private:
+    struct Tab
+    {
+        PhantomCore::NodeId node{};
+        std::uint64_t folder{};
+        float x{}, width{};
+    };
     void Layout();
+    void RevealSelected();
     void AddTab(std::uint64_t id, std::wstring name, bool selected, float &x);
     TextCatalog *texts_{};
+    PhantomCore::ScreenVisual2DManager *visuals_{};
     PhantomCore::Visual2DNode *root_{}, *viewport_{}, *content_{}, *scrollbar_{}, *manage_{};
-    std::vector<std::pair<PhantomCore::NodeId, std::uint64_t>> tabs_;
+    std::vector<Tab> tabs_;
     float offset_{}, extent_{};
     std::uint64_t revision_{~std::uint64_t{}}, textRevision_{}, selected_{};
 };

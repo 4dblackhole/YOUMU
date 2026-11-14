@@ -126,7 +126,7 @@ namespace
         Write(skin / "skin.ini", "[Folders]\nLogo=Title\nMusicSelect=Select\nInGame=Play\n"
                                  "[Logo]\nBackground=sky.png\nLogoCenter=center.png\nStartButton=button.png\n"
                                  "StartButton.Hovered=hover.png\n[MusicSelect]\nBackground=background.png\n"
-                                 "RecordPanel=panel.png\nBack=panel.png\nSongCardFocused=panel.png\n"
+                                 "Panels.Left=panel.png\nBack=panel.png\nSongCardFocused=panel.png\n"
                                  "DifficultySelected=panel.png\n[InGame]\nnote=custom.png\n");
         auto &selection = SkinSetSelection::Instance();
         selection.Initialize(L"Test Skin");
@@ -165,16 +165,15 @@ namespace
         music.Initialize(services);
         music.SetVisible(true);
         auto &musicRoot = visuals.FindCanvas(2)->Root();
-        auto &record = Find(musicRoot, "RecordPanel");
+        auto &record = Find(musicRoot, "RecordVeil");
         auto &back = Find(musicRoot, "Back");
-        Check(Image(record) && !Find(record, "Surface").IsVisible() && Image(back) &&
-                  !Find(back, "Back.Fill").IsVisible(),
-              "Procedural fills must not obscure panel/button images.");
-        Check(record.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==.9F &&
-                  back.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==1,
-              "A skinned panel uses 90 percent opacity while its controls retain their authored opacity.");
+        const auto customVeil = Image(record);
+        Check(customVeil && Image(back).value == customVeil.value,
+              "A selected skin replaces the veil and button images.");
+        Check(back.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==1,
+              "Skinned controls retain their authored opacity.");
         auto &card = Find(musicRoot, "Song.0");
-        Check(Image(card) && !Find(card, "Surface").IsVisible(), "Virtualized song cards must accept skin images.");
+        Check(Image(card).value == customVeil.value, "Virtualized song cards must accept skin images.");
         const auto loads = renderer.loaded.size();
         for (int i = 0; i < 100; ++i)
             visuals.Update(.016);
@@ -187,13 +186,10 @@ namespace
         Check(selection.Select(L"Default Skin", error), error.c_str());
         visuals.Update(0);
         static_cast<void>(logo.Update(InputState{}, 0));
-        Check(!Image(start) && Image(record).value==visuals.RegisterImage(ResolveBuiltInAsset(
-                  L"assets/skins/Default Skin/MusicSelect/PanelFill.png")).value && Find(record, "Surface").IsVisible() &&
-                  Find(back, "Back.Fill").IsVisible() && Find(logoRoot, "YOUMU.LogoStrip").IsVisible(),
-              "Returning to the default skin must restore all procedural designs and logo panels.");
-        Check(record.GetComponent<SpriteVisualComponent>()->Style().normal.alpha==.9F &&
-                  Find(record,"Surface").GetComponent<SpriteVisualComponent>()->Style().normal.alpha==0,
-              "Restoring procedural panels must not reintroduce an opaque interior below the translucent fill.");
+        Check(!Image(start) && Image(record) && Image(record).value != customVeil.value &&
+                  Image(record).value == visuals.RegisterImage(selection.Image("MusicSelect", "Panels.Left")).value &&
+                  Image(back) && Image(back).value != customVeil.value && Find(logoRoot, "YOUMU.LogoStrip").IsVisible(),
+              "Returning to the default skin must restore the built-in song-select parts and logo panels.");
         Check(selection.Select(L"Test Skin", error), error.c_str());
         Check(selection.Image("InGame", "note") == defaults / "InGame/note.png",
               "Re-selecting must reload edited configuration and use per-element fallback.");

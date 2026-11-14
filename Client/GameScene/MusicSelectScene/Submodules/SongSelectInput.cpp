@@ -1,5 +1,4 @@
 #include "MusicSelectView.h"
-#include "Presentation/ScrollableTextComponent.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
@@ -29,16 +28,12 @@ void MusicSelectView::ProcessPointer(const InputState &input)
     else
         inputRouter_.Process(*canvas_, pointer);
 
-    bool textScrolled = false;
+    bool tabsScrolled = false;
     if (!IsSelectionModalVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) && input.MouseWheelDelta() != 0)
     {
-        textScrolled = canvasPointer_ && favoriteTabs_.Scroll(*canvasPointer_, input.MouseWheelDelta());
-        if (!textScrolled) if (auto *hovered = canvas_->FindNode(inputRouter_.HoveredNode()))
-            if (auto *text = hovered->GetComponent<ScrollableTextComponent>())
-                textScrolled = text->Scroll(input.MouseWheelDelta(),
-                                            input.IsKeyDown(VK_LSHIFT) || input.IsKeyDown(VK_RSHIFT));
+        tabsScrolled = canvasPointer_ && favoriteTabs_.Scroll(*canvasPointer_, input.MouseWheelDelta());
     }
-    if (!textScrolled && !IsSelectionModalVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) &&
+    if (!tabsScrolled && !IsSelectionModalVisible() && !options_.IsVisible() && !(additionMenu_ && additionMenu_->IsVisible()) &&
         canvasPointer_.has_value() &&
         songList_.Viewport() != nullptr && songList_.Viewport()->BoundsInCanvas().Contains(*canvasPointer_) &&
         std::abs(input.MouseWheelDelta()) > 0.0F)
@@ -58,8 +53,15 @@ bool MusicSelectView::ProcessActions()
         if (action.type == ActionType::Clicked && action.source == optionButtonId_)
         {
             SetSearchFocus(false);
-            if (IsEditorSongSelect()) options_.Toggle();
-            else if (!options_.IsVisible())
+            CloseAdditionMenu();
+            options_.Toggle();
+            inputRouter_.Reset(*canvas_);
+            return true;
+        }
+        if (action.type == ActionType::Clicked && playOptionsButtonId_ != 0 && action.source == playOptionsButtonId_)
+        {
+            SetSearchFocus(false);
+            if (!options_.IsVisible())
             {
                 CloseAdditionMenu();
                 playOptionsPanel_.Open(selection_.playOptions_);
@@ -143,11 +145,17 @@ bool MusicSelectView::ProcessActions()
             RefreshSearchPresentation();
             return false;
         case SongListView::ActionKind::PatternClicked:
+        {
+            // Clicking another difficulty selects it; clicking the selected one starts it.
             SetSearchFocus(false);
+            const bool start = selection_.selectedPatternIndex_ == listAction.index;
             SelectPattern(listAction.index);
             RefreshSearchPresentation();
+            if (!start)
+                return false;
             command_ = SongSelectCommand::Launch;
             return true;
+        }
         case SongListView::ActionKind::None:
             break;
         }
