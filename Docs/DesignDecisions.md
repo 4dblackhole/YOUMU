@@ -398,6 +398,9 @@ PlayOptionsPanelTests(닫기 적용·Reset·오류·모달 격리·실 네이티
 - 구현한 묶음:
   - 표시 규칙: 정확도 표시는 소수 둘째 자리 버림(계산·저장·랭크 판정은 0.000001% 단위 그대로),
     랭크 이름과 skin.ini 키·PNG는 X·SS·S·AA, 기록이 없는 패턴은 `NO RECORD`.
+  - 결과 화면: 배너·왼쪽 HP/요약/판정 열·판정 비율 원 안의 랭크와 점수·오른쪽 Timing 그래프·하단 띠,
+    16:9 미만 레터박스와 32:9 초과 좌우 띠(결과 화면에 한함), 시안 글꼴. 기록 저장 실패 대화상자는 공용
+    대화상자 묶음에서 구현합니다. 게이지는 클리어 기준(`HpGaugeState::clearPercent`)을 보고합니다.
 - 구현되면 대체하는 현재 계약(미구현 묶음):
   - UI-01: 현재 타이틀 유지(캐러셀 폐기는 유지), 선곡 패널 바탕 90%, 복수 이름 여러 줄 표시,
     옵션 네 탭 전환, 상단 `ALL` 바.
@@ -417,7 +420,8 @@ PlayOptionsPanelTests(닫기 적용·Reset·오류·모달 격리·실 네이티
 - 미정점: 난이도 계산식·척도, 추가 HP 게이지, 영어·일본어 문구 길이, 새 부품의 skin.ini 키 이름.
 
 상세: [UIRedesign](UIRedesign.md). 검증: 구현 묶음마다 해당 기능의 기존 회귀와 시각 검증을 정합니다. 표시 규칙은 ResultPresentationTests(정확도 버림·랭크 21개 경계),
-GameplayJudgementTests, MusicSelectViewTests, LanguageFileTests.
+GameplayJudgementTests, MusicSelectViewTests, LanguageFileTests. 결과 화면은 ResultPresentationTests(배치·판정 비율 원 계산·
+그래프 영역·버튼)와 화면 캡처 확인.
 
 ## DATA-01 결과와 기록
 
@@ -496,7 +500,7 @@ GameplayJudgementTests, MusicSelectViewTests, LanguageFileTests.
 | 랭크 콘텐츠·서버/라이선스 인증·공용 미디어 ID/BGA | RankedContentProposal의 검토 제안, 미구현 |
 | 현재 등록 모드/편집 형식 | Taiko와 YMP/YME. 확장 인터페이스가 있다는 이유로 다른 모드 구현을 추정하지 않음 |
 | Penpot의 나머지 시안 요소 | 시안 상태. 해당 기능 요청·구현 여부는 기능 문서로 확인 |
-| UI 리디자인(UI-02) | 사용자 확정 설계, 일부 구현(표시 규칙). 나머지 화면은 묶음 순서대로 구현하며 리플레이 재생은 제외 |
+| UI 리디자인(UI-02) | 사용자 확정 설계, 일부 구현(표시 규칙·결과 화면). 나머지 화면은 묶음 순서대로 구현하며 리플레이 재생은 제외 |
 
 제안을 채택하거나 보류를 해제할 때 사용자 요청과 영향 범위를 기록합니다.
 현재 코드·문서에 이름이 등장한다는 이유만으로 구현 완료/채택 완료로 표시하지 않습니다.

@@ -34,7 +34,8 @@
 | 영속 기록·조건식·기록 필터·결과 옵션 표시 | `Client/Records`, RecordFilterPanel, SongRecordView(조회·페이지·필터·내부 노드 소유), SongSelectRecords(화면 조정), `Taiko/Results`, ResultScene | RecordFilterTests, MusicSelectViewTests/SongSearchInputTests, RunResultPresentationTests |
 | 음악/히트사운드·YME 오디오 연결 | `GameFlow/Submodules/GameplayAudioSession`, `Client/Presentation/ModePresentation`, `Client/Audio/GameplayAudioRouter`, TaikoChartAudio/AudioPreview | SoundPolicyTests, GameplayPauseTests, AllNotesGameplayTests |
 | 정확도 표시 형식(둘째 자리 버림)·빈 값 | `Client/Presentation/AccuracyText.h`; 소비자 GameplayPresenter, TaikoResultView, SongRecordView | RunResultPresentationTests(TestAccuracyText·랭크 경계), RunGameplayJudgementTests |
-| Result·통계·그래프·Retry | `Modes/Mode/Results`, `Taiko/Results`, `Client/GameScene/ResultScene` | PlayResultTests, ResultPresentationTests |
+| Result·통계·그래프·판정 비율 원·Retry | `Modes/Mode/Results`, `Taiko/Results`, `Client/GameScene/ResultScene`(TaikoResultView 공통 틀, Panels 배너·왼쪽 열, Hero 원·점수·옵션 칩, GraphView/Graphs Timing·HP, Ring 조각 계산, Layout 좌표) | PlayResultTests, ResultPresentationTests |
+| 리디자인 색·글꼴 | `Presentation/UiColors.h`의 theme, `Presentation/UiFonts.h`, `YOUMU.Assets/Assets/Fonts` | ResultPresentationTests, 화면 캡처 |
 | 에디터 조립·모드/문서 교체 | EditorScene, EditorWorkspace, Modes/IEditorMode/IEditorContext/IEditorAudioSource, `Chart/Editing/IEditorDocument` | RunEditorPresentationTests의 EditorModeTests |
 | 에디터 메뉴·공통 이동·선택·붙여넣기 | EditorMenuBar/Input/View, EditorSelection/Clipboard, TaikoEditorSelection | EditorMenuTests, EditorModeTests, ChartEditorTests |
 | 저장한 채보 Test·복귀·부분 노트·가변 배속 | EditorScene/WorkspaceStore, TestLaunchRequest, RhythmTestScene/EditorTestControls, GameplayState/GameplayAudioSession, TaikoSessionBuilder의 minimumNoteTime, RhythmTimer | RunEditorTestSceneTests, EditorAudioViewTests의 저장 확인, TestPartialPreviewNotes, TestAcceleratedClockAndWindows |

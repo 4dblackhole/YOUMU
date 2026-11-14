@@ -7,7 +7,9 @@
 ## 포함 범위
 
 - `Assets/Skins/Default Skin` 전체
-- `Assets/Fonts`의 세 글꼴과 각각의 라이선스(리절트·일시정지용 Noto Sans KR 포함)
+- `Assets/Fonts`의 글꼴과 각각의 OFL 라이선스: Noto Sans KR, Nunito, Barlow Semi Condensed(Medium·Bold·ExtraBold·
+  BoldItalic·ExtraBoldItalic), Rajdhani, Press Start 2P. Nunito와 Barlow Semi Condensed는 UI 리디자인 글꼴이며
+  [Google Fonts 저장소](https://github.com/google/fonts/tree/main/ofl)의 파일을 수정 없이 넣었습니다.
 
 `Assets/Skins/Default Skin Blue`는 확정 리디자인(UI-02)의 부품 PNG를 모아 둔 임시 폴더이며 팩에 넣지 않습니다.
 화면 묶음을 구현할 때마다 해당 부품을 `Default Skin`으로 옮기고, 모두 옮기면 이 폴더를 없앱니다.
@@ -180,7 +182,8 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | `Logo` | `LogoCenter/LogoLeft/LogoRight`, `SelectionCursor`; 선택 `Background`, `StartButton/EditorButton/OptionsButton/ExitButton` |
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `PauseBackdrop`; 선택 `PausePanel`, `PauseResume/Rewind/Retry/Retire` |
 | `MusicSelect` | 배경·카테고리·기록/곡정보/브라우저 패널, 검색/정렬 필드, 스크롤바, `OptionSelect/Back/Go`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected` |
-| `Result` | `Background.Sky/Background.Clouds`, `Mode.Taiko`, `Rank.Frame`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`; 선택 `BackButton/RetryButton/ReplayButton` |
+| `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
+| `Common` | `Icons.<이름>` 37개(흰색 36px 선 아이콘, 게임이 글자색을 곱해 씀) |
 
 표의 `/`는 여러 키를 줄여 쓴 것입니다. 정확한 키는 내장 INI를 참조합니다.
 버튼/패널 PNG는 기존 영역에 맞춰 표시하고 배치·입력 영역·런타임 텍스트는 유지합니다.
@@ -219,15 +222,17 @@ PNG가 필수는 아닙니다.
 1×1 RGBA(23,52,78,97)로 기록한 단색 텍스처입니다. 화면 전체에 확장하여 기존 Sprite의
 알파 합성으로 덮습니다. 버튼과 화살표는 둥근 Sprite 도형을 조합합니다.
 
-리절트의 장식은 Penpot Result · Sky의 SVG/PNG에서 내보내고 래스터화한 자산입니다.
-텍스트·실제 통계·그래프·패널·버튼은 런타임 요소로 남겨 언어/값/해상도에 대응합니다.
+리절트의 부품은 UI 시안(`rhythmgameUI/redesign`)에서 1080p 기준(논리 × 1.5)으로 뽑은 PNG입니다.
+텍스트·실제 통계·그래프·판정 비율 조각은 런타임 요소로 남겨 언어/값/해상도에 대응합니다.
 
 | 리절트 상대 경로 | PNG 크기 | 용도 |
 | --- | --- | --- |
-| `Result/Background/Sky.png` | 1920×1080 | 시안의 RightFade 배경과 하늘 veil |
-| `Result/Background/Clouds.png` | 1920×168 | 하단 투명 구름 |
-| `Result/Mode/Taiko.png` | 48×48 | 짙은 상단 배너용 모드 드럼 아이콘(흰색 채) |
-| `Result/Rank/Frame.png` | 509×336 | 링·날개 장식(배치 폭 508.5) |
+| `Result/Background/Sky.png` | 1920×1080 | 곡 BG가 없을 때의 하늘 |
+| `Result/Panels/{Left,Right}.png` | 690×1080, 768×1080 | 양옆 열 뒤 흰 막 |
+| `Result/Banner.png`, `Result/BottomBar.png` | 1920×108, 1920×96 | 위 머리 띠와 아래 띠(가로로 늘림) |
+| `Result/ModeBadge.png`, `Result/Mode/Taiko.png` | 139×45, 48×48 | 모드 배지 바탕과 흰색 드럼 아이콘 |
+| `Result/{BackButton,ReplayButton,RetryButton}[.Hovered/.Pressed].png` | 203×96, 188×96, 360×126 | Back 모서리 블록, Replay 글자 버튼, 솟은 Retry |
+| `Result/Rank/Ring.png` | 516×516 | 랭크 원 틀(남색 띠와 12시 금빛 눈금) |
 | `Result/Rank/{Y,X,SS,S,AA,A,B,C,D,E,F}.png` | 각 708×354 | 정확도별 랭크(코발트 글자·흰 외곽), 투명 배경·원본 비율 유지 |
 
 외부 스킨은 `skin.ini`의 상대 경로로 각각 교체합니다. 글꼴은 내장 `Assets/Fonts/NotoSansKR.ttf`이며,
