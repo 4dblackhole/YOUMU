@@ -73,7 +73,8 @@ namespace logo_ui
             style.disabled = ui_colors::logo::Disabled;
         }
         SetSkinBaseStyle(button, style);
-        BindSkinImage(button, visuals, "Logo", selected ? "Menu.ButtonSelected" : "Menu.Button");
+        // The bar image carries its own opacity; the fallback colour must not thin it again.
+        BindSkinPart(button, visuals, "Logo", selected ? "Menu.ButtonSelected" : "Menu.Button");
         RequireComponent<PhantomCore::TextVisualComponent>(button).SetTextColor(selected ? ui_colors::White
                                                                                            : ui_colors::theme::Ink);
     }
