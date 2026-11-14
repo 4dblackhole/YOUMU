@@ -173,6 +173,7 @@
     <ClInclude Include="Presentation\OptionsPanel.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\UiColors.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\AccuracyText.h"><Filter>Presentation</Filter></ClInclude>
+    <ClInclude Include="Presentation\UiFonts.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\ModePresentation.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\ModePresentation.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp"><Filter>Texts\EditorScene</Filter></ClCompile>
@@ -260,7 +261,10 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectRecords.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongRecordView.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongRecordView.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
-    <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultOptions.cpp"><Filter>GameScene\ResultScene\Submodules\Taiko</Filter></ClCompile>
+    <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultHero.cpp"><Filter>GameScene\ResultScene\Submodules\Taiko</Filter></ClCompile>
+    <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultRing.cpp"><Filter>GameScene\ResultScene\Submodules\Taiko</Filter></ClCompile>
+    <ClInclude Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultRing.h"><Filter>GameScene\ResultScene\Submodules\Taiko</Filter></ClInclude>
+    <ClInclude Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultBatchVisual.h"><Filter>GameScene\ResultScene\Submodules\Taiko</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>

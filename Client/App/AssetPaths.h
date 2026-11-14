@@ -37,6 +37,11 @@
 {
     return SkinSetSelection::Instance().Image("Result", file.generic_string());
 }
+// Shared parts such as the white line icons under [Common] Icons.<name>.
+[[nodiscard]] inline std::filesystem::path Common(const std::filesystem::path &file)
+{
+    return SkinSetSelection::Instance().Image("Common", file.generic_string());
+}
 [[nodiscard]] inline std::filesystem::path InGame(
     const std::filesystem::path& file)
 {

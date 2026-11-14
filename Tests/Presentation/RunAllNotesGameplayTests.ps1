@@ -13,7 +13,7 @@ $units = @('Pch', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'Ga
     'GameplayFeedbackVisuals', 'GameplayInputView', 'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts',
     'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'GameplayAudioRouter',
     'ResultViewFactory', 'TaikoResultView', 'TaikoResultGraphs', 'TaikoResultPanels', 'TaikoResultGraphView',
-    'TaikoResultOptions', 'ResultTexts')
+    'TaikoResultHero', 'TaikoResultRing', 'ResultTexts')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Rhythm', 'Chart', 'Modes', 'Assets', 'ClientLogic') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }
 $objectDirectory = "build/obj/AllNotesGameplayTests/$Configuration"

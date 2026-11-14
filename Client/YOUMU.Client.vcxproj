@@ -256,6 +256,7 @@
     <ClInclude Include="Presentation\OptionsPanel.h" />
     <ClInclude Include="Presentation\UiColors.h" />
     <ClInclude Include="Presentation\AccuracyText.h" />
+    <ClInclude Include="Presentation\UiFonts.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />
     <ClCompile Include="Presentation\ModePresentation.cpp" />
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp" />
@@ -351,7 +352,10 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectRecords.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongRecordView.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongRecordView.h" />
-    <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultOptions.cpp" />
+    <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultHero.cpp" />
+    <ClCompile Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultRing.cpp" />
+    <ClInclude Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultRing.h" />
+    <ClInclude Include="GameScene\ResultScene\Submodules\Taiko\TaikoResultBatchVisual.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayHpView.h" />

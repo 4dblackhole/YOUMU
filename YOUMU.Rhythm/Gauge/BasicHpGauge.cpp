@@ -37,7 +37,9 @@ HpGaugeState BasicHpGauge::State() const noexcept
     // Fractional note/tick weights can place an exact 60% a few rounding
     // bits below the boundary. Keep that arithmetic noise out of clear status.
     constexpr double roundingTolerance = 1e-9;
-    return {percent_, !notes_.empty(), !notes_.empty() && percent_ >= 60.0 - roundingTolerance};
+    constexpr double clearPercent = 60.0;
+    return {percent_, !notes_.empty(), !notes_.empty() && percent_ >= clearPercent - roundingTolerance,
+            clearPercent};
 }
 
 double BasicHpGauge::TimingRate(const NoteStateData &state, const JudgementResult &judgement) const noexcept

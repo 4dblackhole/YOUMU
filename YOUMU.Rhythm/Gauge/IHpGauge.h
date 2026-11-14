@@ -13,6 +13,9 @@ struct HpGaugeState
     double percent{};
     bool applicable{};
     bool passed{};
+    // HP at or above this percentage clears. Each gauge kind states its own
+    // threshold so the play HUD and the result graph mark the same line.
+    double clearPercent{60.0};
 };
 
 // Scene owns gauges. A play session borrows them and delivers ordered judgements.

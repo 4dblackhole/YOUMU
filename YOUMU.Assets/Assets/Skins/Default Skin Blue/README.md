@@ -203,48 +203,7 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 ## Result — 결과
 
-### `Result/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `BackButton.png` | 203×96 | `Result.BackButton` | Back |
-| `BackButton.Hovered.png` | 203×96 | `Result.BackButton.Hovered` | 〃 |
-| `BackButton.Pressed.png` | 203×96 | `Result.BackButton.Pressed` | 〃 |
-| `Banner.png` | 1920×108 |  | 위 머리 띠 |
-| `BottomBar.png` | 1920×96 |  | 아래 띠 |
-| `ModeBadge.png` | 139×45 |  | 모드 표시 바탕(코발트 평행사변형). 아이콘 = Mode/Taiko |
-| `ReplayButton.png` | 188×96 | `Result.ReplayButton` | Replay(글자 버튼: 기본은 투명, 마우스 올림에 옅은 면) |
-| `ReplayButton.Hovered.png` | 188×96 | `Result.ReplayButton.Hovered` | 〃 |
-| `ReplayButton.Pressed.png` | 188×95 | `Result.ReplayButton.Pressed` | 〃 |
-| `RetryButton.png` | 360×126 | `Result.RetryButton` | Retry(주 버튼, 오른쪽 아래 솟은 블록) |
-| `RetryButton.Hovered.png` | 360×126 | `Result.RetryButton.Hovered` | 〃 |
-| `RetryButton.Pressed.png` | 360×126 | `Result.RetryButton.Pressed` | 〃 |
-
-### `Result/Background/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Clouds.png` | 1×1 | `Result.Background.Clouds` | 투명 1×1(아래 구름 띠 없음) |
-| `Sky.png` | 1920×1080 | `Result.Background.Sky` | 결과 하늘(곡 BG가 없을 때) |
-
-### `Result/Mode/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Taiko.png` | 48×48 | `Result.Mode.Taiko` | Taiko 모드 아이콘(흰색) |
-
-### `Result/Panels/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Left.png` | 690×1080 |  | 왼쪽 열 뒤 흰 막 |
-| `Right.png` | 768×1080 |  | 오른쪽 열 뒤 흰 막 |
-
-### `Result/Rank/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Ring.png` | 516×516 |  | 랭크 원 틀(남색 띠 + 12시 금빛 눈금). 판정 비율 조각은 게임이 그림. 랭크 글자 PNG 11개는 내장 Default Skin의 `Result/Rank`로 옮김 |
+결과 화면 부품(배너 · 아래 띠 · 버튼 · 양옆 막 · 하늘 · 모드 표시 · 랭크 글자와 원 틀)은 모두 내장 Default Skin의 `Result`로 옮겼습니다.
 
 ## Options — 옵션 · 키 설정
 
@@ -314,11 +273,7 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 ### `Common/Icons/`
 
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| 37개 | 36×36 | | 아이콘(흰색 24 → 36px, 각진 끝 2.4px 선). 게임이 색을 곱해 씀 |
-
-아이콘: alert, arrow-left, check, chev-down, chev-left, chev-right, chev-up, clock, cloud, display, drum, film, filter, folder, fx, heart, info, keyboard, lock, music, mute, next, pause, pencil, play, plus, prev, retry, search, settings, sliders, star, trash, volume, wing, x, zones
+아이콘 37개(흰색 36px)는 내장 Default Skin의 `Common/Icons`로 옮겼습니다. 키는 `[Common]`의 `Icons.<이름>`입니다.
 
 ### `Common/Input/`
 

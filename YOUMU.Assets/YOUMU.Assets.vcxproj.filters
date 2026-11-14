@@ -30,7 +30,10 @@
     <Filter Include="Assets\Skins\Default Skin\Result" />
     <Filter Include="Assets\Skins\Default Skin\Result\Background" />
     <Filter Include="Assets\Skins\Default Skin\Result\Mode" />
+    <Filter Include="Assets\Skins\Default Skin\Result\Panels" />
     <Filter Include="Assets\Skins\Default Skin\Result\Rank" />
+    <Filter Include="Assets\Skins\Default Skin\Common" />
+    <Filter Include="Assets\Skins\Default Skin\Common\Icons" />
     <Filter Include="Assets\Skins\Default Skin\TitleImage" />
     <Filter Include="Assets\Skins\Default Skin\TitleImage\Widget" />
   </ItemGroup>
@@ -49,8 +52,11 @@
     <None Include="Assets\Skins\Default Skin\Logo\Menu\*.*"><Filter>Assets\Skins\Default Skin\Logo\Menu</Filter></None>
     <None Include="Assets\Skins\Default Skin\MusicSelect\*.*"><Filter>Assets\Skins\Default Skin\MusicSelect</Filter></None>
     <None Include="Assets\Skins\Default Skin\NumberImage\*.*"><Filter>Assets\Skins\Default Skin\NumberImage</Filter></None>
+    <None Include="Assets\Skins\Default Skin\Common\Icons\*.*"><Filter>Assets\Skins\Default Skin\Common\Icons</Filter></None>
+    <None Include="Assets\Skins\Default Skin\Result\*.*"><Filter>Assets\Skins\Default Skin\Result</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Background\*.*"><Filter>Assets\Skins\Default Skin\Result\Background</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Mode\*.*"><Filter>Assets\Skins\Default Skin\Result\Mode</Filter></None>
+    <None Include="Assets\Skins\Default Skin\Result\Panels\*.*"><Filter>Assets\Skins\Default Skin\Result\Panels</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Rank\*.*"><Filter>Assets\Skins\Default Skin\Result\Rank</Filter></None>
     <None Include="Assets\Skins\Default Skin\TitleImage\Widget\*.*"><Filter>Assets\Skins\Default Skin\TitleImage\Widget</Filter></None>
     <None Include="Assets\Songs\Music\Angeldream\*.*"><Filter>Assets</Filter></None>

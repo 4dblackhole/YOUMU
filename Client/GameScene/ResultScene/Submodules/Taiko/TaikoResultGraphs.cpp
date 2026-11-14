@@ -110,10 +110,14 @@ namespace taiko_result_ui
                 const float thickness = std::min(2.0F, plot.height);
                 const float left = std::clamp(x, plot.x, plot.x + std::max(plot.width - 1, 0.0F));
                 const float bottom = std::clamp(std::min(y0, y1), plot.y, plot.y + plot.height - thickness);
-                rectangles.push_back({{left, bottom, std::min(std::max((to.x - from.x) / static_cast<float>(parts), 1.0F),
-                                                                           plot.x + plot.width - left),
+                const float width = std::min(std::max((to.x - from.x) / static_cast<float>(parts), 1.0F),
+                                             plot.x + plot.width - left);
+                // A light wash under the line reads the area without hiding the grid.
+                if (bottom > plot.y)
+                    rectangles.push_back({{left, plot.y, width, bottom - plot.y}, ui_colors::theme::CurveFill, 0});
+                rectangles.push_back({{left, bottom, width,
                                       std::min(std::max(std::abs(y1 - y0), thickness), plot.y + plot.height - bottom)},
-                                      layout::Accent, 0});
+                                      ui_colors::theme::Curve, 0});
             }
         };
         Point previous = position(first, 0);
@@ -148,12 +152,12 @@ namespace taiko_result_ui
         data.halfRangeMilliseconds = std::ceil(data.halfRangeMilliseconds / 10) * 10;
         data.startSeconds = static_cast<double>(first.count()) / 1'000'000;
         data.endSeconds = std::max(data.startSeconds + .001, static_cast<double>(last.count()) / 1'000'000);
-        const Color grid = layout::ResultColor(0x4F9FDF, .65F);
+        const Color grid = ui_colors::theme::Axis;
         data.rectangles.reserve(result.timingErrors.size() + 50);
         // The view owns decorative backgrounds/grid. These zero references
         // are part of interpreting the data range, followed by points/bins.
-        data.rectangles.push_back({{scatter.x, scatter.y + scatter.height / 2 - 1, scatter.width, 2}, grid, 0});
-        data.rectangles.push_back({{histogram.x + histogram.width / 2 - 1, histogram.y, 2, histogram.height}, grid, 0});
+        data.rectangles.push_back({{scatter.x, scatter.y + scatter.height / 2 - .5F, scatter.width, 1}, grid, 0});
+        data.rectangles.push_back({{histogram.x + histogram.width / 2 - .5F, histogram.y, 1, histogram.height}, grid, 0});
         // Store occupied 1ms bins only, so an outlier never allocates a dense
         // array proportional to the entire displayed error range.
         HistogramBins bins;
@@ -166,7 +170,7 @@ namespace taiko_result_ui
             const auto gradeIndex = GraphColorIndex(sample.grade);
             const auto color = GraphColor(gradeIndex);
             data.rectangles.push_back(
-                {{scatter.x + x * (scatter.width - 3), scatter.y + y * (scatter.height - 3), 3, 3}, color, 0});
+                {{scatter.x + x * (scatter.width - 4), scatter.y + y * (scatter.height - 4), 4, 4}, color, 2});
             auto &bin = bins[HistogramMillisecond(sample.error)];
             ++bin.grades[gradeIndex];
             data.maximumBinCount = std::max(data.maximumBinCount, ++bin.total);

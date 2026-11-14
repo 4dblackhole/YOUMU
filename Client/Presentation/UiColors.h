@@ -12,6 +12,20 @@ namespace ui_colors
     }
     inline constexpr PhantomCore::Color White{1, 1, 1, 1}, Ink{.08F, .28F, .52F, 1}, Error{.75F, .17F, .21F, 1};
     inline constexpr auto ClearBackground = Rgb(0xF0F8FF);
+    // Redesign palette (UI-02). Cobalt with a hatch texture is the base surface,
+    // navy the darkest one, and dawn gold marks selection only.
+    namespace theme
+    {
+        inline constexpr auto Brand = Rgb(0x1F4C99), BrandDeep = Rgb(0x142F5E), BrandText = Rgb(0x1D4590);
+        inline constexpr auto Sun = Rgb(0xF2B23A);
+        inline constexpr auto Ink = Rgb(0x16294A), InkSoft = Rgb(0x2A4269), Caption = Rgb(0x4B6184);
+        inline constexpr auto Rule = Rgb(0x3F6FA8, .2F), RuleStrong = Rgb(0x3F6FA8, .38F);
+        inline constexpr auto Plot = Rgb(0xFFFFFF, .62F), Grid = Rgb(0xE3EEF8), Axis = Rgb(0x0F2A47);
+        inline constexpr auto Chip = Rgb(0xFFFFFF, .8F), Badge = Rgb(0xE6EEFC);
+        inline constexpr auto Ok = Rgb(0x17794F), Danger = Rgb(0xB42340), DangerSurface = Rgb(0xFDECEF);
+        inline constexpr auto Curve = Rgb(0x3570C8), CurveFill = Rgb(0x2F8EE5, .16F), ClearLine = Rgb(0x33598A);
+        inline constexpr auto Letterbox = Rgb(0x04070D);
+    } // namespace theme
     namespace sky
     {
         inline constexpr PhantomCore::Color Background{.918F, .965F, 1, 1}, Surface{.976F, .992F, 1, .98F};

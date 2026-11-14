@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include "Records/PlayRecordStore.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiFonts.h"
 using namespace PhantomCore;
 
 ResultScene::ResultScene(std::unique_ptr<IPlayResult> result,
@@ -30,11 +31,11 @@ void ResultScene::Initialize(const EngineServices &services)
         recordStatusCanvas_ = visuals_.CreateOwnedCanvas({{1280,720}, CanvasScaleMode::FixedHeight});
         auto *canvas = recordStatusCanvas_.Get();
         if (!canvas) throw std::runtime_error("Failed to create the record status canvas.");
-        recordStatus_ = &CreateLabel(canvas->AnchorNode(Anchor::BottomRight), {-700, 18, 680, 26},
+        // Save line in the bottom bar, right after the Back block.
+        recordStatus_ = &CreateLabel(canvas->AnchorNode(Anchor::BottomLeft), {156, 0, 560, 64},
             std::wstring(texts_.Get("Records.saving")), "Result.RecordStatus");
         auto &text = *recordStatus_->GetComponent<TextVisualComponent>();
-        texts_.ApplyFont(text); text.SetFontSize(14); text.SetTextColor(ui_colors::result::Ink);
-        text.SetHorizontalAlignment(TextAlignment::Trailing);
+        text.SetFontSize(13); text.SetTextColor(ui_colors::theme::Caption);
     }
 }
 void ResultScene::BeginScene()
@@ -54,9 +55,17 @@ void ResultScene::Update(const UpdateContext &context, SceneManager &scenes)
     if (recordStatus_)
     {
         auto &text = *recordStatus_->GetComponent<TextVisualComponent>();
-        text.SetText(recordWrite_.valid() ? std::wstring(texts_.Get("Records.saving")) :
+        auto status = recordWrite_.valid() ? std::wstring(texts_.Get("Records.saving")) :
             (recordError_.empty() ? std::wstring(texts_.Get("Records.saved")) :
-             std::wstring(texts_.Get("Records.saveError")) + std::wstring(recordError_.begin(), recordError_.end())));
+             std::wstring(texts_.Get("Records.saveError")) + std::wstring(recordError_.begin(), recordError_.end()));
+        if (text.Text() != status)
+        {
+            // Saved is green, a failed save red; the result itself stays on screen.
+            text.SetTextColor(recordWrite_.valid() ? ui_colors::theme::Caption
+                              : recordError_.empty() ? ui_colors::theme::Ok : ui_colors::theme::Danger);
+            text.SetFont(ui_fonts::Text(status));
+            text.SetText(std::move(status));
+        }
     }
     const auto action = view_->Update(context.input);
     if (action == ResultAction::Retry && (!retry_ || !retry_(scenes)))

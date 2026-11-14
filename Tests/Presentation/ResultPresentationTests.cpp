@@ -4,6 +4,8 @@
 #include "GameScene/ResultScene/ResultScene.h"
 #include "GameScene/ResultScene/Submodules/ResultViewFactory.h"
 #include "GameScene/ResultScene/Submodules/Taiko/TaikoResultGraphs.h"
+#include "GameScene/ResultScene/Submodules/Taiko/TaikoResultLayout.h"
+#include "GameScene/ResultScene/Submodules/Taiko/TaikoResultRing.h"
 #include "GameScene/RhythmTestScene/RhythmTestScene.h"
 #include "Presentation/AccuracyText.h"
 #include "Taiko/TaikoMode.h"
@@ -123,20 +125,6 @@ namespace
                 return found;
         return nullptr;
     }
-    std::string Number(const Visual2DNode &root, std::string_view name)
-    {
-        const auto *node = FindNode(root, name);
-        if (!node)
-            throw std::runtime_error("Expected result number is missing.");
-        std::string value;
-        for (const auto &child : node->Children())
-        {
-            if (!child->IsVisible()) continue;
-            const auto offset = child->GetComponent<SpriteVisualComponent>()->UvOffset();
-            value += static_cast<char>('0' + std::lround(offset.x * 5) + std::lround(offset.y * 2) * 5);
-        }
-        return value;
-    }
     void TestFailureOverlay()
     {
         struct Case
@@ -191,9 +179,8 @@ namespace
                     if (!text) throw std::runtime_error("Failure caption missing.");
                     Check(text->Text() == texts.Get("Result.failed"), "Failure caption follows the selected language.");
                     const auto b = label->Bounds();
-                    Check(b.x >= 122 && b.x + b.width <= 548 && b.y >= 806 &&
-                              b.y + b.height <= 806 + 104 * .6F && label->ZIndex() > 0,
-                          "Failure stays within the HP plot below the passing-height band and above its curve.");
+                    Check(b.x >= 32 && b.x + b.width <= 372 && b.y >= 720 - 130 && b.y + b.height <= 720 - 96,
+                          "Failure sits in the HP title row above the chart so it never covers the curve.");
                 }
                 if (fixture.hpAvailable)
                     Check(result.summary.hpGauges.front().percent == fixture.hp.percent,
@@ -241,8 +228,8 @@ namespace
                 const auto *overlay = FindNode(canvas->Root(), "Result.ControlUsage");
                 Check((overlay != nullptr) == (mask > 0 && mask < 4),
                       "Only actual menu pause or Rewind adds an overlay; Debug pause and Resume do not.");
-                Check(HasText(*canvas, texts.Get("Result.hpGraph")),
-                      "Adding usage must preserve the existing HP graph area and title.");
+                Check(HasText(*canvas, texts.Get("Result.hp")) && FindNode(canvas->Root(), "Result.HpChart"),
+                      "Adding usage must preserve the HP chart and its title.");
                 Check(!HasText(*canvas, texts.Get("Result.noHpData")) &&
                           !taiko_result_ui::BuildHpCurve(result.summary, {122, 806, 426, 104}).empty(),
                       "The actual HP curve remains visible with and without usage overlays.");
@@ -256,12 +243,11 @@ namespace
                 }
                 const auto *text = overlay->GetComponent<TextVisualComponent>();
                 if (!text) throw std::runtime_error("Usage-overlay text missing.");
-                Check(text->Text() == expected && overlay->ZIndex() > 0,
-                      "Used actions appear together in the selected language above graph content.");
+                Check(text->Text() == expected, "Used actions appear together in the selected language.");
                 const auto bounds = overlay->Bounds();
-                Check(bounds.x >= 122 && bounds.x + bounds.width <= 548 &&
-                          bounds.y >= 806 && bounds.y + bounds.height <= 910,
-                      "Usage stays inside the original HP plot rather than replacing or moving it.");
+                Check(bounds.x >= 32 && bounds.x + bounds.width <= 372.01F &&
+                          bounds.y >= 720 - 130 && bounds.y + bounds.height <= 720 - 96,
+                      "Usage sits in the HP title row, outside the plot.");
             }
             view->Shutdown();
         }
@@ -344,9 +330,9 @@ namespace
                 {
                     const auto native = renderer.GetImageSize(sprite->Style().normalImage);
                     Check(std::abs(bounds.width / bounds.height - native.width / native.height) < .001F &&
-                              std::abs(bounds.x + bounds.width / 2 - 105) < .01F &&
-                              std::abs(bounds.y + bounds.height / 2 + 37.5F) < .01F,
-                          "Result preserves image aspect and converts 720-height authored offsets to its 1080-height Canvas.");
+                              std::abs(bounds.x + bounds.width / 2 - 70) < .01F &&
+                              std::abs(bounds.y + bounds.height / 2 + 25) < .01F,
+                          "Result preserves image aspect and applies the 720-height authored offsets on its 720-height Canvas.");
                 }
                 const auto packets = canvas->BuildDrawList();
                 Check(!packets.empty() && packets.front().image.value == sprite->Style().normalImage.value,
@@ -372,6 +358,46 @@ namespace
                   text(0) == L"0.00%",
               "Displayed accuracy discards digits below two decimals and shows 100.00% only at exactly 100%.");
         Check(EmptyAccuracyText == L"--.--%", "The empty accuracy placeholder keeps the two-decimal width.");
+    }
+    void TestJudgementRing()
+    {
+        using namespace taiko_result_ui;
+        std::array<Color, RingJudgementCount> colors{};
+        for (std::size_t i = 0; i < colors.size(); ++i)
+            colors[i] = {static_cast<float>(i + 1) / 10, 0, 0, 1};
+        const Point center{100, 200};
+        const auto empty = BuildJudgementRing({}, colors, center, 80, 90, 1);
+        Check(empty.rectangles.empty() && empty.slices.empty() && !RingSliceAt(empty, {100, 285}),
+              "A result without judgements leaves the ring band empty.");
+        // 3 MAX, 1 GREAT and 4 POOR: 37.5%, 12.5% and 50% clockwise from 12 o'clock.
+        const auto ring = BuildJudgementRing({3, 0, 1, 0, 0, 0, 0, 4}, colors, center, 80, 90, 0.5F);
+        Check(ring.slices.size() == 3 && ring.slices[0].judgement == 0 && ring.slices[1].judgement == 2 &&
+                  ring.slices[2].judgement == 7 && ring.slices[0].start == 0 && ring.slices[0].end == 0.375 &&
+                  ring.slices[1].end == 0.5 && ring.slices[2].end == 1,
+              "Slices follow MAX..POOR order and skip judgements without counts.");
+        double area = 0;
+        std::array<double, RingJudgementCount> share{};
+        for (const auto &rectangle : ring.rectangles)
+        {
+            const auto b = rectangle.bounds;
+            Check(b.width > 0 && b.height > 0 && b.x >= 10 - .01F && b.x + b.width <= 190.01F && b.y >= 110 - .01F &&
+                      b.y + b.height <= 290.01F,
+                  "Ring rows stay inside the outer circle's box.");
+            const double cx = b.x + b.width / 2 - center.x, cy = b.y + b.height / 2 - center.y;
+            const double distance = std::hypot(cx, cy);
+            Check(distance > 79 && distance < 91, "Ring rows cover only the band between the radii.");
+            area += static_cast<double>(b.width) * b.height;
+            share[static_cast<std::size_t>(std::lround(rectangle.color.red * 10)) - 1] += static_cast<double>(b.width) * b.height;
+        }
+        const double band = 3.14159265358979 * (90.0 * 90.0 - 80.0 * 80.0);
+        Check(std::abs(area - band) / band < .01 && std::abs(share[0] / area - .375) < .01 &&
+                  std::abs(share[2] / area - .125) < .01 && std::abs(share[7] / area - .5) < .01,
+              "Slice areas match the judgement shares over the whole band.");
+        const auto at = [&](float x, float y) { return RingSliceAt(ring, {center.x + x, center.y + y}); };
+        Check(at(10, 84) && at(10, 84)->judgement == 0 && at(-10, 84) && at(-10, 84)->judgement == 7 &&
+                  at(-10, -84) && at(-10, -84)->judgement == 7 && at(60, -60) && at(60, -60)->judgement == 2 &&
+                  !at(0, 0) && !at(0, 79) && !at(0, 91),
+              "Pointer lookup returns the slice under the band and nothing inside or outside it.");
     }
     void TestAccuracyRanks()
     {
@@ -416,14 +442,17 @@ namespace
                     throw std::runtime_error("Rank must own an image component.");
                 Check(renderer.ImagePath(sprite->Style().normalImage).stem().wstring() == test.rank,
                       "Rank PNG must match the exact six-decimal accuracy boundary.");
-                Check(HasText(*canvas, AccuracyText(result.summary.accuracy)),
+                auto accuracyNumber = AccuracyText(result.summary.accuracy);
+                accuracyNumber.pop_back();
+                const auto *accuracy = FindNode(canvas->Root(), "Result.Accuracy");
+                Check(accuracy && accuracy->GetComponent<TextVisualComponent>()->Text() == accuracyNumber,
                       "Each rank case displays its accuracy truncated to two decimals.");
                 const auto bounds = rank->Bounds();
                 const auto native = renderer.GetImageSize(sprite->Style().normalImage);
-                Check(bounds.width > 0 && bounds.height > 0 && bounds.x >= 824 && bounds.y >= 598 &&
-                          bounds.x + bounds.width <= 1096.01F && bounds.y + bounds.height <= 764.01F &&
+                Check(bounds.width > 0 && bounds.height > 0 && bounds.x >= 485 && bounds.y >= 342 &&
+                          bounds.x + bounds.width <= 721.01F && bounds.y + bounds.height <= 460.01F &&
                           std::abs(bounds.width / bounds.height - native.width / native.height) < .001F,
-                      "Every rank must retain its aspect ratio inside the existing rank frame.");
+                      "Every rank must retain its aspect ratio inside the ring.");
             };
             checkRank();
             view->OnResize(960, 1080);
@@ -567,45 +596,55 @@ namespace
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas)
             throw std::runtime_error("Result Canvas must exist.");
-        Check(FindNode(canvas->Root(), "Result.Score") != nullptr &&
-                  FindNode(canvas->Root(), "Result.MaximumCombo") != nullptr &&
-                  HasText(*canvas, texts.Get("Result.maximumCombo")) &&
-                  Number(canvas->Root(), "Result.Score") == "12345678" &&
-                  Number(canvas->Root(), "Result.MaximumCombo") == std::to_string(taiko->summary.maximumCombo),
-              "The result must display the carried score and maximum combo with numeric sprites.");
+        const auto textOf = [&](std::string_view name) -> std::wstring
+        {
+            const auto *node = FindNode(canvas->Root(), name);
+            const auto *text = node ? node->GetComponent<TextVisualComponent>() : nullptr;
+            return text ? std::wstring(text->Text()) : std::wstring{};
+        };
+        Check(HasText(*canvas, texts.Get("Result.maximumCombo")) && textOf("Result.Score") == L"12,345,678" &&
+                  textOf("Result.MaximumCombo") == std::to_wstring(taiko->summary.maximumCombo),
+              "The result must display the carried score inside the ring and the maximum combo beside accuracy.");
         for(const auto key:{"scrollSpeed","metronome","mirror","random","accelerate","judgeLevel"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
         Check(HasText(*canvas, L"Accuracy") && HasText(*canvas, L"Recorded song") &&
                   HasText(*canvas, L"Recorded creator") && HasText(*canvas, L"Recorded artist") &&
-                  HasText(*canvas, AccuracyText(taiko->summary.accuracy)),
+                  textOf("Result.Accuracy") + L"%" == AccuracyText(taiko->summary.accuracy),
               "Result view must display the recorded accuracy truncated to two decimals.");
         const auto packets = canvas->BuildDrawList();
         const auto *banner = FindNode(canvas->Root(), "Result.SongBanner");
         const auto *song = FindText(canvas->Root(), L"Recorded song");
         const auto *artist = FindText(canvas->Root(), L"Recorded artist");
         const auto *creator = FindText(canvas->Root(), L"Recorded creator");
-        const auto *rank = FindNode(canvas->Root(), "Result.RankFrame");
+        const auto *rank = FindNode(canvas->Root(), "Result.RankRing");
         if (!banner || !song || !artist || !creator || !rank)
             throw std::runtime_error("Result must retain each metadata element independently.");
-        Check(banner->Bounds().width == 1920 && banner->Bounds().height == 88 && song->Bounds().x == 444 &&
-                  song->Bounds().y == 1034 && artist->Bounds().x == 444 && artist->Bounds().y == 1005 &&
-                  creator->Bounds().x == 744 && creator->Bounds().y == 396 && rank->Bounds().x == 705.75F,
-              "Song/artist occupy the new top banner, while rank and creator match the centered Penpot column.");
+        namespace layout = taiko_result_ui::layout;
+        const auto columns = layout::ColumnsFor(1280);
+        Check(banner->Bounds().width == 1280 && banner->Bounds().height == 72 && song->Bounds().x == 145 &&
+                  song->Bounds().y == 720 - 41 && artist->Bounds().x == 145 && artist->Bounds().y == 720 - 61 &&
+                  creator->Bounds().x + creator->Bounds().width <= 1248.01F && creator->Bounds().y >= 720 - 72 &&
+                  std::abs(rank->Bounds().x + 172 - (columns.centerX + columns.sideWidth / 2)) < .01F &&
+                  columns.sideWidth == 414,
+              "Song, artist and creator share the top banner; the rank ring is centred in the middle column.");
+        const auto inside = [](Rect b, Rect area)
+        {
+            return b.x >= area.x - .01F && b.x + b.width <= area.x + area.width + .01F && b.y >= area.y - .01F &&
+                   b.y + b.height <= area.y + area.height + .01F;
+        };
+        const Rect ringBox{columns.centerX + columns.sideWidth / 2 - layout::RingOuterRadius,
+                           720 - layout::RingCenterY - layout::RingOuterRadius, layout::RingOuterRadius * 2,
+                           layout::RingOuterRadius * 2};
         for (const auto &packet : packets)
             if (packet.type == DrawPacketType::RectangleBatch)
                 for (const auto &primitive : *packet.rectangles)
-                {
-                    const auto b = primitive.bounds;
-                    const bool inHistogram =
-                        b.x >= 1420 && b.x + b.width <= 1844.01F && b.y >= 692 && b.y + b.height <= 898.01F;
-                    const bool inScatter =
-                        b.x >= 1434 && b.x + b.width <= 1844.01F && b.y >= 272 && b.y + b.height <= 460.01F;
-                    Check(inHistogram || inScatter,
-                          "Actual graph samples must remain inside the narrower design plots.");
-                }
-        Check(std::ranges::count(packets, DrawPacketType::RectangleBatch, &DrawPacket::type) == 1 &&
-                  packets.size() < 200,
-              "Large result graphs must use one batch with constant widget count.");
+                    Check(inside(primitive.bounds, layout::Bounds(layout::HistogramPlot(columns))) ||
+                              inside(primitive.bounds, layout::Bounds(layout::ScatterPlot(columns))) ||
+                              inside(primitive.bounds, layout::Bounds(layout::HpPlot)) || inside(primitive.bounds, ringBox),
+                          "Graph samples, the HP clear line and ring slices must stay inside their plots.");
+        Check(std::ranges::count(packets, DrawPacketType::RectangleBatch, &DrawPacket::type) == 2 &&
+                  packets.size() < 260,
+              "Large result graphs use one batch and the judgement ring another, with constant widget count.");
         InputState input;
         for (int i = 0; i < 20; ++i)
             Check(view->Update(input) == ResultAction::None, "Idle result view must not leave the Scene.");
@@ -616,9 +655,10 @@ namespace
             throw std::runtime_error("Result retry/replay nodes must exist.");
         Check(retry->IsEnabled() && !replay->IsEnabled(),
               "Retry is available for a played selection; replay remains disabled.");
-        Check(replay->Bounds().x == 1344 && retry->Bounds().x == 1616 && replay->Bounds().width == 256 &&
-                  retry->Bounds().width == 256,
-              "Actions must fit the new 528px right column.");
+        Check(retry->Bounds().x == 1040 && retry->Bounds().width == 240 && retry->Bounds().height == 84 &&
+                  retry->Bounds().y == 0 && replay->Bounds().x == 915 && replay->Bounds().width == 125 &&
+                  replay->Bounds().height == 64,
+              "Retry rises above the bottom bar at the right edge with the Replay text button beside it.");
         const auto click = [&](const Visual2DNode &button)
         {
             const auto b = button.BoundsInCanvas();
@@ -638,7 +678,7 @@ namespace
         click(*replay);
         Check(view->Update(input) == ResultAction::None, "Disabled replay must not emit any action.");
         texts.SetLanguage(Language::English);
-        Check(view->Update(input) == ResultAction::None && HasText(*canvas, L"Judgement counts"),
+        Check(view->Update(input) == ResultAction::None && HasText(*canvas, L"Accuracy by note group"),
               "Result strings must follow the shared language catalog.");
         for (const Size size : {Size{1024, 768}, Size{2560, 1080}, Size{720, 1280}})
         {
@@ -906,6 +946,7 @@ int main()
         TestHpCurveGeometry();
         TestChartBackground();
         TestAccuracyText();
+        TestJudgementRing();
         TestAccuracyRanks();
         TestMillisecondHistogram();
         TestHistogramJudgementColors();

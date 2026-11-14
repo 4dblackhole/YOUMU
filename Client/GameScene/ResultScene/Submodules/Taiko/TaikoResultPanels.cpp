@@ -1,13 +1,12 @@
 #include "TaikoResultLayout.h"
 #include "TaikoResultView.h"
 #include "Texts/GameScene/ResultScene/ResultTexts.h"
-#include "App/AssetPaths.h"
 #include "Presentation/AccuracyText.h"
-#include "Presentation/SpriteNumber.h"
 #include <algorithm>
 #include <array>
 #include <climits>
-#include <stdexcept>
+#include <cmath>
+#include <numbers>
 
 using namespace PhantomCore;
 
@@ -19,40 +18,75 @@ namespace
         if (text.empty())
             return L"—";
         if (text.size() > static_cast<std::size_t>(INT_MAX))
-            return L"\uFFFD";
+            return L"�";
         const auto size = static_cast<int>(text.size());
         const int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), size, nullptr, 0);
         if (length == 0)
-            return L"\uFFFD";
+            return L"�";
         std::wstring value(static_cast<std::size_t>(length), L'\0');
         if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), size, value.data(), length) != length)
-            return L"\uFFFD";
+            return L"�";
         return value;
     }
+    constexpr Color White{1, 1, 1, 1};
+    constexpr float ColumnRight = Margin + LeftWidth;
 } // namespace
+void TaikoResultView::BuildSongBanner(Visual2DNode &root)
+{
+    const float width = columns_.width;
+    Image(root, {0, 0, width, BannerHeight}, banner_, "Result.SongBanner");
+    Image(root, {32, 21, 93, 30}, modeBadge_, "Result.ModeBadge");
+    Image(root, {50, 28, 16, 16}, modeIcon_, "Result.ModeIcon");
+    NumberLabel(root, {70, 21, 52, 30}, std::wstring(texts_.Get("Result.modeName")), {12, 800, White}, false);
+
+    // Right block: difficulty name with its difficulty-value badge, then the chart creator.
+    // Both rows start at the same x and the block ends at the right margin.
+    const auto pattern = Decode(result_.summary.patternName);
+    const auto creator = context_.patternCreator.empty() ? std::wstring(L"—") : context_.patternCreator;
+    constexpr float badgeWidth = 40, badgeGap = 8, creatorIconSize = 14, creatorGap = 6;
+    const float patternWidth = EstimateTextWidth(pattern, 16), creatorWidth = EstimateTextWidth(creator, 13);
+    const float blockWidth = std::clamp(std::max(patternWidth + badgeGap + badgeWidth, creatorIconSize + creatorGap + creatorWidth),
+                                        82.0F, width * 0.34F);
+    const float blockX = width - Margin - blockWidth;
+    const float nameWidth = std::min(patternWidth, blockWidth - badgeGap - badgeWidth);
+    Label(root, {blockX, 14, nameWidth + 2, 24}, pattern, {16, 700, BrandText});
+    // The difficulty value has no formula yet, so the badge shows a dash.
+    Fill(root, {blockX + nameWidth + badgeGap, 15, badgeWidth, 22}, ui_colors::theme::Badge, "Result.LevelBadge");
+    NumberLabel(root, {blockX + nameWidth + badgeGap, 15, badgeWidth, 22}, L"—",
+                {14, 800, BrandText, TextAlignment::Center});
+    Image(root, {blockX, 41, creatorIconSize, creatorIconSize}, creatorIcon_, "Result.CreatorIcon", Ink);
+    Label(root, {blockX + creatorIconSize + creatorGap, 38, blockWidth - creatorIconSize - creatorGap, 20}, creator,
+          {13, 600, Ink});
+
+    constexpr float titleX = 145;
+    const float titleWidth = std::max(blockX - 20 - titleX, 1.0F);
+    Label(root, {titleX, 11, titleWidth, 30}, context_.songTitle.empty() ? L"—" : context_.songTitle, {24, 900, Ink});
+    Label(root, {titleX, 41, titleWidth, 20}, context_.songArtist.empty() ? L"—" : context_.songArtist,
+          {14, 700, Caption});
+}
 void TaikoResultView::BuildHpGraph(Visual2DNode &root)
 {
     const auto &text = Result(texts_);
-    Label(root, {76, 124, 310, 30}, std::wstring(text.hpGraph), 20, 700);
-    Panel(root, HpPlot, Plot, 6);
-    for (const float y : {196.0F, 222.0F, 248.0F})
-        Panel(root, {122, y, 426, 1}, Keyline, 0);
-    for (const float x : {228.5F, 335.0F, 441.5F})
-        Panel(root, {x, 170, 1, 104}, Keyline, 0);
-    Panel(root, {121, 170, 1, 105}, ResultColor(0x5783A0, .6F), 0);
-    Panel(root, {122, 274, 426, 1}, ResultColor(0x5783A0, .6F), 0);
-    Label(root, {76, 153, 38, 16}, std::wstring(texts_.Get("Result.hp")), 11, 600, TextAlignment::Leading, Muted);
-    for (const auto &[y, percent] : std::array<std::pair<float, std::wstring_view>, 3>{{{169.0F, L"100%"}, {213.0F, L"50%"}, {257.0F, L"0%"}}})
-        Label(root, {76, y, 38, 18}, std::wstring(percent), 10, 500, TextAlignment::Leading, Muted);
-    if (!result_.summary.hpHistory || result_.summary.hpGauges.empty() || !result_.summary.hpGauges.front().applicable)
-        Label(root, {154, 205, 362, 30}, std::wstring(text.noHpData), 14, 500, TextAlignment::Center, Muted);
-    Label(root, {122, 284, 90, 22}, std::wstring(text.start), 11, 500, TextAlignment::Leading, Muted);
-    Label(root, {245, 284, 180, 22}, std::wstring(text.timeAxis), 11, 500, TextAlignment::Center, Muted);
-    Label(root, {458, 284, 90, 22}, std::wstring(text.end), 11, 500, TextAlignment::Trailing, Muted);
+    const auto &summary = result_.summary;
+    const bool applicable = !summary.hpGauges.empty() && summary.hpGauges.front().applicable;
+    const double clearPercent = summary.hpGauges.empty() ? 60.0 : summary.hpGauges.front().clearPercent;
+    // The title row carries the failure mark and the pause/Rewind usage so
+    // nothing is written over the curve.
+    Label(root, {Margin, 107, 24, 16}, std::wstring(texts_.Get("Result.hp")), {13, 700, Caption});
+    if (summary.endReason == PlayEndReason::Completed && summary.CanUseHp() && !summary.IsCleared() &&
+        std::ranges::any_of(summary.hpGauges, [](const auto &hp) { return hp.applicable; }))
+    {
+        const std::wstring failed(text.failed);
+        const float chipWidth = EstimateTextWidth(failed, 12) + 16;
+        Fill(root, {Margin + 28, 105, chipWidth, 20}, ui_colors::theme::DangerSurface, "Result.FailureChip");
+        auto &label = Label(root, {Margin + 28, 105, chipWidth, 20}, failed,
+                            {12, 800, ui_colors::theme::Danger, TextAlignment::Center});
+        label.SetName("Result.Failure");
+    }
     std::wstring usage;
-    if (result_.summary.pauseMenuUsed)
+    if (summary.pauseMenuUsed)
         usage = text.pauseUsed;
-    if (std::ranges::any_of(result_.summary.controls, [](const auto &control)
+    if (std::ranges::any_of(summary.controls, [](const auto &control)
                            { return control.type == PlayControlType::Rewind; }))
     {
         if (!usage.empty()) usage += L" · ";
@@ -60,25 +94,31 @@ void TaikoResultView::BuildHpGraph(Visual2DNode &root)
     }
     if (!usage.empty())
     {
-        auto &label = Label(root, {130, 178, 410, 22}, std::move(usage), 12, 700,
-                            TextAlignment::Leading, Ink);
+        auto &label = Label(root, {Margin + 100, 107, LeftWidth - 100, 16}, std::move(usage),
+                            {12, 700, Caption, TextAlignment::Trailing});
         label.SetName("Result.ControlUsage");
-        label.SetZIndex(5);
     }
-    const auto &summary = result_.summary;
-    if (summary.endReason == PlayEndReason::Completed && summary.CanUseHp() && !summary.IsCleared() &&
-        std::ranges::any_of(summary.hpGauges, [](const auto &hp) { return hp.applicable; }))
+
+    Fill(root, HpChart, ui_colors::theme::Plot, "Result.HpChart");
+    for (int line = 0; line <= 4; ++line)
+        Fill(root, {HpPlot.x, HpPlot.y + HpPlot.height * static_cast<float>(line) / 4, HpPlot.width, 1},
+             ui_colors::theme::Grid);
+    // Axis: 100, the gauge's clear threshold and 0. No text inside the plot.
+    const auto axisLabel = [&](double percent, Color color)
     {
-        auto &label = Label(root, {154, 236, 362, 26}, std::wstring(text.failed), 18, 700,
-                            TextAlignment::Center, Markers[7]);
-        label.SetName("Result.Failure");
-        label.SetZIndex(5);
-    }
+        const float y = HpPlot.y + HpPlot.height * static_cast<float>(1.0 - percent / 100.0);
+        Label(root, {HpChart.x, y - 8, HpPlot.x - HpChart.x - 8, 16}, Format(L"{:.0f}%", percent),
+              {12, 700, color, TextAlignment::Trailing});
+    };
+    axisLabel(100, ResultColor(0x4A6C9C));
+    axisLabel(clearPercent, ui_colors::theme::Brand);
+    axisLabel(0, ResultColor(0x4A6C9C));
+    if (!summary.hpHistory || !applicable)
+        Label(root, {HpPlot.x, HpPlot.y + HpPlot.height * 0.72F - 10, HpPlot.width, 20}, std::wstring(text.noHpData),
+              {13, 700, ResultColor(0x5B7194), TextAlignment::Center});
 }
 void TaikoResultView::BuildJudgements(Visual2DNode &root)
 {
-    const auto &text = Result(texts_);
-    Label(root, {76, 510, 472, 30}, std::wstring(text.judgements), 20, 700);
     const std::array<std::wstring_view, 8> names{texts_.Get("Judgements.MAX"),   texts_.Get("Judgements.PERFECT"),
                                                  texts_.Get("Judgements.GREAT"), texts_.Get("Judgements.GOOD"),
                                                  texts_.Get("Judgements.BAD"),   texts_.Get("Judgements.OK"),
@@ -86,128 +126,71 @@ void TaikoResultView::BuildJudgements(Visual2DNode &root)
     const std::array<std::size_t, 8> counts{result_.judgements[0], result_.judgements[1], result_.judgements[2],
                                             result_.judgements[3], result_.judgements[4], result_.okCount,
                                             result_.judgements[5], result_.poorCount};
+    // Two columns of four: MAX..GOOD on the left, BAD..POOR on the right.
+    constexpr float top = 346, rowHeight = 32, columnWidth = 160, columnStep = 180;
+    constexpr float slant = -14.0F * std::numbers::pi_v<float> / 180.0F;
     for (std::size_t i = 0; i < names.size(); ++i)
     {
-        const float y = 548 + static_cast<float>(i) * 26;
-        Panel(root, {76, y + 6, 14, 14}, Markers[i], 4, i == 0 ? 1.0F : 0.0F, ResultColor(0x96B9D1));
-        Label(root, {104, y, 310, 26}, std::wstring(names[i]), 16, 600);
-        Label(root, {444, y, 102, 26}, std::to_wstring(counts[i]), 17, 700, TextAlignment::Trailing);
+        const float x = Margin + static_cast<float>(i / 4) * columnStep;
+        const float y = top + static_cast<float>(i % 4) * rowHeight;
+        // Slanted judgement-colour mark with a thin dark edge so white MAX stays visible.
+        for (const auto &[inset, color] : {std::pair{0.0F, ResultColor(0x0F2A47, .25F)}, std::pair{1.0F, Markers[i]}})
+        {
+            auto &mark = Fill(root, {x + 2 + inset, y + 8 + inset, 5 - inset * 2, 16 - inset * 2}, color,
+                              "Result.JudgementMark");
+            mark.SetPivot({.5F, .5F});
+            mark.SetPosition({x + 4.5F, Height - (y + 16)});
+            mark.Transform().SetRotationRollPitchYaw(0.0F, 0.0F, slant);
+        }
+        NumberLabel(root, {x + 14, y, 96, rowHeight - 1}, std::wstring(names[i]), {14, 700, InkSoft});
+        NumberLabel(root, {x + 60, y, columnWidth - 60, rowHeight - 1}, std::to_wstring(counts[i]),
+                    {22, 800, Ink, TextAlignment::Trailing});
+        Fill(root, {x, y + rowHeight - 1, columnWidth, 1}, ui_colors::theme::Rule);
     }
-    Panel(root, {76, 764, 472, 1}, Keyline, 0);
-    Label(root, {76, 774, 210, 28}, std::wstring(text.ticks), 15, 500, TextAlignment::Leading, Muted);
-    Label(root, {316, 774, 230, 28}, Format(text.tickFormat, result_.acceptedTicks, result_.missedTicks), 18, 600,
-          TextAlignment::Trailing);
+    const auto &text = Result(texts_);
+    Label(root, {Margin, 482, 150, 21}, std::wstring(text.ticks), {13, 400, InkSoft});
+    NumberLabel(root, {ColumnRight - 200, 482, 200, 21}, Format(text.tickFormat, result_.acceptedTicks, result_.missedTicks),
+                {17, 800, Ink, TextAlignment::Trailing});
 }
 void TaikoResultView::BuildGroups(Visual2DNode &root)
 {
     const auto &text = Result(texts_);
-    Label(root, {76, 828, 472, 30}, std::wstring(text.groupTitle), 20, 700);
+    Label(root, {Margin, 513, LeftWidth, 20}, std::wstring(text.groupTitle), {14, 900, Ink});
+    constexpr float top = 541, rowHeight = 28;
     for (std::size_t i = 0; i < result_.groups.size(); ++i)
     {
-        const float y = 860 + static_cast<float>(i) * 26;
-        Label(root, {76, y, 260, 26}, std::wstring(text.groups[i]), 15, 500, TextAlignment::Leading, Muted);
+        const float y = top + static_cast<float>(i) * rowHeight;
+        Label(root, {Margin, y, 220, rowHeight - 4}, std::wstring(text.groups[i]), {13, 400, InkSoft});
         const auto &group = result_.groups[i];
-        Label(root, {340, y, 206, 26},
-              group.total ? AccuracyText(group.accuracy)
-                          : std::wstring(texts_.Get("Result.emptyPercent")),
-              17, 700, TextAlignment::Trailing);
+        NumberLabel(root, {ColumnRight - 160, y, 160, rowHeight - 4},
+                    group.total ? AccuracyText(group.accuracy) : std::wstring(texts_.Get("Result.emptyPercent")),
+                    {17, 800, Ink, TextAlignment::Trailing});
+        Fill(root, {Margin, y + rowHeight - 4, LeftWidth, 1}, ui_colors::theme::Rule);
     }
     const auto &summary = result_.summary;
-    Label(root, {76, 946, 472, 18},
-          Format(text.noteCounts, summary.totalNotes, summary.processedNotes, summary.unprocessedNotes), 11, 500,
-          TextAlignment::Leading, Muted);
+    Label(root, {Margin, 629, LeftWidth, 16},
+          Format(text.noteCounts, summary.totalNotes, summary.processedNotes, summary.unprocessedNotes),
+          {12, 400, Caption});
 }
 void TaikoResultView::BuildSummary(Visual2DNode &root)
 {
     const auto &text = Result(texts_);
-    Panel(root, {48, 104, 528, 872}, Surface, 24, 3);
     BuildHpGraph(root);
-    for (const float y : {320.0F, 494.0F, 818.0F})
-        Panel(root, {76, y, 472, 1}, Keyline, 0);
-    Label(root, {76, 332, 472, 24}, std::wstring(text.score), 15, 700, TextAlignment::Leading, Muted);
-    const auto atlas = visuals_.RegisterImage(InGame(L"HudDigits"));
-    SpriteNumber score;
-    score.Initialize(root, atlas, "Result.Score");
-    score.SetLayout(Bounds({76, 358, 472, 58}), TextAlignment::Leading);
-    score.SetValue(result_.summary.score);
-    Label(root, {76, 418, 248, 20}, std::wstring(texts_.Get("Result.maximumCombo")), 14, 600,
-          TextAlignment::Leading, Muted);
-    SpriteNumber maximumCombo;
-    maximumCombo.Initialize(root, atlas, "Result.MaximumCombo");
-    maximumCombo.SetLayout(Bounds({324, 416, 224, 24}));
-    maximumCombo.SetValue(result_.summary.maximumCombo);
-    Label(root, {76, 442, 140, 40}, std::wstring(text.accuracy), 18, 600);
-    Label(root, {214, 440, 332, 46}, AccuracyText(result_.summary.accuracy), 30, 700,
-          TextAlignment::Trailing);
+    // One summary line: accuracy is the primary figure, maximum combo the smaller
+    // one whose right edge lines up with the judgement counts below.
+    Label(root, {Margin, 240, 200, 16}, std::wstring(text.accuracy), {13, 700, Caption});
+    Label(root, {ColumnRight - 160, 240, 160, 16}, std::wstring(texts_.Get("Result.maximumCombo")),
+          {13, 700, Caption, TextAlignment::Trailing});
+    const auto accuracy = AccuracyText(result_.summary.accuracy);
+    const auto number = accuracy.substr(0, accuracy.size() - 1);
+    const float numberWidth = EstimateNumberWidth(number, 56);
+    auto &accuracyLabel = NumberLabel(root, {Margin, 258, 250, 70}, number, {56, 800, Ink});
+    accuracyLabel.SetName("Result.Accuracy");
+    NumberLabel(root, {Margin + numberWidth + 4, 283, 32, 31}, L"%", {26, 700, InkSoft}, false);
+    auto &combo = NumberLabel(root, {ColumnRight - 160, 276, 160, 40}, std::to_wstring(result_.summary.maximumCombo),
+                              {32, 800, Ink, TextAlignment::Trailing});
+    combo.SetName("Result.MaximumCombo");
+    Fill(root, {Margin, 337, LeftWidth, 1}, ui_colors::theme::RuleStrong);
     BuildJudgements(root);
     BuildGroups(root);
-}
-void TaikoResultView::BuildSongBanner(Visual2DNode &root)
-{
-    const auto &text = Result(texts_);
-    auto &banner = CreatePanel(root, Bounds(Banner), "Result.SongBanner");
-    banner.GetComponent<SpriteVisualComponent>()->SetTint(ui_colors::result::Banner);
-    static_cast<void>(CreateSprite(root, Bounds({48, 18, 48, 48}), modeIcon_, "Result.ModeIcon"));
-    const auto white = ResultColor(0xFFFFFF);
-    Label(root, {112, 20, 192, 48}, std::wstring(texts_.Get("Result.modeName")), 25, 700, TextAlignment::Leading,
-          white);
-    for (const float x : {304.0F, 1392.0F})
-        Panel(root, {x, 20, 1, 48}, ResultColor(0xFFFFFF, .25F), 0);
-    Label(root, {344, 14, 84, 20}, std::wstring(text.song), 11, 600, TextAlignment::Leading, white);
-    Label(root, {444, 8, 916, 38}, context_.songTitle.empty() ? L"—" : context_.songTitle, 25, 700,
-          TextAlignment::Leading, white);
-    Label(root, {344, 53, 84, 18}, std::wstring(text.artist), 10, 600, TextAlignment::Leading, white);
-    Label(root, {444, 45, 916, 30}, context_.songArtist.empty() ? L"—" : context_.songArtist, 16, 500,
-          TextAlignment::Leading, white);
-    Label(root, {1424, 14, 448, 20}, std::wstring(text.pattern), 11, 600, TextAlignment::Trailing, white);
-    Label(root, {1424, 38, 448, 36}, Decode(result_.summary.patternName), 22, 700, TextAlignment::Trailing, white);
-}
-void TaikoResultView::BuildMetadata(Visual2DNode &root)
-{
-    const auto &text = Result(texts_);
-    static_cast<void>(CreateSprite(root, Bounds({705.75F, 234, 508.5F, 336}), rankFrame_, "Result.RankFrame"));
-    Label(root, {860, 290, 200, 24}, std::wstring(text.rank), 13, 700, TextAlignment::Center, Muted);
-    constexpr Rect rankBounds{824, 316, 272, 166};
-    const auto nativeSize = visuals_.GetImageSize(rankImage_);
-    if (nativeSize.width <= 0 || nativeSize.height <= 0)
-        throw std::logic_error("Result rank image must have a non-zero size.");
-    const float scale = std::min(rankBounds.width / nativeSize.width, rankBounds.height / nativeSize.height);
-    const float width = nativeSize.width * scale, height = nativeSize.height * scale;
-    static_cast<void>(CreateSprite(root,
-                                      Bounds({rankBounds.x + (rankBounds.width - width) * 0.5F,
-                                              rankBounds.y + (rankBounds.height - height) * 0.5F, width, height}),
-                                      rankImage_, "Result.Rank"));
-    Label(root, {756, 616, 408, 22}, std::wstring(text.creator), 13, 500, TextAlignment::Center, Muted);
-    Label(root, {744, 644, 432, 40}, context_.patternCreator.empty() ? L"—" : context_.patternCreator, 19, 600,
-          TextAlignment::Center);
-}
-void TaikoResultView::BuildActions(Visual2DNode &root)
-{
-    const auto &text = Result(texts_);
-    auto &replay = Button(root, ReplayButton, "Result.Replay", std::wstring(text.replay), true);
-    replay.SetEnabled(false);
-    replay.Children().back()->SetEnabled(false);
-    auto &retry = Button(root, RetryButton, "Result.Retry", std::wstring(text.retry), false);
-    retry.SetEnabled(context_.canRetry);
-    retry.Children().back()->SetEnabled(context_.canRetry);
-    retryId_ = retry.Id();
-    // Back remains reachable at the bottom-left even when the result layout
-    // scales down to fit a portrait viewport.
-    auto &back = Button(canvas_->AnchorNode(Anchor::BottomLeft), {48, 1006, 192, 62}, "Result.Back", L"", false);
-    auto &caption = *back.GetComponent<TextVisualComponent>();
-    caption.SetText(std::wstring(text.back));
-    caption.SetFont(font_);
-    caption.SetFontSize(21);
-    caption.SetFontWeight(800);
-    caption.SetHorizontalAlignment(TextAlignment::Center);
-    caption.SetTextColor(ResultColor(0xFFFFFF));
-    caption.SetContentBounds({0, 27, 192, 30});
-    auto &shortcut = CreateLabel(back, {0, 7, 192, 19}, std::wstring(text.backShortcut), "Result.BackShortcut");
-    auto &hint = *shortcut.GetComponent<TextVisualComponent>();
-    hint.SetFont(font_);
-    hint.SetFontSize(10);
-    hint.SetFontWeight(600);
-    hint.SetHorizontalAlignment(TextAlignment::Center);
-    hint.SetTextColor(ResultColor(0xFFFFFF));
-    backId_ = back.Id();
 }
