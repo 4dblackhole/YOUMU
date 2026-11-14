@@ -84,7 +84,8 @@
     }
 
     std::size_t parsed = fallback;
-    if ((value.has_value() && !ParsePositiveSize(*value, parsed)) || parsed == 0 || parsed > 1024)
+    const bool unreadable = value.has_value() && !ParsePositiveSize(*value, parsed);
+    if (unreadable || parsed == 0 || parsed > 1024)
     {
         diagnostics.push_back(
             {DiagnosticSeverity::Error, note.source, "Hit count must be an integer from 1 through 1024."});

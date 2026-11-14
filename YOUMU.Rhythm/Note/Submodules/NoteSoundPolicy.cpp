@@ -7,6 +7,16 @@
 #include <stdexcept>
 #include <utility>
 
+namespace
+{
+// An unset binding field matches every event.
+template <typename Expected, typename Actual>
+[[nodiscard]] bool MatchesIfSet(const std::optional<Expected> &expected, const Actual &actual) noexcept
+{
+    return !expected.has_value() || expected == actual;
+}
+} // namespace
+
 MappedNoteSoundPolicy &MappedNoteSoundPolicy::Bind(SoundBinding binding)
 {
     bindings_.push_back(std::move(binding));
@@ -35,12 +45,16 @@ void MappedNoteSoundPolicy::AppendAudioCues(const NoteEvent &event,
 bool MappedNoteSoundPolicy::Matches(const SoundBinding &binding,
                                     const NoteEvent &event) noexcept
 {
-    if (binding.eventType != event.type ||
-        (binding.inputAction.has_value() && binding.inputAction != event.inputAction) ||
-        (binding.stateBefore.has_value() && *binding.stateBefore != event.stateBefore) ||
-        (binding.stateAfter.has_value() && *binding.stateAfter != event.stateAfter) ||
-        (binding.hitIndex.has_value() && *binding.hitIndex != event.hitIndex) ||
-        (binding.tickIndex.has_value() && *binding.tickIndex != event.tickIndex))
+    if (binding.eventType != event.type || !MatchesIfSet(binding.inputAction, event.inputAction))
+    {
+        return false;
+    }
+    if (!MatchesIfSet(binding.stateBefore, event.stateBefore) ||
+        !MatchesIfSet(binding.stateAfter, event.stateAfter))
+    {
+        return false;
+    }
+    if (!MatchesIfSet(binding.hitIndex, event.hitIndex) || !MatchesIfSet(binding.tickIndex, event.tickIndex))
     {
         return false;
     }

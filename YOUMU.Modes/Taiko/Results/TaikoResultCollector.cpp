@@ -3,6 +3,14 @@
 #include <cmath>
 #include <stdexcept>
 
+namespace
+{
+[[nodiscard]] bool CountsAcceptedTicks(TaikoNoteType type) noexcept
+{
+    return type == TaikoNoteType::TickRoll || type == TaikoNoteType::BigTickRoll || type == TaikoNoteType::Buzz;
+}
+} // namespace
+
 TaikoResultGroup ResultGroup(TaikoNoteType type) noexcept
 {
     const auto *definition = FindTaikoNote(static_cast<int>(type));
@@ -76,10 +84,7 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
         ++result_->poorCount;
         combo_ = 0;
     }
-    else if (event.type == NoteEventType::TickAccepted &&
-             (result_->notes[found->second].type == TaikoNoteType::TickRoll ||
-              result_->notes[found->second].type == TaikoNoteType::BigTickRoll ||
-              result_->notes[found->second].type == TaikoNoteType::Buzz))
+    else if (event.type == NoteEventType::TickAccepted && CountsAcceptedTicks(result_->notes[found->second].type))
         ++result_->acceptedTicks;
     else if (event.type == NoteEventType::TickMissed)
         ++result_->missedTicks;

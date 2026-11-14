@@ -33,8 +33,9 @@ bool TimedSequenceInputRule::CanAccept(const NoteRuleContext &context,
                                        const RhythmInputEvent &input,
                                        const JudgementResult &) const noexcept
 {
-    if (IsTerminal(state_) || input.edge != InputEdge::Pressed || input.time < context.noteTime ||
-        input.time > endTime_)
+    if (IsTerminal(state_) || input.edge != InputEdge::Pressed)
+        return false;
+    if (input.time < context.noteTime || input.time > endTime_)
         return false;
     if (allowAnyStartingAction_ && acceptedHitCount_ == 0)
         return std::ranges::find(repeatingSequence_, input.action) != repeatingSequence_.end();

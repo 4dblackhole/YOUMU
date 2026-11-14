@@ -7,6 +7,15 @@
 #include <stdexcept>
 #include <utility>
 
+namespace
+{
+[[nodiscard]] bool IsRejectedGoodInput(const NoteEvent &event) noexcept
+{
+    return event.type == NoteEventType::InputRejected &&
+           IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
+}
+} // namespace
+
 RuleBasedNote::RuleBasedNote(const NoteId id, const RhythmTime timing,
                              std::shared_ptr<const AccuracyRange> profile,
                              std::unique_ptr<INoteRule> rule,
@@ -104,13 +113,9 @@ NoteProcessResult RuleBasedNote::ProcessInput(const RhythmInputEvent &input)
     NoteProcessResult result;
     const JudgementResult judgement = Preview(input);
     rule_->ProcessInput(Context(), input, judgement, result);
-    if ((accuracy_.target.kind == NoteAccuracyKind::TimingHits ||
-         (accuracy_.target.kind == NoteAccuracyKind::Hold && accuracy_.acceptedHits == 0)) &&
-        input.edge == InputEdge::Pressed &&
-        std::ranges::any_of(result.events, [](const NoteEvent &event) {
-            return event.type == NoteEventType::InputRejected &&
-                   IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
-        }))
+    const bool judgesTiming = accuracy_.target.kind == NoteAccuracyKind::TimingHits ||
+                              (accuracy_.target.kind == NoteAccuracyKind::Hold && accuracy_.acceptedHits == 0);
+    if (judgesTiming && input.edge == InputEdge::Pressed && std::ranges::any_of(result.events, IsRejectedGoodInput))
     {
         poorOnTimingTarget_ = true;
     }

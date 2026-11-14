@@ -32,9 +32,11 @@ NoteState CountedHitInputRule::State() const noexcept
 bool CountedHitInputRule::CanAccept(const NoteRuleContext &, const RhythmInputEvent &input,
                                     const JudgementResult &judgement) const noexcept
 {
-    if (IsTerminal(state_) || input.edge != InputEdge::Pressed ||
-        input.action != requiredAction_ ||
-        !IsAtLeastAsAccurateAs(judgement.grade, maximumGrade_))
+    if (IsTerminal(state_) || input.edge != InputEdge::Pressed)
+    {
+        return false;
+    }
+    if (input.action != requiredAction_ || !IsAtLeastAsAccurateAs(judgement.grade, maximumGrade_))
     {
         return false;
     }

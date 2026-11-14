@@ -87,8 +87,10 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
     const bool timing = target.kind == NoteAccuracyKind::TimingHits;
     const bool hold = target.kind == NoteAccuracyKind::Hold;
     const double headWeight = target.ticks == 0 ? 1.0 : .5;
-    if ((timing || (hold && !state.headSettled)) && keyPressed && event.type == NoteEventType::InputRejected &&
-        IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good))
+    const bool judgesTiming = timing || (hold && !state.headSettled);
+    const bool rejectedGoodInput = event.type == NoteEventType::InputRejected &&
+                                   IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
+    if (judgesTiming && keyPressed && rejectedGoodInput)
         state.poor = true;
 
     if (event.type == NoteEventType::HitAccepted)
@@ -105,10 +107,10 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
     }
     const bool tickResult = event.type == NoteEventType::TickAccepted || event.type == NoteEventType::TickMissed ||
                             event.type == NoteEventType::TickRejected;
+    const bool settlesTick = tickResult && (hold || target.kind == NoteAccuracyKind::Ticks);
     if (target.kind == NoteAccuracyKind::HitCount && event.type == NoteEventType::TickAccepted)
         ++state.accepted;
-    else if (tickResult && (hold || target.kind == NoteAccuracyKind::Ticks) &&
-             event.tickIndex < state.resolvedTicks.size() && !state.resolvedTicks[event.tickIndex])
+    else if (settlesTick && event.tickIndex < state.resolvedTicks.size() && !state.resolvedTicks[event.tickIndex])
     {
         state.resolvedTicks[event.tickIndex] = true;
         if (event.type == NoteEventType::TickAccepted)

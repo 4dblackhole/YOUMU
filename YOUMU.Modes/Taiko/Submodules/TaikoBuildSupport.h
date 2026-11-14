@@ -63,6 +63,12 @@ inline bool UsesSyncopation(const EffectLookup &effects, const MusicalTimeline &
             return false;
     return true;
 }
+[[nodiscard]] inline bool IsPositionWithinMeasure(MusicalPosition position, const MusicalTimeline &timeline)
+{
+    if (position.measure < 0 || position.measure >= MaximumMeasureCount)
+        return false;
+    return position.fraction >= Rational{} && position.fraction < timeline.MeasureLength(position.measure);
+}
 inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &pattern,
                                const EffectDocument &effects, const MusicalTimeline &timeline,
                                std::vector<Diagnostic> &diagnostics, std::stop_token stop = {})
@@ -94,10 +100,9 @@ inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &patt
     for (const auto &change : effects.hitSoundChanges)
     {
         CheckChartLoadCancellation(stop);
-        if ((change.keyType != 1 && change.keyType != 2) || !effects.hitSounds.contains(change.soundIndex) ||
-            change.position.measure < 0 || change.position.measure >= MaximumMeasureCount ||
-            change.position.fraction < Rational{} ||
-            change.position.fraction >= timeline.MeasureLength(change.position.measure))
+        const bool knownKey = change.keyType == 1 || change.keyType == 2;
+        if (!knownKey || !effects.hitSounds.contains(change.soundIndex) ||
+            !IsPositionWithinMeasure(change.position, timeline))
         {
             diagnostics.push_back({DiagnosticSeverity::Error, change.source,
                                    "Hit sound change references an undefined table index, "

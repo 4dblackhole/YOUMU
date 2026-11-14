@@ -32,8 +32,11 @@ NoteState TickRollInputRule::State() const noexcept
 bool TickRollInputRule::CanAccept(const NoteRuleContext &context, const RhythmInputEvent &input,
                                   const JudgementResult &) const noexcept
 {
-    if (IsTerminal(state_) || input.edge != InputEdge::Pressed || input.time > endTime_ ||
-        std::ranges::find(acceptedActions_, input.action) == acceptedActions_.end())
+    if (IsTerminal(state_) || input.edge != InputEdge::Pressed)
+    {
+        return false;
+    }
+    if (input.time > endTime_ || std::ranges::find(acceptedActions_, input.action) == acceptedActions_.end())
     {
         return false;
     }

@@ -28,9 +28,12 @@ struct PlayOptions
 
     void Validate() const
     {
-        if ((scrollUnit != ScrollUnit::Multiplier && scrollUnit != ScrollUnit::Bpm) || !std::isfinite(scrollSpeed) ||
-            scrollSpeed <= 0 || !std::isfinite(randomAttemptProbability) || randomAttemptProbability < 0 ||
-            randomAttemptProbability > 1 || !std::isfinite(accelerate) || accelerate < 0.5 || accelerate > 2.0)
+        const bool knownUnit = scrollUnit == ScrollUnit::Multiplier || scrollUnit == ScrollUnit::Bpm;
+        const bool validScroll = knownUnit && std::isfinite(scrollSpeed) && scrollSpeed > 0;
+        const bool validProbability =
+            std::isfinite(randomAttemptProbability) && randomAttemptProbability >= 0 && randomAttemptProbability <= 1;
+        const bool validAccelerate = std::isfinite(accelerate) && accelerate >= 0.5 && accelerate <= 2.0;
+        if (!validScroll || !validProbability || !validAccelerate)
             throw std::invalid_argument(
                 "Invalid play options: positive scroll speed, probability 0..1, Accelerate 0.5..2 required.");
     }
