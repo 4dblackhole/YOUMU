@@ -9,7 +9,7 @@ struct MusicSelectTextSet
 {
     std::wstring_view all;
     std::wstring_view personalRecord;
-    std::wstring_view noRecords;
+    std::wstring_view noRecord;
     std::wstring_view backgroundPreview;
     std::wstring_view noImage;
     std::wstring_view noSongSelected;

@@ -26,10 +26,10 @@ namespace
         };
         static constexpr std::array<RankThreshold, 10> ranks{{
             {100, L"Rank.Y"},
-            {99, L"Rank.PERFECT"},
-            {98, L"Rank.SSS"},
-            {96, L"Rank.SS"},
-            {93, L"Rank.S"},
+            {99, L"Rank.X"},
+            {98, L"Rank.SS"},
+            {96, L"Rank.S"},
+            {93, L"Rank.AA"},
             {90, L"Rank.A"},
             {85, L"Rank.B"},
             {80, L"Rank.C"},

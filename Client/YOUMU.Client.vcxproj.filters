@@ -172,6 +172,7 @@
     <ClCompile Include="Presentation\OptionsPanel.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClInclude Include="Presentation\OptionsPanel.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\UiColors.h"><Filter>Presentation</Filter></ClInclude>
+    <ClInclude Include="Presentation\AccuracyText.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\ModePresentation.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\ModePresentation.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp"><Filter>Texts\EditorScene</Filter></ClCompile>

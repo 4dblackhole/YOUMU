@@ -465,6 +465,8 @@ namespace
         presenter.Initialize({meshes, textRendering, renderer, audio, 1280, 720}, *loaded.session);
         auto &root = visuals.FindCanvas(1)->Root();
         presenter.UpdatePresentation({});
+        Check(Node(root, "Hud.Accuracy").GetComponent<TextVisualComponent>()->Text() == L"--.--%",
+              "Before the first finalized note the accuracy HUD shows the two-decimal placeholder.");
         // Bound lane visibility independently of the fixed, reusable HUD pool.
         Check(NodeCount(Node(root, "ScrollGear.Lane")) < 400 && Find(root, "Lane.Note.5000"),
               "One slow future note must remain visible without creating thousands of ordinary offscreen notes.");

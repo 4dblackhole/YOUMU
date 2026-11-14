@@ -2,6 +2,7 @@
 #include "TaikoResultView.h"
 #include "Texts/GameScene/ResultScene/ResultTexts.h"
 #include "App/AssetPaths.h"
+#include "Presentation/AccuracyText.h"
 #include "Presentation/SpriteNumber.h"
 #include <algorithm>
 #include <array>
@@ -107,7 +108,7 @@ void TaikoResultView::BuildGroups(Visual2DNode &root)
         Label(root, {76, y, 260, 26}, std::wstring(text.groups[i]), 15, 500, TextAlignment::Leading, Muted);
         const auto &group = result_.groups[i];
         Label(root, {340, y, 206, 26},
-              group.total ? Format(text.percent, group.accuracy.Percent())
+              group.total ? AccuracyText(group.accuracy)
                           : std::wstring(texts_.Get("Result.emptyPercent")),
               17, 700, TextAlignment::Trailing);
     }
@@ -136,7 +137,7 @@ void TaikoResultView::BuildSummary(Visual2DNode &root)
     maximumCombo.SetLayout(Bounds({324, 416, 224, 24}));
     maximumCombo.SetValue(result_.summary.maximumCombo);
     Label(root, {76, 442, 140, 40}, std::wstring(text.accuracy), 18, 600);
-    Label(root, {214, 440, 332, 46}, Format(text.percent, result_.summary.accuracy.Percent()), 30, 700,
+    Label(root, {214, 440, 332, 46}, AccuracyText(result_.summary.accuracy), 30, 700,
           TextAlignment::Trailing);
     BuildJudgements(root);
     BuildGroups(root);

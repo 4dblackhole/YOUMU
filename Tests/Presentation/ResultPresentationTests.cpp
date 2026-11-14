@@ -5,6 +5,7 @@
 #include "GameScene/ResultScene/Submodules/ResultViewFactory.h"
 #include "GameScene/ResultScene/Submodules/Taiko/TaikoResultGraphs.h"
 #include "GameScene/RhythmTestScene/RhythmTestScene.h"
+#include "Presentation/AccuracyText.h"
 #include "Taiko/TaikoMode.h"
 #include "Records/PlayRecordStore.h"
 #include <thread>
@@ -301,7 +302,7 @@ namespace
     void TestChartBackground()
     {
         for (const auto &path : std::array<std::filesystem::path, 5>{
-            ResolveDefaultSkinAsset(L"Result/Rank/SSS.png"), ResolveDefaultSkinAsset(L"InGame/InputPanel.png"),
+            ResolveDefaultSkinAsset(L"Result/Rank/SS.png"), ResolveDefaultSkinAsset(L"InGame/InputPanel.png"),
             std::filesystem::path{"chart-bg-fail.png"}, std::filesystem::path{"chart-bg-zero.png"}, {}})
         {
             const bool assigned = !path.empty() && path.filename() != "chart-bg-fail.png" && path.filename() != "chart-bg-zero.png";
@@ -363,6 +364,15 @@ namespace
             Check(visuals.CanvasCount() == 0, "Result BG releases its Canvas without retaining gameplay objects.");
         }
     }
+    void TestAccuracyText()
+    {
+        const auto text = [](std::uint32_t units) { return AccuracyText(AccuracyScore::FromUnits(units)); };
+        Check(text(100'000'000) == L"100.00%" && text(99'999'999) == L"99.99%" && text(99'990'000) == L"99.99%" &&
+                  text(99'989'999) == L"99.98%" && text(5'009'999) == L"5.00%" && text(9'999) == L"0.00%" &&
+                  text(0) == L"0.00%",
+              "Displayed accuracy discards digits below two decimals and shows 100.00% only at exactly 100%.");
+        Check(EmptyAccuracyText == L"--.--%", "The empty accuracy placeholder keeps the two-decimal width.");
+    }
     void TestAccuracyRanks()
     {
         struct RankCase
@@ -371,10 +381,10 @@ namespace
             std::wstring_view rank;
         };
         constexpr std::array<RankCase, 21> cases{{
-            {100'000'000, L"Y"},  {99'999'999, L"PERFECT"}, {99'000'000, L"PERFECT"},
-            {98'999'999, L"SSS"}, {98'000'000, L"SSS"},     {97'999'999, L"SS"},
-            {96'000'000, L"SS"},  {95'999'999, L"S"},       {93'000'000, L"S"},
-            {92'999'999, L"A"},   {90'000'000, L"A"},       {89'999'999, L"B"},
+            {100'000'000, L"Y"},  {99'999'999, L"X"},  {99'000'000, L"X"},
+            {98'999'999, L"SS"},  {98'000'000, L"SS"}, {97'999'999, L"S"},
+            {96'000'000, L"S"},   {95'999'999, L"AA"}, {93'000'000, L"AA"},
+            {92'999'999, L"A"},   {90'000'000, L"A"},  {89'999'999, L"B"},
             {85'000'000, L"B"},   {84'999'999, L"C"},       {80'000'000, L"C"},
             {79'999'999, L"D"},   {75'000'000, L"D"},       {74'999'999, L"E"},
             {70'000'000, L"E"},   {69'999'999, L"F"},       {0, L"F"},
@@ -406,6 +416,8 @@ namespace
                     throw std::runtime_error("Rank must own an image component.");
                 Check(renderer.ImagePath(sprite->Style().normalImage).stem().wstring() == test.rank,
                       "Rank PNG must match the exact six-decimal accuracy boundary.");
+                Check(HasText(*canvas, AccuracyText(result.summary.accuracy)),
+                      "Each rank case displays its accuracy truncated to two decimals.");
                 const auto bounds = rank->Bounds();
                 const auto native = renderer.GetImageSize(sprite->Style().normalImage);
                 Check(bounds.width > 0 && bounds.height > 0 && bounds.x >= 824 && bounds.y >= 598 &&
@@ -565,8 +577,8 @@ namespace
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
         Check(HasText(*canvas, L"Accuracy") && HasText(*canvas, L"Recorded song") &&
                   HasText(*canvas, L"Recorded creator") && HasText(*canvas, L"Recorded artist") &&
-                  HasText(*canvas, std::format(L"{:.6f}%", taiko->summary.accuracy.Percent())),
-              "Result view must display the recorded six-decimal accuracy.");
+                  HasText(*canvas, AccuracyText(taiko->summary.accuracy)),
+              "Result view must display the recorded accuracy truncated to two decimals.");
         const auto packets = canvas->BuildDrawList();
         const auto *banner = FindNode(canvas->Root(), "Result.SongBanner");
         const auto *song = FindText(canvas->Root(), L"Recorded song");
@@ -893,6 +905,7 @@ int main()
         TestControlUsageOverlay();
         TestHpCurveGeometry();
         TestChartBackground();
+        TestAccuracyText();
         TestAccuracyRanks();
         TestMillisecondHistogram();
         TestHistogramJudgementColors();
@@ -900,7 +913,7 @@ int main()
         bool verified{};
         Check(Run(std::make_unique<TransitionGame>(verified)) == 0 && verified,
               "Actual D3D12/FMOD Result transition must complete.");
-        std::puts("Result ranks (21 boundary cases), graphs, six-decimal display, ownership and actual deferred "
+        std::puts("Result ranks (21 boundary cases), graphs, two-decimal truncated display, ownership and actual deferred "
                   "transition passed.");
         return 0;
     }

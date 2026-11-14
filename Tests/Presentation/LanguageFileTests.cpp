@@ -42,8 +42,8 @@ namespace
         const auto invalid = ParseLanguageFile("[Logo]\nStart=\xFF", "invalid UTF-8");
         Check(invalid.entries.empty() && !invalid.diagnostics.empty(), "Invalid UTF-8 must not enter UI text.");
         auto formats =
-            ParseLanguageFile("[Result]\npercent=\"{999999999999999999999999999999999999}%\"\n", "overflow");
-        ValidateTranslations(formats, {{"Result.percent", L"{:.6f}%"}});
+            ParseLanguageFile("[Pause]\nresumeValueFormat=\"{999999999999999999999999999999999999} s\"\n", "overflow");
+        ValidateTranslations(formats, {{"Pause.resumeValueFormat", L"{:.1f} s back"}});
         Check(formats.entries.empty(), "An overflowing argument index must fall back safely.");
     }
     void Catalog(const std::filesystem::path &directory)
@@ -56,7 +56,8 @@ namespace
               "Older language packs must retain an English fallback for the HP label.");
         Write(directory / "en.ini", "[Logo]\nOptions=Preferences\n");
         Write(directory / "ko.ini", "[Logo]\nStart=\"직접 시작\"\nExit=\"\"\n"
-                                    "[Result]\npercent=\"{:d}%\"\nnoteCounts=\"Pending {2} / total {0} / done {1}\"\n"
+                                    "[Pause]\nresumeValueFormat=\"{:d} s\"\n"
+                                    "[Result]\nnoteCounts=\"Pending {2} / total {0} / done {1}\"\n"
                                     "[Unknown]\nkey=ignored\n");
         TextCatalog catalog(directory);
         const auto logo = Logo(catalog);
@@ -64,7 +65,8 @@ namespace
         Check(logo.menu[0] == L"Game Start" && logo.menu[1] == L"Editor" && logo.menu[2] == L"Preferences" &&
                   logo.menu[3] == L"Exit" && original == L"직접 시작",
               "UI uses English while explicit pack reads preserve custom translated entries.");
-        Check(Result(catalog).percent == L"{:.6f}%" && catalog.Diagnostics().size() == 2,
+        Check(catalog.Get(Language::Korean, "Pause.resumeValueFormat") == L"{:.1f} s back" &&
+                  catalog.Diagnostics().size() == 2,
               "Incompatible format types and unknown keys must not replace defaults.");
         const int total = 12, done = 5, pending = 7;
         Check(std::vformat(catalog.Get(Language::Korean, "Result.noteCounts"), std::make_wformat_args(total, done, pending)) ==

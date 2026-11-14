@@ -1,5 +1,6 @@
 #include "SongRecordView.h"
 #include "Catalog/SongCatalog.h"
+#include "Presentation/AccuracyText.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
@@ -38,8 +39,8 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
     nextButton_ = button("Records.next", "RecordNext");
     rows_ = &panel.CreateChild("RecordRows");
     emptyMessage_ = &CreateSongLabel(
-        panel, layout::EmptyRecordMessage, std::wstring(text.noRecords), 28.0F, DeepBlue,
-        "NoRecords", texts_, TextAlignment::Center);
+        panel, layout::EmptyRecordMessage, std::wstring(text.noRecord), 28.0F, DeepBlue,
+        "NoRecord", texts_, TextAlignment::Center);
 }
 
 void SongRecordView::InitializeFilter(Visual2DCanvas& canvas, IWindowControl* window)
@@ -130,7 +131,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
             static_cast<void>(rows_->RemoveChild(id));
         emptyMessage_->SetVisible(true);
         RequireComponent<TextVisualComponent>(*emptyMessage_)
-            .SetText(std::wstring(texts_.Get(pattern.empty() ? "MusicSelect.noRecords" : "Records.loading")));
+            .SetText(std::wstring(texts_.Get(pattern.empty() ? "MusicSelect.noRecord" : "Records.loading")));
     }
     if (job_.valid() && job_.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
     {
@@ -169,7 +170,7 @@ void SongRecordView::Show(const std::vector<PlayRecord> &records)
 {
     emptyMessage_->SetVisible(records.empty());
     RequireComponent<TextVisualComponent>(*emptyMessage_)
-        .SetText(std::wstring(texts_.Get("MusicSelect.noRecords")));
+        .SetText(std::wstring(texts_.Get("MusicSelect.noRecord")));
     next_ = records.size() > 6;
     nextButton_->SetEnabled(next_);
     const float width = rows_->NodeSize().width / DesignToCanvasScale;
@@ -180,7 +181,7 @@ void SongRecordView::Show(const std::vector<PlayRecord> &records)
         const auto &o = r.options;
         const auto timestamp =
             std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{r.playedAtMilliseconds}};
-        std::wstring description = std::format(L"{:%Y-%m-%d %H:%M} UTC  {:.6f}%", timestamp, r.accuracy.Percent());
+        std::wstring description = std::format(L"{:%Y-%m-%d %H:%M} UTC  {}", timestamp, AccuracyText(r.accuracy));
         description +=
             L"\n" + std::wstring(texts_.Get(r.cleared ? "Records.cleared"
                                                       : (r.completed ? "Records.practice" : "Records.interrupted")));
@@ -207,7 +208,7 @@ void SongRecordView::RefreshTexts()
         content.SetText(std::wstring(value));
         texts_.ApplyFont(content);
     };
-    setLabel(emptyMessage_, text.noRecords);
+    setLabel(emptyMessage_, text.noRecord);
     if (selector_)
     {
         auto& combo = RequireComponent<ComboBoxBehaviorComponent>(*selector_);

@@ -1,5 +1,6 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
+#include "Presentation/AccuracyText.h"
 
 using namespace PhantomCore;
 
@@ -50,7 +51,7 @@ void GameplayPresenter::CreatePresentation()
         root,
         {CanvasReferenceWidth * 0.5F - GearMargin - accuracyWidth,
          CanvasReferenceHeight * 0.5F - 50.0F - accuracySize.height, accuracyWidth, accuracySize.height},
-        std::wstring(texts_.Get("Gameplay.emptyAccuracy")), "Hud.Accuracy");
+        std::wstring(EmptyAccuracyText), "Hud.Accuracy");
     accuracyIndicator_->SetZIndex(5);
     auto &accuracyText = RequireComponent<TextVisualComponent>(*accuracyIndicator_);
     texts_.ApplyFont(accuracyText);

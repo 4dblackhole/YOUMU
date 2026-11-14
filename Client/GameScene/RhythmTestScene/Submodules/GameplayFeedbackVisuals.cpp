@@ -1,5 +1,6 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
+#include "Presentation/AccuracyText.h"
 #include "Texts/GameScene/RhythmTestScene/GameplayTexts.h"
 #include <format>
 
@@ -67,12 +68,9 @@ void GameplayPresenter::PresentErrorMessage(std::string_view message)
 
 void GameplayPresenter::UpdateAccuracyPresentation()
 {
-    const std::optional<double> accuracy = session_->AccuracyRate();
-    const double percent = accuracy.value_or(0) * 100.0;
+    const auto accuracy = session_->Accuracy();
     RequireComponent<TextVisualComponent>(*accuracyIndicator_)
-        .SetText(accuracy.has_value()
-                     ? std::vformat(texts_.Get("Gameplay.accuracyFormat"), std::make_wformat_args(percent))
-                     : std::wstring(texts_.Get("Gameplay.emptyAccuracy")));
+        .SetText(accuracy ? AccuracyText(*accuracy) : std::wstring(EmptyAccuracyText));
 }
 
 #if defined(_DEBUG)

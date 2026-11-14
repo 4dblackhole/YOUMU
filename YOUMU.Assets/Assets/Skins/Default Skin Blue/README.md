@@ -244,18 +244,7 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 | 파일 | 크기 | 키 | 부품 |
 | --- | --- | --- | --- |
-| `A.png` | 708×354 | `Result.Rank.A` | 랭크 글자(코발트 + 흰 외곽, 2배 크기): Y · X · SS · S · AA · A · B · C · D · E · F |
-| `AA.png` | 708×354 | `Result.Rank.S` | 〃 |
-| `B.png` | 708×354 | `Result.Rank.B` | 〃 |
-| `C.png` | 708×354 | `Result.Rank.C` | 〃 |
-| `D.png` | 708×354 | `Result.Rank.D` | 〃 |
-| `E.png` | 708×354 | `Result.Rank.E` | 〃 |
-| `F.png` | 708×354 | `Result.Rank.F` | 〃 |
-| `Ring.png` | 516×516 |  | 랭크 원 틀(남색 띠 + 12시 금빛 눈금). 판정 비율 조각은 게임이 그림 |
-| `S.png` | 708×354 | `Result.Rank.SS` | 랭크 글자(코발트 + 흰 외곽, 2배 크기): Y · X · SS · S · AA · A · B · C · D · E · F |
-| `SS.png` | 708×354 | `Result.Rank.SSS` | 〃 |
-| `X.png` | 708×354 | `Result.Rank.PERFECT` | 〃 |
-| `Y.png` | 708×354 | `Result.Rank.Y` | 〃 |
+| `Ring.png` | 516×516 |  | 랭크 원 틀(남색 띠 + 12시 금빛 눈금). 판정 비율 조각은 게임이 그림. 랭크 글자 PNG 11개는 내장 Default Skin의 `Result/Rank`로 옮김 |
 
 ## Options — 옵션 · 키 설정
 

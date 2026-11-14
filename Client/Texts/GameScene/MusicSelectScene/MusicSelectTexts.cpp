@@ -4,7 +4,7 @@ MusicSelectTextSet MusicSelect(const TextCatalog &texts)
 {
     return {texts.Get("MusicSelect.all"),
             texts.Get("MusicSelect.personalRecord"),
-            texts.Get("MusicSelect.noRecords"),
+            texts.Get("MusicSelect.noRecord"),
             texts.Get("MusicSelect.backgroundPreview"),
             texts.Get("MusicSelect.noImage"),
             texts.Get("MusicSelect.noSongSelected"),

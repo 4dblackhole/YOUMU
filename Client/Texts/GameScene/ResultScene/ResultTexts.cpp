@@ -3,7 +3,6 @@
 ResultTextSet Result(const TextCatalog &texts)
 {
     return {texts.Get("Result.accuracy"),
-            texts.Get("Result.percent"),
             texts.Get("Result.noteCounts"),
             {texts.Get("Result.groups.0"), texts.Get("Result.groups.1"), texts.Get("Result.groups.2")},
             texts.Get("Result.hpGraph"),

@@ -255,6 +255,7 @@
     <ClCompile Include="Presentation\OptionsPanel.cpp" />
     <ClInclude Include="Presentation\OptionsPanel.h" />
     <ClInclude Include="Presentation\UiColors.h" />
+    <ClInclude Include="Presentation\AccuracyText.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />
     <ClCompile Include="Presentation\ModePresentation.cpp" />
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp" />

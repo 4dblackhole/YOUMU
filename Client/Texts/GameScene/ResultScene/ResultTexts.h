@@ -4,7 +4,7 @@
 
 struct ResultTextSet
 {
-    std::wstring_view accuracy, percent, noteCounts;
+    std::wstring_view accuracy, noteCounts;
     std::array<std::wstring_view, 3> groups;
     std::wstring_view hpGraph, noHpData, timeAxis, start, end;
     std::wstring_view judgements, ticks, tickFormat, groupTitle;
