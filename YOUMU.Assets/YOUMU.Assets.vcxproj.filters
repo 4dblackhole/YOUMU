@@ -24,6 +24,7 @@
     <Filter Include="Assets\Skins\Default Skin\InGame\Hud" />
     <Filter Include="Assets\Skins\Default Skin\InGame\Hud\HpGauge" />
     <Filter Include="Assets\Skins\Default Skin\InGame\Judgements" />
+    <Filter Include="Assets\Skins\Default Skin\InGame\Pause" />
     <Filter Include="Assets\Skins\Default Skin\InGame\Progress" />
     <Filter Include="Assets\Skins\Default Skin\Logo" />
     <Filter Include="Assets\Skins\Default Skin\Logo\Menu" />
@@ -51,6 +52,7 @@
     <None Include="Assets\Skins\Default Skin\InGame\Hud\*.*"><Filter>Assets\Skins\Default Skin\InGame\Hud</Filter></None>
     <None Include="Assets\Skins\Default Skin\InGame\Hud\HpGauge\*.*"><Filter>Assets\Skins\Default Skin\InGame\Hud\HpGauge</Filter></None>
     <None Include="Assets\Skins\Default Skin\InGame\Judgements\*.*"><Filter>Assets\Skins\Default Skin\InGame\Judgements</Filter></None>
+    <None Include="Assets\Skins\Default Skin\InGame\Pause\*.*"><Filter>Assets\Skins\Default Skin\InGame\Pause</Filter></None>
     <None Include="Assets\Skins\Default Skin\InGame\Progress\*.*"><Filter>Assets\Skins\Default Skin\InGame\Progress</Filter></None>
     <None Include="Assets\Skins\Default Skin\Logo\*.*"><Filter>Assets\Skins\Default Skin\Logo</Filter></None>
     <None Include="Assets\Skins\Default Skin\Logo\Menu\*.*"><Filter>Assets\Skins\Default Skin\Logo\Menu</Filter></None>

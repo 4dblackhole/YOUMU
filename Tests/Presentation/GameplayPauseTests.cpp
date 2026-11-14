@@ -109,9 +109,14 @@ namespace
         if (!firstRow || !secondRow)
             throw std::runtime_error("The Penpot action rows must exist.");
         const auto firstBounds = firstRow->BoundsInCanvas(), secondBounds = secondRow->BoundsInCanvas();
-        Check(std::abs(firstBounds.width - 480) < .001F && std::abs(firstBounds.height - 48) < .001F &&
-                  std::abs(firstBounds.y - secondBounds.y - 88.0F * 2 / 3) < .001F,
-              "Pause rows must match Penpot's 720x72px dimensions and 16px gaps at 1080p.");
+        Check(std::abs(firstBounds.width - 533) < .001F && std::abs(firstBounds.height - 52) < .001F &&
+                  std::abs(firstBounds.y - secondBounds.y - 62) < .001F,
+              "Pause rows are 533x52 with 10 between Resume and Rewind.");
+        const auto *title = Find(canvas->Root(), "Pause.Title");
+        const auto *preparing = Find(canvas->Root(), "Pause.Preparing");
+        Check(title && title->GetComponent<TextVisualComponent>()->Text() == L"PAUSED" && preparing &&
+                  !preparing->IsVisible() && title->BoundsInCanvas().y >= firstBounds.y + firstBounds.height,
+              "The PAUSED title sits above the rows and the preparing band hides once Resume is available.");
         const auto clickSelector = [&](std::string_view name)
         {
             const auto *button = Find(canvas->Root(), name);
@@ -183,6 +188,12 @@ namespace
         Check(std::ranges::any_of(packets,
                                   [](const auto &packet) { return packet.text && packet.text->value == L"Resume"; }),
               "Pause menu must use the current language.");
+        menu.Show(1280, 720, false, 12);
+        const auto *waiting = Find(canvas->Root(), "Pause.Preparing");
+        Check(waiting && waiting->IsVisible() && !Find(canvas->Root(), "Pause.0")->IsEnabled() &&
+                  !Find(canvas->Root(), "Pause.1.Next")->IsEnabled() && Find(canvas->Root(), "Pause.2")->IsEnabled(),
+              "While preparing, the band shows and only Resume/Rewind with their steppers are disabled.");
+        menu.Show(1280, 720, true, 12);
         menu.OnResize(720, 1280);
         const auto *panel = Find(canvas->Root(), "Pause.Panel");
         Check(panel != nullptr && panel->BoundsInCanvas().width <= canvas->LogicalSize().width - 31.9F,

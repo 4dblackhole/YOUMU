@@ -4,6 +4,7 @@
 #include "Texts/TextCatalog.h"
 #include <array>
 #include <optional>
+#include <chrono>
 #include <string>
 
 // Owns only the modal Canvas, focus and parameter editing. Session, judgement
@@ -35,18 +36,22 @@ class GameplayPauseMenu final
     void ProcessActions(GameplayPauseChoice &result);
     void ProcessPointer(const PhantomCore::InputState &input);
     PhantomCore::Visual2DNode &Label(PhantomCore::Visual2DNode &parent, PhantomCore::Rect bounds,
-                                       std::wstring text, float size, PhantomCore::Color color);
+                                       std::wstring text, float size, PhantomCore::Color color,
+                                       std::uint16_t weight);
+    void AnimatePreparing();
     PhantomCore::ScreenVisual2DManager &visuals_;
     TextCatalog &texts_;
     PhantomCore::ScreenCanvasHandle handle_;
     PhantomCore::Visual2DInputRouter router_;
-    std::array<PhantomCore::NodeId, 4> rows_{}, frames_{}, fills_{}, captions_{};
-    std::array<PhantomCore::NodeId, 2> values_{}, previous_{}, next_{};
-    PhantomCore::NodeId rootId_{};
+    std::array<PhantomCore::NodeId, 4> rows_{}, frames_{}, captions_{};
+    std::array<PhantomCore::NodeId, 2> values_{}, previous_{}, next_{}, selectors_{}, descriptions_{};
+    PhantomCore::NodeId rootId_{}, prepId_{}, prepPieceId_{};
+    PhantomCore::ImageHandle rowImage_{}, rowSelectedImage_{}, stepperImage_{}, stepperSelectedImage_{};
     std::optional<PhantomCore::Point> lastPointer_;
     std::size_t focus_{}, maxMeasures_{4};
     GameplayPauseChoice choice_;
     std::uint32_t width_{}, height_{};
     std::uint64_t textRevision_{};
     bool visible_{}, canResume_{};
+    std::chrono::steady_clock::time_point shownAt_{};
 };

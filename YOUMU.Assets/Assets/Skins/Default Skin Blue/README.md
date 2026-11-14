@@ -155,15 +155,7 @@ HP 게이지 부품 다섯 개(틀 · 채움 두 종류 · 클리어선 · 자�
 
 ### `InGame/Pause/`
 
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Backdrop.png` | 1920×1080 | `InGame.PauseBackdrop` | 일시정지 뒤 막(사선 결 남색 58%) |
-| `PrepFill.png` | 746×9 |  | 준비 중 진행 띠의 움직이는 조각(코발트) |
-| `PrepTrack.png` | 746×9 |  | 준비 중 진행 띠 바탕(PAUSED 아래) |
-| `Row.png` | 799×78 | `InGame.PauseResume`, `InGame.PauseRewind`, `InGame.PauseRetry`, `InGame.PauseRetire` | 일시정지 메뉴 행. Selected = 고른 행(코발트 + 금빛 왼쪽 줄). 꺼진 행은 같은 바탕에 글자만 40% |
-| `Row.Selected.png` | 799×78 | `InGame.PauseResume.Hovered`, `InGame.PauseRewind.Hovered`, `InGame.PauseRetry.Hovered`, `InGame.PauseRetire.Hovered` | 〃 |
-| `Stepper.png` | 258×54 |  | Resume · Rewind 값 선택기(좌우 화살표 포함). Selected = 고른 행 안 |
-| `Stepper.Selected.png` | 258×54 |  | 〃 |
+일시정지 부품(뒤 막 · 행 · 값 선택기 · 준비 중 띠)은 내장 Default Skin의 `InGame/Pause`로 옮겼습니다.
 
 ### `InGame/Progress/`
 

@@ -73,6 +73,7 @@
     <None Include="Assets\Skins\Default Skin\InGame\Hud\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\Hud\HpGauge\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\Judgements\*.*" />
+    <None Include="Assets\Skins\Default Skin\InGame\Pause\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\Progress\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\Menu\*.*" />

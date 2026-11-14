@@ -6,5 +6,6 @@ struct PauseTextSet
 {
     std::array<std::wstring_view, 4> actions;
     std::wstring_view resumeValueFormat, rewindValueFormat, preparing;
+    std::wstring_view title, retryDescription, retireDescription;
 };
 PauseTextSet Pause(const TextCatalog &texts);

@@ -3,6 +3,7 @@
 #include "Presentation/UiColors.h"
 #include "Texts/GameScene/RhythmTestScene/PauseTexts.h"
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <stdexcept>
 
@@ -33,6 +34,7 @@ void GameplayPauseMenu::Show(std::uint32_t width, std::uint32_t height, bool can
         throw std::runtime_error("Failed to create pause menu Canvas.");
     handle_.Get()->SetViewportSize({static_cast<float>(width), static_cast<float>(height)});
     visible_ = true;
+    shownAt_ = std::chrono::steady_clock::now();
     focus_ = 0;
     lastPointer_.reset();
     Build();
@@ -49,6 +51,8 @@ void GameplayPauseMenu::RefreshRows()
         canResume_ ? std::vformat(text.rewindValueFormat, std::make_wformat_args(choice_.measures))
                    : std::wstring(text.preparing)};
     auto &canvas = *handle_.Get();
+    if (auto *prep = canvas.FindNode(prepId_))
+        prep->SetVisible(!canResume_);
     for (std::size_t i = 0; i < rows_.size(); ++i)
     {
         const bool available = i >= 2 || canResume_;
@@ -57,16 +61,33 @@ void GameplayPauseMenu::RefreshRows()
         if (!row || !frame)
             continue;
         row->SetEnabled(available);
-        if (auto *fill = canvas.FindNode(fills_[i]))
-            fill->GetComponent<SpriteVisualComponent>()->SetTint(
-                available ? (i == focus_ ? ui_colors::pause::Focus : ui_colors::pause::Surface) : ui_colors::pause::Disabled);
+        // The selected row is cobalt with a gold left bar. A disabled row keeps its
+        // surface and shows its caption and stepper at 40%.
+        const bool selected = i == focus_ && available;
+        frame->GetComponent<SpriteVisualComponent>()->SetImage(selected ? rowSelectedImage_ : rowImage_);
+        auto captionColor = selected ? ui_colors::White : i == 3 ? ui_colors::theme::Danger : ui_colors::theme::Ink;
+        captionColor.alpha = available ? 1.0F : 0.4F;
         if (auto *caption = canvas.FindNode(captions_[i]))
-            caption->GetComponent<TextVisualComponent>()->SetTextColor(
-                i == focus_ && available ? ui_colors::White : ui_colors::pause::Ink);
+            caption->GetComponent<TextVisualComponent>()->SetTextColor(captionColor);
+        if (i >= 2)
+            if (auto *description = canvas.FindNode(descriptions_[i - 2]))
+                description->GetComponent<TextVisualComponent>()->SetTextColor(
+                    selected ? Color{1, 1, 1, .85F} : ui_colors::theme::Caption);
         if (i < values_.size())
         {
+            if (auto *selector = canvas.FindNode(selectors_[i]))
+            {
+                auto &sprite = *selector->GetComponent<SpriteVisualComponent>();
+                sprite.SetImage(selected ? stepperSelectedImage_ : stepperImage_);
+                sprite.SetTint({1, 1, 1, available ? 1.0F : 0.4F});
+            }
             if (auto *value = canvas.FindNode(values_[i]))
-                value->GetComponent<TextVisualComponent>()->SetText(values[i]);
+            {
+                auto &valueText = *value->GetComponent<TextVisualComponent>();
+                valueText.SetText(values[i]);
+                valueText.SetTextColor({ui_colors::theme::Ink.red, ui_colors::theme::Ink.green, ui_colors::theme::Ink.blue,
+                                        available ? 1.0F : 0.4F});
+            }
             for (const auto id : {previous_[i], next_[i]})
                 if (auto *arrow = canvas.FindNode(id))
                     arrow->SetEnabled(available);
@@ -174,6 +195,7 @@ GameplayPauseChoice GameplayPauseMenu::Update(const InputState &input)
         return result;
     if (textRevision_ != texts_.Revision())
         Build();
+    AnimatePreparing();
     const auto oldFocus = focus_;
     ProcessPointer(input);
     if (oldFocus != focus_)
@@ -183,6 +205,20 @@ GameplayPauseChoice GameplayPauseMenu::Update(const InputState &input)
             result = HandleKey(static_cast<std::uint16_t>(key));
     ProcessActions(result);
     return result;
+}
+void GameplayPauseMenu::AnimatePreparing()
+{
+    // The piece sweeps the band once every 1.6 seconds while preparation is pending.
+    if (canResume_ || !handle_)
+        return;
+    auto *piece = handle_.Get()->FindNode(prepPieceId_);
+    auto *band = handle_.Get()->FindNode(prepId_);
+    if (!piece || !band)
+        return;
+    const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - shownAt_).count();
+    const auto phase = static_cast<float>(seconds / 1.6 - std::floor(seconds / 1.6));
+    const float width = band->NodeSize().width * 0.25F;
+    piece->SetBounds({(band->NodeSize().width - width) * phase, 0, width, band->NodeSize().height});
 }
 void GameplayPauseMenu::Hide() noexcept
 {
@@ -211,7 +247,9 @@ void GameplayPauseMenu::Shutdown() noexcept
     handle_.Reset();
     rows_ = {};
     frames_ = {};
-    fills_ = {};
+    selectors_ = {};
+    descriptions_ = {};
+    prepId_ = prepPieceId_ = 0;
     captions_ = {};
     values_ = {};
     previous_ = {};

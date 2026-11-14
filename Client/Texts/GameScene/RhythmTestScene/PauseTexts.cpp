@@ -6,5 +6,8 @@ PauseTextSet Pause(const TextCatalog &texts)
              texts.Get("Pause.actions.3")},
             texts.Get("Pause.resumeValueFormat"),
             texts.Get("Pause.rewindValueFormat"),
-            texts.Get("Pause.preparing")};
+            texts.Get("Pause.preparing"),
+            texts.Get("Pause.title"),
+            texts.Get("Pause.retryDescription"),
+            texts.Get("Pause.retireDescription")};
 }
