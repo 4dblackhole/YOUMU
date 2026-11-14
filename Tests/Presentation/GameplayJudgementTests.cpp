@@ -293,10 +293,12 @@ namespace
         AudioSystem audio;
         TextCatalog texts;
         GameplayPresenter presenter(visuals, texts);
-        presenter.ConfigureBackground(Center(), 70, -25);
+        // Any built-in picture serves as the chart background here.
+        const auto chartBackground = Result(L"Background.Sky");
+        presenter.ConfigureBackground(chartBackground, 70, -25);
         presenter.Initialize({meshes, textRendering, renderer, audio, 1280, 720}, *loaded.session);
         auto &root = visuals.FindCanvas(1)->Root();
-        const auto expectedBackground = visuals.RegisterImage(Center());
+        const auto expectedBackground = visuals.RegisterImage(chartBackground);
         const auto *backgroundSprite = Node(root, "Background").GetComponent<SpriteVisualComponent>();
         Check(backgroundSprite && backgroundSprite->Style().normalImage.value == expectedBackground.value,
               "Applying the background colour must preserve the chart image handle.");
