@@ -9,7 +9,6 @@
 - 곡 상세 JudgeLevel/BPM 범위/길이: 보드 `e6833909-d4a4-8067-8008-dc78ac88d495`.
 - Taiko 키 설정: 보드 `e6833909-d4a4-8067-8008-dc77adeae44a`.
 - `Gameplay · Sky`: 페이지 `618d0170-ff55-8025-8008-80646ceaa9d9`.
-- 새 HUD용 0–9 숫자 시트: [PNG·제작 프롬프트](Gameplay/NumericHudAssets.md).
   콤보·점수·판정 누적과 리절트 점수·최대 콤보에 사용합니다. 표시·집계는
   [플레이 HUD](Gameplay/Presentation.md#콤보점수판정-누적-hud)를 따릅니다.
 - 기본 HP 게이지 시안: 플레이 화면 배치 보드 `e6833909-d4a4-8067-8008-dcc40a6d3d00`,

@@ -107,7 +107,7 @@ the latest Songs root, discard obsolete results and handle switching back mid-lo
 
 ## Gameplay judgement guide and overlays
 
-GameplayJudgementTests checks the digit atlas, combo inside the key layout without
+GameplayJudgementTests checks numeric HUD text, combo inside the key layout without
 overlapping keys, exact accuracy-to-100-million score, eight live judgement counts,
 rewind/reset restoration, narrow/wide wrapping and reuse of numeric nodes/images.
 PlayResultTests covers logical-note combo rules, all seven long-note kinds, BAD/POOR,
@@ -124,7 +124,7 @@ pause/Rewind-disabled completion and unavailable HP. Only failure receives an an
 the lower HP plot; result HP/history are never rewritten. GameplayPauseTests retains the real
 Retire regression that all remaining notes become MISS without pending logical notes.
 
-HP 회귀는 GameplayJudgementTests의 두 사각형·0/30/60/100%·크기 변경과
+HP 회귀는 GameplayJudgementTests의 틀 위치·채움 잘라 보이기·클리어 기준에서 그림 전환·클리어 표시·자물쇠·크기 변경과
 GameplayPauseTests의 유효 노트가 없는 채보 진입 차단을 포함합니다.
 수치·롱노트·POOR·되감기·종료 판정과 포맷/기본값 검사는 Rhythm의 HpGaugeTests가 담당합니다.
 
