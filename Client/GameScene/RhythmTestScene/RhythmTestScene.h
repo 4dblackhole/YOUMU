@@ -50,6 +50,7 @@ class RhythmTestScene final : public PhantomCore::GameScene
     bool testPreparationFailed_{};
     PhantomCore::ScreenCanvasHandle loadingCanvas_;
     PhantomCore::Visual2DNode *loadingBackground_{};
+    PhantomCore::Visual2DNode *loadingBarPiece_{};
     PhantomCore::Size loadingBackgroundSize_{};
     bool loadingBackgroundReady_{};
     std::optional<PhantomCore::EngineServices> services_;

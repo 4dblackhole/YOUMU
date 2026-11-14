@@ -515,7 +515,7 @@ namespace
             {
                 if (Find(canvas.Root(), "Loading.Song"))
                 {
-                    intro_ = Find(canvas.Root(), "Loading.Pattern") != nullptr;
+                    intro_ = Find(canvas.Root(), "Loading.Pattern") != nullptr && Find(canvas.Root(), "Loading.Bar") != nullptr;
                     const auto *background = Find(canvas.Root(), "Loading.Background");
                     const auto *sprite = background ? background->GetComponent<SpriteVisualComponent>() : nullptr;
                     if (sprite && sprite->Style().normalImage.value)

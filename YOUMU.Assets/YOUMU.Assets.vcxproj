@@ -75,6 +75,7 @@
     <None Include="Assets\Skins\Default Skin\InGame\Judgements\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\Pause\*.*" />
     <None Include="Assets\Skins\Default Skin\InGame\Progress\*.*" />
+    <None Include="Assets\Skins\Default Skin\Loading\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\*.*" />
     <None Include="Assets\Skins\Default Skin\Logo\Menu\*.*" />
     <None Include="Assets\Skins\Default Skin\MusicSelect\*.*" />

@@ -125,13 +125,7 @@ YOUMU UI 시안(`rhythmgameUI/redesign`, 2026-11-12)의 부품을 투명 PNG로 
 
 ## Loading — 로딩
 
-### `Loading/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `BarFill.png` | 630×9 |  | 로딩 막대 채움 |
-| `BarTrack.png` | 630×9 |  | 로딩 막대 바탕 |
-| `Card.png` | 1920×240 |  | 로딩 가로 띠 바탕 |
+로딩 부품(가로 띠 · 막대 바탕 · 막대 채움)은 내장 Default Skin의 `Loading`으로 옮겼습니다.
 
 ## InGame — 플레이 · 일시정지 · 리플레이
 

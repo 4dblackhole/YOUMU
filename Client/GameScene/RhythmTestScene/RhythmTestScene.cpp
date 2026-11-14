@@ -1,4 +1,8 @@
 #include "RhythmTestScene.h"
+#include "App/AssetPaths.h"
+#include "Presentation/UiColors.h"
+#include "Presentation/UiFonts.h"
+#include <cmath>
 #include "GameFlow/YOUMUSceneIds.h"
 #include "GameFlow/GameplaySessionController.h"
 #include "Submodules/GameplayPauseMenu.h"
@@ -47,21 +51,33 @@ void RhythmTestScene::Initialize(const EngineServices &services)
     // Attach the selection's cached BG before the first loading frame, and start
     // cold BG preparation before the larger gameplay/audio preparation batch.
     PrepareLoadingBackground();
-    auto &plate = CreatePanel(root, {-550, -70, 1100, 155}, "Loading.TitlePlate");
-    plate.GetComponent<SpriteVisualComponent>()->SetTint({.97F, .99F, 1, .94F});
-    auto &title = CreateLabel(root, {-520, 0, 1040, 65}, launch_.songTitle, "Loading.Song");
-    auto &pattern = CreateLabel(root, {-520, -55, 1040, 45},
-                                launch_.patternTitle.empty() ? launch_.patternPath.stem().wstring() : launch_.patternTitle,
-                                "Loading.Pattern");
-    for (auto *node : {&title, &pattern})
+    // Redesigned loading screen (UI-02): one band across the screen introduces the song
+    // and chart. The band is wider than any supported aspect so it always reaches both edges.
+    const auto loadingImage = [this](const wchar_t *key) { return visuals_.RegisterImage(Loading(key)); };
+    static_cast<void>(CreateSprite(root, {-2000, -80, 4000, 160}, loadingImage(L"Card"), "Loading.TitlePlate"));
+    auto &title = CreateLabel(root, {-608, 6, 1216, 40}, launch_.songTitle, "Loading.Song");
+    // Chart line: name, difficulty value (a dash until a formula exists) and the chart creator.
+    auto patternLine = launch_.patternTitle.empty() ? launch_.patternPath.stem().wstring() : launch_.patternTitle;
+    patternLine += L" · —";
+    if (!launch_.patternCreator.empty())
+        patternLine += L" · Chart by " + launch_.patternCreator;
+    auto &pattern = CreateLabel(root, {-608, -22, 1216, 24}, patternLine, "Loading.Pattern");
+    const auto style = [](Visual2DNode &node, float size, std::uint16_t weight, Color color)
     {
-        auto &text = *node->GetComponent<TextVisualComponent>();
-        texts_.ApplyFont(text);
+        auto &text = *node.GetComponent<TextVisualComponent>();
+        text.SetFont(ui_fonts::Text(text.Text()));
+        text.SetFontSize(size);
+        text.SetFontWeight(weight);
         text.SetHorizontalAlignment(TextAlignment::Center);
-        text.SetTextColor({.16F, .32F, .46F, 1});
-    }
-    title.GetComponent<TextVisualComponent>()->SetFontSize(40);
-    pattern.GetComponent<TextVisualComponent>()->SetFontSize(26);
+        text.SetTextColor(color);
+    };
+    style(title, 32, 900, ui_colors::theme::Ink);
+    style(pattern, 16, 700, ui_colors::theme::Caption);
+    // Preparation has no measurable fraction, so a piece sweeps the bar while loading.
+    auto &bar = CreateSprite(root, {-210, -48, 420, 6}, loadingImage(L"BarTrack"), "Loading.Bar");
+    bar.SetClipRect({0, 0, 420, 6});
+    loadingBarPiece_ = &CreateSprite(bar, {0, 0, 150, 6}, loadingImage(L"BarFill"), "Loading.BarPiece");
+    loadingBarPiece_->GetComponent<SpriteVisualComponent>()->SetUvTransform({150.0F / 420.0F, 1.0F}, {});
     static_cast<void>(TryPreparePresentation());
 }
 bool RhythmTestScene::TryPreparePresentation()
@@ -198,6 +214,12 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
     }
     view_->SetVisible(controller_->CurrentState() != PlayState::Loading);
     static_cast<void>(loadingCanvas_.SetVisible(controller_->CurrentState() == PlayState::Loading));
+    if (loadingBarPiece_ && controller_->CurrentState() == PlayState::Loading)
+    {
+        const double cycle = context.totalSeconds / 1.4;
+        const auto phase = static_cast<float>(cycle - std::floor(cycle));
+        loadingBarPiece_->SetPosition({-150.0F + 570.0F * phase, 0.0F});
+    }
     UpdatePauseMenu(context, scenes);
     if (controller_->CurrentState() == PlayState::Gameplay)
         view_->AdvanceEffects(context.deltaSeconds);
@@ -284,6 +306,7 @@ void RhythmTestScene::Shutdown() noexcept
     pauseMenu_->Shutdown();
     if (testControls_) testControls_->Shutdown();
     loadingBackground_ = nullptr;
+    loadingBarPiece_ = nullptr;
     loadingBackgroundSize_ = {};
     loadingCanvas_.Reset();
     loadingBackgroundReady_ = false;

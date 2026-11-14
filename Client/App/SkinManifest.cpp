@@ -97,7 +97,7 @@ namespace
             {
                 section = line.ends_with(L']') ? Identifier(Trim(line.substr(1, line.size() - 2))) : "";
                 if (section != "Folders" && section != "Logo" && section != "InGame" && section != "MusicSelect" &&
-                    section != "Result" && section != "Common")
+                    section != "Result" && section != "Common" && section != "Loading")
                 {
                     Diagnose(diagnostics, lineNumber, "Unknown scene section.");
                     section.clear();
