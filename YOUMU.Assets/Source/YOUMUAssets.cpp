@@ -159,14 +159,30 @@ namespace
             static_cast<std::size_t>(size)};
     }
 
+    [[nodiscard]] bool HasRemainingBytes(
+        const std::span<const std::byte> bytes,
+        const std::size_t cursor,
+        const std::size_t count) noexcept
+    {
+        return cursor <= bytes.size() && bytes.size() - cursor >= count;
+    }
+
+    [[nodiscard]] bool IsLowerHexDigit(const char c) noexcept
+    {
+        if (c >= '0' && c <= '9')
+        {
+            return true;
+        }
+        return c >= 'a' && c <= 'f';
+    }
+
     template <typename Integer>
     [[nodiscard]] Integer ReadUnsigned(
         const std::span<const std::byte> bytes,
         std::size_t& cursor)
     {
         static_assert(std::is_unsigned_v<Integer>);
-        if (cursor > bytes.size() ||
-            bytes.size() - cursor < sizeof(Integer))
+        if (!HasRemainingBytes(bytes, cursor, sizeof(Integer)))
         {
             throw std::runtime_error(
                 "The built-in asset pack header is truncated.");
@@ -267,7 +283,7 @@ namespace
             const std::uint32_t pathSize =
                 ReadUnsigned<std::uint32_t>(bytes, cursor);
             if (pathSize == 0 || pathSize > MaximumPathBytes ||
-                cursor > bytes.size() || bytes.size() - cursor < pathSize)
+                !HasRemainingBytes(bytes, cursor, pathSize))
             {
                 throw std::runtime_error(
                     "The built-in asset pack path is invalid.");
@@ -304,7 +320,7 @@ namespace
         if (!data || SizeofResource(module, resource) != 16)
             throw std::runtime_error("The built-in asset cache identity is missing.");
         const std::string hash(static_cast<const char *>(data), 16);
-        if (!std::ranges::all_of(hash, [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }))
+        if (!std::ranges::all_of(hash, IsLowerHexDigit))
             throw std::runtime_error("The built-in asset cache identity is invalid.");
         return hash;
     }
@@ -325,9 +341,11 @@ namespace
         {
             const std::filesystem::path target = root / entry.relativePath;
             std::error_code error;
-            if (!std::filesystem::is_regular_file(target, error) || error ||
-                std::filesystem::file_size(target, error) != entry.size ||
-                error)
+            if (!std::filesystem::is_regular_file(target, error) || error)
+            {
+                return false;
+            }
+            if (std::filesystem::file_size(target, error) != entry.size || error)
             {
                 return false;
             }

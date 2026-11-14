@@ -186,6 +186,24 @@ namespace
         }
         return frame;
     }
+
+    [[nodiscard]] bool HasPcmFormat(const AudioPcm &audio) noexcept
+    {
+        return audio.channels != 0 && audio.sampleRate != 0;
+    }
+
+    [[nodiscard]] bool IsValidSpectrumRegion(const SpectrumRegion &region) noexcept
+    {
+        if (region.columns == 0 || region.columns > 4096)
+            return false;
+        if (region.bands == 0 || region.bands > 512)
+            return false;
+        if (!std::isfinite(region.begin) || !std::isfinite(region.seconds) || region.seconds <= 0)
+            return false;
+        if (!std::isfinite(region.minimumHz) || !std::isfinite(region.maximumHz))
+            return false;
+        return region.minimumHz > 0 && region.maximumHz > region.minimumHz;
+    }
 } // namespace
 
 AudioAnalysis AnalyzeAudio(const std::filesystem::path &path, const std::stop_token stop, const PcmReader &read)
@@ -223,9 +241,11 @@ AudioAnalysis AnalyzeAudio(const std::filesystem::path &path, const std::stop_to
     {
         if (!result.sampleRate)
             initialize(audio);
-        while (nextFrame < audio.totalFrames && !stop.stop_requested() &&
-               (end || nextFrame + std::max(Window / 2, hop) <= audio.totalFrames))
+        while (nextFrame < audio.totalFrames && !stop.stop_requested())
         {
+            // Before the final block, wait until the centered window is decoded.
+            if (!end && nextFrame + std::max(Window / 2, hop) > audio.totalFrames)
+                break;
             result.frames.push_back(AnalyzeFrame(audio, nextFrame - audio.firstFrame, hop, hann, windowSum, bins,
                                                 *spectrumScratch));
             nextFrame += hop;
@@ -243,8 +263,8 @@ AudioAnalysis AnalyzeAudio(const std::filesystem::path &path, const std::stop_to
     DecodedAudio audio;
     read(path, stop, [&](std::uint32_t channels, std::uint32_t rate, std::span<const float> samples)
     {
-        if (channels == 0 || rate == 0 ||
-            (audio.rate != 0 && (audio.channels != channels || audio.rate != rate)))
+        const bool formatChanged = audio.rate != 0 && (audio.channels != channels || audio.rate != rate);
+        if (channels == 0 || rate == 0 || formatChanged)
             throw std::runtime_error("Analysis source returned an invalid or changing PCM format.");
         audio.channels = channels;
         audio.rate = rate;
@@ -268,8 +288,9 @@ AudioAnalysis AnalyzeAudio(const std::filesystem::path &path, const std::stop_to
 std::vector<WaveformPeak> BuildAudioWaveform(const AudioPcm &audio, const double begin,
                                            const double seconds, const std::size_t columns)
 {
-    if (!audio.channels || !audio.sampleRate || !columns || columns > 4096 ||
-        !std::isfinite(begin) || !std::isfinite(seconds) || seconds <= 0)
+    const bool validColumns = columns != 0 && columns <= 4096;
+    const bool validSpan = std::isfinite(begin) && std::isfinite(seconds) && seconds > 0;
+    if (!HasPcmFormat(audio) || !validColumns || !validSpan)
         throw std::invalid_argument("Invalid waveform viewport.");
     std::vector<WaveformPeak> result(columns);
     const auto frames = audio.samples.size() / audio.channels;
@@ -318,11 +339,7 @@ std::vector<WaveformPeak> BuildAudioWaveform(const AudioPcm &audio, const double
 void AccumulateAudioSpectrum(SpectrumTile &output, const AudioPcm &audio, const SpectrumRegion &region,
                              const double offset, const std::stop_token stop)
 {
-    if (!audio.channels || !audio.sampleRate || !region.columns || region.columns > 4096 ||
-        !region.bands || region.bands > 512 || !std::isfinite(region.begin) ||
-        !std::isfinite(region.seconds) || region.seconds <= 0 || !std::isfinite(offset) ||
-        !std::isfinite(region.minimumHz) || !std::isfinite(region.maximumHz) ||
-        region.minimumHz <= 0 || region.maximumHz <= region.minimumHz)
+    if (!HasPcmFormat(audio) || !IsValidSpectrumRegion(region) || !std::isfinite(offset))
         throw std::invalid_argument("Invalid spectrum viewport.");
     if (output.levels.empty())
     {
