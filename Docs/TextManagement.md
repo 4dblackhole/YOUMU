@@ -126,7 +126,7 @@ TextCatalog는 문구와 글꼴 선택을 소유하고, 엔진 TextVisual/ComboB
 `Client/Presentation/OptionsPanel.*`은 로고와 곡 선택 View가 조립하는 공통
 Visual2D 패널입니다.
 
-- 로고의 `옵션` 버튼, 곡 선택의 `OPTION SELECT` 버튼 또는 두 화면의 `Ctrl+O`로
+- 로고의 `옵션` 버튼, 곡 선택 하단 띠의 톱니 버튼 또는 두 화면의 `Ctrl+O`로
   열고 닫습니다. 열린 패널은 `ESC`로도 닫습니다. 마우스가 밖에 있어도 처리하고
   펼친 ComboBox·드래그 상태를 정리합니다. 닫는 프레임의 ESC는 뒤 화면에 전달하지 않습니다.
 - 1280×720 논리 화면에서 폭 320, 높이 720이며 왼쪽 밖에서 0.2초 동안

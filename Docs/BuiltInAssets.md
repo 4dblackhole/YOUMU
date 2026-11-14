@@ -181,7 +181,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | --- | --- |
 | `Logo` | `LogoCenter/LogoLeft/LogoRight`, `SelectionCursor`; 선택 `Background`, `StartButton/EditorButton/OptionsButton/ExitButton` |
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
-| `MusicSelect` | 배경·카테고리·기록/곡정보/브라우저 패널, 검색/정렬 필드, 스크롤바, `OptionSelect/Back/Go`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected` |
+| `MusicSelect` | `Background`, `Panels.Left/Right`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `ScrollbarTrack/ScrollbarHandle`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
 | `Common` | `Icons.<이름>` 37개(흰색 36px 선 아이콘, 게임이 글자색을 곱해 씀) |
@@ -217,8 +217,9 @@ fallback을 사용합니다. 인디케이터는 별도 색 구간 요소로 구�
 
 내장 원본은 `YOUMU.Assets/Assets/Skins/Default Skin` 아래 실제 폴더/VS 필터로 정리합니다.
 플레이는 `InGame`, 로고는 `Logo`, 곡 선택은 `MusicSelect`, 리절트는 `Result`를 사용합니다.
-각 폴더는 루트의 `skin.ini`와 같은 레벨입니다. 곡 선택의 기본본은 코드의 색상 패널을 유지하므로
-PNG가 필수는 아닙니다.
+각 폴더는 루트의 `skin.ini`와 같은 레벨입니다. 곡 선택의 부품은 UI 시안에서 1080p 기준(논리 × 1.5)으로 뽑은 PNG이며
+`MusicSelect` 아래 `Detail`(재킷 틀·빈 재킷·난이도 블록·값 배지), `Panels`(양옆 막), `Records`(기록 줄·상태 칩) 폴더로 나뉩니다.
+`Background`와 `PlayOptions`는 내장 그림이 없어 단색 배경과 글자 버튼으로 그립니다.
 일시정지의 `InGame/Pause/Backdrop.png`는 사선 결이 있는 남색 58% 덮개(1920×1080)이며 화면 전체에 확장하여
 Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54, 화살표 포함)·준비 중 띠(746×9)도 같은 폴더의 PNG입니다.
 

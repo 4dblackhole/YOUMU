@@ -55,8 +55,8 @@ and the same command with Release from the developer PowerShell.
 The test links production view/state objects, checks that 5,000 in-memory songs
 create only viewport cards across focus/search/resize, and polls real catalog
 loads/cache reuse/error results. It writes no song or option files.
-Both gameplay and editor selection check one-shot launch from a difficulty click,
-including a different difficulty and a second click on the selected difficulty.
+Both gameplay and editor selection check that clicking another difficulty only selects it and
+that clicking the selected difficulty launches exactly once.
 Both also select Base BPM through the actual dropdown, verify numeric order and
 stable ties with retained song focus, then check language switching and search.
 Song filter regressions verify visible pattern projection with original indices,
@@ -73,11 +73,12 @@ JSON/Unicode, failed atomic replacement and chart preservation are tested in the
 Selected BG coverage checks both song-select purposes for full-screen image reuse,
 aspect/offset framing across resize, same-path offset changes and clearing/fallback.
 Song-list regressions verify no thumbnail nodes or BG requests for collapsed cards,
-full-width title/artist fields and unchanged selected-chart preview rendering.
-Main-panel tests inspect the generated draw geometry after narrow/normal/wide resize:
-exactly one alpha-blended image fill at 90% covers the interior, the opaque border leaves that interior empty,
-and child buttons/text remain opaque. Skin tests check the same opacity on panel PNGs
-and restoration of procedural fills/outlines when returning to the default skin.
+one-line title/artist captions and unchanged selected-chart jacket rendering.
+Frame tests resize to narrow/normal/wide: the three columns are plain nodes without panel sprites,
+the veils exist (no record veil in the editor), no ALL bar exists, the board keeps the 16:9-or-wider
+arrangement and scales as a whole below 16:9 with letterbox bands, and the song list stays on the right edge.
+Skin tests check that a selected skin replaces the veil/button/card images and that returning to
+the default skin restores the built-in parts.
 ResultPresentationTests checks the BG value snapshot, reference-height offset conversion,
 resize/language rebuild, image failure fallback and actual D3D12 retention after gameplay destruction.
 GameplayJudgementTests retains its existing full-screen BG/offset regression.
@@ -89,12 +90,11 @@ committed-value restoration, Close/Escape/scene-hide cancellation, combo popup o
 and preservation of song search/selection. RecordFilterTests verifies inclusive AND
 conditions against an isolated database, uint64 seeds, direct OR/NOT grouping and invalid input.
 HP information checks both selection purposes for exact hundredths, the 9.00
-default, pattern/language changes, empty-state clearing and four rows fitting
-inside the information panel at narrow, standard and wide viewport sizes.
-Multiline metadata checks complete Unicode names/artists/makers in both selection
-purposes, independent wheel scrolling, range limits, scrollbar dragging versus
-card clicks, resize/content changes, and a real DirectWrite multiline measurement
-in the hidden D3D12 integration run.
+default, pattern/language changes, empty-state clearing and the figures sitting side by side
+inside the detail column at narrow, standard and wide viewport sizes.
+Representative-name checks cover both selection purposes: only the first name, artist and maker
+appear (one line each) in the details and on cards, wheeling over a card caption scrolls the list,
+the global options block that scroll, and the hidden D3D12 integration run renders the one-line title.
 It also checks marquee Unicode preservation, shared repeated text payloads,
 pixel displacement and stopping after the label becomes wide enough.
 `SongSearchInputTests` runs the production view in a hidden D3D12/NoSound window.
@@ -421,8 +421,8 @@ order are covered by domain tests, without claiming a physical ESC test.
 Links production SkinManifest/selection/binding and Logo/MusicSelect views in an isolated
 deployment directory, without writing user skins or Option.ini. Checks UTF-8/BOM/CRLF/Unicode paths,
 scene-folder/image relativity, invalid paths/encoding/duplicates, per-component embedded fallback,
-partial skins, cache/reload, button states, full-screen logo replacement, procedural-fill
-hiding/restoration and virtualized song-card bindings using the real bundled catalog.
+partial skins, cache/reload, button states, full-screen logo replacement, song-select veil/button
+replacement and restoration, and virtualized song-card bindings using the real bundled catalog.
 The test source uses MSVC Code Analysis. Native captures/manual input are reported separately.
 
 ## New difficulty metadata and file creation

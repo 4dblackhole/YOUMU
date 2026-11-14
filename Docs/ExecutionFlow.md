@@ -102,7 +102,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
   모드와 문서는 Workspace와 함께 파기되고 worker는 복사한 파일 경로만 참조합니다.
   Scene 종료 시 worker 완료를 기다리지 않고 취소를 요청합니다. worker 자체는 프로세스 수명입니다.
   Ctrl+S는 같은 폴더에 저장하며 Escape는 미저장 변경을 확인한 뒤 돌아갑니다.
-- Lobby는 Penpot의 `Music Select · Sky` 화면을 Visual2D 트리로 구성합니다.
+- Lobby는 [곡 선택](SongSelect.md) 화면(UI-02 설계)을 Visual2D 트리로 구성합니다.
   `SongCatalog`가 외부 Songs의 AngelDream YMM과 YMP 5개 및 사용자 곡·패턴을
   연결해 표시합니다.
   포커스된 곡 카드만 난이도 목록을 펼치며 좌우키는 곡, 상하키는 난이도를
