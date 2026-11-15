@@ -37,15 +37,11 @@ checks English captions/value formats, selected EN/KO/JA explanations, complete
 Japanese explanation-key coverage and existing immutable pack/fallback contracts.
 Japanese adds `ja` to the same INI Language field; stored ko/en remain valid.
 
-## Editor Test round trips
+## Editor dialogs and song preview
 
-`RunEditorTestSceneTests.ps1 -Configuration Debug` (and Release) uses actual NoSound
-FMOD audio and production Editor/gameplay Scenes to verify partial-chart loading,
-quarter/double speed, Space pause/resume, Debug-seek isolation, rate bounds, repeated
-Esc round trips, natural completion without Result, empty-Test HP exclusion,
-localization and retained editor Undo. It writes only its `build/fixtures` data.
-`RunEditorPresentationTests.ps1` also checks the actual Test button and native Save
-Yes/No/error paths; `-SongFilter --test-launch` selects those focused checks. Its preview section plays the
+`RunEditorPresentationTests.ps1` also checks the editor's shared alert: Escape with unsaved changes asks
+Discard/Cancel/Save, editor shortcuts wait behind it, Escape cancels and Discard leaves, without saving the
+bundled chart. A successful save publishes the YME it wrote. Its preview section plays the
 bundled song through SongPreviewController by audio path: no reload for the focused song, pause and stop
 keeping the voice, seeking in place, the end of a song reported once (title) or restarted (song select),
 failed files not reopened every frame, and released audio reopening on return.
@@ -279,7 +275,9 @@ test translation units with MSVC Code Analysis. Set `FMOD_ROOT` for a custom SDK
 This checks the production view's draw packets for real song/hit spectra, negative
 note/music time ranges, slider input actions, tab visibility, localization, resize,
 and Canvas cleanup. `EditorModeTests.cpp` also checks Taiko tool placement, snapping,
-deletion/cancellation and expected cues, then injects a test-only alternative mode
+deletion/cancellation and expected cues, the Compose panels' Delete/Add/Apply with delay,
+Exclude and Audio FX buses, the Score layout and Preview, and a new difficulty's draft, Create
+and refused Create, then injects a test-only alternative mode
 and document adapter to verify different tools/layout/coordinates/metadata/sound
 targets, Save dispatch and marker revision caching through the common editor.
 The committed Ogg Vorbis tone fixture also runs through the real analysis worker

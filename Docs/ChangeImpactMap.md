@@ -15,7 +15,7 @@
 | 곡 목록·디스크 캐시·비동기 패턴 로딩 | ChartLoadJob, SongCatalogLoader, `YOUMU.Chart/Catalog`, PlaySessionLoader, GameplaySessionFactory | ChartLoadingTests(취소·worker 수명·부분 목록 선택), 카탈로그 로직, MusicSelectViewTests, GameplayPauseTests |
 | 미리듣기·공유 곡 목록 | `GameFlow/SongLibrary`(목록 로더·선택 상태·미리듣기 묶음, 타이틀·게임 곡 선택 공유), SongPreviewController, MusicPlayerState(재생 상태·재생 목록 순환) | SceneStateTests(TestMusicPlayerTransport·TestMusicPlaylistSteps), RunEditorPresentationTests(실제 미리듣기 재생·이동·곡 끝), MusicSelectViewTests, 엔진 오디오 계약 |
 | 타이틀 음악 플레이어 | `YOUMULogoScene/Submodules/TitlePlayerView`, LogoView/LogoInput(키·Space/Enter 분리), YOUMULogoScene(요청 실행·화면 전환 때 소리 유지/정지) | RunTitlePlayerTests, RunSkinTests, 화면 캡처 |
-| 새 난이도·.osu 가져오기 | NewDifficultyDialog, EditorPatternCreation, EditorOsuImport, OsuImportValidation | RunNewDifficultyTests, RunOsuImportValidationTests |
+| 새 난이도·.osu 가져오기 | MusicSelectScene::CreateDifficulty, `EditorScene/Submodules/EditorPatternCreation`, IEditorMode::NewDocument/CreateDocument, EditorWorkspace(Creating·Save), EditorOsuImport, OsuImportValidation | RunNewDifficultyTests, EditorModeTests(TestNewDifficultyDraft), RunOsuImportValidationTests |
 | 전역 옵션·분류 막대·모드별 키 편집·Option.ini | `Client/Presentation/OptionsPanel`의 OptionsRail(분류 막대·섹션 배치·스크롤)/OptionsVolume/OptionsKeys(키 카드·키 설정 창)/각 필드·OptionsPanelStyle, `Client/App/OptionSettings`, 스킨 `[Options]` | RunOptionsPanelTests(섹션 이동·추적·막대 펼침·안내 칸·음량 저장·ja 저장·표현 등록부 정합), MusicSelectViewTests(키 그림 열 머리), OptionTimingTests |
 | 공용 경고 대화상자 | `Client/Presentation/UiAlert`, `UiTextWrap`; 쓰는 곳 ResultScene(기록 저장 실패)·MusicSelectView(`ShowAlert`, 열린 동안 입력 차단)·MusicSelectScene(.osu 변환 실패) | RunOptionsPanelTests(배치·키·클릭·막·진단 스크롤), RunResultPresentationTests(저장 실패·다시 시도), RunMusicSelectViewTests(열린 동안 키 차단), RunLanguageFileTests |
 | 공용 드롭다운 | `Client/Presentation/UiDropdown`; 쓰는 곳 OptionsPanel·PlayOptionsPanel·SongFilterPanel·RecordFilterPanel·SongRecordView·SongSelectPanels, 키 가로채기 MusicSelectView·LogoView | RunOptionsPanelTests(목록 행 클릭·바깥 누르기), RunMusicSelectViewTests(정렬 선택, SongSearchInputTests의 Esc 순서), 화면 캡처 |
@@ -30,11 +30,11 @@
 | 스킨·자산·배포 | SkinManifest, SkinSetSelection, AssetPaths, SkinVisualComponent, `YOUMU.Assets` | RunSkinTests, RunAssetPathTests |
 | 시작·Scene 수명·launch snapshot | `Client/App`, `Client/GameFlow`, 각 Scene 주 파일 | SceneStateTests, ResultPresentationTests |
 | 플레이 시계·Debug 정지·입력 순서 | `GameFlow/Submodules`: GameplaySessionController, GameplayInput, GameplayState; `Rhythm/Time` | RhythmCoreTests, InputOrderingTests, RunGameplayPauseTests |
-| 게임플레이 오디오 등록·자원 준비·메트로놈 | `GameFlow/Submodules/GameplayAudioSession`(라우터·등록·준비 polling·메트로놈 커서) | GameplayPauseTests, AllNotesGameplayTests, RunEditorTestSceneTests |
+| 게임플레이 오디오 등록·자원 준비·메트로놈 | `GameFlow/Submodules/GameplayAudioSession`(라우터·등록·준비 polling·메트로놈 커서) | GameplayPauseTests, AllNotesGameplayTests |
 | ESC·재개·되감기·Retire | GameplayPause, GameplayPauseMenu/Layout, PlaySessionSeeking | PlayPauseTests, GameplayPauseTests, ResultPresentationTests |
 | Lane·노트/롱노트·마디선·키빔·진행바 | `RhythmTestScene/Submodules`: GameplayPresenter/Layout, GameplayNoteView(노트·tick·마디선·focus 연출), GameplayNoteVisibility, GameplayInputView, GameplayProgressView; LaneKeyBeam | RunGameplayJudgementTests, RunAllNotesGameplayTests |
 | Kiai 판정원·풍선/뎅뎅 그림·남은 타격 배지·기어 띠 | `RhythmTestScene/Submodules`: GameplayKiaiView, GameplayNoteView(헤드 세우기·처리 그림·배지), GameplayLayout; 스킨 `Gear.Band`·`Kiai.*`·`Hud.HitCountBadge`; 에디터 TaikoEditorScore의 풍선·뎅뎅 비율 | RunGameplayJudgementTests(TestKiaiJudgementCircle·TestCountOnlyHeadsAndCounters), RunSkinTests, RunEditorPresentationTests |
-| 화면 오류 줄·로딩 준비 실패 흐름 | `Client/Presentation/UiErrorLine`, RhythmTestScene(PresentScreenError·PresentLoadingScreen), GameplaySessionController(ErrorSource·AttemptStarted·PreparationFailed), PlaySession(AutomationErrorLocation), GameplayPauseMenu(SetPreparationFailed) | RunGameplayJudgementTests(TestScreenErrorLine), RunGameplayPauseTests, RunEditorTestSceneTests, RunLanguageFileTests |
+| 화면 오류 줄·로딩 준비 실패 흐름 | `Client/Presentation/UiErrorLine`, RhythmTestScene(PresentScreenError·PresentLoadingScreen), GameplaySessionController(ErrorSource·AttemptStarted·PreparationFailed), PlaySession(AutomationErrorLocation), GameplayPauseMenu(SetPreparationFailed) | RunGameplayJudgementTests(TestScreenErrorLine), RunGameplayPauseTests, RunLanguageFileTests |
 | 판정 인디케이터·링·문구 | GameplayJudgementView, GameplayFeedbackVisuals | GameplayJudgementTests |
 | 정확도·POOR·Buzz·물리 키 유지 | `YOUMU.Rhythm/Note`, Judgement, Lane; `Modes/Mode/Submodules/PlaySession` | AccuracyTests, InputOrderingTests, BuzzReplayTests, PlayPauseTests |
 | Taiko 노트 종류·사운드 정책 | `YOUMU.Modes/Taiko/Submodules`: TaikoNoteDefinition, SessionBuilder, LongNoteFactory, SoundPolicy, NoteOptions | TaikoModeTests, SoundPolicyTests, EditorModeTests |
@@ -47,9 +47,10 @@
 | Result·통계·그래프·판정 비율 원·Retry | `Modes/Mode/Results`, `Taiko/Results`, `Client/GameScene/ResultScene`(TaikoResultView 공통 틀, Panels 배너·왼쪽 열, Hero 원·점수·옵션 칩, GraphView/Graphs Timing·HP, Ring 조각 계산, Layout 좌표) | PlayResultTests, ResultPresentationTests |
 | 리디자인 색·글꼴 | `Presentation/UiColors.h`의 theme, `Presentation/UiFonts.h`, `YOUMU.Assets/Assets/Fonts` | ResultPresentationTests, 화면 캡처 |
 | 에디터 조립·모드/문서 교체 | EditorScene, EditorWorkspace, Modes/IEditorMode/IEditorContext/IEditorAudioSource, `Chart/Editing/IEditorDocument` | RunEditorPresentationTests의 EditorModeTests |
-| 에디터 메뉴·공통 이동·선택·붙여넣기 | EditorMenuBar/Input/View, EditorSelection/Clipboard, TaikoEditorSelection | EditorMenuTests, EditorModeTests, ChartEditorTests |
-| 저장한 채보 Test·복귀·부분 노트·가변 배속 | EditorScene/WorkspaceStore, TestLaunchRequest, RhythmTestScene/EditorTestControls, GameplayState/GameplayAudioSession, TaikoSessionBuilder의 minimumNoteTime, RhythmTimer | RunEditorTestSceneTests, EditorAudioViewTests의 저장 확인, TestPartialPreviewNotes, TestAcceleratedClockAndWindows |
-| 노트/타이밍/효과 편집·Undo/Redo·저장 | TaikoEditorNoteInspector/Score/Metadata, EditorForms/TimingView/EffectsView, ChartEditor/History | ChartEditorTests, ChartReviewRegressionTests, EditorModeTests |
+| 에디터 화면 배치·Compose 채널·편집 패널 | EditorLayout/EditorTimeAxis, EditorView/ShellView/ComposeView/ChannelView/PanelView, EditorCurvesDialog(`Chart/Automation/InterpolationExpression`의 위치 오류), EditorTextFields, Taiko Score/Preview/Metadata | EditorModeTests, EditorAudioViewTests |
+| 에디터 확인·실패 대화상자 | EditorAlerts(`Presentation/UiAlert`), EditorInput의 Back/Esc | EditorAudioViewTests의 미저장 대화상자 |
+| 에디터 메뉴·공통 이동·선택·붙여넣기 | EditorMenuBar/Input/View/Alerts, EditorSelection/Clipboard, TaikoEditorSelection | EditorMenuTests, EditorModeTests, ChartEditorTests |
+| 노트/타이밍/효과 편집·Undo/Redo·저장 | TaikoEditorNoteInspector/Score/Metadata, EditorForms/PanelView, ChartEditor/History | ChartEditorTests, ChartReviewRegressionTests, EditorModeTests |
 | 파형·FFT·탐색·배속·offset | EditorAnalysisController, EditorAudioView/Selection/Controls, EditorPlayback/Metronome, `YOUMU.Editor/Audio` | EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests, EditorMetronomeTests |
 | YMM/YMP/YME 문법·효과·타이밍 | `Chart/Parsing/Submodules`, Model, MusicalTimeline, EffectValidation, InterpolationExpression/ScrollAutomation | ChartParserTests, YmeEffectsTests, 저장 왕복·캐시 무효화 |
 | 엔진 API·GPU/폰트·장치 수명 | 독립 PhantomCore 저장소의 [EngineOverview](../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 AGENTS/SDK 회귀 |

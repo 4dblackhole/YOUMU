@@ -28,8 +28,6 @@ flowchart TD
     Logo --> EditorSelect["MusicSelectScene · Editor Song Select"]
     EditorSelect --> Editor["EditorScene · ChartEditor / YMP + YME"]
     Editor --> EditorSelect
-    Editor -->|저장한 채보 Test| Test
-    Test -->|Test의 Esc / 곡 종료| Editor
     Lobby --> Request["GameplayLaunchStore · 진입 시 Snapshot"]
     Request --> Manager
     Manager --> Test["RhythmTestScene · transient Taiko play"]
@@ -93,9 +91,9 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 - Logo에서 Editor를 누르면 기록 패널이 없는 EditorSongSelect로 이동합니다.
   이 Scene은 Lobby와 같은 카탈로그·미리듣기·검색·정렬·곡/난이도 탐색 코드를 쓰되 자기 `SongLibrary`를 가지며,
   난이도를 확정하면 선택 경로를 기록하고 Editor Scene으로 이동합니다.
-  카드의 +는 New Difficulty/Convert .osu 팝업을 엽니다. 전자는 NewDifficultyDialog에서
-  메타데이터를 입력받고 EditorPatternCreation이 새 YMP/YME를 생성한 다음 같은 진입
-  snapshot/전환 경로를 사용합니다. 후자는 EditorOsuImport가 파일을 선택받아 변환기를
+  카드의 +는 New Difficulty/Convert .osu 팝업을 엽니다. 전자는 곡 항목을 진입 snapshot의
+  `editorNewDifficulty`에 넣어 같은 Editor 전환 경로를 쓰고, 에디터가 Metadata의 만들기 전 상태에서
+  Create로 새 YMP/YME를 씁니다(EditorPatternCreation). 후자는 EditorOsuImport가 파일을 선택받아 변환기를
   백그라운드에서 실행하고 완료 시 카탈로그를 갱신합니다. worker는 Scene/엔진을 참조하지
   않으며 KeepAlive Scene이 future를 소유합니다. 취소 시에는 선택 화면에 남습니다.
 - EditorWorkspace는 진입 요청의 모드에 따라 `IEditorMode`를 조립하고,
@@ -142,9 +140,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 ## 프레임과 종료
 
 에디터 진입 시 Workspace의 EditorPlayback에 AudioSystem을 연결합니다.
-Test 왕복에서는 EditorWorkspaceStore가 문서/이력/시각을 포함한 Workspace를 단일 소유로 보관합니다.
 Editor와 플레이 Scene은 계속 DestroyOnExit이며 Canvas·분석 작업·음성은 나갈 때 정리합니다.
-Test는 Result/기록 저장을 거치지 않고 복귀 시 기존 Workspace를 한 번 소비합니다.
 Space가 재생 의도를 설정하면 mode/analysis의 revision별 파일·cue를 받아 준비하고,
 매 update DSP 시각으로 음악·히트사운드 예약과 편집 cursor를 갱신합니다.
 Scene은 연결/Update/Shutdown만 호출합니다. 종료 시 에디터 Voice를 먼저 정지하고
