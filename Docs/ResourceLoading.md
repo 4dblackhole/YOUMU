@@ -61,6 +61,7 @@ GPU 등록과 Canvas 조립은 Scene 스레드에서 수행합니다. 메인 Upd
 - `SongCatalogParserRevision`: 문법·기본값·진단·노트 수·목록 해석 변경 시 증가.
   허용 문법 추가도 이전 실패 진단이 캐시에 남을 수 있으므로 포함합니다.
 - `SongCatalogCacheSchema`: 캐시 필드 또는 바이너리 배치 변경 시 증가.
+  캐시 항목은 문서와 진단 외에 노트 수·BPM 범위·채보 길이(곡 필터 Length)를 보관합니다.
 
 불일치 캐시는 migration 없이 재구축합니다. 원본 `Version:`은 별도 계약입니다.
 수정 시각/크기가 바뀐 문서와 YMM/YME 의존성만 다시 확인하며, 플레이는 항상 원본으로

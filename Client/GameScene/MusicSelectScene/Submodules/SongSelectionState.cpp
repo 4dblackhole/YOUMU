@@ -35,7 +35,7 @@ void SongSelectionState::RebuildVisibleSongs()
             {
                 const auto &patterns = catalog_.songs[index].patterns;
                 for (std::size_t pattern = 0; pattern < patterns.size(); ++pattern)
-                    if (filter_.Matches(patterns[pattern]) && (!folder ||
+                    if (filter_.Matches(catalog_.songs[index], patterns[pattern]) && (!folder ||
                         folder->patternKeys.contains(SongFavorites::PatternKey(patterns[pattern].patternPath))))
                         filteredPatterns_[index].push_back(pattern);
                 if (filteredPatterns_[index].empty()) continue;

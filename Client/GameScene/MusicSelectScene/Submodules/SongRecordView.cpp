@@ -81,7 +81,7 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
 
 void SongRecordView::InitializeFilter(Visual2DCanvas& canvas, IWindowControl* window)
 {
-    filterPanel_.Initialize(canvas, texts_, window);
+    filterPanel_.Initialize(canvas, texts_, window, &visuals_);
 }
 
 void SongRecordView::Layout()

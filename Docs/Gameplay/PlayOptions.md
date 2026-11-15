@@ -13,31 +13,38 @@ YMM/YMP/YME 파일은 수정하지 않습니다.
 
 ## 플레이 옵션 패널
 
-확정 리디자인([UI-02](../DesignDecisions.md#ui-02-ui-리디자인), 미구현)은 확인 버튼을 `Done`으로 하고 Difficulty 열에 HP 게이지 선택을 두며,
-곡 필터 직접 조건식과 조건식 편집 창을 더합니다. 세부는 [UI 리디자인](../UIRedesign.md#플레이-옵션과-필터)입니다.
+선곡 하단 Play options는 게임 내 평평한 모달(폭 960, [UI-02](../DesignDecisions.md#ui-02-ui-리디자인))을 엽니다.
+남색 막이 화면 전체를 덮고 가운데 창의 왼쪽 위에 제목, 바닥 왼쪽에 Reset, 오른쪽에 `Done` 하나가 있습니다(✕·Cancel 없음).
+본문은 Difficulty(Scroll speed·Accelerate·JudgeLevel 덮어쓰기·HP gauge), Layout(Mirror·Random), Assist(Ignore scroll effects·
+Metronome)의 세 열이고 열 사이에 가는 세로줄이 있습니다. Game mode는 선곡 화면에 남습니다. 펼친 내용이 늘면 창이 아래로
+늘어나며 모두 펼쳐도 1280×720 안에 들어가므로 본문 스크롤은 없습니다. 16:9보다 좁은 화면에서는 곡 선택 화면처럼 창 전체를 줄입니다.
+여닫을 때의 움직임은 없습니다.
 
-선곡 하단 Play options는 별도 Windows 대화상자 대신 게임 내 패널을 엽니다.
-패널은 아래에서 올라오며 화면 대부분을 차지합니다. 왼쪽부터 Difficulty(Scroll Speed·
-Accelerate·JudgeLevel), Layout(Mirror·Random), Assist(Ignore scroll effects·Metronome)의
-세 열을 사용합니다. Game mode는 선곡 화면에 남습니다. 탭은 없으며 펼친 내용이 본문보다
-길 때만 본문 전체를 휠로 스크롤합니다. 제목·닫기·하단 안내·Reset은 본문 밖에 유지합니다.
+Scroll speed는 밑줄 탭 `x`·`BPM`과 숫자 칸입니다. Random을 켜면 시드와 시도 확률, JudgeLevel 덮어쓰기를 켜면 값 칸(`1–100`)이
+나타납니다. Accelerate 제목 줄 오른쪽 끝의 +/−로 BGM/HIT 음정 유지 스위치를 펼치거나 접습니다. 접기는 해당 값이나 옵션
+활성 상태를 바꾸지 않습니다. 켜고 끄는 항목은 이름과 오른쪽 끝 스위치(40×24)가 있는 줄이며 줄 어디를 눌러도 바뀝니다.
+입력에는 기존 단위·범위·파서를 유지하며 x/BPM 전환 시 입력 숫자를 자동 환산하지 않습니다.
 
-Random을 켜면 시드와 시도 확률, JudgeLevel 덮어쓰기를 켜면 값 입력이 나타납니다.
-Accelerate 제목 행의 +/−로 기존 BGM/HIT 음정 유지 선택을 펼치거나 접습니다.
-접기는 해당 값이나 옵션 활성 상태를 바꾸지 않습니다. 입력에는 기존 단위·범위·파서를
-유지하며 x/BPM 전환 시 입력 숫자를 자동 환산하지 않습니다.
+HP gauge는 고를 수 있는 HP 게이지 목록(`Gauge/HpGaugeKind.h`의 `HpGauges`)의 드롭다운이고 이름 옆에 그 게이지의 클리어 기준
+(`Clear 60%`)을 둡니다. 지금은 Default 하나이며 추가 게이지는 [HP-02](../DesignDecisions.md#hp-02-hp-구조와-미정점)대로 미정입니다.
+고른 게이지는 `PlayOptions::hpGauge`로 플레이에 복사되고 플레이 Scene이 그 게이지를 만듭니다. 게이지가 보고하는 클리어 기준
+(`HpGaugeState::clearPercent`)을 플레이 HP 게이지의 클리어 표시와 결과 HP 그래프의 클리어선이 같이 씁니다. 기록 DB에는
+게이지 종류를 저장하지 않습니다(Default뿐이므로). 게이지를 더할 때 기록 필드와 스키마 마이그레이션을 함께 정해야 합니다.
 
-**닫기와 Reset:** Apply 버튼은 없습니다. 오른쪽 위 Close 또는 Esc로 닫는 즉시
-편집한 전체 값을 검증하고 선곡 Scene에 한 번 반영합니다. 기존 Enter 확정도 같은 경로입니다.
-오류는 패널을 열어 둔 채 해당 입력으로 이동·선택하고 표시하며 마지막 적용값을 보존합니다.
-Random을 끈 뒤 숨겨진 입력에 오류가 있으면 Random 자체를 켜지 않고 해당 입력만 다시
-표시해 고칠 수 있습니다. Reset은 편집값 전체를 `PlayOptions{}` 기본값으로 복원하고
-오류·펼침·스크롤을 정리합니다. 복원값도 닫을 때 적용하며 별도 취소 버튼은 없습니다.
+**닫기와 Reset:** Apply·Cancel은 없습니다. `Done`·Esc·Enter(입력칸 밖, 또는 네이티브 입력의 확정·취소)로 닫는 즉시
+편집한 전체 값을 검증하고 선곡 Scene에 한 번 반영합니다. 오류는 창을 열어 둔 채 해당 입력에 포커스를 두고 바닥 위
+빨간 줄에 표시하며 마지막 적용값을 보존합니다. Random을 끈 뒤 숨겨진 입력에 오류가 있으면 Random 자체를 켜지 않고 해당 입력만
+다시 표시해 고칠 수 있습니다. Reset은 편집값 전체를 `PlayOptions{}` 기본값으로 복원하고 오류·펼침을 정리합니다. 복원값도 닫을
+때 적용합니다.
+
+**배지:** 선곡 하단 Play options 글자 오른쪽에 기본과 다른 옵션 수를 금빛 칸(18×18)으로 표시하고 0이면 숨깁니다.
+스크롤(단위나 값)·Accelerate·음정 유지(둘 중 하나)·JudgeLevel 덮어쓰기·Mirror·Random·Ignore scroll effects·Metronome·
+기본이 아닌 HP gauge를 하나씩 셉니다(`ChangedPlayOptionCount`).
 
 기본값은 스크롤 x/1, Accelerate 1.0, Mirror/Random/Ignore scroll effects/Metronome 꺼짐,
 Random 시드 0·시도 확률 100%, BGM/HIT 음정 유지 켜짐, JudgeLevel 덮어쓰기 없음입니다.
 패널을 다시 열면 마지막 적용값을 표시합니다. 실제 숫자 입력은 기존 엔진의 ITextInput을
-사용하며 애니메이션·클립·접힘·단위 목록에 맞춰 네이티브 입력의 표시와 위치도 갱신합니다.
+사용하며 접힘·드롭다운·창 축소에 맞춰 네이티브 입력의 표시와 위치·글자 크기도 갱신합니다.
 
 패널을 연 동안 선곡·검색·곡 목록 스크롤·플레이 진입·Ctrl+O는 차단하고 닫힌 프레임의
 Esc/Enter를 선곡 화면에 다시 전달하지 않습니다. 검색어·선택 곡/채보·선곡 스크롤은 보존합니다.
@@ -68,6 +75,7 @@ EN/KO/JA 설명 언어를 따르고 기존 숫자/도메인 진단 원문은 유
 
 결과 중앙에는 적용한 옵션의 이름/값과 식별 아이콘을 표시합니다.
 RND 값에 시드와 시도 확률을, Accelerate 값에 BGM/HIT 음정 유지 상태를 표시합니다.
+HP gauge는 기본이 아닐 때만 게이지 이름 칩으로 나타납니다.
 
 ## 로컬 기록
 
@@ -87,31 +95,29 @@ Windows 내장 SQLite를 사용하며 `user_version=1`로 스키마를 확인합
 표시합니다. 결과 화면에 저장 진행/실패를 표시하며 곡 선택에서 다른 패턴으로
 이동한 동안 완료된 이전 쿼리는 게시하지 않습니다.
 
-## 조건식
+## 기록 필터
 
-기록칸의 Filter records는 별도 기록 필터 패널을 엽니다. 기록은 기존 왼쪽 기록 영역에 표시합니다.
-켜짐/꺼짐/전체 선택은 Mirror, Random, Metronome, Ignore scroll effects, BGM/HIT 음정 유지,
-JudgeLevel 덮어쓰기 여부입니다. Scroll unit은 전체/x/BPM이며, JudgeLevel(1..100),
-재생속도(0.5..2.0x), 스크롤속도(양수), Random 시도 확률(0..100%)은 최소/최대 범위입니다.
-Random 시드는 uint64 정수 동등 조건입니다. 스크롤속도는 기록에 저장한 x/BPM 원래 값이며,
+기록칸의 Filter records는 별도 기록 필터 창(평평한 모달, 폭 760)을 엽니다. 기록은 기존 왼쪽 기록 영역에 표시합니다.
+왼쪽 Options 열은 Mirror, Random, Metronome, Ignore scroll effects, BGM/HIT 음정 유지, JudgeLevel 덮어쓰기 여부의
+Any/On/Off와 Scroll unit(Any/x/BPM) 밑줄 탭입니다. 오른쪽 Ranges 열은 JudgeLevel(1..100), 재생속도(0.5..2.0x),
+스크롤속도(양수), Random 시도 확률(0..100%)의 Min/Max와 Random 시드(uint64 정수 동등)이고, 그 아래 Results는
+Completed·Cleared·Pause menu used의 Any/On/Off입니다. 스크롤속도는 기록에 저장한 x/BPM 원래 값이며,
 단위를 한정하려면 Scroll unit을 함께 지정합니다.
 
-빈 경계·전체 선택은 제한 없음이며 지정한 조건은 경계를 포함해 AND로 결합합니다.
-직접 조건 편집은 기존 텍스트 대화상자와 아래 AND/OR/NOT 문법을 유지합니다.
-선택형 조건과 함께 쓰면 직접 조건식 전체를 괄호로 묶어 AND로 결합합니다.
-적용은 기록 페이지를 처음으로 돌려 다시 조회하고, 닫기/Escape/Scene 숨김은 편집을 취소합니다.
-잘못된 값·역전 범위·조건식은 적용하지 않습니다. 검색어·선택 곡/패턴·곡 목록 스크롤은 보존합니다.
+값 줄(범위 넷과 시드)은 줄 앞에 스위치가 있습니다. 빈 줄에 값을 넣으면 스위치가 저절로 켜지고, 스위치를 끈 줄은 값을 남긴 채
+조건에서 빠집니다. 꺼진 줄의 값을 고쳐도 다시 켜지지 않으며, 값을 모두 지우면 스위치가 처음 상태로 돌아가 다음 값에 다시
+저절로 켜집니다. 값이 없는 줄의 스위치는 누를 수 없습니다. 꺼진 줄의 값도 적용할 때 검사합니다.
+
+빈 경계·Any는 제한 없음이며 지정한 조건은 경계를 포함해 AND로 결합합니다. 조건식을 직접 쓰는 입력(AND/OR/NOT)은
+사용자 결정으로 두지 않습니다. Apply는 기록 페이지를 처음으로 돌려 다시 조회하고, Cancel·✕·Escape·Scene 숨김은 편집을 취소합니다.
+잘못된 값·역전 범위는 적용하지 않고 바닥 위 빨간 줄에 표시합니다. 검색어·선택 곡/패턴·곡 목록 스크롤은 보존합니다.
 필터는 해당 선곡 View 수명 동안 유지하며 별도 설정 파일이나 DB 필드를 추가하지 않습니다.
 모든 조건을 비우면 선택 패턴의 모든 기록입니다. 온라인 기록 연결은 현재 미구현입니다.
 
-직접 조건 예:
-예: `JudgeLevel >= 60 AND Random = true`, `Random = true`,
-`Accelerate >= 1.5 AND NOT (Mirror = true)`.
-
-필드 이름과 AND/OR/NOT/true/false는 대소문자를 구분하지 않습니다.
-괄호, `=`, `==`, `!=`, `<>`, `<`, `<=`, `>`, `>=`를 지원합니다.
-불리언과 시드에는 동등/부등 비교만 허용합니다. 값은 SQL parameter로 바인딩하며
-임의 SQL, 함수 호출, SELECT, 세미콜론, 알려지지 않은 필드는 거절합니다.
+`RecordFilter::Query`는 고른 항목을 아래 내부 조건 텍스트로 만들고 `RecordCondition`이 그것을 SQL로 바꿉니다.
+사용자가 쓰는 문법은 아니지만 기록 조회의 안전 경계이므로 유지합니다. 필드 이름과 AND/OR/NOT/true/false는 대소문자를
+구분하지 않고, 괄호와 `=`, `==`, `!=`, `<>`, `<`, `<=`, `>`, `>=`를 지원합니다. 불리언과 시드에는 동등/부등 비교만 허용합니다.
+값은 SQL parameter로 바인딩하며 임의 SQL, 함수 호출, SELECT, 세미콜론, 알려지지 않은 필드는 거절합니다.
 
 | 필드 | 값 |
 | --- | --- |
@@ -139,9 +145,10 @@ Random 시드는 uint64 정수 동등 조건입니다. 스크롤속도는 기록
 시계는 에디터 Test를 위해 0.25배속까지 허용하지만 일반 `PlayOptions.accelerate` 검증은
 0.5~2.0을 유지합니다. Test의 가변 배속은 일시 상태이며 결과/설정 파일에 저장하지 않습니다.
 `PlayOptionsPanel`은 플레이 옵션 편집·검증·닫기 적용·Reset과 네이티브 입력 수명,
-그 Submodules/PlayOptionsLayout은 세 열·클립·애니메이션 좌표를 소유합니다. `ValueDialog`는
-다른 기존 텍스트 대화상자를 담당합니다.
-`RecordFilter`는 입력 검증과 기존 조건식 조합, `RecordFilterPanel`은 임시 편집/적용/취소 UI,
+그 Submodules/PlayOptionsLayout은 세 열과 펼침 좌표를 소유합니다. 공용 `UiModal`은 막·창·제목·바닥 버튼·오류 줄과
+모달 부품(밑줄 입력칸·스위치·밑줄 탭)을 그립니다. `HpGaugeKind`는 고를 수 있는 게이지와 클리어 기준 목록입니다.
+`ValueDialog`는 다른 기존 텍스트 대화상자를 담당합니다.
+`RecordFilter`는 입력 검증·줄 스위치·내부 조건 텍스트 조합, `RecordFilterPanel`은 임시 편집/적용/취소 UI,
 `PlayRecordStore`/`RecordCondition`은 SQLite 저장/제한된 조건식,
 `SongSelectRecords`는 비동기 페이지 게시와 기록칸 표현을 맡습니다.
 

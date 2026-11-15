@@ -51,6 +51,7 @@
   <ItemGroup>
     <Filter Include="Gauge" />
     <ClInclude Include="Gauge\IHpGauge.h"><Filter>Gauge</Filter></ClInclude>
+    <ClInclude Include="Gauge\HpGaugeKind.h"><Filter>Gauge</Filter></ClInclude>
     <ClInclude Include="Gauge\BasicHpGauge.h"><Filter>Gauge</Filter></ClInclude>
     <ClCompile Include="Gauge\BasicHpGauge.cpp"><Filter>Gauge</Filter></ClCompile>
   </ItemGroup>

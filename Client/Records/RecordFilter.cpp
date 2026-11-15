@@ -62,7 +62,9 @@ std::string RecordFilter::Query() const
         if (!result.empty()) result += " AND ";
         result += '(' + term + ')';
     };
-    constexpr std::array names{"Mirror", "Random", "Metronome", "IgnoreScrollEffects", "PreserveMusicPitch", "PreserveHitSoundPitch", "JudgeOverride"};
+    constexpr std::array names{"Mirror", "Random", "Metronome", "IgnoreScrollEffects", "PreserveMusicPitch",
+        "PreserveHitSoundPitch", "JudgeOverride", "Completed", "Cleared", "PauseMenuUsed"};
+    static_assert(names.size() == RecordFilterFlagCount);
     for (std::size_t i = 0; i < flags.size(); ++i)
         if (flags[i]) add(std::string{names[i]} + (*flags[i] ? " = true" : " = false"));
     if (scrollUnit)
@@ -70,23 +72,40 @@ std::string RecordFilter::Query() const
         if (*scrollUnit != 0 && *scrollUnit != 1) throw std::invalid_argument("Invalid scroll unit.");
         add("ScrollUnit = " + std::to_string(*scrollUnit));
     }
-    const auto range = [&add](const char *name, const std::optional<double> &minimum, const std::optional<double> &maximum)
+    const auto range = [&](std::size_t row, const char *name, const std::optional<double> &minimum,
+                           const std::optional<double> &maximum)
     {
+        if (switchedOff[row]) return;
         if (minimum) add(std::format("{} >= {}", name, *minimum));
         if (maximum) add(std::format("{} <= {}", name, *maximum));
     };
-    range("JudgeLevel", minimumJudgeLevel, maximumJudgeLevel);
-    range("Accelerate", minimumAccelerate, maximumAccelerate);
-    range("ScrollSpeed", minimumScrollSpeed, maximumScrollSpeed);
-    range("RandomProbability", minimumRandomProbability, maximumRandomProbability);
-    if (randomSeed) add("RandomSeed = " + std::to_string(*randomSeed));
-    if (condition.find_first_not_of(" \t\r\n") != condition.npos)
-    {
-        if (result.empty()) result = condition;
-        else add(condition);
-    }
+    range(0, "JudgeLevel", minimumJudgeLevel, maximumJudgeLevel);
+    range(1, "Accelerate", minimumAccelerate, maximumAccelerate);
+    range(2, "ScrollSpeed", minimumScrollSpeed, maximumScrollSpeed);
+    range(3, "RandomProbability", minimumRandomProbability, maximumRandomProbability);
+    if (randomSeed && !switchedOff[4]) add("RandomSeed = " + std::to_string(*randomSeed));
     static_cast<void>(RecordCondition::Parse(result));
     return result;
+}
+bool RecordFilterDraft::HasValue(const std::size_t row) const noexcept
+{
+    const auto filled = [this](std::size_t index)
+    { return values[index].find_first_not_of(L" \t\r\n") != std::wstring::npos; };
+    const std::size_t first = row * 2;
+    if (first >= values.size()) return false;
+    // The seed row has one value; the range rows have a minimum and a maximum.
+    return filled(first) || (first + 1 < values.size() && filled(first + 1));
+}
+void RecordFilterDraft::SetValue(const std::size_t index, std::wstring text)
+{
+    values.at(index) = std::move(text);
+    if (!HasValue(RowOf(index))) switchedOff.at(RowOf(index)) = false;
+}
+bool RecordFilterDraft::ToggleRow(const std::size_t row) noexcept
+{
+    if (row >= switchedOff.size() || !HasValue(row)) return false;
+    switchedOff[row] = !switchedOff[row];
+    return true;
 }
 RecordFilterDraft FormatRecordFilter(const RecordFilter &filter)
 {
@@ -97,7 +116,8 @@ RecordFilterDraft FormatRecordFilter(const RecordFilter &filter)
     draft.values = {Text(filter.minimumJudgeLevel), Text(filter.maximumJudgeLevel),
         Text(filter.minimumAccelerate), Text(filter.maximumAccelerate), Text(filter.minimumScrollSpeed), Text(filter.maximumScrollSpeed),
         Text(filter.minimumRandomProbability), Text(filter.maximumRandomProbability), Text(filter.randomSeed)};
-    draft.condition = std::wstring{filter.condition.begin(), filter.condition.end()};
+    for (std::size_t row = 0; row < RecordFilterValueRowCount; ++row)
+        draft.switchedOff[row] = filter.switchedOff[row] && draft.HasValue(row);
     return draft;
 }
 RecordFilter ParseRecordFilter(const RecordFilterDraft &draft)
@@ -115,7 +135,8 @@ RecordFilter ParseRecordFilter(const RecordFilterDraft &draft)
     filter.minimumScrollSpeed = Number<double>(draft.values[4]); filter.maximumScrollSpeed = Number<double>(draft.values[5]);
     filter.minimumRandomProbability = Number<double>(draft.values[6]); filter.maximumRandomProbability = Number<double>(draft.values[7]);
     filter.randomSeed = Number<std::uint64_t>(draft.values[8]);
-    filter.condition = Ascii(draft.condition);
+    for (std::size_t row = 0; row < RecordFilterValueRowCount; ++row)
+        filter.switchedOff[row] = draft.switchedOff[row] && draft.HasValue(row);
     static_cast<void>(filter.Query());
     return filter;
 }

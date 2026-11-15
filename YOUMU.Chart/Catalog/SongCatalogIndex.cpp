@@ -147,6 +147,8 @@ namespace
             if (entry.noteCount) out.Number(static_cast<std::uint64_t>(*entry.noteCount));
             out.Number(static_cast<std::uint8_t>(entry.bpmRange.has_value()));
             if (entry.bpmRange) { out.Number(entry.bpmRange->first); out.Number(entry.bpmRange->second); }
+            out.Number(static_cast<std::uint8_t>(entry.chartLengthSeconds.has_value()));
+            if (entry.chartLengthSeconds) out.Number(*entry.chartLengthSeconds);
             Write(out, entry.parsed->document);
             out.Count(entry.parsed->diagnostics.size());
             for (const auto &d : entry.parsed->diagnostics)
@@ -174,6 +176,8 @@ namespace
             if (hasNoteCount) noteCount = static_cast<std::size_t>(in.Number<std::uint64_t>());
             std::optional<std::pair<double, double>> bpmRange;
             if (in.Number<std::uint8_t>()) bpmRange = {in.Number<double>(), in.Number<double>()};
+            std::optional<double> chartLength;
+            if (in.Number<std::uint8_t>()) chartLength = in.Number<double>();
             auto parsed = std::make_shared<typename Cache::mapped_type::Parsed>();
             parsed->document.sourcePath = path;
             Read(in, parsed->document);
@@ -190,7 +194,7 @@ namespace
                 parsed->diagnostics.push_back(std::move(d));
             }
             if (!cache.emplace(path, typename Cache::mapped_type{modified, size, std::move(parsed),
-                noteCount, bpmRange}).second)
+                noteCount, bpmRange, chartLength}).second)
                 throw std::runtime_error("Duplicate catalog cache record.");
         }
     }

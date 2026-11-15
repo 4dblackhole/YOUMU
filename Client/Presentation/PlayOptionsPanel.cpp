@@ -1,5 +1,4 @@
 #include "PlayOptionsPanel.h"
-#include "Presentation/UiColors.h"
 #include "Presentation/UiDropdown.h"
 #include <algorithm>
 #include <charconv>
@@ -7,18 +6,21 @@
 #include <utility>
 
 using namespace PhantomCore;
+using namespace ui_modal;
 
 namespace
 {
+    constexpr float Width = 960;
     constexpr std::array FieldKeys{"scrollSpeed", "accelerate", "judgeLevel", "seed", "probability"};
     constexpr std::array FlagKeys{"mirror", "random", "ignoreScroll", "metronome", "musicPitch", "hitPitch", "overrideJudge"};
     constexpr std::array GroupKeys{"difficultyGroup", "layoutGroup", "assistGroup"};
-    template<class T> T Number(const std::wstring &value)
+    template <class T> T Number(const std::wstring &value)
     {
         std::string ascii;
         for (const auto ch : value)
         {
-            if (ch > 127) throw std::invalid_argument("Enter an ASCII number (decimal point: .).");
+            if (ch > 127)
+                throw std::invalid_argument("Enter an ASCII number (decimal point: .).");
             ascii.push_back(static_cast<char>(ch));
         }
         T number{};
@@ -27,98 +29,82 @@ namespace
             throw std::invalid_argument("Enter a valid number (decimal point: .).");
         return number;
     }
-    void Style(Visual2DNode &node, bool selected = false)
+    [[nodiscard]] std::wstring Wide(const std::string_view text)
     {
-        VisualStyle style{};
-        style.normal = selected ? ui_colors::sky::Accent : ui_colors::sky::Pale;
-        style.hovered = selected ? ui_colors::sky::AccentHover : ui_colors::sky::Focus;
-        style.pressed = ui_colors::sky::Accent;
-        node.GetComponent<SpriteVisualComponent>()->SetStyle(style);
-        if (auto *text = node.GetComponent<TextVisualComponent>())
-            text->SetTextColor(selected ? ui_colors::White : ui_colors::Ink);
+        return {text.begin(), text.end()};
     }
-    void Text(Visual2DNode &node, std::wstring_view value)
+    [[nodiscard]] std::size_t GaugeIndex(const HpGaugeKind kind) noexcept
     {
-        node.GetComponent<TextVisualComponent>()->SetText(std::wstring(value));
+        const auto found = std::ranges::find(HpGauges, kind, &HpGaugeDescription::kind);
+        return found == HpGauges.end() ? 0 : static_cast<std::size_t>(found - HpGauges.begin());
     }
-}
+} // namespace
 
-Visual2DNode &PlayOptionsPanel::Label(Visual2DNode &parent, std::string name, float size)
-{
-    auto &node = CreateLabel(parent, {}, L"", std::move(name));
-    auto &text = *node.GetComponent<TextVisualComponent>();
-    text.SetFontSize(size);
-    text.SetTextColor(ui_colors::Ink);
-    texts_->ApplyFont(text);
-    return node;
-}
-
-void PlayOptionsPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IWindowControl *window)
+void PlayOptionsPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IWindowControl *window,
+                                  ScreenVisual2DManager *visuals)
 {
     canvas_ = &canvas;
     texts_ = &texts;
-    overlay_ = &CreatePanel(canvas.Root(), {}, "PlayOptions.Overlay");
-    overlay_->SetZIndex(1000);
-    VisualStyle backdrop{};
-    backdrop.normal = backdrop.hovered = backdrop.pressed = {0, 0, 0, .3F};
-    overlay_->GetComponent<SpriteVisualComponent>()->SetStyle(backdrop);
-    overlay_->AddComponent<RectangleCollider2DComponent>();
-    overlay_->AddComponent<PointerReceiverComponent>();
-    panel_ = &CreatePanel(*overlay_, {}, "PlayOptions.Panel");
-    VisualStyle surface{};
-    surface.normal = surface.hovered = surface.pressed = ui_colors::sky::Surface;
-    panel_->GetComponent<SpriteVisualComponent>()->SetStyle(surface);
-    title_ = &Label(*panel_, "PlayOptions.Title", 26);
-    close_ = &CreateButton(*panel_, {}, L"", "PlayOptions.Close");
-    reset_ = &CreateButton(*panel_, {}, L"", "PlayOptions.Reset");
-    status_ = &Label(*panel_, "PlayOptions.Status", 14);
-    viewport_ = &panel_->CreateChild("PlayOptions.Viewport");
-    content_ = &viewport_->CreateChild("PlayOptions.Content");
+    visuals_ = visuals;
+    modal_.Create(canvas, {"PlayOptions", Width, false, false, visuals});
+    auto &body = modal_.Body();
     for (std::size_t i = 0; i < headings_.size(); ++i)
-        headings_[i] = &Label(*content_, "PlayOptions.Group." + std::to_string(i), 22);
-    unitLabel_ = &Label(*content_, "PlayOptions.UnitLabel");
-    unit_ = &CreateDropdown(*content_, {}, {L"x", L"BPM"}, "PlayOptions.Unit");
-    Style(*unit_);
-    unit_->SetZIndex(10);
-    RequireDropdown(*unit_).SetValueStyle(16, 600, ui_colors::Ink);
+        headings_[i] = &CreateText(body, "PlayOptions.Group." + std::to_string(i), 14, 900, Ink);
+    for (std::size_t i = 0; i < columnRules_.size(); ++i)
+        columnRules_[i] = &CreateRule(body, "PlayOptions.ColumnRule." + std::to_string(i));
+    for (std::size_t i = 0; i < subRules_.size(); ++i)
+    {
+        subRules_[i] = &CreateRule(body, "PlayOptions.SubRule." + std::to_string(i));
+        subRules_[i]->GetComponent<SpriteVisualComponent>()->SetStyle(
+            {FieldLine, FieldLine, FieldLine, FieldLine});
+    }
+    units_[0] = &CreateTab(body, "PlayOptions.Unit.0", L"x", 13);
+    units_[1] = &CreateTab(body, "PlayOptions.Unit.1", L"BPM", 13);
+    rateRange_ = &CreateText(body, "PlayOptions.accelerate.Range", 12, 600, Caption);
+    rateMore_ = &CreateButton(body, {}, L"", "PlayOptions.accelerate.More");
+    rateMore_->GetComponent<SpriteVisualComponent>()->SetStyle(
+        {{1, 1, 1, 0}, ui_colors::Rgb(0xFFFFFF, .8F), ui_colors::Rgb(0xE6EEFC), {1, 1, 1, 0}});
+    rateMoreIcon_ = &CreateIcon(*rateMore_, "Icon", visuals, L"Icons.plus", BrandText);
+    judgeUnit_ = &CreateText(body, "PlayOptions.judgeLevel.Unit", 13, 400, Caption);
+    probabilityUnit_ = &CreateText(body, "PlayOptions.probability.Unit", 13, 400, Caption);
+    SetText(*probabilityUnit_, L"%");
+    gaugeLabel_ = &CreateText(body, "PlayOptions.HpGauge.Label", 13, 600, Ink);
+    gaugeClear_ = &CreateText(body, "PlayOptions.HpGauge.Clear", 12, 600, Caption);
+    std::vector<std::wstring> gauges;
+    for (const auto &gauge : HpGauges)
+        gauges.push_back(Wide(gauge.name));
+    gauge_ = &CreateDropdown(body, {}, std::move(gauges), "PlayOptions.HpGauge");
+    gauge_->SetZIndex(20);
+    gauge_->GetComponent<SpriteVisualComponent>()->SetStyle(
+        {ui_colors::Rgb(0xFFFFFF, .74F), ui_colors::White, ui_colors::White, ui_colors::Rgb(0xFFFFFF, .74F)});
+    RequireDropdown(*gauge_).SetValueStyle(14, 600, Ink);
     for (std::size_t i = 0; i < fields_.size(); ++i)
     {
         const auto name = std::string("PlayOptions.") + FieldKeys[i];
-        labels_[i] = i == Rate ? &CreateButton(*content_, {}, L"", name + ".Label")
-                              : &Label(*content_, name + ".Label");
-        if (i == Rate) Style(*labels_[i]);
-        labels_[i]->GetComponent<TextVisualComponent>()->SetFontSize(16);
-        fields_[i] = &CreateButton(*content_, {}, L"", name + ".Field");
-        Style(*fields_[i]);
-        auto &text = *fields_[i]->GetComponent<TextVisualComponent>();
-        text.SetFontSize(16);
-        text.SetHorizontalAlignment(TextAlignment::Leading);
-        if (window)
-        {
-            inputs_[i] = window->CreateTextInput();
-            if (!inputs_[i]) throw std::runtime_error("Cannot create play option input.");
-            inputs_[i]->SetColors(0x144785, 0xEFF8FE);
-        }
+        labels_[i] = &CreateText(body, name + ".Label", 13, 600, Ink);
+        fields_[i] = &CreateField(body, name + ".Field", i != Seed);
+        if (!window)
+            continue;
+        inputs_[i] = window->CreateTextInput();
+        if (!inputs_[i])
+            throw std::runtime_error("Cannot create play option input.");
+        inputs_[i]->SetColors(0x16294A, 0xFFFFFF);
     }
+    labels_[Judge]->SetVisible(false); // The override switch names the JudgeLevel box.
     for (std::size_t i = 0; i < flags_.size(); ++i)
     {
-        flags_[i] = &CreateToggle(*content_, {}, L"", false, std::string("PlayOptions.") + FlagKeys[i]);
-        Style(*flags_[i]);
-        auto &text = *flags_[i]->GetComponent<TextVisualComponent>();
-        text.SetFontSize(16);
-        text.SetHorizontalAlignment(TextAlignment::Leading);
-    }
-    for (auto *button : {close_, reset_})
-    {
-        Style(*button);
-        button->GetComponent<TextVisualComponent>()->SetFontSize(16);
+        auto &flag = flags_[i];
+        flag.row = &CreateButton(body, {}, L"", std::string("PlayOptions.") + FlagKeys[i]);
+        flag.row->GetComponent<SpriteVisualComponent>()->SetStyle({{1, 1, 1, 0}, {1, 1, 1, 0}, {1, 1, 1, 0}, {1, 1, 1, 0}});
+        flag.label = &CreateText(*flag.row, "Label", 14, 600, Ink);
+        flag.toggle = &CreateSwitch(*flag.row, "Switch");
+        flag.rule = &CreateRule(*flag.row, "Rule");
     }
     Dismiss();
     RefreshTexts();
-    Layout();
 }
 
-bool &PlayOptionsPanel::FlagValue(Flag flag)
+bool &PlayOptionsPanel::FlagValue(const Flag flag)
 {
     switch (flag)
     {
@@ -133,6 +119,12 @@ bool &PlayOptionsPanel::FlagValue(Flag flag)
     }
 }
 
+void PlayOptionsPanel::SetFlag(const Flag flag, const bool value)
+{
+    FlagValue(flag) = value;
+    SetSwitch(*flags_[flag].toggle, value, true);
+}
+
 void PlayOptionsPanel::Open(const PlayOptions &options)
 {
     draft_ = options;
@@ -141,8 +133,7 @@ void PlayOptionsPanel::Open(const PlayOptions &options)
     error_.clear();
     errorField_.reset();
     rateExpanded_ = false;
-    progress_ = scroll_ = 0;
-    overlay_->SetVisible(true);
+    modal_.SetVisible(true);
     RefreshValues();
     RefreshTexts();
     Layout();
@@ -150,13 +141,14 @@ void PlayOptionsPanel::Open(const PlayOptions &options)
 
 void PlayOptionsPanel::Reset()
 {
-    for (auto &input : inputs_) if (input) input->Blur();
+    for (auto &input : inputs_)
+        if (input)
+            input->Blur();
     draft_ = {};
     overrideJudge_ = rateExpanded_ = false;
     error_.clear();
     errorField_.reset();
-    scroll_ = 0;
-    RequireDropdown(*unit_).Collapse();
+    RequireDropdown(*gauge_).Collapse();
     RefreshValues();
     RefreshTexts();
     Layout();
@@ -167,10 +159,12 @@ void PlayOptionsPanel::RefreshValues()
     numbers_ = {std::format(L"{:g}", draft_.scrollSpeed), std::format(L"{:g}", draft_.accelerate),
                 std::format(L"{:.2f}", draft_.judgeLevel.value_or(JudgeLevel{}).Value()),
                 std::to_wstring(draft_.randomSeed), std::format(L"{:g}", draft_.randomAttemptProbability * 100)};
-    for (std::size_t i = 0; i < inputs_.size(); ++i) if (inputs_[i]) inputs_[i]->SetText(numbers_[i]);
-    RequireDropdown(*unit_).SetSelectedIndex(draft_.scrollUnit == PlayOptions::ScrollUnit::Bpm ? 1 : 0);
+    for (std::size_t i = 0; i < inputs_.size(); ++i)
+        if (inputs_[i])
+            inputs_[i]->SetText(numbers_[i]);
+    RequireDropdown(*gauge_).SetSelectedIndex(GaugeIndex(draft_.hpGauge));
     for (std::size_t i = 0; i < flags_.size(); ++i)
-        flags_[i]->GetComponent<ToggleBehaviorComponent>()->SetChecked(FlagValue(static_cast<Flag>(i)));
+        SetSwitch(*flags_[i].toggle, FlagValue(static_cast<Flag>(i)), true);
 }
 
 void PlayOptionsPanel::SynchronizeText()
@@ -178,28 +172,35 @@ void PlayOptionsPanel::SynchronizeText()
     for (std::size_t i = 0; i < inputs_.size(); ++i)
     {
         std::wstring text;
-        if (inputs_[i] && inputs_[i]->TakeText(text)) numbers_[i] = std::move(text);
+        if (inputs_[i] && inputs_[i]->TakeText(text))
+            numbers_[i] = std::move(text);
     }
 }
 
 void PlayOptionsPanel::Close()
 {
-    if (!IsVisible()) return;
-    RequireDropdown(*unit_).Collapse();
-    for (auto &input : inputs_) if (input) input->Blur();
+    if (!IsVisible())
+        return;
+    RequireDropdown(*gauge_).Collapse();
+    for (auto &input : inputs_)
+        if (input)
+            input->Blur();
     SynchronizeText();
     auto candidate = draft_;
     // Validate each assignment to associate domain errors with the edited field.
     Field field = Speed;
     try
     {
-        candidate.scrollSpeed = Number<double>(numbers_[field]); candidate.Validate();
+        candidate.scrollSpeed = Number<double>(numbers_[field]);
+        candidate.Validate();
         field = Rate;
-        candidate.accelerate = Number<double>(numbers_[field]); candidate.Validate();
+        candidate.accelerate = Number<double>(numbers_[field]);
+        candidate.Validate();
         field = Seed;
         candidate.randomSeed = Number<std::uint64_t>(numbers_[field]);
         field = Probability;
-        candidate.randomAttemptProbability = Number<double>(numbers_[field]) / 100; candidate.Validate();
+        candidate.randomAttemptProbability = Number<double>(numbers_[field]) / 100;
+        candidate.Validate();
         field = Judge;
         candidate.judgeLevel = overrideJudge_ ? std::optional{JudgeLevel{Number<double>(numbers_[field])}} : std::nullopt;
         applied_ = candidate;
@@ -211,133 +212,141 @@ void PlayOptionsPanel::Close()
         errorField_ = field;
         RefreshTexts();
         Layout();
-        const auto bounds = fields_[field]->BoundsInCanvas();
-        const auto viewport = viewport_->BoundsInCanvas();
-        if (bounds.y < viewport.y) scroll_ += viewport.y - bounds.y;
-        else if (bounds.y + bounds.height > viewport.y + viewport.height)
-            scroll_ -= bounds.y + bounds.height - viewport.y - viewport.height;
-        Layout();
-        if (inputs_[field]) inputs_[field]->Focus(true);
+        if (inputs_[field])
+            inputs_[field]->Focus(true);
     }
 }
 
 void PlayOptionsPanel::Dismiss() noexcept
 {
-    for (auto &input : inputs_) if (input) input->SetVisible(false);
-    if (overlay_) overlay_->SetVisible(false);
-    if (unit_) RequireDropdown(*unit_).Collapse();
+    for (auto &input : inputs_)
+        if (input)
+            input->SetVisible(false);
+    if (gauge_)
+        RequireDropdown(*gauge_).Collapse();
+    modal_.SetVisible(false);
 }
 
 void PlayOptionsPanel::Shutdown() noexcept
 {
     Dismiss();
-    for (auto &input : inputs_) input.reset();
+    for (auto &input : inputs_)
+        input.reset();
+    modal_.Forget();
     canvas_ = nullptr;
     texts_ = nullptr;
-    overlay_ = panel_ = unit_ = nullptr;
+    gauge_ = nullptr;
     applied_.reset();
 }
 
 void PlayOptionsPanel::RefreshTexts()
 {
-    if (!panel_) return;
-    const auto set = [this](Visual2DNode &node, std::string_view key) {
-        Text(node, texts_->Get(std::string("PlayOptions.") + std::string(key)));
-        texts_->ApplyFont(*node.GetComponent<TextVisualComponent>());
-    };
-    set(*title_, "title"); set(*close_, "close"); set(*reset_, "reset"); set(*unitLabel_, "scrollUnit");
-    for (std::size_t i = 0; i < headings_.size(); ++i) set(*headings_[i], GroupKeys[i]);
-    for (std::size_t i = 0; i < labels_.size(); ++i) set(*labels_[i], FieldKeys[i]);
-    Text(*labels_[Rate], std::wstring(texts_->Get("PlayOptions.accelerate")) + (rateExpanded_ ? L"  −" : L"  +"));
-    for (std::size_t i = 0; i < flags_.size(); ++i) set(*flags_[i], FlagKeys[i]);
-    for (auto *field : fields_) texts_->ApplyFont(*field->GetComponent<TextVisualComponent>());
+    if (!canvas_ || !gauge_)
+        return;
+    const auto get = [this](std::string_view key) { return texts_->Get(std::string("PlayOptions.") + std::string(key)); };
+    modal_.SetTexts(get("title"), get("reset"), {}, get("done"));
+    for (std::size_t i = 0; i < headings_.size(); ++i)
+        SetText(*headings_[i], get(GroupKeys[i]));
+    for (std::size_t i = 0; i < labels_.size(); ++i)
+        SetText(*labels_[i], get(FieldKeys[i]));
+    for (std::size_t i = 0; i < flags_.size(); ++i)
+        SetText(*flags_[i].label, get(FlagKeys[i]));
+    SetText(*rateRange_, get("accelerateRange"));
+    SetText(*judgeUnit_, get("judgeRange"));
+    SetText(*gaugeLabel_, get("hpGauge"));
+    const auto *gauge = FindHpGauge(draft_.hpGauge);
+    SetText(*gaugeClear_, texts_->Format("PlayOptions.clear", std::format(L"{:g}", gauge ? gauge->clearPercent : 0.0)));
     if (errorField_)
     {
         const std::wstring detail(error_.begin(), error_.end()); // Existing numeric/domain diagnostics are ASCII.
-        Text(*status_, texts_->Format("PlayOptions.invalidValue", texts_->Get(std::string("PlayOptions.") + FieldKeys.at(*errorField_)), detail));
+        modal_.SetStatus(texts_->Format("PlayOptions.invalidValue", get(FieldKeys.at(*errorField_)), detail));
     }
-    else Text(*status_, texts_->Get("PlayOptions.closeHint"));
-    auto &status = *status_->GetComponent<TextVisualComponent>();
-    texts_->ApplyFont(status);
-    status.SetTextColor(errorField_ ? ui_colors::Error : ui_colors::sky::Muted);
-}
-
-bool PlayOptionsPanel::Accepts(NodeId source) const noexcept
-{
-    const auto *node = canvas_->FindNode(source);
-    for (; node; node = node->Parent())
-    {
-        if (!node->IsVisible() || !node->IsEnabled()) return false;
-        if (node == panel_) return true;
-    }
-    return false;
+    else
+        modal_.SetStatus({});
 }
 
 bool PlayOptionsPanel::ProcessAction(const Action &action)
 {
-    if (!IsVisible() || progress_ < 1 || !Accepts(action.source)) return false;
+    if (!IsVisible() || !modal_.Owns(action.source))
+        return false;
     SynchronizeText();
-    if (action.type == ActionType::SelectionChanged && action.source == unit_->Id() && action.selectedIndex < 2)
+    if (action.type == ActionType::SelectionChanged && action.source == gauge_->Id())
     {
-        draft_.scrollUnit = action.selectedIndex == 1 ? PlayOptions::ScrollUnit::Bpm : PlayOptions::ScrollUnit::Multiplier;
+        if (action.selectedIndex < HpGauges.size())
+            draft_.hpGauge = HpGauges[action.selectedIndex].kind;
+        RefreshTexts();
         return true;
     }
-    if (action.type == ActionType::ValueChanged)
-        for (std::size_t i = 0; i < flags_.size(); ++i) if (action.source == flags_[i]->Id())
+    if (action.type != ActionType::Clicked)
+        return false;
+    if (modal_.IsPrimary(action.source))
+    {
+        Close();
+        return true;
+    }
+    if (modal_.IsReset(action.source))
+    {
+        Reset();
+        return true;
+    }
+    for (std::size_t i = 0; i < units_.size(); ++i)
+        if (action.source == units_[i]->Id())
         {
-            FlagValue(static_cast<Flag>(i)) = action.value != 0;
-            flags_[i]->GetComponent<ToggleBehaviorComponent>()->SetChecked(action.value != 0);
+            draft_.scrollUnit = i == 1 ? PlayOptions::ScrollUnit::Bpm : PlayOptions::ScrollUnit::Multiplier;
             Layout();
             return true;
         }
-    if (action.type != ActionType::Clicked) return false;
-    if (action.source == close_->Id()) { Close(); return true; }
-    if (action.source == reset_->Id()) { Reset(); return true; }
-    if (action.source == labels_[Rate]->Id())
+    for (std::size_t i = 0; i < flags_.size(); ++i)
     {
-        rateExpanded_ = !rateExpanded_;
-        RefreshTexts(); Layout(); return true;
-    }
-    for (std::size_t i = 0; i < fields_.size(); ++i) if (action.source == fields_[i]->Id())
-    {
-        RequireDropdown(*unit_).Collapse();
-        UpdateInputs();
-        if (inputs_[i]) inputs_[i]->Focus(false); // Preserve native caret/selection after its mouse click.
+        const bool row = action.source == flags_[i].row->Id();
+        if (!row && action.source != flags_[i].toggle->Id())
+            continue;
+        const auto flag = static_cast<Flag>(i);
+        SetFlag(flag, !FlagValue(flag));
+        Layout();
         return true;
     }
+    if (action.source == rateMore_->Id())
+    {
+        rateExpanded_ = !rateExpanded_;
+        Layout();
+        return true;
+    }
+    for (std::size_t i = 0; i < fields_.size(); ++i)
+        if (action.source == fields_[i]->Id())
+        {
+            RequireDropdown(*gauge_).Collapse();
+            UpdateInputs();
+            if (inputs_[i])
+                inputs_[i]->Focus(false); // Preserve native caret/selection after its mouse click.
+            return true;
+        }
     return false;
 }
 
-void PlayOptionsPanel::ProcessInput(const InputState &input, std::optional<Point> pointer)
+void PlayOptionsPanel::ProcessInput(const InputState &input)
 {
-    if (!IsVisible()) return;
+    if (!IsVisible())
+        return;
     SynchronizeText();
     bool focused = false, submit = false, cancel = false;
-    for (auto &field : inputs_) if (field)
-    {
-        focused |= field->HasFocus();
-        submit |= field->TakeSubmit();
-        cancel |= field->TakeCancel();
-    }
+    for (auto &field : inputs_)
+        if (field)
+        {
+            focused |= field->HasFocus();
+            submit |= field->TakeSubmit();
+            cancel |= field->TakeCancel();
+        }
     const bool closeKey = !focused && (input.WasKeyPressed(VK_ESCAPE) || input.WasKeyPressed(VK_RETURN));
     if (cancel || submit || closeKey)
-    { Close(); return; }
-    if (pointer && viewport_->BoundsInCanvas().Contains(*pointer) && input.MouseWheelDelta() != 0)
     {
-        scroll_ -= input.MouseWheelDelta() * 36;
-        Layout();
+        Close();
+        return;
     }
     UpdateInputs();
 }
 
-void PlayOptionsPanel::Update(double deltaSeconds)
+std::optional<PlayOptions> PlayOptionsPanel::TakeApplied()
 {
-    if (!IsVisible()) return;
-    if (progress_ < 1)
-    {
-        progress_ = std::clamp(progress_ + static_cast<float>(deltaSeconds / .2), 0.0F, 1.0F);
-        Layout();
-    }
+    return std::exchange(applied_, std::nullopt);
 }
-
-std::optional<PlayOptions> PlayOptionsPanel::TakeApplied() { return std::exchange(applied_, std::nullopt); }

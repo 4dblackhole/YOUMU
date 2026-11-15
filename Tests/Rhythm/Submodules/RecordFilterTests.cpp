@@ -11,15 +11,15 @@ namespace tests
         RecordFilterDraft draft;
         draft.choices[0] = 2;
         draft.choices[1] = 1;
-        draft.choices[7] = 2;
+        draft.choices[8] = 1; // Cleared.
+        draft.choices[RecordFilterFlagCount] = 2;
         draft.values = {L"60", L"70", L"1.5", L"1.5", L"240", L"240", L"35", L"35", L"18446744073709551615"};
-        draft.condition = L"Cleared = true OR NOT (Completed = true)";
-        const auto filter = ParseRecordFilter(draft);
+        auto filter = ParseRecordFilter(draft);
         Require(filter.flags[0] == false && filter.flags[1] == true && !filter.flags[2] && filter.scrollUnit == 1,
                 "False, true and unlimited are distinct choices; BPM uses the stored unit.");
         const auto restored = FormatRecordFilter(filter);
-        Require(restored.choices == draft.choices && restored.values == draft.values && restored.condition == draft.condition,
-                "Reopening preserves numeric values, full uint64 seed and the direct expression.");
+        Require(restored.choices == draft.choices && restored.values == draft.values,
+                "Reopening preserves numeric values and the full uint64 seed.");
         TemporaryDirectory directory("youmu-record-filter");
         const auto database = directory.Path() / "plays.sqlite3", pattern = directory.Path() / "fixture.ymp";
         std::ofstream(pattern) << "fixture";
@@ -39,7 +39,34 @@ namespace tests
         record.completed = false; record.options.accelerate = 2; PlayRecordStore(database).Save(record);
         const auto rows = PlayRecordStore(database).Query(pattern, "Taiko", filter.Query(), 0, 20);
         Require(rows.size() == 2 && rows[0].judgeLevel == JudgeLevel{70} && rows[1].judgeLevel == JudgeLevel{60},
-                "Real history uses inclusive bounds and ANDs structured fields with the complete OR/NOT expression.");
+                "Real history uses inclusive bounds and ANDs the structured fields.");
+        // Play results are Any/On/Off rows too: Random on with Cleared off finds the two plays that were not cleared.
+        auto results = draft;
+        results.values = {};
+        results.choices = {};
+        results.choices[1] = 1;
+        results.choices[8] = 2;
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", ParseRecordFilter(results).Query(), 0, 20).size() == 2,
+                "Cleared and Completed choices filter real history.");
+        results.choices[7] = 1;
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", ParseRecordFilter(results).Query(), 0, 20).size() == 1,
+                "Completed narrows the not-cleared random plays to the finished one.");
+        results.choices = {};
+        results.choices[9] = 1;
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", ParseRecordFilter(results).Query(), 0, 20).empty(),
+                "No stored play used the pause menu.");
+        // A switched-off value row keeps its value but stops limiting the records.
+        auto switched = draft;
+        Require(switched.ToggleRow(0) && !switched.IsRowOn(0), "A row with values can be switched off.");
+        switched.SetValue(1, L"71");
+        Require(!switched.IsRowOn(0), "Editing a switched-off row keeps it off.");
+        filter = ParseRecordFilter(switched);
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", filter.Query(), 0, 20).size() == 4 &&
+                    !FormatRecordFilter(filter).IsRowOn(0) && FormatRecordFilter(filter).values[1] == L"71",
+                "Switched-off JudgeLevel bounds no longer limit records and survive reopening.");
+        auto fresh = RecordFilterDraft{};
+        fresh.SetValue(8, L"7");
+        Require(fresh.IsRowOn(4), "The seed row turns on with its first value.");
         for (const auto &[index, value] : std::array<std::pair<std::size_t, const wchar_t *>, 15>{{
             {0,L"71"}, {0,L"0"}, {1,L"101"}, {2,L"0.49"}, {3,L"2.01"}, {4,L"0"}, {5,L"-1"},
             {6,L"-1"}, {7,L"101"}, {0,L"nan"}, {2,L"inf"}, {8,L"18446744073709551616"},
@@ -51,17 +78,7 @@ namespace tests
             catch (const std::invalid_argument &) { rejected = true; }
             Require(rejected, "Invalid numeric drafts cannot become committed record conditions.");
         }
-        RecordFilter manual;
-        manual.condition = "NOT (Mirror = true) OR Random = true";
-        Require(ParseRecordFilter(FormatRecordFilter(manual)).Query() == manual.condition,
-                "A direct-only condition retains its existing syntax and parser limits.");
-        manual.condition = " \t ";
-        Require(manual.Query().empty(), "Whitespace-only direct conditions are unlimited.");
-        draft.condition = L"Cleared=true; DELETE FROM Plays";
-        bool rejected{};
-        try { static_cast<void>(ParseRecordFilter(draft)); }
-        catch (const std::invalid_argument &) { rejected = true; }
-        Require(rejected && PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 20).size() == 8,
-                "Invalid direct conditions are rejected and filter queries preserve stored records.");
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 20).size() == 8,
+                "Filter queries preserve stored records.");
     }
 }

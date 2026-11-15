@@ -11,11 +11,27 @@
 #include "Submodules/GameplaySupport.h"
 #include "Texts/GameScene/RhythmTestScene/GameplayTexts.h"
 #include "Gauge/BasicHpGauge.h"
+#include "Gauge/HpGaugeKind.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
 using namespace PhantomCore;
+
+namespace
+{
+    // Builds the gauge chosen in Play options. Only the default gauge exists (HP-02).
+    std::unique_ptr<IHpGauge> CreateHpGauge(const HpGaugeKind kind, const HpLevel level,
+                                            const std::span<const HpNoteDefinition> notes)
+    {
+        switch (kind)
+        {
+        case HpGaugeKind::Default:
+            return std::make_unique<BasicHpGauge>(level, notes);
+        }
+        throw std::invalid_argument("Unknown HP gauge.");
+    }
+} // namespace
 
 RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
                                  AudioPlaybackManager &playback,
@@ -165,7 +181,7 @@ bool RhythmTestScene::PreparePresentation()
             hpNotes.push_back({note->Id(), note->Accuracy().target,
                 note->Profile().HalfWindow(JudgementGrade::Perfect),
                 note->Profile().HalfWindow(JudgementGrade::Great)});
-    hpGauges_.push_back(std::make_unique<BasicHpGauge>(session.HealthLevel(), hpNotes));
+    hpGauges_.push_back(CreateHpGauge(launch_.playOptions.hpGauge, session.HealthLevel(), hpNotes));
     std::vector<IHpGauge *> borrowedGauges;
     for (const auto &gauge : hpGauges_) borrowedGauges.push_back(gauge.get());
     controller_->SetHpGauges(borrowedGauges);

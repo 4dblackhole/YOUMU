@@ -22,6 +22,8 @@ struct SongCatalogPattern
     // Logical note objects produced by the mode; empty when unavailable.
     std::optional<std::size_t> noteCount;
     std::optional<std::pair<double, double>> bpmRange;
+    // Seconds from the first note to the last note entry (a long note's end included); empty without notes.
+    std::optional<double> chartLengthSeconds;
     // Client-calculated value. Empty until calculation; not stored in YMP or the disk index.
     std::optional<double> calculatedDifficulty;
 };
@@ -84,6 +86,7 @@ public:
         std::shared_ptr<const ParseResult<Document>> parsed;
         std::optional<std::size_t> noteCount;
         std::optional<std::pair<double, double>> bpmRange;
+        std::optional<double> chartLengthSeconds;
     };
     mutable std::map<std::filesystem::path, CachedDocument<MusicDocument>> musicCache_;
     mutable std::map<std::filesystem::path, CachedDocument<PatternDocument>> patternCache_;

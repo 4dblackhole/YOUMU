@@ -1,41 +1,50 @@
 #pragma once
 #include "PhantomCore.h"
+#include "Presentation/UiModal.h"
 #include "Records/RecordFilter.h"
 #include "Texts/TextCatalog.h"
+#include <vector>
 
+// Record filters (UI-02): Any/On/Off rows for the play options and the play results, and value rows with a
+// switch for the ranges and the seed. Apply commits a validated copy; Cancel, ✕, Escape and hiding the Scene
+// discard the edit.
 class RecordFilterPanel final
 {
   public:
-    void Initialize(PhantomCore::Visual2DCanvas &canvas, TextCatalog &texts, PhantomCore::IWindowControl *window);
+    void Initialize(PhantomCore::Visual2DCanvas &canvas, TextCatalog &texts, PhantomCore::IWindowControl *window,
+                    PhantomCore::ScreenVisual2DManager *visuals = nullptr);
     void Open(const RecordFilter &filter);
     void Close() noexcept;
     void Shutdown() noexcept;
     void SetViewport(std::uint32_t height);
     void RefreshTexts();
-    [[nodiscard]] bool IsVisible() const noexcept { return overlay_ && overlay_->IsVisible(); }
+    [[nodiscard]] bool IsVisible() const noexcept { return modal_.IsVisible(); }
     bool ProcessAction(const PhantomCore::Action &action);
     void ProcessInput(const PhantomCore::InputState &input);
     [[nodiscard]] std::optional<RecordFilter> TakeApplied();
 
   private:
-    PhantomCore::Visual2DNode &Label(PhantomCore::Visual2DNode &parent, std::string name, float size = 16);
+    static constexpr std::size_t ChoiceCount = RecordFilterFlagCount + 1; // Flags, then the scroll unit.
+    static constexpr std::size_t FieldCount = 9;
     void Layout();
     void RefreshValues();
+    void RefreshRows();
     void SynchronizeText();
-    void UpdateInputVisibility();
+    void UpdateInputs();
     void TryApply();
-    void EditCondition();
+    void Reset();
     PhantomCore::Visual2DCanvas *canvas_{};
     TextCatalog *texts_{};
-    PhantomCore::Visual2DNode *overlay_{}, *panel_{}, *title_{}, *close_{}, *apply_{}, *status_{};
-    PhantomCore::Visual2DNode *minimum_{}, *maximum_{}, *seedLabel_{}, *condition_{}, *conditionText_{};
-    std::array<PhantomCore::Visual2DNode *, RecordFilterFlagCount + 1> choiceLabels_{}, choices_{};
-    std::array<PhantomCore::Visual2DNode *, 4> rangeLabels_{};
-    std::array<PhantomCore::Visual2DNode *, 9> fields_{};
-    std::array<std::unique_ptr<PhantomCore::ITextInput>, 9> inputs_;
+    UiModal modal_;
+    PhantomCore::Visual2DNode *optionsHeading_{}, *rangesHeading_{}, *resultsHeading_{}, *minimum_{}, *maximum_{};
+    std::array<PhantomCore::Visual2DNode *, ChoiceCount> choiceLabels_{};
+    std::array<std::array<PhantomCore::Visual2DNode *, 3>, ChoiceCount> choices_{};
+    std::array<PhantomCore::Visual2DNode *, ChoiceCount> choiceRules_{};
+    std::array<PhantomCore::Visual2DNode *, RecordFilterValueRowCount> switches_{}, rowLabels_{};
+    std::array<PhantomCore::Visual2DNode *, FieldCount> fields_{};
+    std::array<std::unique_ptr<PhantomCore::ITextInput>, FieldCount> inputs_;
     RecordFilterDraft draft_;
     std::optional<RecordFilter> applied_;
     std::string error_;
     std::uint32_t height_{720};
-    bool discardKeys_{}, waitRelease_{};
 };

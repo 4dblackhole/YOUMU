@@ -189,7 +189,7 @@ namespace
             static_cast<void>(view_->Update(input, 0));
             click("FilterButton");
             auto fields = edits();
-            Check(fields.size() == 6 && (GetWindowLongPtrW(child_, GWL_STYLE) & WS_VISIBLE) == 0,
+            Check(fields.size() == 11 && (GetWindowLongPtrW(child_, GWL_STYLE) & WS_VISIBLE) == 0,
                   "Filter shows native numeric fields, hides search and leaves uncalculated difficulty disabled.");
             auto *overlay = Find(canvas->Root(), "SongFilter.Overlay");
             if (!overlay) throw std::runtime_error("Filter overlay missing.");
@@ -217,7 +217,7 @@ namespace
             Check(state_.filter_.IsActive() && state_.visibleSongIndices_.size() == 1, "Closing a reset draft cancels it.");
             click("FilterButton");
             fields = edits();
-            Check(fields.size() == 6, "Reopen native fields.");
+            Check(fields.size() == 11, "Reopen native fields.");
             setText(fields[0], L"200");
             setText(fields[1], L"100");
             click("SongFilter.Apply");
@@ -299,12 +299,8 @@ namespace
             click("RecordQuery");
             fields = edits(); GetWindowTextW(fields[0], minimum, 32);
             Check(std::wstring_view(minimum) == L"60", "Close discards the pending record filter edit.");
-            click("RecordFilter.Choice.0");
-            Check(edits().empty(), "Record combo popups hide native fields so they cannot cover choices.");
-            input = {};
-            InputStateTestAccess::Key(input, VK_ESCAPE, true);
-            Check(view_->Update(input, 0) == SongSelectCommand::None && recordFilter->IsVisible(),
-                  "Escape first closes the open choice list and keeps the record filter.");
+            click("RecordFilter.Choice.0.1");
+            Check(edits().size() == 9 && recordFilter->IsVisible(), "Any/On/Off tabs choose in place beside the native fields.");
             input = {};
             InputStateTestAccess::Key(input, VK_ESCAPE, true);
             Check(view_->Update(input, 0) == SongSelectCommand::None && !recordFilter->IsVisible(),
