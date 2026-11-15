@@ -158,6 +158,11 @@ HP 회귀는 GameplayJudgementTests의 틀 위치·채움 잘라 보이기·클�
 GameplayPauseTests의 유효 노트가 없는 채보 진입 차단을 포함합니다.
 수치·롱노트·POOR·되감기·종료 판정과 포맷/기본값 검사는 Rhythm의 HpGaugeTests가 담당합니다.
 
+플레이 화면 회귀(UI-02)는 GameplayJudgementTests의 2px·50% 마디선, Kiai 판정원(곡 시간 250ms 페이드·박 맥동·뒤로 이동 시
+바로 바뀜·레인 크기로 잘린 빛), 공용 화면 오류 줄(종류·경로와 행·원인, 위 20 가운데, 최대 폭에서 한 줄로 잘림, 좁은 화면 여백, 비우면 숨김)과
+남은 타격 배지 회귀를 포함합니다. 로딩 준비 실패 때의 메뉴 모양(진행 띠 없음·값 유지·Retry 선택)은 GameplayPauseTests의 TestMenu,
+컨트롤러 상태(`PreparationFailed`·`AttemptStarted`·`ErrorSource`)는 같은 러너의 실패 자원 회귀가 확인합니다.
+
 After a solution build, run in an x64 Visual Studio developer PowerShell with
 `FMOD_ROOT` set to the installed SDK:
 

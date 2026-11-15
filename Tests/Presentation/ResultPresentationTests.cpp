@@ -945,7 +945,7 @@ namespace
                     ScreenVisuals().CanvasCount(), retryRequested_, returnRequested_);
                 for (ScreenCanvasId id = 1; id <= 5; ++id)
                     if (const auto* canvas = ScreenVisuals().FindCanvas(id))
-                        for (const auto name : {"Hud.Error", "Progress.CurrentTime", "Progress.TotalTime"})
+                        for (const auto name : {"Hud.Error.Cause", "Progress.CurrentTime", "Progress.TotalTime"})
                             if (const auto* node = FindNode(canvas->Root(), name))
                                 if (const auto* text = node->GetComponent<TextVisualComponent>())
                                 {

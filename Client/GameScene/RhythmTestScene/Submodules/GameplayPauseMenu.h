@@ -21,6 +21,9 @@ class GameplayPauseMenu final
         Shutdown();
     }
     void Show(std::uint32_t width, std::uint32_t height, bool canResume, std::size_t measureCount);
+    // The attempt's resources failed to load: Resume and Rewind stay off without the preparing band,
+    // keep showing their values, and Retry is selected because it reloads.
+    void SetPreparationFailed(bool failed);
     void Hide() noexcept;
     GameplayPauseChoice Update(const PhantomCore::InputState &input);
     GameplayPauseChoice HandleKey(std::uint16_t virtualKey);
@@ -52,6 +55,6 @@ class GameplayPauseMenu final
     GameplayPauseChoice choice_;
     std::uint32_t width_{}, height_{};
     std::uint64_t textRevision_{};
-    bool visible_{}, canResume_{};
+    bool visible_{}, canResume_{}, failed_{};
     std::chrono::steady_clock::time_point shownAt_{};
 };

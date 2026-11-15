@@ -3,6 +3,7 @@
 #include "GameFlow/GameplayLaunchStore.h"
 #include "Texts/TextCatalog.h"
 #include "Mode/Results/IPlayResult.h"
+#include "Presentation/UiErrorLine.h"
 #include <memory>
 
 class GameplaySessionController;
@@ -37,6 +38,10 @@ class RhythmTestScene final : public PhantomCore::GameScene
     void ReturnToEditor(PhantomCore::SceneManager &scenes);
     void PrepareLoadingBackground();
     void UpdateLoadingBackgroundLayout();
+    // The loading screen stays until the attempt's clock first runs, also under a pause menu opened
+    // before the start or after a failed preparation; its card hides while that menu is open.
+    void PresentLoadingScreen();
+    void PresentScreenError();
     std::unique_ptr<IPlayResult> &pendingResult_;
     std::vector<std::unique_ptr<IHpGauge>> hpGauges_;
     std::unique_ptr<GameplaySessionController> controller_;
@@ -50,10 +55,12 @@ class RhythmTestScene final : public PhantomCore::GameScene
     bool testPreparationFailed_{};
     PhantomCore::ScreenCanvasHandle loadingCanvas_;
     PhantomCore::Visual2DNode *loadingBackground_{};
+    PhantomCore::Visual2DNode *loadingCard_{};
     PhantomCore::Visual2DNode *loadingBarPiece_{};
     PhantomCore::Size loadingBackgroundSize_{};
     bool loadingBackgroundReady_{};
     std::optional<PhantomCore::EngineServices> services_;
+    UiErrorLine errorLine_;
     bool presentationReady_{};
     double nextPreparationPoll_{};
 };

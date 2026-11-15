@@ -8,6 +8,8 @@
 #include "Submodules/GameplayPauseMenu.h"
 #include "Submodules/GameplayPresenter.h"
 #include "Submodules/EditorTestControls.h"
+#include "Submodules/GameplaySupport.h"
+#include "Texts/GameScene/RhythmTestScene/GameplayTexts.h"
 #include "Gauge/BasicHpGauge.h"
 #include <algorithm>
 #include <cmath>
@@ -26,7 +28,8 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
           debug, request ? request->TakeValidatedSession() : nullptr)),
       view_(std::make_unique<GameplayPresenter>(visuals, texts)),
       pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts)),
-      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), launchStore_(std::move(request))
+      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), launchStore_(std::move(request)),
+      errorLine_(visuals)
 {
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
 }
@@ -54,14 +57,16 @@ void RhythmTestScene::Initialize(const EngineServices &services)
     // Redesigned loading screen (UI-02): one band across the screen introduces the song
     // and chart. The band is wider than any supported aspect so it always reaches both edges.
     const auto loadingImage = [this](const wchar_t *key) { return visuals_.RegisterImage(Loading(key)); };
-    static_cast<void>(CreateSprite(root, {-2000, -80, 4000, 160}, loadingImage(L"Card"), "Loading.TitlePlate"));
-    auto &title = CreateLabel(root, {-608, 6, 1216, 40}, launch_.songTitle, "Loading.Song");
+    loadingCard_ = &root.CreateChild("Loading.Card");
+    auto &card = *loadingCard_;
+    static_cast<void>(CreateSprite(card, {-2000, -80, 4000, 160}, loadingImage(L"Card"), "Loading.TitlePlate"));
+    auto &title = CreateLabel(card, {-608, 6, 1216, 40}, launch_.songTitle, "Loading.Song");
     // Chart line: name, difficulty value (a dash until a formula exists) and the chart creator.
     auto patternLine = launch_.patternTitle.empty() ? launch_.patternPath.stem().wstring() : launch_.patternTitle;
     patternLine += L" · —";
     if (!launch_.patternCreator.empty())
         patternLine += L" · Chart by " + launch_.patternCreator;
-    auto &pattern = CreateLabel(root, {-608, -22, 1216, 24}, patternLine, "Loading.Pattern");
+    auto &pattern = CreateLabel(card, {-608, -22, 1216, 24}, patternLine, "Loading.Pattern");
     const auto style = [](Visual2DNode &node, float size, std::uint16_t weight, Color color)
     {
         auto &text = *node.GetComponent<TextVisualComponent>();
@@ -74,7 +79,7 @@ void RhythmTestScene::Initialize(const EngineServices &services)
     style(title, 32, 900, ui_colors::theme::Ink);
     style(pattern, 16, 700, ui_colors::theme::Caption);
     // Preparation has no measurable fraction, so a piece sweeps the bar while loading.
-    auto &bar = CreateSprite(root, {-210, -48, 420, 6}, loadingImage(L"BarTrack"), "Loading.Bar");
+    auto &bar = CreateSprite(card, {-210, -48, 420, 6}, loadingImage(L"BarTrack"), "Loading.Bar");
     bar.SetClipRect({0, 0, 420, 6});
     loadingBarPiece_ = &CreateSprite(bar, {0, 0, 150, 6}, loadingImage(L"BarFill"), "Loading.BarPiece");
     loadingBarPiece_->GetComponent<SpriteVisualComponent>()->SetUvTransform({150.0F / 420.0F, 1.0F}, {});
@@ -165,7 +170,6 @@ bool RhythmTestScene::PreparePresentation()
     for (const auto &gauge : hpGauges_) borrowedGauges.push_back(gauge.get());
     controller_->SetHpGauges(borrowedGauges);
     controller_->Start(*services_, launch_.editorTestStart.value_or(view_->InitialTimelineTime()));
-    view_->PresentErrorMessage(controller_->ErrorMessage());
     view_->SetVisible(false);
     presentationReady_ = true;
     return true;
@@ -178,6 +182,7 @@ void RhythmTestScene::BeginScene()
 void RhythmTestScene::EndScene() noexcept
 {
     view_->SetVisible(false);
+    errorLine_.Hide();
     static_cast<void>(loadingCanvas_.SetVisible(false));
 }
 void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
@@ -195,6 +200,8 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
         if (!launch_.editorTestStart && controller_->SessionReady() && context.input.WasKeyPressed(VK_ESCAPE))
             controller_->OpenPauseMenu(context);
         UpdatePauseMenu(context, scenes);
+        PresentLoadingScreen();
+        PresentScreenError();
         return;
     }
     controller_->Update(context);
@@ -212,8 +219,7 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
                                                        controller_->CurrentState() == PlayState::Pause))
                 controller_->SetEditorTestRate(*rate, context);
     }
-    view_->SetVisible(controller_->CurrentState() != PlayState::Loading);
-    static_cast<void>(loadingCanvas_.SetVisible(controller_->CurrentState() == PlayState::Loading));
+    PresentLoadingScreen();
     if (loadingBarPiece_ && controller_->CurrentState() == PlayState::Loading)
     {
         const double cycle = context.totalSeconds / 1.4;
@@ -227,9 +233,46 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
         view_->ApplyFeedback(feedback);
     if (controller_->CurrentState() == PlayState::Gameplay)
         view_->UpdateInputPresentation(context.input, context.deltaSeconds);
-    view_->PresentErrorMessage(controller_->ErrorMessage());
+    PresentScreenError();
     if (controller_->ShouldShowResult())
         ShowResult(scenes);
+}
+void RhythmTestScene::PresentLoadingScreen()
+{
+    const auto state = controller_->CurrentState();
+    // Editor Test keeps its own rule: its Space pause before the start shows the play screen.
+    const bool loading = launch_.editorTestStart ? state == PlayState::Loading : !controller_->AttemptStarted();
+    if (presentationReady_)
+        view_->SetVisible(!loading);
+    static_cast<void>(loadingCanvas_.SetVisible(loading));
+    if (loadingCard_)
+        loadingCard_->SetVisible(!controller_->PauseMenuOpen());
+}
+void RhythmTestScene::PresentScreenError()
+{
+    if (!services_)
+        return;
+    const auto &text = Gameplay(texts_);
+    ScreenErrorText line;
+    switch (controller_->ErrorSource())
+    {
+    case GameplayErrorSource::Effect:
+        line = {std::wstring(text.errorEffect),
+                Utf8ToWide(controller_->Session().AutomationErrorLocation(), text.audioInitializationFailed),
+                Utf8ToWide(controller_->Session().AutomationErrorCause(), text.audioInitializationFailed)};
+        break;
+    case GameplayErrorSource::Audio:
+        line = {std::wstring(text.errorAudio), {},
+                Utf8ToWide(controller_->ErrorMessage(), text.audioInitializationFailed)};
+        break;
+    default:
+        // The chart's BG is optional: without it the screen keeps its plain colour and says why.
+        if (presentationReady_ && !view_->BackgroundWarning().empty())
+            line = {std::wstring(text.errorBackground), launch_.backgroundPath.wstring(),
+                    Utf8ToWide(view_->BackgroundWarning(), text.audioInitializationFailed)};
+        break;
+    }
+    errorLine_.Present(line, services_->windowWidth, services_->windowHeight);
 }
 void RhythmTestScene::UpdatePauseMenu(const UpdateContext &context, SceneManager &scenes)
 {
@@ -238,6 +281,7 @@ void RhythmTestScene::UpdatePauseMenu(const UpdateContext &context, SceneManager
         pauseMenu_->Hide();
         return;
     }
+    pauseMenu_->SetPreparationFailed(controller_->PreparationFailed());
     pauseMenu_->Show(services_->windowWidth, services_->windowHeight, controller_->CanContinue(),
                      controller_->Session().Timeline().MeasureSpans().size());
     const auto choice = pauseMenu_->Update(context.input);
@@ -297,6 +341,7 @@ void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
         services_->windowHeight = height;
     }
     view_->OnResize(width, height);
+    errorLine_.OnResize(width, height);
     UpdateLoadingBackgroundLayout();
     pauseMenu_->OnResize(width, height);
     if (testControls_) testControls_->Resize(width, height);
@@ -305,7 +350,9 @@ void RhythmTestScene::Shutdown() noexcept
 {
     pauseMenu_->Shutdown();
     if (testControls_) testControls_->Shutdown();
+    errorLine_.Shutdown();
     loadingBackground_ = nullptr;
+    loadingCard_ = nullptr;
     loadingBarPiece_ = nullptr;
     loadingBackgroundSize_ = {};
     loadingCanvas_.Reset();

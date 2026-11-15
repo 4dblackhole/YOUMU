@@ -23,7 +23,8 @@
   짙은 상단 정보 배너, 중앙 랭크·제작자, 오른쪽 528px 그래프/버튼 열.
   표시·리트라이·미구현 데이터의 계약은 [플레이 결과](Gameplay/Results.md)에 있습니다.
 - `Special Note Focus · PNG Sources · Export Ready`: BalloonProcessing,
-  BalloonBurst, DengDengProcessing 투명 PNG와 200ms 처리 성공 상태.
+  BalloonBurst, DengDengProcessing 투명 PNG와 200ms 처리 성공 상태. UI-02 이후 게임은
+  [플레이](UIRedesign.md#플레이) 시안 그림을 쓰고 `BalloonBurst` 없이 같은 처리 그림으로 터짐을 그립니다.
 - 에디터: `Editor UI`, 페이지 `85e98a9d-d3bd-80e7-8008-a3ca1370f7ea`의
   Pattern / Realtime View / Time Signature / Metadata / Effects.
   편집 탭 시안:

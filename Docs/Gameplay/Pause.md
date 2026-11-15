@@ -42,6 +42,12 @@ Resume/Rewind 오른쪽에는 앞·뒤 화살표와 현재 값이 있는 선택�
 화살표 클릭은 키보드 ←→와 같은 `AdjustValue`를 사용하여 값만 바꾸고 게임을 재개하지 않습니다.
 행의 왼쪽 영역 클릭이나 Enter가 동작을 실행합니다. 준비 중에는 `PAUSED` 아래에 가는 진행 띠(`Pause.PrepTrack`·`Pause.PrepFill`)가
 움직이고 두 행과 선택기는 꺼집니다(바탕은 그대로, 글자·선택기 40%). 준비가 끝나면 띠가 사라지고 두 행이 다시 켜집니다.
+음악·히트사운드 로딩이 실패하면(`GameplaySessionController::PreparationFailed`) 같은 꺼짐 모양을 쓰되 진행 띠는 없고 값은 그대로 읽히며,
+Retry가 선택됩니다. Retry는 파일을 다시 준비하고 Retire는 결과로 갑니다.
+
+시도의 시계가 처음 흐르기 전(`AttemptStarted`가 거짓: Loading, 시작 전에 연 메뉴, 로딩 실패)에는 로딩 화면이 남고 메뉴가 열린 동안
+가운데 곡 소개 띠(`Loading.Card`)를 숨깁니다. 원인은 [화면 오류 줄](Presentation.md#노트-스크롤과-자산)이 메뉴 위에 보여 줍니다.
+Retry로 다시 Loading에 들어가면 같은 규칙입니다. 에디터 Test는 이 메뉴를 쓰지 않으므로 Loading 동안만 로딩 화면입니다.
 좁은 화면에서는 메뉴 부모를 함께 축소하여 행·선택기·글자가 화면 안에 남습니다.
 
 `GameplayPauseLayout`은 Canvas 노드와 배치를, `GameplayPauseMenu`는 포커스·값·입력 의도와 행 상태 그림을

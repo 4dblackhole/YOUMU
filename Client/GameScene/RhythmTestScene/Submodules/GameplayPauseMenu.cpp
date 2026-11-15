@@ -43,10 +43,20 @@ void GameplayPauseMenu::Show(std::uint32_t width, std::uint32_t height, bool can
     handle_.Get()->SetViewportSize({static_cast<float>(width), static_cast<float>(height)});
     visible_ = true;
     shownAt_ = std::chrono::steady_clock::now();
-    focus_ = 0;
+    focus_ = failed_ ? 2 : 0;
     lastPointer_.reset();
     Build();
     static_cast<void>(handle_.SetVisible(true));
+}
+void GameplayPauseMenu::SetPreparationFailed(const bool failed)
+{
+    if (failed_ == failed)
+        return;
+    failed_ = failed;
+    if (failed)
+        focus_ = 2;
+    if (visible_)
+        RefreshRows();
 }
 void GameplayPauseMenu::RefreshRows()
 {
@@ -54,13 +64,15 @@ void GameplayPauseMenu::RefreshRows()
         return;
     const auto &text = Pause(texts_);
     const double seconds = static_cast<double>(choice_.leadIn.count()) / 1'000'000;
+    // Only pending preparation says so; after a failure the values stay readable at 40%.
+    const bool preparing = !canResume_ && !failed_;
     const std::array<std::wstring, 2> values{
-        canResume_ ? std::vformat(text.resumeValueFormat, std::make_wformat_args(seconds)) : std::wstring(text.preparing),
-        canResume_ ? std::vformat(text.rewindValueFormat, std::make_wformat_args(choice_.measures))
-                   : std::wstring(text.preparing)};
+        preparing ? std::wstring(text.preparing) : std::vformat(text.resumeValueFormat, std::make_wformat_args(seconds)),
+        preparing ? std::wstring(text.preparing)
+                  : std::vformat(text.rewindValueFormat, std::make_wformat_args(choice_.measures))};
     auto &canvas = *handle_.Get();
     if (auto *prep = canvas.FindNode(prepId_))
-        prep->SetVisible(!canResume_);
+        prep->SetVisible(preparing);
     for (std::size_t i = 0; i < rows_.size(); ++i)
     {
         const bool available = i >= 2 || canResume_;
@@ -217,7 +229,7 @@ GameplayPauseChoice GameplayPauseMenu::Update(const InputState &input)
 void GameplayPauseMenu::AnimatePreparing()
 {
     // The piece sweeps the band once every 1.6 seconds while preparation is pending.
-    if (canResume_ || !handle_)
+    if (canResume_ || failed_ || !handle_)
         return;
     auto *piece = handle_.Get()->FindNode(prepPieceId_);
     auto *band = handle_.Get()->FindNode(prepId_);
@@ -263,4 +275,5 @@ void GameplayPauseMenu::Shutdown() noexcept
     previous_ = {};
     next_ = {};
     rootId_ = 0;
+    failed_ = false;
 }

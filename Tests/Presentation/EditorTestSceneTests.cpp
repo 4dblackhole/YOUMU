@@ -292,9 +292,13 @@ namespace
         while (scenes.CurrentSceneId() == RhythmTestSceneId && std::chrono::steady_clock::now() < deadline)
         { tick(idle); std::this_thread::sleep_for(std::chrono::milliseconds{2}); }
         if (scenes.CurrentSceneId() == RhythmTestSceneId)
-            for (const auto name : {"Progress.CurrentTime", "Progress.TotalTime", "EditorTest.Help", "EditorTest.RateLabel", "Hud.Error"})
+            for (const auto name : {"Progress.CurrentTime", "Progress.TotalTime", "EditorTest.Help", "EditorTest.RateLabel", "Hud.Error.Cause"})
             {
-                const auto label = Find(h, name).second->GetComponent<TextVisualComponent>()->Text();
+                // The error line's Canvas exists only once a diagnostic was shown.
+                const auto found = TryFind(h, name);
+                if (!found.second)
+                    continue;
+                const auto label = found.second->GetComponent<TextVisualComponent>()->Text();
                 std::fwprintf(stderr, L"%hs: %ls\n", name, std::wstring(label).c_str());
             }
         Check(scenes.CurrentSceneId() == EditorSceneId && !result,

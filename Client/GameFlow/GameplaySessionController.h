@@ -11,6 +11,15 @@
 #include <string_view>
 #include <vector>
 
+// What a gameplay diagnostic comes from: an effect-file evaluation, which names its file and line,
+// or the audio output and its music/hit-sound preparation.
+enum class GameplayErrorSource
+{
+    None,
+    Effect,
+    Audio
+};
+
 // Every gameplay Scene uses the same lifecycle, independent of its note rules.
 enum class PlayState
 {
@@ -77,6 +86,18 @@ class GameplaySessionController final
         return feedback_;
     }
     std::string_view ErrorMessage() const noexcept;
+    GameplayErrorSource ErrorSource() const noexcept;
+    // False from Loading until this attempt's clock first runs; Retry clears it again. The Scene keeps
+    // the loading screen while it is false, including a pause menu opened before the start.
+    bool AttemptStarted() const noexcept
+    {
+        return attemptStarted_;
+    }
+    // The attempt's music or hit sounds failed to load: only Retry (reload) or Retire remain.
+    bool PreparationFailed() const noexcept
+    {
+        return state_ == PlayState::Pause && audio_.Resources() == PhantomCore::AudioPreparationState::Failed;
+    }
     bool ShouldShowResult() const noexcept
     {
         return state_ == PlayState::Ending && result_ != nullptr;
@@ -134,4 +155,5 @@ class GameplaySessionController final
     bool playbackRequested_{};
     bool debugMode_{};
     bool pauseMenuOpen_{};
+    bool attemptStarted_{};
 };

@@ -472,7 +472,9 @@ void TaikoEditorMode::Circle(IEditorModeCanvas &canvas, float x, float y, int ty
                        : type > 5 && type < 17              ? Gold
                                                             : Don;
     const auto file = type == 15 ? L"Balloon" : type == 16 ? L"DengDeng" : big ? L"bignote" : L"note";
-    const Rect bounds{x - radius, y - radius, radius * 2, radius * 2};
+    // Balloon/DengDeng art is the plate as its top square with the knot or handle below (128 x 160).
+    const float height = custom ? radius * 2.5F : radius * 2;
+    const Rect bounds{x - radius, y - radius, radius * 2, height};
     canvas.Image(bounds, SkinImage(file), custom ? White : color);
     if (!custom)
         canvas.Image(bounds, SkinImage(big ? L"bigcircleoverlay" : L"noteoverlay"), White);
