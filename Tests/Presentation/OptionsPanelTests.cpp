@@ -2,8 +2,10 @@
 #include "Mode/PlayGameModeFactory.h"
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/UiAlert.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiDropdown.h"
+#include "Presentation/UiTextWrap.h"
 #include "Presentation/UiTooltip.h"
 #include "YOUMUAssets.h"
 
@@ -578,6 +580,103 @@ namespace
         panel.Shutdown();
     }
 
+    // Notices break at spaces for Latin and Hangul and after any kana or Han, within the width.
+    void TestTextWrap()
+    {
+        Check(ui_text::WrapText(L"aaaa bbbb cccc", 10, 60) == L"aaaa bbbb\ncccc",
+              "Latin text breaks at the last space that fits.");
+        Check(ui_text::WrapText(L"가나 다라", 10, 25) == L"가나\n다라", "Hangul words stay whole.");
+        Check(ui_text::WrapText(L"あいうえお", 10, 30) == L"あいう\nえお", "Kana break after any character.");
+        Check(ui_text::WrapText(L"one\ntwo", 10, 100) == L"one\ntwo", "Explicit line breaks are kept.");
+    }
+
+    void TestAlert()
+    {
+        Visual2DCanvas canvas;
+        Visual2DInputRouter router;
+        auto &under = CreateButton(canvas.Root(), {-300, 200, 80, 40}, L"", "Under");
+        UiAlert alert;
+        alert.Initialize(canvas, nullptr);
+        const InputState idle;
+        InputState enter, escape;
+        InputStateTestAccess::Key(enter, VK_RETURN);
+        InputStateTestAccess::Key(escape, VK_ESCAPE);
+        const auto centre = [](const Visual2DNode &node) {
+            const auto bounds = node.BoundsInCanvas();
+            return Point{bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
+        };
+        const auto click = [&](const Point point) {
+            PointerInput pointer;
+            pointer.available = true;
+            pointer.position = point;
+            pointer.leftButtonDown = pointer.leftButtonPressed = true;
+            router.Process(canvas, pointer);
+            pointer.leftButtonDown = pointer.leftButtonPressed = false;
+            pointer.leftButtonReleased = true;
+            router.Process(canvas, pointer);
+        };
+        const AlertContent unsaved{AlertKind::Warning, L"Unsaved changes", L"Save before leaving?",
+                                   L"Songs\\Patterns\\Song\\Easy.ymp\nAccess is denied.",
+                                   {{L"Discard", false, true}, {L"Cancel", false, false, true}, {L"Save", true}}};
+        alert.Show(unsaved);
+        const auto panel = FindNode(canvas.Root(), "Alert.Panel").BoundsInCanvas();
+        Check(alert.IsOpen() && panel.width == UiAlert::Width && std::abs(panel.x + panel.width / 2) < .01F &&
+                  std::abs(panel.y + panel.height / 2) < .01F,
+              "The alert is a 480 wide panel at the Canvas centre.");
+        const auto band = FindNode(canvas.Root(), "Alert.Band").BoundsInCanvas();
+        Check(band.height == 4 && std::abs(band.y + band.height - (panel.y + panel.height)) < .01F,
+              "A 4px severity band tops the panel.");
+        const auto discard = alert.ButtonNode(0)->BoundsInCanvas(), cancel = alert.ButtonNode(1)->BoundsInCanvas();
+        const auto save = alert.ButtonNode(2)->BoundsInCanvas();
+        Check(std::abs(save.x + save.width - (panel.x + panel.width - 28)) < .01F &&
+                  std::abs(cancel.x + cancel.width + 8 - save.x) < .01F,
+              "The primary button ends the right group, after the other buttons in order.");
+        Check(std::abs(discard.x - (panel.x + 28)) < .01F && save.height == 40 && save.y == cancel.y,
+              "An irreversible action stands apart at the left on the same 40px row.");
+
+        Check(!alert.Update(enter) && alert.IsOpen(), "The key that led to an alert does not answer it.");
+        Check(alert.Update(enter) == 2U && !alert.IsOpen(), "Enter chooses the primary button.");
+        alert.Show(unsaved);
+        static_cast<void>(alert.Update(idle));
+        Check(alert.Update(escape) == 1U && !alert.IsOpen(), "Esc chooses the cancel button.");
+        alert.Show(unsaved);
+        static_cast<void>(alert.Update(idle));
+        click(centre(*alert.ButtonNode(0)));
+        static_cast<void>(canvas.TakeActions());
+        Check(alert.Update(idle) == 0U && !alert.IsOpen(), "Clicking a button chooses it.");
+
+        alert.Show(unsaved);
+        static_cast<void>(alert.Update(idle));
+        click(centre(under));
+        Check(canvas.TakeActions().empty() && !alert.Update(idle) && alert.IsOpen(),
+              "A press on the scrim neither closes the alert nor reaches the control under it.");
+
+        alert.Show({AlertKind::Error, L"Conversion failed", L"", L"", {{L"OK", true}}});
+        static_cast<void>(alert.Update(idle));
+        Check(!FindNode(canvas.Root(), "Alert.Detail").IsVisible() && alert.Update(escape) == 0U,
+              "Without a cancel button Esc answers a single-button alert; an empty detail has no box.");
+
+        std::wstring longDetail;
+        for (int line = 0; line < 20; ++line)
+            longDetail += L"line " + std::to_wstring(line) + L"\n";
+        alert.Show({AlertKind::Info, L"Details", L"", longDetail, {{L"OK", true}}});
+        auto &box = FindNode(canvas.Root(), "Alert.Detail");
+        auto &text = FindNode(box, "Text");
+        const auto boxBounds = box.BoundsInCanvas();
+        const float before = text.BoundsInCanvas().y;
+        Check(boxBounds.height == 120, "A long diagnosis is held in a 120px box.");
+        PointerInput wheel;
+        wheel.available = true;
+        wheel.position = centre(box);
+        wheel.wheelDelta = -1;
+        router.Process(canvas, wheel);
+        Check(text.BoundsInCanvas().y > before, "The wheel scrolls the diagnosis inside its box.");
+        alert.Hide();
+        Check(!alert.IsOpen() && !alert.Update(enter), "A hidden alert answers nothing.");
+        router.Reset(canvas);
+        alert.Shutdown();
+    }
+
     void TestActualAudio()
     {
         AudioSystem audio;
@@ -848,6 +947,8 @@ int main()
         TestSectionsAndJapanese(folder);
         TestVolumes(folder);
         TestTooltip();
+        TestTextWrap();
+        TestAlert();
         TestActualAudio();
         std::filesystem::remove_all(folder);
         std::cout << "Options panel and persistence tests passed.\n";

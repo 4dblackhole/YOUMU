@@ -134,9 +134,12 @@ void MusicSelectScene::PollOsuImport()
     }
     else
     {
+        // The song list is unchanged; the alert carries the converter's own output.
         selection_.catalogLoading_ = false;
-        selection_.SetLaunchError(SongSelectionState::LaunchErrorKind::Pattern, result->message);
         view_->RebuildVisibleSongs();
+        view_->ShowAlert({AlertKind::Error, std::wstring(texts_.Get("MusicSelect.importFailedTitle")),
+                          std::wstring(texts_.Get("MusicSelect.importFailedMessage")),
+                          DecodeDisplayText(result->message), {{std::wstring(texts_.Get("Alert.ok")), true}}});
     }
 }
 void MusicSelectScene::CreateDifficulty(SceneManager &scenes)

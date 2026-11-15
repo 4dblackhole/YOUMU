@@ -7,7 +7,7 @@ using namespace PhantomCore;
 
 using namespace song_select;
 
-void MusicSelectView::ProcessPointer(const InputState &input)
+PointerInput MusicSelectView::CanvasPointerInput(const InputState &input)
 {
     canvasPointer_ = input.IsMouseInsideWindow()
                          ? MapScreenPointer(
@@ -22,6 +22,26 @@ void MusicSelectView::ProcessPointer(const InputState &input)
     pointer.leftButtonReleased = input.WasMouseButtonReleased(MouseButton::Left);
     pointer.wheelDelta = input.MouseWheelDelta();
     pointer.timestampTicks = LatestPointerTimestamp(input);
+    return pointer;
+}
+
+// While the alert is open it answers every key and the pointer reaches only its Canvas layer;
+// queued actions of the controls under it are dropped.
+bool MusicSelectView::ProcessAlert(const InputState &input)
+{
+    if (!alert_.IsOpen())
+        return false;
+    inputRouter_.Process(*canvas_, CanvasPointerInput(input));
+    static_cast<void>(canvas_->TakeActions());
+    static_cast<void>(alert_.Update(input));
+    if (!alert_.IsOpen())
+        inputRouter_.Reset(*canvas_);
+    return true;
+}
+
+void MusicSelectView::ProcessPointer(const InputState &input)
+{
+    const auto pointer = CanvasPointerInput(input);
     if (IsAdditionMenuOpen() && (!canvasPointer_ || !additionMenu_->BoundsInCanvas().Contains(*canvasPointer_)))
         inputRouter_.Reset(*canvas_);
     else

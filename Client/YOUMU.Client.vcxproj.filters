@@ -179,6 +179,9 @@
     <ClInclude Include="Presentation\AccuracyText.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\RankName.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\UiFonts.h"><Filter>Presentation</Filter></ClInclude>
+    <ClCompile Include="Presentation\UiAlert.cpp"><Filter>Presentation</Filter></ClCompile>
+    <ClInclude Include="Presentation\UiAlert.h"><Filter>Presentation</Filter></ClInclude>
+    <ClInclude Include="Presentation\UiTextWrap.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\UiTooltip.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClInclude Include="Presentation\UiTooltip.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\UiDropdown.cpp"><Filter>Presentation</Filter></ClCompile>
