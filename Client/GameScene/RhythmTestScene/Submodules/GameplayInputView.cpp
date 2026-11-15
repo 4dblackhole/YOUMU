@@ -76,7 +76,7 @@ void GameplayInputView::Update(
         const bool pressedThisFrame =
             std::ranges::any_of(keys, [&input](auto key) { return key != 0 && input.WasKeyPressed(key); });
         const Color &faceColor =
-            primaryPressed ? InputKeyStrongColors[index]
+            primaryPressed ? InputKeyPressedColors[index]
                            : (secondaryPressed ? InputKeyWeakColors[index] : InputKeyBaseColors[index]);
         if (keyIndicators_[index] != nullptr)
         {

@@ -24,6 +24,21 @@
 
 using namespace PhantomCore;
 
+namespace PhantomCore
+{
+struct InputStateTestAccess
+{
+    static void Key(InputState &input, std::uint16_t key) { input.Reset(); input.SetKey(key, true, 1); }
+    // A window of 1280x720: Canvas centre (0, 0) is window pixel (640, 360).
+    static void Mouse(InputState &input, Point canvasPoint)
+    {
+        input.BeginUpdate();
+        input.SetMousePosition(static_cast<std::int32_t>(canvasPoint.x + 640),
+                               static_cast<std::int32_t>(360 - canvasPoint.y), true);
+    }
+};
+} // namespace PhantomCore
+
 namespace
 {
 
@@ -168,7 +183,7 @@ namespace
             {
                 texts.SetLanguage(language);
                 InputState input;
-                static_cast<void>(view->Update(input));
+                static_cast<void>(view->Update(input, 0.0));
                 const auto *label = FindNode(canvas->Root(), "Result.Failure");
                 Check((label != nullptr) == fixture.showFailure,
                       "Only an HP-eligible completed failure is labelled; clear, retire and HP-disabled plays are not.");
@@ -224,7 +239,7 @@ namespace
             {
                 texts.SetLanguage(language);
                 InputState input;
-                static_cast<void>(view->Update(input));
+                static_cast<void>(view->Update(input, 0.0));
                 const auto *overlay = FindNode(canvas->Root(), "Result.ControlUsage");
                 Check((overlay != nullptr) == (mask > 0 && mask < 4),
                       "Only actual menu pause or Rewind adds an overlay; Debug pause and Resume do not.");
@@ -340,7 +355,7 @@ namespace
             }
             texts.SetLanguage(Language::English);
             InputState input;
-            static_cast<void>(view->Update(input));
+            static_cast<void>(view->Update(input, 0.0));
             const auto *background = FindNode(canvas->Root(), "Result.Sky");
             if (!background) throw std::runtime_error("Rebuilt result BG missing.");
             Check(renderer.ImagePath(background->GetComponent<SpriteVisualComponent>()->Style().normalImage) ==
@@ -649,7 +664,7 @@ namespace
               "Large result graphs use one batch and the judgement ring another, with constant widget count.");
         InputState input;
         for (int i = 0; i < 20; ++i)
-            Check(view->Update(input) == ResultAction::None, "Idle result view must not leave the Scene.");
+            Check(view->Update(input, 0.0) == ResultAction::None, "Idle result view must not leave the Scene.");
         Check(canvas->BuildDrawList().size() == packets.size(), "Idle updates must not rebuild graph nodes.");
         const auto *retry = FindNode(canvas->Root(), "Result.Retry");
         const auto *replay = FindNode(canvas->Root(), "Result.Replay");
@@ -676,12 +691,37 @@ namespace
             router.Reset(*canvas);
         };
         click(*retry);
-        Check(view->Update(input) == ResultAction::Retry, "A retry click must emit the neutral retry action.");
+        Check(view->Update(input, 0.0) == ResultAction::Retry, "A retry click must emit the neutral retry action.");
         click(*replay);
-        Check(view->Update(input) == ResultAction::None, "Disabled replay must not emit any action.");
+        Check(view->Update(input, 0.0) == ResultAction::None, "Disabled replay must not emit any action.");
         texts.SetLanguage(Language::English);
-        Check(view->Update(input) == ResultAction::None && HasText(*canvas, L"Accuracy by note group"),
+        Check(view->Update(input, 0.0) == ResultAction::None && HasText(*canvas, L"Accuracy by note group"),
               "Result strings must follow the shared language catalog.");
+        // Shared tooltips: Back with its keys, the score, the option chips and the chart creator.
+        const auto rest = [&](std::string_view name) -> std::wstring
+        {
+            const auto *target = FindNode(canvas->Root(), name);
+            if (!target)
+                throw std::runtime_error("Result tooltip target must exist.");
+            const auto b = target->BoundsInCanvas();
+            InputState pointed;
+            InputStateTestAccess::Mouse(pointed, {b.x + b.width / 2, b.y + b.height / 2});
+            static_cast<void>(view->Update(pointed, .3));
+            static_cast<void>(view->Update(pointed, .3));
+            const auto *tip = FindNode(canvas->Root(), "Tooltip");
+            const auto *label = tip ? FindNode(*tip, "Label") : nullptr;
+            if (!tip || !tip->IsVisible() || !label)
+                return L"(hidden)";
+            return std::wstring(label->GetComponent<TextVisualComponent>()->Text());
+        };
+        Check(rest("Result.Back").empty(), "Back hints only its keys, Esc / Enter.");
+        Check(rest("Result.Score") == texts.Get("Tooltips.score"), "Resting on the score names it.");
+        Check(rest("Result.Option.random") == texts.Get("Tooltips.appliedOptions"),
+              "Resting on an option chip names the applied options.");
+        Check(rest("Result.Rank") == L"(hidden)", "Parts without a hint show none.");
+        view->SetVisible(false);
+        Check(!FindNode(canvas->Root(), "Tooltip")->IsVisible(), "Hiding the result hides its hint.");
+        view->SetVisible(true);
         for (const Size size : {Size{1024, 768}, Size{2560, 1080}, Size{720, 1280}})
         {
             view->OnResize(static_cast<std::uint32_t>(size.width), static_cast<std::uint32_t>(size.height));
@@ -705,7 +745,7 @@ namespace
         pointer.leftButtonDown = pointer.leftButtonPressed = false;
         pointer.leftButtonReleased = true;
         pointerRouter.Process(*canvas, pointer);
-        Check(view->Update(input) == ResultAction::Back,
+        Check(view->Update(input, 0.0) == ResultAction::Back,
               "The result button click must request returning to song select.");
         pointerRouter.Reset(*canvas);
         view->Shutdown();
@@ -749,6 +789,76 @@ namespace
         for(int i=0;i<5;++i)scene.Update({0,0,0,input,audio,{}},manager);
         Check(PlayRecordStore(database).Query(patternPath,"Taiko","",0,10).size()==1,"Repeated result updates do not duplicate records.");
         scene.Shutdown();
+    }
+    // A folder where the database file belongs makes every save fail until it is removed.
+    void TestResultRecordSaveFailure()
+    {
+        const auto directory=std::filesystem::temp_directory_path()/
+            ("YOUMU-result-record-failure-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::create_directories(directory);
+        struct Cleanup { std::filesystem::path path; ~Cleanup(){std::error_code e;std::filesystem::remove_all(path,e);} } cleanup{directory};
+        const auto database=directory/"plays.sqlite3", patternPath=directory/"fixture.ymp";
+        std::ofstream(patternPath)<<"Mode: Taiko";
+        NullRenderer renderer;ScreenVisual2DManager visuals;visuals.Initialize(renderer,{1280,720});
+        TextCatalog texts("Client/Texts/Languages");MeshRenderSystem meshes;TextRenderSystem textRendering;AudioSystem audio;
+        PatternDocument pattern;pattern.sourcePath=patternPath;pattern.mode="Taiko";
+        InputState idle,enter,escape;
+        InputStateTestAccess::Key(enter,VK_RETURN);
+        InputStateTestAccess::Key(escape,VK_ESCAPE);
+        for(const bool fixFirst:{false,true})
+        {
+            std::filesystem::create_directories(database);
+            auto loaded=TaikoMode(PlaySessionOptions{}).CreateSession(pattern);
+            Check(loaded.Succeeded(),"Record failure fixture loads its actual session summary.");
+            ResultViewContext display;display.recordDatabase=database;
+            ResultScene scene(loaded.session->TakeResult(PlayEndReason::Interrupted,RhythmTime{}),visuals,texts,display);
+            scene.Initialize({meshes,textRendering,renderer,audio,1280,720});scene.BeginScene();
+            SceneManager manager;
+            const auto &alert=scene.RecordAlert();
+            // Back or Retry reaching the view would throw here: this manager has no song select and no retry.
+            const auto waitForAlert=[&]{
+                const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds{5};
+                while(!alert.IsOpen()&&std::chrono::steady_clock::now()<deadline)
+                {
+                    scene.Update({0,0,0,idle,audio,{}},manager);
+                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                }
+                Check(alert.IsOpen(),"A failed record save opens the shared alert.");
+                scene.Update({0,0,0,idle,audio,{}},manager);
+            };
+            waitForAlert();
+            const auto &content=alert.Content();
+            Check(content.kind==AlertKind::Error&&content.title==L"Record not saved"&&
+                      content.detail.starts_with(database.wstring())&&content.buttons.size()==2&&
+                      content.buttons[0].cancel&&content.buttons[1].primary,
+                  "The alert names the record file and offers Close and Retry.");
+            if(fixFirst)
+            {
+                std::filesystem::remove(database);
+                scene.Update({0,0,0,enter,audio,{}},manager);
+                Check(!alert.IsOpen(),"Enter retries the save and closes the alert.");
+                const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds{5};
+                bool saved{};
+                while(!saved&&std::chrono::steady_clock::now()<deadline)
+                {
+                    scene.Update({0,0,0,idle,audio,{}},manager);
+                    saved=std::filesystem::is_regular_file(database)&&
+                          PlayRecordStore(database).Query(patternPath,"Taiko","",0,10).size()==1;
+                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                }
+                Check(saved&&!alert.IsOpen(),"A retry after the cause is gone saves the record once.");
+            }
+            else
+            {
+                scene.Update({0,0,0,enter,audio,{}},manager);
+                Check(!alert.IsOpen(),"Retry closes the alert while it saves again.");
+                waitForAlert();
+                scene.Update({0,0,0,escape,audio,{}},manager);
+                Check(!alert.IsOpen(),"A repeated failure asks again, and Close (Esc) keeps the result screen.");
+                std::filesystem::remove(database);
+            }
+            scene.Shutdown();
+        }
     }
     class ReturnRoute final : public GameScene
     {
@@ -835,7 +945,7 @@ namespace
                     ScreenVisuals().CanvasCount(), retryRequested_, returnRequested_);
                 for (ScreenCanvasId id = 1; id <= 5; ++id)
                     if (const auto* canvas = ScreenVisuals().FindCanvas(id))
-                        for (const auto name : {"Hud.Error", "Progress.CurrentTime", "Progress.TotalTime"})
+                        for (const auto name : {"Hud.Error.Cause", "Progress.CurrentTime", "Progress.TotalTime"})
                             if (const auto* node = FindNode(canvas->Root(), name))
                                 if (const auto* text = node->GetComponent<TextVisualComponent>())
                                 {
@@ -943,6 +1053,7 @@ int main()
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestResultRecordSaving();
+        TestResultRecordSaveFailure();
         TestFailureOverlay();
         TestControlUsageOverlay();
         TestHpCurveGeometry();

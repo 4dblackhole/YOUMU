@@ -8,6 +8,7 @@
 #include "GameFlow/PlaySessionLoader.h"
 #include "Judgement/AccuracyRange.h"
 #include "Presentation/MarqueeTextComponent.h"
+#include "Presentation/PerformanceBand.h"
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -174,6 +175,157 @@ namespace
             Check(visuals.CanvasCount() == 0, "BPM sort test releases its Canvas.");
         }
     }
+    Visual2DNode &Need(Visual2DNode *node, const char *message)
+    {
+        if (node == nullptr)
+            throw std::runtime_error(message);
+        return *node;
+    }
+    // The options drawer keeps its own tooltip on the same Canvas, so look for the one that is shown.
+    const TextVisualComponent *ShownTooltip(Visual2DNode &node)
+    {
+        if (node.Name() == "Tooltip" && node.IsVisible())
+            if (auto *label = Find(node, "Label"))
+                return label->GetComponent<TextVisualComponent>();
+        for (const auto &child : node.Children())
+            if (const auto *shown = ShownTooltip(*child))
+                return shown;
+        return nullptr;
+    }
+    Point Centre(const Visual2DNode &node)
+    {
+        const auto bounds = node.BoundsInCanvas();
+        return {bounds.x + bounds.width * .5F, bounds.y + bounds.height * .5F};
+    }
+    void Drag(MusicSelectView &view, InputState &input, Point from, Point to)
+    {
+        InputStateTestAccess::Begin(input);
+        InputStateTestAccess::Mouse(input, from, 0);
+        InputStateTestAccess::Button(input, true);
+        static_cast<void>(view.Update(input, 0));
+        InputStateTestAccess::Begin(input);
+        InputStateTestAccess::Mouse(input, to, 0);
+        static_cast<void>(view.Update(input, 0));
+        InputStateTestAccess::Begin(input);
+        InputStateTestAccess::Mouse(input, to, 0);
+        InputStateTestAccess::Button(input, false);
+        static_cast<void>(view.Update(input, 0));
+    }
+    // Each frame reports the pointer again: BeginUpdate forgets that it is inside the window.
+    void Rest(MusicSelectView &view, InputState &input, Point at)
+    {
+        for (int frame = 0; frame < 2; ++frame)
+        {
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Mouse(input, at, 0);
+            static_cast<void>(view.Update(input, .3));
+        }
+    }
+    // Common parts in the song list: the shared scrollbar, the now-playing mark and card name hints.
+    void TestSongListCommonParts(SongSelectPurpose purpose)
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts("Client/Texts/Languages");
+        OptionSettings options("build/common-parts-unused.ini");
+        SongSelectionState state;
+        for (int i = 0; i < 20; ++i)
+        {
+            SongCatalogEntry song;
+            song.music.names = {"Song " + std::to_string(i)};
+            song.music.artists = {"Artist"};
+            song.patterns.resize(1);
+            state.catalog_.songs.push_back(std::move(song));
+        }
+        state.catalog_.songs[0].music.names = {"Alpha", "Alpha Alias"};
+        state.RebuildVisibleSongs();
+        MusicSelectView view(visuals, state, purpose, texts, options);
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        Check(canvas != nullptr, "Common parts Canvas missing.");
+        InputState input;
+        static_cast<void>(view.Update(input, 0));
+
+        auto &viewport = Need(Find(canvas->Root(), "SongViewport"), "The song viewport must exist.");
+        auto &scrollbar = Need(Find(viewport, "Scrollbar"), "The song list must own the shared scrollbar.");
+        Check(scrollbar.IsVisible(), "Twenty songs overflow the list and show its scrollbar.");
+        auto &thumb = Need(Find(scrollbar, "Thumb"), "The scrollbar must have its bar.");
+        Check(scrollbar.BoundsInCanvas().width == 12 && thumb.BoundsInCanvas().width == 6,
+              "The song list uses the shared 12px strip with a 6px bar.");
+        // Drag the bar down: the list scrolls and the first card leaves the virtualized range.
+        const auto grab = Centre(thumb);
+        Drag(view, input, grab, {grab.x, grab.y - 300});
+        Check(!HasCard(canvas->Root(), 0) && thumb.BoundsInCanvas().y < grab.y - 200,
+              "Dragging the song list's bar scrolls the cards.");
+        // Above the rail's top but still inside the window, where the pointer stays known.
+        Drag(view, input, Centre(thumb), {grab.x, grab.y + 100});
+        Check(HasCard(canvas->Root(), 0), "Dragging back to the top shows the first card again.");
+
+        // The focused card's title gives way to the now-playing mark only while its song plays.
+        auto &card = Need(Find(canvas->Root(), "Song.0"), "The focused card must exist.");
+        auto &mark = Need(Find(card, "NowPlaying"), "The focused card must hold the now-playing mark.");
+        auto &title = Need(Find(card, "Title"), "The focused card must have a title.");
+        Check(!mark.IsVisible(), "A silent song shows no now-playing mark.");
+        const float titleX = title.BoundsInCanvas().x;
+        view.SetNowPlaying(true);
+        Check(mark.IsVisible() && std::abs(title.BoundsInCanvas().x - titleX - 21) < .01F,
+              "While the song plays, the mark stands 21px before its title.");
+        Check(mark.Children().size() == 3 && mark.BoundsInCanvas().width == 13, "The mark is three bars in a 13px box.");
+        view.SetNowPlaying(false);
+        Check(!mark.IsVisible() && title.BoundsInCanvas().x == titleX, "Pausing removes the mark.");
+
+        // A card title with several names hints them all; a single uncut name has no hint.
+        Rest(view, input, Centre(title));
+        const auto *tipText = ShownTooltip(canvas->Root());
+        Check(tipText != nullptr && tipText->Text() == L"Alpha · Alpha Alias",
+              "Resting on a card title lists every name of the song.");
+        Rest(view, input, Centre(Need(Find(card, "Artist"), "The card must have an artist line.")));
+        Check(ShownTooltip(canvas->Root()) == nullptr, "A single artist that fits its line has no hint.");
+        view.Shutdown();
+    }
+
+    // The F7 band: FPS and UPS in a navy band on the bottom-right corner; draw calls in Debug only.
+    void TestPerformanceBand()
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        TextCatalog texts("Client/Texts/Languages");
+        PerformanceBand band;
+        band.Initialize(visuals, texts);
+        const auto &segments = band.Segments();
+        Check(!band.IsVisible() && segments.size() == (PerformanceBand::ShowsDrawCalls ? 4U : 2U),
+              "The hidden band holds FPS and UPS, and draw calls only in Debug builds.");
+        Check(segments[0].name == L"FPS" && segments[0].value == L"—" && !segments[0].separated,
+              "Values read a dash until the first measurement.");
+        Check(segments[1].name == L"UPS" && segments[1].separated, "A rule separates UPS from FPS.");
+        PerformanceStatistics measured;
+        measured.framesPerSecond = 144;
+        measured.updatesPerSecond = 1000;
+        measured.drawCallsPerFrame = 87;
+        measured.peakDrawCallsPerFrame = 120;
+        measured.hasMeasurement = true;
+        band.Refresh(measured);
+        band.SetVisible(true);
+        band.Update();
+        Check(segments[0].value == L"144" && segments[1].value == L"1000", "The band reads FPS 144 | UPS 1000.");
+        if constexpr (PerformanceBand::ShowsDrawCalls)
+            Check(segments[2].name == L"Draws" && segments[2].value == L"87" && segments[3].value == L"120",
+                  "Debug builds add the draw calls and the busiest frame.");
+        const auto bounds = band.Band()->BoundsInCanvas();
+        Check(std::abs(bounds.x + bounds.width - 640) < .01F && std::abs(bounds.y + 360) < .01F &&
+                  bounds.height == PerformanceBand::Height,
+              "The band is fixed to the bottom-right corner.");
+        Check(Find(*band.Band(), "Slant") != nullptr && Find(*band.Band(), "Body") != nullptr,
+              "The band's left edge is slanted.");
+        band.Shutdown();
+        Check(visuals.CanvasCount() == 0, "The band releases its Canvas.");
+    }
+
     void TestSongPanelTransparency(SongSelectPurpose purpose)
     {
         Renderer renderer;
@@ -1045,6 +1197,48 @@ namespace
         static_cast<void>(view.Update(keys,.2));
         Check(!panel->IsVisible(), "Ctrl+O closes global settings.");
     }
+    // While the shared alert is open, Enter and Esc answer it and never reach song select.
+    void TestAlertHoldsKeys()
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts("Client/Texts/Languages");
+        OptionSettings options("build/alert-unused.ini");
+        SongSelectionState state;
+        SongCatalogEntry song;
+        song.music.names = {"Song"};
+        song.patterns.resize(1);
+        state.catalog_.songs.push_back(std::move(song));
+        state.RebuildVisibleSongs();
+        MusicSelectView view(visuals, state, SongSelectPurpose::Gameplay, texts, options);
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas) throw std::runtime_error("Alert Canvas missing.");
+        InputState input;
+        const auto press = [&](const std::uint16_t key) {
+            input = {};
+            InputStateTestAccess::Key(input, key, true);
+            return view.Update(input, 0);
+        };
+        for (const std::uint16_t key : {std::uint16_t{VK_RETURN}, std::uint16_t{VK_ESCAPE}})
+        {
+            view.ShowAlert({AlertKind::Error, L"Conversion failed", L"", L"converter output", {{L"OK", true}}});
+            auto *alert = Find(canvas->Root(), "Alert");
+            if (!alert) throw std::runtime_error("Alert node missing.");
+            Check(press(key) == SongSelectCommand::None && alert->IsVisible(),
+                  "The frame that opens an alert passes its keys to nothing.");
+            Check(press(key) == SongSelectCommand::None && !alert->IsVisible(),
+                  "Enter or Esc answers the alert without reaching song select.");
+            const auto expected = key == VK_RETURN ? SongSelectCommand::Launch : SongSelectCommand::Back;
+            Check(press(key) == expected, "Once the alert closes, song select takes its keys again.");
+        }
+        view.Shutdown();
+        Check(visuals.CanvasCount() == 0, "The alert test releases its Canvas.");
+    }
 } // namespace
 
 int main()
@@ -1088,10 +1282,14 @@ int main()
         TestFavoriteFolders();
         TestHpInformation();
         TestRecordHistoryView();
+        TestAlertHoldsKeys();
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);
         TestSongPanelTransparency(SongSelectPurpose::Gameplay);
         TestSongPanelTransparency(SongSelectPurpose::Editor);
+        TestSongListCommonParts(SongSelectPurpose::Gameplay);
+        TestSongListCommonParts(SongSelectPurpose::Editor);
+        TestPerformanceBand();
         SongCatalogLoader loader;
         loader.Refresh(UserSongs());
         const auto first = AwaitCatalog(loader);

@@ -76,6 +76,16 @@ class PlaySession final
     {
         return automationError_;
     }
+    // The "file:line" prefix of AutomationError and the rest after it, for a display that names both.
+    [[nodiscard]] std::string_view AutomationErrorLocation() const noexcept
+    {
+        return std::string_view{automationError_}.substr(0, automationErrorLocationLength_);
+    }
+    [[nodiscard]] std::string_view AutomationErrorCause() const noexcept
+    {
+        const auto rest = std::string_view{automationError_}.substr(automationErrorLocationLength_);
+        return rest.starts_with(' ') ? rest.substr(1) : rest;
+    }
     void Reset() noexcept;
     void RewindJudgements(RhythmTime target);
     void RetireRemaining(RhythmTime time);
@@ -140,6 +150,7 @@ class PlaySession final
     mutable std::vector<std::pair<std::size_t, std::size_t>> automationIndices_;
     mutable std::vector<std::optional<double>> automationLastValues_;
     mutable std::string automationError_;
+    mutable std::size_t automationErrorLocationLength_{};
     std::vector<MeasureLinePresentationInfo> measureLines_;
     std::map<SoundId, std::filesystem::path> hitSoundFiles_;
     std::map<SoundId, std::vector<TimedSoundOverride>, std::less<>> soundOverrides_;

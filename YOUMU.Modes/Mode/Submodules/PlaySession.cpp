@@ -99,6 +99,7 @@ void PlaySession::SetEffects(std::vector<CompiledEffectCommand> effects)
     automationValues_.clear();
     automationLastValues_.swap(lastValues);
     automationError_.clear();
+    automationErrorLocationLength_ = 0;
     ++presentationRevision_;
 }
 
@@ -334,8 +335,9 @@ double PlaySession::EvaluateTrack(std::size_t effectIndex, std::size_t trackInde
         {
             const auto path = effect.command.source.file.generic_u8string();
             automationError_ = std::string(reinterpret_cast<const char *>(path.data()), path.size()) + ":" +
-                               std::to_string(effect.command.source.line) + " [" + effect.command.target + "] " +
-                               error.what();
+                               std::to_string(effect.command.source.line);
+            automationErrorLocationLength_ = automationError_.size();
+            automationError_ += " [" + effect.command.target + "] " + error.what();
         }
         return *lastValue;
     }
@@ -363,6 +365,7 @@ void PlaySession::ResetNoteState(bool resetHp) noexcept
     automationTime_.reset();
     std::ranges::fill(automationLastValues_, std::nullopt);
     automationError_.clear();
+    automationErrorLocationLength_ = 0;
 }
 
 bool PlaySession::IsKiaiActive(RhythmTime time) const

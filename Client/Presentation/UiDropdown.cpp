@@ -127,6 +127,7 @@ UiDropdownComponent::~UiDropdownComponent()
 void UiDropdownComponent::Detach() noexcept
 {
     scrim_ = popup_ = popupLine_ = viewport_ = content_ = nullptr;
+    scrollbar_.Detach();
     link_ = nullptr;
     rows_.clear();
     rowsDirty_ = true;
@@ -282,6 +283,12 @@ void UiDropdownComponent::EnsurePopup()
     Paint(*popupLine_, ui_colors::theme::Brand);
     viewport_ = &popup_->CreateChild("Viewport");
     content_ = &viewport_->CreateChild("Content");
+    scrollbar_.Attach(*popup_, "Scrollbar");
+    scrollbar_.SetZIndex(2);
+    scrollbar_.FollowPointerEvents([this](const float offset) {
+        scroll_ = offset;
+        LayoutPopup();
+    }, [this](const float wheel) { ScrollBy(-wheel * rowHeight_); });
     scrim_->SetVisible(false);
 }
 
@@ -327,9 +334,13 @@ void UiDropdownComponent::LayoutPopup()
     contentHeight_ = static_cast<float>(count) * rowHeight_;
     const float listHeight = viewportHeight_ + ListPadding * 2 * scale;
     float widest = box.width;
+    // A list that scrolls keeps its rows clear of the scrollbar along the right edge.
+    const bool scrolls = contentHeight_ > viewportHeight_;
+    const float scrollbarWidth = scrolls ? UiScrollbar::GrabWidth * scale : 0.0F;
     for (const auto &item : items_)
-        widest = std::max(widest, (EstimateWidth(item, 14) + RowTextLeft + RowTextRight) * scale);
+        widest = std::max(widest, (EstimateWidth(item, 14) + RowTextLeft + RowTextRight) * scale + scrollbarWidth);
     const float width = std::min(widest, std::max(ListMaxWidth * scale, box.width));
+    const float rowWidth = std::max(width - scrollbarWidth, 1.0F);
 
     // Under the box unless that leaves the screen; then above it with the line at the bottom.
     auto *root = scrim_->Parent();
@@ -345,14 +356,16 @@ void UiDropdownComponent::LayoutPopup()
     viewport_->SetBounds({0, ListPadding * scale, width, viewportHeight_});
     viewport_->SetClipRect({0, 0, width, viewportHeight_});
     scroll_ = std::clamp(scroll_, 0.0F, std::max(contentHeight_ - viewportHeight_, 0.0F));
-    content_->SetBounds({0, viewportHeight_ - contentHeight_ + scroll_, width, contentHeight_});
+    content_->SetBounds({0, viewportHeight_ - contentHeight_ + scroll_, rowWidth, contentHeight_});
+    scrollbar_.SetRail({width - scrollbarWidth, ListPadding * scale, UiScrollbar::GrabWidth * scale, viewportHeight_});
+    scrollbar_.SetRange(viewportHeight_, contentHeight_, scroll_);
     for (std::size_t i = 0; i < count; ++i)
     {
         auto &row = rows_[i];
         const float top = contentHeight_ - static_cast<float>(i + 1) * rowHeight_;
-        row.node->SetBounds({0, top, width, rowHeight_});
+        row.node->SetBounds({0, top, rowWidth, rowHeight_});
         row.bar->SetBounds({0, 0, 3 * scale, rowHeight_});
-        row.label->SetBounds({RowTextLeft * scale, 0, std::max(width - (RowTextLeft + RowTextRight) * scale, 1.0F),
+        row.label->SetBounds({RowTextLeft * scale, 0, std::max(rowWidth - (RowTextLeft + RowTextRight) * scale, 1.0F),
                               rowHeight_});
         // A check: a short stroke down to the corner, then a long one up to the right.
         const Point corner{16 * scale, rowHeight_ * .5F - 3 * scale};

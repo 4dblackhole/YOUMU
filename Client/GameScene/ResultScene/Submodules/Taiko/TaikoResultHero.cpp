@@ -49,6 +49,7 @@ void TaikoResultView::BuildHero(Visual2DNode &root)
     auto &score = NumberLabel(root, {centerX - 170, 376, 340, 44}, GroupedDigits(result_.summary.score),
                               {40, 800, Ink, TextAlignment::Center});
     score.SetName("Result.Score");
+    Hint(score, {std::wstring(texts_.Get("Tooltips.score"))});
     BuildOptions(root);
 
     // Slice tooltip: hidden until the pointer rests on the band.
@@ -156,7 +157,9 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
         {
             const auto &chip = chips[i];
             const float nameWidth = EstimateTextWidth(chip.name, 12);
-            Fill(root, {x, y, chip.width, chipHeight}, ui_colors::theme::Chip, std::string("Result.Option.") + chip.key);
+            auto &plate =
+                Fill(root, {x, y, chip.width, chipHeight}, ui_colors::theme::Chip, std::string("Result.Option.") + chip.key);
+            Hint(plate, {std::wstring(texts_.Get("Tooltips.appliedOptions"))});
             Label(root, {x + padding, y, nameWidth + 2, chipHeight}, chip.name, {12, 700, InkSoft});
             NumberLabel(root, {x + padding + nameWidth + gap, y, chip.width - padding * 2 - nameWidth - gap + 2, chipHeight},
                         chip.value, {12, 700, BrandText}, false);

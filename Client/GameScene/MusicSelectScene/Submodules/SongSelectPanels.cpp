@@ -44,20 +44,6 @@ namespace
         return {};
     }
 
-    // Every name of a list, for the tooltip of a line that shows only the first.
-    [[nodiscard]] std::wstring AllNames(const std::vector<std::string> &values)
-    {
-        std::wstring names;
-        for (const auto &value : values)
-        {
-            if (value.empty())
-                continue;
-            if (!names.empty())
-                names += L" · ";
-            names += DecodeDisplayText(value);
-        }
-        return names;
-    }
 
     constexpr std::array<const char *, 6> StatNames{"BPM", "Length", "Notes", "JudgeLevel", "HP", "Mode"};
 } // namespace
@@ -194,6 +180,7 @@ void MusicSelectView::CreateSongBrowser()
     viewport.SetBounds(TopLeft({0.0F, layout::ViewportTop, layout::ListWidth, layout::BodyHeight - layout::ViewportTop},
                                height));
     songList_.Attach(*canvas_, inputRouter_, viewport);
+    songList_.SetTooltip(tooltip_);
 }
 
 void MusicSelectView::CreateFooter()

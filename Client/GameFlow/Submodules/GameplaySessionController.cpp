@@ -169,6 +169,12 @@ std::string_view GameplaySessionController::ErrorMessage() const noexcept
         return session_->AutomationError();
     return audio_.Error();
 }
+GameplayErrorSource GameplaySessionController::ErrorSource() const noexcept
+{
+    if (session_ && !session_->AutomationError().empty())
+        return GameplayErrorSource::Effect;
+    return audio_.Error().empty() ? GameplayErrorSource::None : GameplayErrorSource::Audio;
+}
 void GameplaySessionController::Shutdown() noexcept
 {
     timer_.Stop();
@@ -181,6 +187,7 @@ void GameplaySessionController::Shutdown() noexcept
     sessionInitialized_ = false;
     feedback_.clear();
     pauseMenuOpen_ = false;
+    attemptStarted_ = false;
     completedElapsedSeconds_ = 0;
 }
 std::unique_ptr<IPlayResult> GameplaySessionController::TakeResult()

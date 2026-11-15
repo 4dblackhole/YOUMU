@@ -24,12 +24,15 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
     if (preparingImages_.empty())
     {
         GameplayNoteView::AppendImagePaths(preparingImages_);
-        for (const auto file : {L"Hud.TimingPanel",
+        for (const auto file : {L"Gear.Band",
+                                L"Hud.TimingPanel",
                                 L"Hud.ScorePanel",
                                 L"Hud.JudgeCountsPanel",
                                 L"InputPanel",
                                 L"LaneLight",
                                 L"JudgementCircle",
+                                L"Kiai.Glow",
+                                L"Kiai.Ring",
                                 L"Lane",
                                 L"KeyButtonLeftKat",
                                 L"KeyButtonLeftDon",
@@ -67,7 +70,7 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
     const bool backgroundReady = services.visual2DRendering.PrepareImages(background, error);
     if (!error.empty())
     {
-        backgroundWarning_ = "Background image: " + error;
+        backgroundWarning_ = error;
         backgroundPath_.clear();
         return true;
     }
@@ -98,12 +101,12 @@ void GameplayPresenter::Shutdown() noexcept
     hpView_.Shutdown();
     statisticsView_.Shutdown();
     noteView_.Shutdown();
+    kiaiView_.Shutdown();
     preparingImages_.clear();
     inputView_.Shutdown();
     background_ = nullptr;
     scrollGearRoot_ = nullptr;
     scrollGearBorder_ = nullptr;
-    scrollGearSurface_ = nullptr;
     inputPresentationRoot_ = nullptr;
     inputPanel_ = nullptr;
     laneRoot_ = nullptr;
@@ -113,7 +116,6 @@ void GameplayPresenter::Shutdown() noexcept
 #if defined(_DEBUG)
     noteDebugLabel_ = nullptr;
 #endif
-    errorLabel_ = nullptr;
     canvas_ = nullptr;
     canvasHandle_.Reset();
     session_ = nullptr;
@@ -125,6 +127,7 @@ void GameplayPresenter::ApplyFeedback(const GameplayFeedback &feedback)
     {
         keyBeam_.Reset();
         judgementView_.Reset();
+        kiaiView_.Reset();
     }
     if (feedback.keyPressed)
         keyBeam_.OnKeyPressed(feedback.result);
@@ -141,6 +144,7 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
     UpdateDebugPresentation(time);
 #endif
     noteView_.Update(time);
+    kiaiView_.Update(*session_, time);
 }
 
 void GameplayPresenter::SetDebugVisible([[maybe_unused]] bool visible)

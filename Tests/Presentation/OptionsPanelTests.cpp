@@ -2,8 +2,11 @@
 #include "Mode/PlayGameModeFactory.h"
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/UiAlert.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiDropdown.h"
+#include "Presentation/UiTextWrap.h"
+#include "Presentation/UiScrollbar.h"
 #include "Presentation/UiTooltip.h"
 #include "YOUMUAssets.h"
 
@@ -578,6 +581,103 @@ namespace
         panel.Shutdown();
     }
 
+    // Notices break at spaces for Latin and Hangul and after any kana or Han, within the width.
+    void TestTextWrap()
+    {
+        Check(ui_text::WrapText(L"aaaa bbbb cccc", 10, 60) == L"aaaa bbbb\ncccc",
+              "Latin text breaks at the last space that fits.");
+        Check(ui_text::WrapText(L"가나 다라", 10, 25) == L"가나\n다라", "Hangul words stay whole.");
+        Check(ui_text::WrapText(L"あいうえお", 10, 30) == L"あいう\nえお", "Kana break after any character.");
+        Check(ui_text::WrapText(L"one\ntwo", 10, 100) == L"one\ntwo", "Explicit line breaks are kept.");
+    }
+
+    void TestAlert()
+    {
+        Visual2DCanvas canvas;
+        Visual2DInputRouter router;
+        auto &under = CreateButton(canvas.Root(), {-300, 200, 80, 40}, L"", "Under");
+        UiAlert alert;
+        alert.Initialize(canvas, nullptr);
+        const InputState idle;
+        InputState enter, escape;
+        InputStateTestAccess::Key(enter, VK_RETURN);
+        InputStateTestAccess::Key(escape, VK_ESCAPE);
+        const auto centre = [](const Visual2DNode &node) {
+            const auto bounds = node.BoundsInCanvas();
+            return Point{bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
+        };
+        const auto click = [&](const Point point) {
+            PointerInput pointer;
+            pointer.available = true;
+            pointer.position = point;
+            pointer.leftButtonDown = pointer.leftButtonPressed = true;
+            router.Process(canvas, pointer);
+            pointer.leftButtonDown = pointer.leftButtonPressed = false;
+            pointer.leftButtonReleased = true;
+            router.Process(canvas, pointer);
+        };
+        const AlertContent unsaved{AlertKind::Warning, L"Unsaved changes", L"Save before leaving?",
+                                   L"Songs\\Patterns\\Song\\Easy.ymp\nAccess is denied.",
+                                   {{L"Discard", false, true}, {L"Cancel", false, false, true}, {L"Save", true}}};
+        alert.Show(unsaved);
+        const auto panel = FindNode(canvas.Root(), "Alert.Panel").BoundsInCanvas();
+        Check(alert.IsOpen() && panel.width == UiAlert::Width && std::abs(panel.x + panel.width / 2) < .01F &&
+                  std::abs(panel.y + panel.height / 2) < .01F,
+              "The alert is a 480 wide panel at the Canvas centre.");
+        const auto band = FindNode(canvas.Root(), "Alert.Band").BoundsInCanvas();
+        Check(band.height == 4 && std::abs(band.y + band.height - (panel.y + panel.height)) < .01F,
+              "A 4px severity band tops the panel.");
+        const auto discard = alert.ButtonNode(0)->BoundsInCanvas(), cancel = alert.ButtonNode(1)->BoundsInCanvas();
+        const auto save = alert.ButtonNode(2)->BoundsInCanvas();
+        Check(std::abs(save.x + save.width - (panel.x + panel.width - 28)) < .01F &&
+                  std::abs(cancel.x + cancel.width + 8 - save.x) < .01F,
+              "The primary button ends the right group, after the other buttons in order.");
+        Check(std::abs(discard.x - (panel.x + 28)) < .01F && save.height == 40 && save.y == cancel.y,
+              "An irreversible action stands apart at the left on the same 40px row.");
+
+        Check(!alert.Update(enter) && alert.IsOpen(), "The key that led to an alert does not answer it.");
+        Check(alert.Update(enter) == 2U && !alert.IsOpen(), "Enter chooses the primary button.");
+        alert.Show(unsaved);
+        static_cast<void>(alert.Update(idle));
+        Check(alert.Update(escape) == 1U && !alert.IsOpen(), "Esc chooses the cancel button.");
+        alert.Show(unsaved);
+        static_cast<void>(alert.Update(idle));
+        click(centre(*alert.ButtonNode(0)));
+        static_cast<void>(canvas.TakeActions());
+        Check(alert.Update(idle) == 0U && !alert.IsOpen(), "Clicking a button chooses it.");
+
+        alert.Show(unsaved);
+        static_cast<void>(alert.Update(idle));
+        click(centre(under));
+        Check(canvas.TakeActions().empty() && !alert.Update(idle) && alert.IsOpen(),
+              "A press on the scrim neither closes the alert nor reaches the control under it.");
+
+        alert.Show({AlertKind::Error, L"Conversion failed", L"", L"", {{L"OK", true}}});
+        static_cast<void>(alert.Update(idle));
+        Check(!FindNode(canvas.Root(), "Alert.Detail").IsVisible() && alert.Update(escape) == 0U,
+              "Without a cancel button Esc answers a single-button alert; an empty detail has no box.");
+
+        std::wstring longDetail;
+        for (int line = 0; line < 20; ++line)
+            longDetail += L"line " + std::to_wstring(line) + L"\n";
+        alert.Show({AlertKind::Info, L"Details", L"", longDetail, {{L"OK", true}}});
+        auto &box = FindNode(canvas.Root(), "Alert.Detail");
+        auto &text = FindNode(box, "Text");
+        const auto boxBounds = box.BoundsInCanvas();
+        const float before = text.BoundsInCanvas().y;
+        Check(boxBounds.height == 120, "A long diagnosis is held in a 120px box.");
+        PointerInput wheel;
+        wheel.available = true;
+        wheel.position = centre(box);
+        wheel.wheelDelta = -1;
+        router.Process(canvas, wheel);
+        Check(text.BoundsInCanvas().y > before, "The wheel scrolls the diagnosis inside its box.");
+        alert.Hide();
+        Check(!alert.IsOpen() && !alert.Update(enter), "A hidden alert answers nothing.");
+        router.Reset(canvas);
+        alert.Shutdown();
+    }
+
     void TestActualAudio()
     {
         AudioSystem audio;
@@ -777,6 +877,131 @@ namespace
         tooltip.Shutdown();
     }
 
+    // A line inside a control that keeps the pointer (a song card title) hints only while pointed.
+    void TestTooltipLines()
+    {
+        Visual2DCanvas canvas;
+        UiTooltip tooltip;
+        tooltip.Initialize(canvas);
+        auto &card = CreateButton(canvas.Root(), {-200, 0, 300, 60}, L"", "Card");
+        auto &title = CreateLabel(card, {20, 30, 200, 20}, L"Title", "Title");
+        auto &other = CreateButton(canvas.Root(), {200, 0, 80, 40}, L"", "Other");
+        tooltip.SetLine(title, {L"Title · Alias"});
+        const InputState idle;
+        const Point overTitle{-150, 40}, belowTitle{-150, 10};
+        tooltip.Update(.6, idle, card.Id());
+        Check(!tooltip.IsShown(), "A line hint needs the pointer position.");
+        tooltip.Update(.6, idle, card.Id(), true, overTitle);
+        Check(tooltip.IsShown() && tooltip.ShownTarget() == title.Id(),
+              "Resting on the line inside the pointed card shows its hint.");
+        tooltip.Update(.016, idle, card.Id(), true, belowTitle);
+        Check(!tooltip.IsShown(), "Leaving the line hides its hint while the card stays pointed.");
+        tooltip.Update(.6, idle, other.Id(), true, overTitle);
+        Check(!tooltip.IsShown(), "A line shows nothing when the pointed control does not hold it.");
+        tooltip.Clear();
+        tooltip.Update(.6, idle, card.Id(), true, overTitle);
+        Check(!tooltip.IsShown(), "Clearing forgets every hint.");
+        // A long name breaks into lines inside the 300-wide plate instead of running past it.
+        tooltip.Set(other, {L"Blue Hour Sketch of a Very Long Morning Over the Harbour and the Quiet Sea"});
+        tooltip.Update(.6, idle, other.Id());
+        const auto plate = FindNode(canvas.Root(), "Plate").BoundsInCanvas();
+        const auto text = FindNode(canvas.Root(), "Label").GetComponent<TextVisualComponent>()->Text();
+        const auto lines = 1 + std::ranges::count(text, L'\n');
+        Check(tooltip.IsShown() && lines >= 2 && plate.width <= 300 && plate.height == 12 + 18 * static_cast<float>(lines),
+              "A long name wraps within the 300-wide plate and the plate grows by a line each.");
+        tooltip.Shutdown();
+    }
+
+    float Alpha(Visual2DNode &node)
+    {
+        return node.GetComponent<SpriteVisualComponent>()->Style().normal.alpha;
+    }
+    PointerInput Pointer(Point position, bool down, bool pressed, bool released = false)
+    {
+        PointerInput pointer;
+        pointer.position = position;
+        pointer.leftButtonDown = down;
+        pointer.leftButtonPressed = pressed;
+        pointer.leftButtonReleased = released;
+        return pointer;
+    }
+
+    // The shared scrollbar: a 12px strip with a centred 6px bar, drags, rail presses and states.
+    void TestScrollbar()
+    {
+        Visual2DCanvas canvas;
+        Visual2DInputRouter router;
+        UiScrollbar bar;
+        bar.Attach(canvas.Root(), "Scroll");
+        bar.SetRail({100, -150, UiScrollbar::GrabWidth, 300});
+        bar.SetRange(300, 300, 0);
+        Check(!bar.IsShown(), "Nothing to scroll hides the scrollbar.");
+        bar.SetRange(300, 1200, 0);
+        auto &rail = FindNode(canvas.Root(), "Scroll");
+        auto &track = FindNode(rail, "Rail");
+        auto &thumb = FindNode(rail, "Thumb");
+        const auto bounds = thumb.BoundsInCanvas();
+        Check(bar.IsShown() && rail.BoundsInCanvas().width == 12 && track.BoundsInCanvas().width == 6,
+              "A 12px grab strip holds a 6px rail.");
+        Check(bounds.width == 6 && bounds.x == 103 && std::abs(bounds.height - 75) < .01F,
+              "The 6px bar is centred and its length shows the visible share.");
+        Check(std::abs(bounds.y + bounds.height - 150) < .01F, "Offset zero puts the bar at the top.");
+        Check(std::abs(Alpha(track) - .07F) < .001F && std::abs(Alpha(thumb) - .42F) < .001F,
+              "A faint rail under a flat translucent cobalt bar.");
+        bar.SetRange(300, 3000, 0);
+        Check(std::abs(thumb.BoundsInCanvas().height - UiScrollbar::MinimumThumb) < .01F, "The bar is at least 32px long.");
+        bar.SetRange(300, 1200, 0);
+
+        static_cast<void>(bar.Track(Point{106, 140}, false));
+        Check(std::abs(Alpha(thumb) - .62F) < .001F, "Pointing at the bar darkens it.");
+        static_cast<void>(bar.Track(Point{106, 0}, false));
+        Check(std::abs(Alpha(thumb) - .42F) < .001F, "Leaving the bar restores it.");
+        // Press the bar 10px below its top: the grab point stays under the pointer.
+        router.Process(canvas, Pointer({106, 140}, true, true));
+        auto offset = bar.Track(Point{106, 140}, true);
+        Check(bar.IsDragging() && offset && std::abs(*offset) < .01F && Alpha(thumb) == 1.0F,
+              "Pressing the bar holds it in solid cobalt without moving the list.");
+        offset = bar.Track(Point{106, 65}, true);
+        Check(offset && std::abs(*offset - 300) < .01F, "Dragging the bar a third of its travel scrolls a third.");
+        offset = bar.Track(Point{106, -400}, true);
+        Check(offset && std::abs(*offset - 900) < .01F, "A drag past the end stops at the last offset.");
+        router.Process(canvas, Pointer({106, -400}, false, false, true));
+        Check(!bar.Track(Point{106, -400}, false) && !bar.IsDragging(), "Releasing ends the drag.");
+        bar.SetRange(300, 1200, 0);
+        // A rail press brings the bar's centre under the pointer and keeps following it.
+        router.Process(canvas, Pointer({106, -50}, true, true));
+        offset = bar.Track(Point{106, -50}, true);
+        // 200px down the rail: the bar's top lands at 162.5 of its 225px travel.
+        Check(offset && std::abs(*offset - 650) < .01F, "A rail press centres the bar under the pointer.");
+        router.Process(canvas, Pointer({106, -50}, false, false, true));
+        static_cast<void>(bar.Track(Point{106, -50}, false));
+
+        UiScrollbar tabs;
+        tabs.Attach(canvas.Root(), "Tabs", UiScrollbar::Axis::Horizontal);
+        tabs.SetRail({-300, 200, 400, UiScrollbar::HorizontalGrabWidth});
+        tabs.SetRange(400, 800, 400);
+        const auto tabThumb = FindNode(FindNode(canvas.Root(), "Tabs"), "Thumb").BoundsInCanvas();
+        Check(tabThumb.height == 4 && tabThumb.y == 202 && tabThumb.width == 200 && tabThumb.x == -100,
+              "A horizontal scrollbar is 8px with a 4px bar at its offset.");
+
+        // A host without a per-frame pointer follows the strip's own pointer events.
+        UiScrollbar list;
+        std::optional<float> followed;
+        float wheel = 0;
+        list.Attach(canvas.Root(), "List");
+        list.FollowPointerEvents([&followed](float value) { followed = value; }, [&wheel](float delta) { wheel += delta; });
+        list.SetRail({-500, -150, UiScrollbar::GrabWidth, 300});
+        list.SetRange(300, 1200, 0);
+        router.Process(canvas, Pointer({-494, 140}, true, true));
+        router.Process(canvas, Pointer({-494, 65}, true, false));
+        Check(followed && std::abs(*followed - 300) < .01F, "Pointer events alone drag an event-following bar.");
+        router.Process(canvas, Pointer({-494, 65}, false, false, true));
+        PointerInput turn = Pointer({-494, 0}, false, false);
+        turn.wheelDelta = 1;
+        router.Process(canvas, turn);
+        Check(!list.IsDragging() && wheel == 1, "The wheel over the strip reaches its host.");
+    }
+
     void TestVolumes(const std::filesystem::path &folder)
     {
         constexpr AudioVolumes half{50, 50, 100};
@@ -848,6 +1073,10 @@ int main()
         TestSectionsAndJapanese(folder);
         TestVolumes(folder);
         TestTooltip();
+        TestTextWrap();
+        TestAlert();
+        TestTooltipLines();
+        TestScrollbar();
         TestActualAudio();
         std::filesystem::remove_all(folder);
         std::cout << "Options panel and persistence tests passed.\n";

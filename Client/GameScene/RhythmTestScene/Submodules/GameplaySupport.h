@@ -25,11 +25,18 @@ constexpr std::array<PhantomCore::Color, 4> InputKeyWeakColors{{
     {1.0F, 0.18F, 0.25F, 1.0F},
     {0.17F, 0.72F, 0.96F, 1.0F},
 }};
-constexpr std::array<PhantomCore::Color, 4> InputKeyStrongColors{{
-    {0.56F, 0.90F, 1.0F, 1.0F},
-    {1.0F, 0.45F, 0.49F, 1.0F},
-    {1.0F, 0.45F, 0.49F, 1.0F},
-    {0.56F, 0.90F, 1.0F, 1.0F},
+// A pressed key is bright and saturated (UI-02): the weak colour lifted by 1.38 so that the key
+// image's 72% grey brings it back to about the full colour. The red target channel clips at 1.
+constexpr float InputKeyPressedGain = 1.38F;
+constexpr std::array<PhantomCore::Color, 4> InputKeyPressedColors{{
+    {InputKeyWeakColors[0].red * InputKeyPressedGain, InputKeyWeakColors[0].green * InputKeyPressedGain,
+     InputKeyWeakColors[0].blue * InputKeyPressedGain, 1.0F},
+    {InputKeyWeakColors[1].red * InputKeyPressedGain, InputKeyWeakColors[1].green * InputKeyPressedGain,
+     InputKeyWeakColors[1].blue * InputKeyPressedGain, 1.0F},
+    {InputKeyWeakColors[2].red * InputKeyPressedGain, InputKeyWeakColors[2].green * InputKeyPressedGain,
+     InputKeyWeakColors[2].blue * InputKeyPressedGain, 1.0F},
+    {InputKeyWeakColors[3].red * InputKeyPressedGain, InputKeyWeakColors[3].green * InputKeyPressedGain,
+     InputKeyWeakColors[3].blue * InputKeyPressedGain, 1.0F},
 }};
 constexpr std::array<PhantomCore::Color, 4> InputKeyWeakGlowColors{{
     {KatBlue.red, KatBlue.green, KatBlue.blue, 0.45F},

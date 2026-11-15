@@ -80,6 +80,7 @@ void TaikoResultView::Initialize(const EngineServices &services)
     if (!canvas_)
         throw std::runtime_error("Failed to create result Canvas.");
     canvas_->SetViewportSize({static_cast<float>(width_), static_cast<float>(height_)});
+    tooltip_.Initialize(*canvas_);
     LoadAssets();
     Build();
 }
@@ -191,6 +192,8 @@ void TaikoResultView::BuildBackground()
 void TaikoResultView::Build()
 {
     router_.Reset(*canvas_);
+    // Rebuilt controls get new nodes, so their hints are registered again below.
+    tooltip_.Clear();
     for (const auto id : {contentId_, backgroundId_, frameId_})
         if (id)
             static_cast<void>(canvas_->RemoveNode(id));
@@ -229,6 +232,7 @@ void TaikoResultView::BuildActions(Visual2DNode &root)
     auto &back = Button(root, {0, Height - BottomBarHeight, 136, BottomBarHeight}, "Result.Back",
                         std::wstring(text.back), 17, White, backIcon_, 30);
     backId_ = back.Id();
+    Hint(back, {L"", L"Esc / Enter"});
     constexpr float retryWidth = 240, retryHeight = 84, replayWidth = 125;
     auto &replay = Button(root, {width - retryWidth - replayWidth, Height - BottomBarHeight, replayWidth, BottomBarHeight},
                           "Result.Replay", std::wstring(text.replay), 16,
@@ -244,8 +248,18 @@ void TaikoResultView::BuildActions(Visual2DNode &root)
         child->SetEnabled(context_.canRetry);
     retryId_ = retry.Id();
 }
+void TaikoResultView::Hint(Visual2DNode &node, TooltipText text)
+{
+    if (node.GetComponent<RectangleCollider2DComponent>() == nullptr)
+        node.AddComponent<RectangleCollider2DComponent>();
+    if (node.GetComponent<PointerReceiverComponent>() == nullptr)
+        node.AddComponent<PointerReceiverComponent>();
+    tooltip_.Set(node, std::move(text));
+}
 void TaikoResultView::SetVisible(bool visible) noexcept
 {
+    if (!visible)
+        tooltip_.Hide();
     static_cast<void>(canvasHandle_.SetVisible(visible));
 }
 void TaikoResultView::ProcessPointer(const InputState &input)
@@ -264,13 +278,14 @@ void TaikoResultView::ProcessPointer(const InputState &input)
     router_.Process(*canvas_, pointer);
     UpdateRingTooltip(position);
 }
-ResultAction TaikoResultView::Update(const InputState &input)
+ResultAction TaikoResultView::Update(const InputState &input, const double deltaSeconds)
 {
     if (!canvas_)
         return ResultAction::None;
     if (textRevision_ != texts_.Revision())
         Build();
     ProcessPointer(input);
+    tooltip_.Update(deltaSeconds, input, router_.HoveredNode());
     for (const auto &action : canvas_->TakeActions())
     {
         if (action.type != ActionType::Clicked)
@@ -298,6 +313,7 @@ void TaikoResultView::Shutdown() noexcept
 {
     if (canvas_)
         router_.Reset(*canvas_);
+    tooltip_.Shutdown();
     contentId_ = backId_ = retryId_ = backgroundId_ = frameId_ = tooltipId_ = 0;
     canvas_ = nullptr;
     canvasHandle_.Reset();

@@ -23,8 +23,17 @@ resolution persistence and Japanese round trips. It also drives the shared toolt
 the half-second rest, a pointed child resolving to its registered ancestor, key
 chips for `Ctrl+O` and `Esc / Enter`, the quick switch to a neighbouring control,
 dismissal by a press until the pointer moves on, host suppression and opening above
-a control at the bottom edge. Drop-downs are the shared UiDropdown: list rows take
-clicks ahead of the fields under them, and a press outside an open list only closes it. `RunLanguageFileTests.ps1`
+a control at the bottom edge. Tooltip lines inside a control that keeps the pointer
+(card titles) show only while pointed inside that control, and clearing forgets every
+hint, and a long name wraps inside the 300-wide plate. The shared scrollbar is a 12px strip with a centred 6px bar (8/4 horizontally)
+that hides without overflow, keeps its 32px minimum, darkens on hover and turns solid
+while held; dragging keeps the grab point, a rail press centres the bar, and an
+event-following host (the drop-down list) drags and wheels through the strip's own
+pointer events. Drop-downs are the shared UiDropdown: list rows take
+clicks ahead of the fields under them, and a press outside an open list only closes it.
+The shared alert is checked for its layout, Enter/Esc answers, button clicks, the blocking
+scrim and detail scrolling; the result screen retries a failed record save through it, and
+song select keeps Enter and Esc away from the screen while it is open. `RunLanguageFileTests.ps1`
 checks English captions/value formats, selected EN/KO/JA explanations, complete
 Japanese explanation-key coverage and existing immutable pack/fallback contracts.
 Japanese adds `ja` to the same INI Language field; stored ko/en remain valid.
@@ -72,6 +81,11 @@ Both gameplay and editor selection check that clicking another difficulty only s
 that clicking the selected difficulty launches exactly once.
 Both also select Base BPM through the actual dropdown, verify numeric order and
 stable ties with retained song focus, then check language switching and search.
+Both drag the song list's shared scrollbar away from and back to the first card, show
+the now-playing mark 21px before the focused title only while its song plays, and
+hint every name of a card title with several names but nothing for a single fitting
+artist. The F7 band test checks its dash before measurement, `FPS 144 | UPS 1000`,
+draw calls only in Debug builds and its bottom-right corner.
 Song filter regressions verify visible pattern projection with original indices,
 modal navigation/launch isolation and responsive filter/sort controls in both purposes.
 The hidden native-window run edits real range fields, tests IME versus Enter, validates
@@ -95,7 +109,8 @@ the board keeps the 16:9-or-wider
 arrangement and scales as a whole below 16:9 with letterbox bands, and the song list stays on the right edge.
 Skin tests check that a selected skin replaces the sheet/button/card images and that returning to
 the default skin restores the built-in parts.
-ResultPresentationTests checks the BG value snapshot, reference-height offset conversion,
+ResultPresentationTests checks the shared tooltips of Back (keys only), the score and an
+option chip, none on the rank, and hiding with the view. It also checks the BG value snapshot, reference-height offset conversion,
 resize/language rebuild, image failure fallback and actual D3D12 retention after gameplay destruction.
 GameplayJudgementTests retains its existing full-screen BG/offset regression.
 Record history remains in its assigned panel with real SQLite paging and a separate
@@ -143,6 +158,11 @@ Retire regression that all remaining notes become MISS without pending logical n
 HP 회귀는 GameplayJudgementTests의 틀 위치·채움 잘라 보이기·클리어 기준에서 그림 전환·클리어 표시·자물쇠·크기 변경과
 GameplayPauseTests의 유효 노트가 없는 채보 진입 차단을 포함합니다.
 수치·롱노트·POOR·되감기·종료 판정과 포맷/기본값 검사는 Rhythm의 HpGaugeTests가 담당합니다.
+
+플레이 화면 회귀(UI-02)는 GameplayJudgementTests의 2px·50% 마디선, Kiai 판정원(곡 시간 250ms 페이드·박 맥동·뒤로 이동 시
+바로 바뀜·레인 크기로 잘린 빛), 공용 화면 오류 줄(종류·경로와 행·원인, 위 20 가운데, 최대 폭에서 한 줄로 잘림, 좁은 화면 여백, 비우면 숨김)과
+남은 타격 배지 회귀를 포함합니다. 로딩 준비 실패 때의 메뉴 모양(진행 띠 없음·값 유지·Retry 선택)은 GameplayPauseTests의 TestMenu,
+컨트롤러 상태(`PreparationFailed`·`AttemptStarted`·`ErrorSource`)는 같은 러너의 실패 자원 회귀가 확인합니다.
 
 After a solution build, run in an x64 Visual Studio developer PowerShell with
 `FMOD_ROOT` set to the installed SDK:
