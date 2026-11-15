@@ -13,6 +13,7 @@ void GameplaySessionController::ResetTimeline()
     timer_.Stop();
     time_ = initialTime_;
     state_ = PlayState::Loading;
+    attemptStarted_ = false;
     result_.reset();
     playbackStart_.reset();
     playbackRequested_ = true;

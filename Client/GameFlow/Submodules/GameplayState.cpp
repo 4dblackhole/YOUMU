@@ -118,6 +118,7 @@ void GameplaySessionController::PrepareGameplay(const UpdateContext &context)
         playbackRequested_ = false;
         pauseMenuOpen_ = false;
         state_ = PlayState::Gameplay;
+        attemptStarted_ = true;
         return;
     }
     const auto prepared = audio_.PrepareMusicAt(context.totalSeconds, time_, debugMode_);
@@ -169,6 +170,7 @@ void GameplaySessionController::ScheduleGameplay(const UpdateContext &context)
         playbackRequested_ = false;
         pauseMenuOpen_ = false;
         state_ = PlayState::Gameplay;
+        attemptStarted_ = true;
     }
     else
         playbackStart_ = start;

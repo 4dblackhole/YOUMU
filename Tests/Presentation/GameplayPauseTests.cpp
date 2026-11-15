@@ -193,6 +193,15 @@ namespace
         Check(waiting && waiting->IsVisible() && !Find(canvas->Root(), "Pause.0")->IsEnabled() &&
                   !Find(canvas->Root(), "Pause.1.Next")->IsEnabled() && Find(canvas->Root(), "Pause.2")->IsEnabled(),
               "While preparing, the band shows and only Resume/Rewind with their steppers are disabled.");
+        menu.SetPreparationFailed(true);
+        const auto *resumeSelector = Find(*Find(canvas->Root(), "Pause.Row.0"), "Pause.Selector");
+        const auto *resumeValue = resumeSelector ? Find(*resumeSelector, "Pause.Value") : nullptr;
+        Check(!Find(canvas->Root(), "Pause.Preparing")->IsVisible() && !Find(canvas->Root(), "Pause.0")->IsEnabled() &&
+                  resumeValue && resumeValue->GetComponent<TextVisualComponent>()->Text() == L"1.0 s back",
+              "A failed preparation keeps Resume/Rewind off without the band and keeps their values readable.");
+        Check(menu.HandleKey(VK_RETURN).action == GameplayPauseAction::Retry,
+              "A failed preparation selects Retry, which reloads the files.");
+        menu.SetPreparationFailed(false);
         menu.Show(1280, 720, true, 12);
         menu.OnResize(720, 1280);
         const auto *panel = Find(canvas->Root(), "Pause.Panel");
@@ -605,8 +614,9 @@ namespace
                 std::fprintf(stderr, "Cold start timeout: shown=%d sent=%d intro=%d BG=%d canvases=%zu resumes=%zu loads=%zu\n",
                     shown_, sent_, intro_, introImage_, visuals_.CanvasCount(), musicResumes, clipLoads);
                 rendering_->PrintPreparationDiagnostic();
-                if (const auto* canvas = visuals_.FindCanvas(2))
-                    if (const auto* error = Find(canvas->Root(), "Hud.Error"))
+                for (ScreenCanvasId id = 1; id <= 8; ++id)
+                    if (const auto* canvas = visuals_.FindCanvas(id))
+                    if (const auto* error = Find(canvas->Root(), "Hud.Error.Cause"))
                         if (const auto* text = error->GetComponent<TextVisualComponent>())
                         {
                             const auto value = text->Text();
@@ -1111,12 +1121,16 @@ namespace
             Check(failed.CurrentState() == PlayState::Pause && failed.PauseMenuOpen() && !failed.CanContinue() &&
                       failed.ErrorMessage().find("hit sound load failure") != std::string_view::npos,
                   "A failed sample must block gameplay and expose the pause menu with an error.");
+            Check(failed.PreparationFailed() && !failed.AttemptStarted() &&
+                      failed.ErrorSource() == GameplayErrorSource::Audio,
+                  "A loading failure keeps the loading screen and names an audio error for the error line.");
             Check(!failed.ResumeFromPause(ctx, RhythmDuration{500'000}),
                   "Failed resources must not be bypassed with Resume.");
             failSampleLoads = false;
             failed.RetryFromPause(ctx);
             WaitForGameplay(failed, ctx);
-            Check(failed.ErrorMessage().empty() && failed.Session().CanUseHp(),
+            Check(failed.ErrorMessage().empty() && failed.Session().CanUseHp() && failed.AttemptStarted() &&
+                      !failed.PreparationFailed() && failed.ErrorSource() == GameplayErrorSource::None,
                   "Retry must reload failed resources and begin a clean attempt after recovery.");
             failed.Shutdown();
         }

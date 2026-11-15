@@ -34,15 +34,6 @@ void GameplayPresenter::CreatePresentation()
         }
     }
 
-    errorLabel_ = &CreateLabel(root, {-500.0F, 320.0F, 1000.0F, 28.0F}, L"", "Hud.Error");
-    errorLabel_->SetZIndex(20);
-    errorLabel_->SetVisible(false);
-    auto &errorText = RequireComponent<TextVisualComponent>(*errorLabel_);
-    texts_.ApplyFont(errorText);
-    errorText.SetFontSize(16.0F);
-    errorText.SetTextColor({0.78F, 0.06F, 0.08F, 1.0F});
-    errorText.SetHorizontalAlignment(TextAlignment::Center);
-
     progressView_.Initialize(screenVisuals_, root, *session_, texts_);
     hpView_.Initialize(screenVisuals_, root);
 
@@ -70,10 +61,10 @@ void GameplayPresenter::CreatePresentation()
 
     // All gear parts inherit one transform. Final bounds depend on skin sizes.
     scrollGearRoot_ = &root.CreateChild("ScrollGear");
-    scrollGearBorder_ = &CreatePanel(*scrollGearRoot_, {}, "ScrollGear.Border");
-    SetColor(*scrollGearBorder_, {0.16F, 0.31F, 0.58F, 1.0F});
-    scrollGearSurface_ = &CreatePanel(*scrollGearRoot_, {}, "ScrollGear.Surface");
-    SetColor(*scrollGearSurface_, {0.73F, 0.82F, 0.93F, 1.0F});
+    // The cobalt band with its hatch runs from the screen's left edge to the right edge; the input
+    // panel and the lane cover all of it except the 4 px border and the strip left of the panel.
+    scrollGearBorder_ = &CreateSprite(*scrollGearRoot_, {}, screenVisuals_.RegisterImage(InGameSkinAssetPath(L"Gear.Band")),
+                                      "ScrollGear.Border");
 
     CreateLaneVisuals(*scrollGearRoot_);
     inputPresentationRoot_ = &scrollGearRoot_->CreateChild("InputPresentation");
@@ -122,6 +113,7 @@ void GameplayPresenter::CreateLaneVisuals(Visual2DNode &gearRoot)
          judgementSize.width, judgementSize.height},
         judgementImage, "Lane.JudgementCircle");
     judgementLine.SetZIndex(3);
+    kiaiView_.Initialize(screenVisuals_, *laneRoot_, judgementLine, judgementImage);
     JudgeLevel level;
     const auto &lanes = session_->Gear().Lanes();
     if (!lanes.empty() && !lanes.front()->Notes().empty())
@@ -231,17 +223,8 @@ void GameplayPresenter::UpdatePresentationLayout()
         accuracyIndicator_->SetBounds(statisticsView_.AccuracyBounds());
     if (scrollGearBorder_ != nullptr)
     {
-        scrollGearBorder_->SetBounds(
-            {-logicalWidth * 0.5F + GearMargin - GearPadding,
-             -gearHeight * 0.5F - GearPadding,
-             std::max(logicalWidth - GearMargin - GearRightMargin + GearPadding * 2.0F, 1.0F),
-             gearHeight + GearPadding * 2.0F});
-    }
-    if (scrollGearSurface_ != nullptr)
-    {
-        scrollGearSurface_->SetBounds(
-            {-logicalWidth * 0.5F + GearMargin, -gearHeight * 0.5F,
-             std::max(logicalWidth - GearMargin - GearRightMargin, 1.0F), gearHeight});
+        scrollGearBorder_->SetBounds({-logicalWidth * 0.5F, -gearHeight * 0.5F - GearPadding, std::max(logicalWidth, 1.0F),
+                                      gearHeight + GearPadding * 2.0F});
     }
     if (laneRoot_ != nullptr)
     {
@@ -250,6 +233,7 @@ void GameplayPresenter::UpdatePresentationLayout()
             {-logicalWidth * 0.5F + laneScreenLeft + laneLength * 0.5F, 0.0F});
         UpdateLaneSurfaceLayout(laneLength);
         noteView_.SetLaneLayout(laneWidth_, judgementLocalY_);
+        kiaiView_.SetLaneLayout(laneWidth_, laneLength, judgementLocalY_);
     }
     if (inputPresentationRoot_ != nullptr)
     {

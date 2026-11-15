@@ -223,12 +223,14 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayFeedbackVisuals.cpp" />
     <ClCompile Include="GameFlow\Submodules\GameplayInput.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayInputView.cpp" />
+    <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayKiaiView.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayLayout.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayNoteView.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayNoteView.h" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayNoteVisibility.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayNoteVisibility.h" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayInputView.h" />
+    <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayKiaiView.h" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayPresenter.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayPresenter.h" />
     <ClCompile Include="GameFlow\Submodules\GameplayState.cpp" />
@@ -262,6 +264,8 @@
     <ClInclude Include="Presentation\AccuracyText.h" />
     <ClInclude Include="Presentation\RankName.h" />
     <ClInclude Include="Presentation\UiFonts.h" />
+    <ClCompile Include="Presentation\UiErrorLine.cpp" />
+    <ClInclude Include="Presentation\UiErrorLine.h" />
     <ClCompile Include="Presentation\UiTooltip.cpp" />
     <ClInclude Include="Presentation\UiTooltip.h" />
     <ClCompile Include="Presentation\UiDropdown.cpp" />

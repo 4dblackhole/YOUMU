@@ -13,7 +13,7 @@ inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "MusicSelect.createDifficultyNameError", "MusicSelect.importComplete", "MusicSelect.noSongsAvailable", "MusicSelect.noDifficulties", "MusicSelect.catalogErrorPrefix", "MusicSelect.unsupportedModePrefix",
     "MusicSelect.patternErrorPrefix", "MusicSelect.unknownChartError",
     "Result.pauseUsed", "Result.rewindUsed", "Result.noHpData", "Result.noTimingData",
-    "Gameplay.errorPrefix", "Gameplay.audioInitializationFailed", "Pause.preparing", "Pause.retryDescription", "Pause.retireDescription",
+    "Gameplay.audioInitializationFailed", "Pause.preparing", "Pause.retryDescription", "Pause.retireDescription",
     "Options.windowError", "Options.inputError", "Options.noDrivers",
     "Options.saveError", "Options.audioError", "Options.outputFallback", "Options.driverUnavailable", "Options.loadWarning",
     "Performance.measuringFps", "Performance.measuringUps", "Performance.measuringDraws", "Startup.decodeError",
