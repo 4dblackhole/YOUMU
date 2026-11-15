@@ -491,17 +491,14 @@ void EditorView::DrawExcludeChips(Rect row)
         });
         x += 48;
     }
+    // Other divisors as quarter note ÷ n, separated by |.
     const Rect custom{x, row.y + 18, row.x + row.width - x, 28};
-    Box(custom, {1, 1, 1, .74F});
-    Box({custom.x, custom.y + custom.height - 2, custom.width, 2}, ui_colors::Rgb(0xB5CFF5));
-    Label(custom, L"1/4 ÷ n", {12, theme::Caption, TextAlignment::Center, 700, true});
-    Control(custom, [this] {
-        if (auto edited = EditText(std::wstring(texts_.Get("Editor.exclude")), state_.effectForm.excluded, Texts()))
-        {
-            state_.effectForm.excluded = *edited;
-            state_.RequestRebuild();
-        }
-    });
+    InputField(custom, std::wstring(texts_.Get("Editor.exclude")), Wide(state_.effectForm.excluded),
+               [this](const std::string &typed) {
+                   state_.effectForm.excluded = typed;
+                   state_.RequestRebuild();
+               },
+               true, false);
 }
 
 void EditorView::DrawCurveRow(Rect row)

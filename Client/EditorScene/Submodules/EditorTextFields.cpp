@@ -11,7 +11,7 @@ void EditorTextFields::Begin() noexcept
 }
 
 void EditorTextFields::Declare(const std::string &key, TextInputBounds screen, std::uint32_t fontPixels,
-                               const std::wstring &text, Commit commit, bool number)
+                               const std::wstring &text, Commit commit, bool number, Commit typing)
 {
     if (!window_)
         return;
@@ -26,6 +26,7 @@ void EditorTextFields::Declare(const std::string &key, TextInputBounds screen, s
     }
     field.declared = true;
     field.commit = std::move(commit);
+    field.typing = std::move(typing);
     field.input->SetBounds(screen);
     field.input->SetFont(number ? L"Barlow Semi Condensed" : L"Segoe UI", fontPixels);
     // The document's value replaces the editor's text unless the user is typing in it.
@@ -80,6 +81,8 @@ std::optional<std::string> EditorTextFields::Update()
         {
             field.typed = std::move(text);
             field.edited = true;
+            if (field.typing)
+                field.typing(editor_ui::Utf8(field.typed));
         }
         if (field.input->TakeCancel())
         {
@@ -106,11 +109,20 @@ bool EditorTextFields::Editing() const noexcept
     return false;
 }
 
-void EditorTextFields::BlurAll() noexcept
+std::optional<std::string> EditorTextFields::BlurAll()
 {
+    std::optional<std::string> error;
     for (auto &[key, field] : fields_)
-        if (field.input)
-            field.input->Blur();
+    {
+        if (!field.input)
+            continue;
+        if (field.focused)
+            if (auto failed = CommitField(field))
+                error = std::move(failed);
+        field.input->Blur();
+        field.focused = false;
+    }
+    return error;
 }
 
 void EditorTextFields::Shutdown() noexcept

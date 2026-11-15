@@ -60,8 +60,9 @@ class EditorView final : public IEditorModeCanvas
     void FlatButton(PhantomCore::Rect, std::wstring, std::function<void()>, bool primary = false);
     void Field(PhantomCore::Rect r, const wchar_t *label, std::string &value);
     // A labelled inline field over `r`; without a window it falls back to the popup editor.
+    // Under an open modal layer the value is drawn only, since native editors would sit above it.
     void InputField(PhantomCore::Rect r, std::wstring label, std::wstring text, EditorTextFields::Commit commit,
-                    bool number = false, bool showLabel = true);
+                    bool number = false, bool showLabel = true, EditorTextFields::Commit typing = {});
     [[nodiscard]] PhantomCore::TextInputBounds ScreenBounds(PhantomCore::Rect) const noexcept;
 
     // Shell: tabs, footer and the shared time controls.
@@ -188,6 +189,8 @@ class EditorView final : public IEditorModeCanvas
     bool testRequested_{};
     bool leaveRequested_{};
     bool curvesOpen_{};
+    // True while building the layers under the Curves dialog.
+    bool fieldsCovered_{};
     // Draft of the YME [Interpolation] table while the Curves dialog is open.
     struct CurvesDraft
     {

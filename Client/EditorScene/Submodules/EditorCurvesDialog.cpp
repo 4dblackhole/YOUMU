@@ -167,32 +167,37 @@ void EditorView::DrawCurvesDialog()
                              : entry != curves_.table.end() ? entry->second
                                                             : std::string{};
     float top = listTop;
-    Label({left, top, editWidth, 18}, std::wstring(texts_.Get("Editor.curveName")), {12, theme::Caption, TextAlignment::Leading, 600});
+    const bool editable = !readOnly && entry != curves_.table.end();
+    const auto readOnlyField = [this](Rect field, std::wstring caption, std::wstring value) {
+        Label({field.x, field.y - 20, field.width, 18}, std::move(caption), {12, theme::Caption, TextAlignment::Leading, 600});
+        Box(field, ui_colors::Rgb(0xEAF1FA));
+        Box({field.x, field.y + field.height - 2, field.width, 2}, ui_colors::Rgb(0xB5CFF5));
+        Label({field.x + 8, field.y, field.width - 16, field.height}, std::move(value), {14, theme::Ink, TextAlignment::Leading, 600});
+    };
     const Rect nameField{left, top + 20, editWidth, 32};
-    Box(nameField, readOnly ? ui_colors::Rgb(0xEAF1FA) : Color{1, 1, 1, .74F});
-    Box({nameField.x, nameField.y + nameField.height - 2, nameField.width, 2}, ui_colors::Rgb(0xB5CFF5));
-    Label({nameField.x + 8, nameField.y, nameField.width - 16, nameField.height}, Wide(curves_.selected), {15, theme::Ink});
-    if (!readOnly && entry != curves_.table.end())
-        Control(nameField, [this] {
-            if (auto edited = EditText(std::wstring(texts_.Get("Editor.curveName")), curves_.selected, Texts()))
-                RenameCurve(*edited);
-        });
-    top += 62;
-    Label({left, top, editWidth, 18}, std::wstring(texts_.Get("Editor.curveExpression")), {12, theme::Caption, TextAlignment::Leading, 600});
-    const Rect expressionField{left, top + 20, editWidth, 32};
-    Box(expressionField, readOnly ? ui_colors::Rgb(0xEAF1FA) : Color{1, 1, 1, .74F});
-    Box({expressionField.x, expressionField.y + expressionField.height - 2, expressionField.width, 2}, ui_colors::Rgb(0xB5CFF5));
-    Label({expressionField.x + 8, expressionField.y, expressionField.width - 16, expressionField.height}, Wide(expression),
-          {14, theme::Ink, TextAlignment::Leading, 600});
-    if (!readOnly && entry != curves_.table.end())
-        Control(expressionField, [this, expression] {
-            if (auto edited = EditText(std::wstring(texts_.Get("Editor.curveExpression")), expression, Texts()))
-            {
-                curves_.table[curves_.selected] = *edited;
-                state_.RequestRebuild();
-            }
-        });
-    top += 56;
+    const Rect expressionField{left, top + 82, editWidth, 32};
+    if (editable)
+    {
+        // A rename takes effect on Enter or leaving the field; the expression is checked as it is typed.
+        InputField(nameField, std::wstring(texts_.Get("Editor.curveName")), Wide(curves_.selected),
+                   [this](const std::string &typed) { RenameCurve(typed); });
+        InputField(expressionField, std::wstring(texts_.Get("Editor.curveExpression")), Wide(expression),
+                   [this](const std::string &typed) {
+                       curves_.table[curves_.selected] = typed;
+                       state_.RequestRebuild();
+                   },
+                   false, true,
+                   [this](const std::string &typed) {
+                       curves_.table[curves_.selected] = typed;
+                       state_.RequestRebuild();
+                   });
+    }
+    else
+    {
+        readOnlyField(nameField, std::wstring(texts_.Get("Editor.curveName")), Wide(curves_.selected));
+        readOnlyField(expressionField, std::wstring(texts_.Get("Editor.curveExpression")), Wide(expression));
+    }
+    top += 118;
     if (!readOnly)
     {
         const auto problem = Validate(expression);

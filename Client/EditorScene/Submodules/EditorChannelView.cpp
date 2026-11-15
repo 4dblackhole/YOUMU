@@ -103,7 +103,7 @@ void EditorView::DrawChannels()
 
     // Music: the waveform of the music around the cursor.
     {
-        const float top = layout::ChannelTop(Channel::Music), h = layout::ChannelHeight(Channel::Music) - 1;
+        constexpr float top = layout::ChannelTop(Channel::Music), h = layout::ChannelHeight(Channel::Music) - 1;
         Box({left, top, right - left, h}, ui_colors::Rgb(0x0E1424, .92F));
         const auto &sounds = state_.Analysis().Data().sounds;
         const auto music = sounds.find("Music");
@@ -127,7 +127,7 @@ void EditorView::DrawChannels()
 
     // Timing: BPM and length chips, delay chips (red cuts the section before it, dark gold pushes).
     {
-        const float top = layout::ChannelTop(Channel::Timing), h = layout::ChannelHeight(Channel::Timing);
+        constexpr float top = layout::ChannelTop(Channel::Timing), h = layout::ChannelHeight(Channel::Timing);
         const auto &timing = document.Timing();
         for (std::size_t i = 0; i < timing.size(); ++i)
         {
@@ -219,7 +219,7 @@ void EditorView::DrawChannels()
         const std::array effects{CurveColor{EffectCommandType::ReverbSend, "Rev", ui_colors::Rgb(0x14A39A)},
                                  CurveColor{EffectCommandType::LowPassCutoff, "LP", ui_colors::Rgb(0xE0603A)},
                                  CurveColor{EffectCommandType::HighPassCutoff, "HP", ui_colors::Rgb(0x7A5AE0)}};
-        const float top = layout::ChannelTop(Channel::AudioEffects);
+        constexpr float top = layout::ChannelTop(Channel::AudioEffects);
         for (const auto &effect : effects)
         {
             const auto track = BuildTrack(document, effect.type, {}, true);
@@ -245,7 +245,7 @@ void EditorView::DrawChannels()
 
     // Hit sounds: Don changes above, Kat changes below.
     {
-        const float top = layout::ChannelTop(Channel::HitSounds), h = layout::ChannelHeight(Channel::HitSounds);
+        constexpr float top = layout::ChannelTop(Channel::HitSounds), h = layout::ChannelHeight(Channel::HitSounds);
         const auto &effects = document.Effects();
         const auto choices = state_.Mode().SoundChoices(texts_);
         for (std::size_t i = 0; i < effects.hitSoundChanges.size(); ++i)
@@ -268,7 +268,7 @@ void EditorView::DrawChannels()
 
     // Zones: Syncopation, Kiai and bar lines on three rows; bar lines off are dotted.
     {
-        const float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
+        constexpr float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
         const float rowHeight = (h - 3) / 3;
         const std::array rows{CurveColor{EffectCommandType::SyncopationZone, "", ui_colors::Rgb(0xA640E6)},
                               CurveColor{EffectCommandType::Kiai, "", ui_colors::Rgb(0xF29A1E)},

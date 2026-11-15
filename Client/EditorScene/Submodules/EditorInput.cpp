@@ -188,7 +188,8 @@ void EditorView::UpdatePointer(const UpdateContext &context)
     if (!input.WasMouseButtonPressed(MouseButton::Left))
         return;
     if (std::ranges::none_of(fieldRects_, [&](const Rect &r) { return r.Contains(*point); }))
-        fields_.BlurAll();
+        if (auto rejected = fields_.BlurAll())
+            state_.SetStatus(*rejected);
     // A press that grabbed a slider belongs to that slider.
     const auto captured = sliderInput_.CapturedNode();
     if (captured == divisionSliderNode_->Id() || captured == timelineSliderNode_->Id())

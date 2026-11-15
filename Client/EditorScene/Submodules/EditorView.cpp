@@ -250,23 +250,25 @@ TextInputBounds EditorView::ScreenBounds(Rect r) const noexcept
 }
 
 void EditorView::InputField(Rect r, std::wstring label, std::wstring text, EditorTextFields::Commit commit, bool number,
-                            bool showLabel)
+                            bool showLabel, EditorTextFields::Commit typing)
 {
     if (showLabel && !label.empty())
         Label({r.x, r.y - 18, r.width, 16}, label, {12, ui_colors::theme::Caption, TextAlignment::Leading, 600});
     Box(r, {1, 1, 1, .74F});
     Box({r.x, r.y + r.height - 2, r.width, 2}, ui_colors::Rgb(0xB5CFF5));
-    if (fields_.Available())
+    if (fields_.Available() && !fieldsCovered_)
     {
         // The native editor sits inside the underline, inset from the box.
         const Rect inner{r.x + 6, r.y + 4, r.width - 12, r.height - 8};
         const auto font = static_cast<std::uint32_t>(std::max(1.0F, std::round(15 * PixelScale())));
         fields_.Declare(std::format("{}@{:.0f},{:.0f}", Utf8(label), r.x, r.y), ScreenBounds(inner), font, text,
-                        std::move(commit), number);
+                        std::move(commit), number, std::move(typing));
         fieldRects_.push_back(r);
         return;
     }
     Label({r.x + 8, r.y, r.width - 16, r.height}, text, {15, ui_colors::theme::Ink, TextAlignment::Leading, 600, number});
+    if (fieldsCovered_)
+        return;
     Control(r, [this, label, text, commit] {
         if (auto edited = EditText(label, Utf8(text), Texts()))
         {
@@ -312,6 +314,7 @@ void EditorView::BuildContent()
     controls.clear();
     fieldRects_.clear();
     fields_.Begin();
+    fieldsCovered_ = curvesOpen_;
     visual->Clear();
     Box({0, 0, frame_.width, layout::Height}, ui_colors::theme::Surface);
     if (state_.Tab() == EditorTab::Compose)
@@ -323,6 +326,7 @@ void EditorView::BuildContent()
     DrawTabs();
     SyncInputControls();
     DrawFooter();
+    fieldsCovered_ = false;
     DrawCurvesDialog();
     DrawLetterbox();
     fields_.End();

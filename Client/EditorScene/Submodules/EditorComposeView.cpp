@@ -253,7 +253,7 @@ void EditorView::DrawHeads()
 void EditorView::DrawZoneHeads()
 {
     // Zones carries three rows in its head: Syncopation, Kiai and bar lines with their current state.
-    const float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
+    constexpr float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
     Box({layout::HeadButtonWidth + 1, top, layout::HeadWidth - layout::HeadButtonWidth - 2, h - 1}, ui_colors::Rgb(0xF5F9FE));
     const std::array<std::tuple<std::string_view, EffectCommandType, Color>, 3> rows{
         std::tuple{std::string_view{"Editor.zoneSyncopation"}, EffectCommandType::SyncopationZone, ui_colors::Rgb(0xA640E6)},
@@ -314,7 +314,7 @@ void EditorView::DrawRuler()
     const int division = state_.Score().division;
     const auto first = MeasureNearTime(timeline, axis.TimeAt(ruler.x).count() / 1000.0);
     const auto last = MeasureNearTime(timeline, axis.TimeAt(right).count() / 1000.0);
-    const float channelsTop = layout::ChannelTop(Channel::Music);
+    constexpr float channelsTop = layout::ChannelTop(Channel::Music);
     for (auto m = std::max<std::int64_t>(0, first - 1); m <= std::min(last + 1, MaximumMeasureCount - 1); ++m)
     {
         const auto span = timeline.MeasureSpan(m);
