@@ -22,7 +22,13 @@ resolution persistence and Japanese round trips. It also drives the shared toolt
 the half-second rest, a pointed child resolving to its registered ancestor, key
 chips for `Ctrl+O` and `Esc / Enter`, the quick switch to a neighbouring control,
 dismissal by a press until the pointer moves on, host suppression and opening above
-a control at the bottom edge. Drop-downs are the shared UiDropdown: list rows take
+a control at the bottom edge. Tooltip lines inside a control that keeps the pointer
+(card titles) show only while pointed inside that control, and clearing forgets every
+hint, and a long name wraps inside the 300-wide plate. The shared scrollbar is a 12px strip with a centred 6px bar (8/4 horizontally)
+that hides without overflow, keeps its 32px minimum, darkens on hover and turns solid
+while held; dragging keeps the grab point, a rail press centres the bar, and an
+event-following host (the drop-down list) drags and wheels through the strip's own
+pointer events. Drop-downs are the shared UiDropdown: list rows take
 clicks ahead of the fields under them, and a press outside an open list only closes it. `RunLanguageFileTests.ps1`
 checks English captions/value formats, selected EN/KO/JA explanations, complete
 Japanese explanation-key coverage and existing immutable pack/fallback contracts.
@@ -71,6 +77,11 @@ Both gameplay and editor selection check that clicking another difficulty only s
 that clicking the selected difficulty launches exactly once.
 Both also select Base BPM through the actual dropdown, verify numeric order and
 stable ties with retained song focus, then check language switching and search.
+Both drag the song list's shared scrollbar away from and back to the first card, show
+the now-playing mark 21px before the focused title only while its song plays, and
+hint every name of a card title with several names but nothing for a single fitting
+artist. The F7 band test checks its dash before measurement, `FPS 144 | UPS 1000`,
+draw calls only in Debug builds and its bottom-right corner.
 Song filter regressions verify visible pattern projection with original indices,
 modal navigation/launch isolation and responsive filter/sort controls in both purposes.
 The hidden native-window run edits real range fields, tests IME versus Enter, validates
@@ -94,7 +105,8 @@ the board keeps the 16:9-or-wider
 arrangement and scales as a whole below 16:9 with letterbox bands, and the song list stays on the right edge.
 Skin tests check that a selected skin replaces the sheet/button/card images and that returning to
 the default skin restores the built-in parts.
-ResultPresentationTests checks the BG value snapshot, reference-height offset conversion,
+ResultPresentationTests checks the shared tooltips of Back (keys only), the score and an
+option chip, none on the rank, and hiding with the view. It also checks the BG value snapshot, reference-height offset conversion,
 resize/language rebuild, image failure fallback and actual D3D12 retention after gameplay destruction.
 GameplayJudgementTests retains its existing full-screen BG/offset regression.
 Record history remains in its assigned panel with real SQLite paging and a separate
