@@ -2,6 +2,7 @@
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
+#include "Presentation/UiDropdown.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 
 using namespace PhantomCore;
@@ -171,7 +172,7 @@ void MusicSelectView::CreateSongBrowser()
     searchCountLabel_ = &CreateNumber(search, {layout::SearchField.width - 88.0F, 0.0F, 80.0F, layout::SearchField.height},
                                       L"", 12.0F, 500, theme::Caption, "SearchCount", TextAlignment::Trailing, false);
 
-    auto &sort = CreateComboBox(
+    auto &sort = CreateDropdown(
         panel, TopLeft(layout::SortSelector, height),
         {std::wstring(text.sortModes[0]), std::wstring(text.sortModes[1]),
          std::wstring(text.sortModes[2]), std::wstring(text.sortModes[3])}, "SortSelector");
@@ -179,15 +180,9 @@ void MusicSelectView::CreateSongBrowser()
     sortSelectorId_ = sort.Id();
     sort.SetZIndex(10);
     ApplySkinPart(sort, screenVisuals_, "SortSelector", {1.0F, 1.0F, 1.0F, 0.74F});
-    auto &sortBehavior = RequireComponent<ComboBoxBehaviorComponent>(sort);
+    auto &sortBehavior = RequireDropdown(sort);
     sortBehavior.SetSelectedIndex(static_cast<std::size_t>(selection_.sortMode_));
-    sortBehavior.SetItemHeight(34.0F);
-    sortBehavior.SetMaxVisibleItems(4);
-    sortBehavior.SetFontSize(13.0F);
-    sortBehavior.SetFont(ui_fonts::Text(text.sortModes[0]));
-    sortBehavior.SetTextColor(theme::Ink);
-    sortBehavior.SetSelectedTextColor(theme::BrandText);
-    sortBehavior.SetPopupBackgroundColor(PureWhite);
+    sortBehavior.SetValueStyle(13.0F, 600, theme::Ink);
 
     filterButton_ = &CreateButton(panel, TopLeft(layout::FilterButton, height), L"", "FilterButton");
     SetCornerRadius(*filterButton_, 2.0F);
@@ -218,17 +213,11 @@ void MusicSelectView::CreateFooter()
         std::vector<std::wstring> modes;
         for (const auto &mode : AvailableInputLayouts())
             modes.emplace_back(mode.modeId.begin(), mode.modeId.end());
-        auto &selector = CreateComboBox(*board_, {}, std::move(modes), "GameModeSelect");
+        auto &selector = CreateDropdown(*board_, {}, std::move(modes), "GameModeSelect");
         modeSelector_ = &selector;
         modeSelectorId_ = selector.Id();
         ApplySkinPart(selector, screenVisuals_, "ModeSelector", {1.0F, 1.0F, 1.0F, 0.0F});
-        auto &modeCombo = RequireComponent<ComboBoxBehaviorComponent>(selector);
-        modeCombo.SetFontSize(16.0F);
-        modeCombo.SetFont(ui_fonts::Text());
-        modeCombo.SetItemHeight(34.0F);
-        modeCombo.SetTextColor(theme::BrandText);
-        modeCombo.SetSelectedTextColor(theme::BrandText);
-        modeCombo.SetPopupBackgroundColor(PureWhite);
+        RequireDropdown(selector).SetValueStyle(16.0F, 900, theme::BrandText);
 
         playOptionsButton_ = &cell("PlayOptions", "PlayOptions");
         playOptionsButtonId_ = playOptionsButton_->Id();
@@ -320,12 +309,11 @@ void MusicSelectView::ApplyTexts()
 
     if (sortSelector_ != nullptr)
     {
-        auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*sortSelector_);
+        auto &combo = RequireDropdown(*sortSelector_);
         const std::size_t selected = combo.SelectedIndex();
         combo.SetItems({std::wstring(text.sortModes[0]), std::wstring(text.sortModes[1]),
                         std::wstring(text.sortModes[2]), std::wstring(text.sortModes[3])});
         combo.SetSelectedIndex(selected);
-        combo.SetFont(ui_fonts::Text(text.sortModes[0]));
     }
     if (searchField_ != nullptr)
     {

@@ -52,6 +52,8 @@ void LogoView::BeginScene()
 void LogoView::EndScene() noexcept
 {
     tooltip_.Hide();
+    if (canvas_ != nullptr)
+        CollapseDropdowns(*canvas_);
     static_cast<void>(canvasHandle_.SetVisible(false));
 }
 
@@ -65,6 +67,11 @@ LogoCommand LogoView::Update(const InputState &input, const double deltaSeconds)
     command_ = {};
     if (!canvas_)
         return command_;
+    if (ProcessDropdownKeys(*canvas_, input))
+    {
+        tooltip_.Hide();
+        return command_;
+    }
     RefreshSkinImages();
     if (textRevision_ != texts_.Revision())
         ApplyTexts();

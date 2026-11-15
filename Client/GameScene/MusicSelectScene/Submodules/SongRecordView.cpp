@@ -2,6 +2,7 @@
 #include "Catalog/SongCatalog.h"
 #include "Presentation/AccuracyText.h"
 #include "Presentation/RankName.h"
+#include "Presentation/UiDropdown.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
@@ -49,16 +50,10 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
 {
     const auto &text = MusicSelect(texts_);
     panel_ = &panel;
-    auto &selector = CreateComboBox(panel, {}, {std::wstring(text.personalRecord)}, "RecordSelector");
+    auto &selector = CreateDropdown(panel, {}, {std::wstring(text.personalRecord)}, "RecordSelector");
     selector_ = &selector;
     ApplySkinPart(selector, visuals_, "Records.Selector", theme::Surface);
-    auto &recordBehavior = RequireComponent<ComboBoxBehaviorComponent>(selector);
-    recordBehavior.SetFontSize(13.0F);
-    recordBehavior.SetFont(ui_fonts::Text(text.personalRecord));
-    recordBehavior.SetItemHeight(34.0F);
-    recordBehavior.SetTextColor(theme::Ink);
-    recordBehavior.SetSelectedTextColor(theme::BrandText);
-    recordBehavior.SetPopupBackgroundColor(PureWhite);
+    RequireDropdown(selector).SetValueStyle(13.0F, 600, theme::Ink);
     // Icon-only controls; their names stay available to tooltips.
     const auto button = [this, &panel](const wchar_t *icon, const char *name) -> Visual2DNode * {
         auto &node = CreateButton(panel, {}, L"", name);
@@ -278,9 +273,7 @@ void SongRecordView::RefreshTexts()
     const auto& text = MusicSelect(texts_);
     if (selector_)
     {
-        auto& combo = RequireComponent<ComboBoxBehaviorComponent>(*selector_);
-        combo.SetItems({std::wstring(text.personalRecord)});
-        combo.SetFont(ui_fonts::Text(text.personalRecord));
+        RequireDropdown(*selector_).SetItems({std::wstring(text.personalRecord)});
     }
     if (queryButton_)
         ++revision_;

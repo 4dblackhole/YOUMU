@@ -1,5 +1,6 @@
 #include "PlayOptionsPanel.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiDropdown.h"
 #include <algorithm>
 #include <charconv>
 #include <format>
@@ -76,16 +77,10 @@ void PlayOptionsPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IW
     for (std::size_t i = 0; i < headings_.size(); ++i)
         headings_[i] = &Label(*content_, "PlayOptions.Group." + std::to_string(i), 22);
     unitLabel_ = &Label(*content_, "PlayOptions.UnitLabel");
-    unit_ = &CreateComboBox(*content_, {}, {L"x", L"BPM"}, "PlayOptions.Unit");
+    unit_ = &CreateDropdown(*content_, {}, {L"x", L"BPM"}, "PlayOptions.Unit");
     Style(*unit_);
     unit_->SetZIndex(10);
-    auto &combo = *unit_->GetComponent<ComboBoxBehaviorComponent>();
-    combo.SetMaxVisibleItems(2);
-    combo.SetItemHeight(34);
-    combo.SetFontSize(16);
-    combo.SetTextColor(ui_colors::Ink);
-    combo.SetSelectedTextColor(ui_colors::Ink);
-    combo.SetPopupBackgroundColor(ui_colors::White);
+    RequireDropdown(*unit_).SetValueStyle(16, 600, ui_colors::Ink);
     for (std::size_t i = 0; i < fields_.size(); ++i)
     {
         const auto name = std::string("PlayOptions.") + FieldKeys[i];
@@ -161,7 +156,7 @@ void PlayOptionsPanel::Reset()
     error_.clear();
     errorField_.reset();
     scroll_ = 0;
-    unit_->GetComponent<ComboBoxBehaviorComponent>()->Collapse();
+    RequireDropdown(*unit_).Collapse();
     RefreshValues();
     RefreshTexts();
     Layout();
@@ -173,7 +168,7 @@ void PlayOptionsPanel::RefreshValues()
                 std::format(L"{:.2f}", draft_.judgeLevel.value_or(JudgeLevel{}).Value()),
                 std::to_wstring(draft_.randomSeed), std::format(L"{:g}", draft_.randomAttemptProbability * 100)};
     for (std::size_t i = 0; i < inputs_.size(); ++i) if (inputs_[i]) inputs_[i]->SetText(numbers_[i]);
-    unit_->GetComponent<ComboBoxBehaviorComponent>()->SetSelectedIndex(draft_.scrollUnit == PlayOptions::ScrollUnit::Bpm ? 1 : 0);
+    RequireDropdown(*unit_).SetSelectedIndex(draft_.scrollUnit == PlayOptions::ScrollUnit::Bpm ? 1 : 0);
     for (std::size_t i = 0; i < flags_.size(); ++i)
         flags_[i]->GetComponent<ToggleBehaviorComponent>()->SetChecked(FlagValue(static_cast<Flag>(i)));
 }
@@ -190,7 +185,7 @@ void PlayOptionsPanel::SynchronizeText()
 void PlayOptionsPanel::Close()
 {
     if (!IsVisible()) return;
-    unit_->GetComponent<ComboBoxBehaviorComponent>()->Collapse();
+    RequireDropdown(*unit_).Collapse();
     for (auto &input : inputs_) if (input) input->Blur();
     SynchronizeText();
     auto candidate = draft_;
@@ -230,7 +225,7 @@ void PlayOptionsPanel::Dismiss() noexcept
 {
     for (auto &input : inputs_) if (input) input->SetVisible(false);
     if (overlay_) overlay_->SetVisible(false);
-    if (unit_) unit_->GetComponent<ComboBoxBehaviorComponent>()->Collapse();
+    if (unit_) RequireDropdown(*unit_).Collapse();
 }
 
 void PlayOptionsPanel::Shutdown() noexcept
@@ -256,7 +251,6 @@ void PlayOptionsPanel::RefreshTexts()
     Text(*labels_[Rate], std::wstring(texts_->Get("PlayOptions.accelerate")) + (rateExpanded_ ? L"  −" : L"  +"));
     for (std::size_t i = 0; i < flags_.size(); ++i) set(*flags_[i], FlagKeys[i]);
     for (auto *field : fields_) texts_->ApplyFont(*field->GetComponent<TextVisualComponent>());
-    texts_->ApplyFont(*unit_->GetComponent<ComboBoxBehaviorComponent>());
     if (errorField_)
     {
         const std::wstring detail(error_.begin(), error_.end()); // Existing numeric/domain diagnostics are ASCII.
@@ -306,7 +300,7 @@ bool PlayOptionsPanel::ProcessAction(const Action &action)
     }
     for (std::size_t i = 0; i < fields_.size(); ++i) if (action.source == fields_[i]->Id())
     {
-        unit_->GetComponent<ComboBoxBehaviorComponent>()->Collapse();
+        RequireDropdown(*unit_).Collapse();
         UpdateInputs();
         if (inputs_[i]) inputs_[i]->Focus(false); // Preserve native caret/selection after its mouse click.
         return true;

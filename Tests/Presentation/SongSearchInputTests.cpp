@@ -231,6 +231,10 @@ namespace
             Check(edits().empty(), "Native fields hide while the Canvas mode popup covers them.");
             input = {};
             InputStateTestAccess::Key(input, VK_ESCAPE, true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && overlay->IsVisible(),
+                  "Escape first closes the open mode list and does not reach the filter behind it.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_ESCAPE, true);
             Check(view_->Update(input, 0) == SongSelectCommand::None && !overlay->IsVisible(), "Filter Escape is modal and never leaves the scene.");
             input = {};
             click("FilterButton");
@@ -297,6 +301,10 @@ namespace
             Check(std::wstring_view(minimum) == L"60", "Close discards the pending record filter edit.");
             click("RecordFilter.Choice.0");
             Check(edits().empty(), "Record combo popups hide native fields so they cannot cover choices.");
+            input = {};
+            InputStateTestAccess::Key(input, VK_ESCAPE, true);
+            Check(view_->Update(input, 0) == SongSelectCommand::None && recordFilter->IsVisible(),
+                  "Escape first closes the open choice list and keeps the record filter.");
             input = {};
             InputStateTestAccess::Key(input, VK_ESCAPE, true);
             Check(view_->Update(input, 0) == SongSelectCommand::None && !recordFilter->IsVisible(),

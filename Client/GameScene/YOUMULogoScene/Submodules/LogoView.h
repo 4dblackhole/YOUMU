@@ -2,6 +2,7 @@
 
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/UiDropdown.h"
 #include "Presentation/UiTooltip.h"
 #include "Texts/TextCatalog.h"
 #include "TitlePlayerView.h"

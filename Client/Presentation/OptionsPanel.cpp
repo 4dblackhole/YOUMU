@@ -138,12 +138,11 @@ void OptionsPanel::CreateLanguageControls()
     std::vector<std::wstring> languageNames;
     for (const LanguageProfile &profile : texts_.Languages())
         languageNames.emplace_back(profile.displayName);
-    languageCombo_ = &CreateComboBox(*content_,
+    languageCombo_ = &CreateDropdown(*content_,
                                      TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
                                      std::move(languageNames), "Options.Language.Combo");
     languageComboId_ = languageCombo_->Id();
-    ConfigureCombo(*languageCombo_, texts_.Languages().size());
-    languageCombo_->SetZIndex(static_cast<std::int32_t>(200 - 2 * comboOrder_++));
+    ConfigureCombo(*languageCombo_);
     AddFieldLine(*content_, *languageCombo_, "Options.Language.Line");
 }
 
@@ -152,12 +151,11 @@ void OptionsPanel::CreateSkinControls()
     const float top = NextField(ControlHeight);
     skinLabel_ = &CreateFieldLabel(*content_, top, "Options.Skin.Label");
     skinNames_ = SkinSetSelection::Instance().AvailableNames();
-    skinCombo_ = &CreateComboBox(*content_,
+    skinCombo_ = &CreateDropdown(*content_,
                                  TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
                                  skinNames_, "Options.Skin.Combo");
     skinComboId_ = skinCombo_->Id();
-    ConfigureCombo(*skinCombo_, 4);
-    skinCombo_->SetZIndex(static_cast<std::int32_t>(200 - 2 * comboOrder_++));
+    ConfigureCombo(*skinCombo_);
     AddFieldLine(*content_, *skinCombo_, "Options.Skin.Line");
 }
 
@@ -166,21 +164,18 @@ void OptionsPanel::CreateAudioControls()
     const std::array fields{std::pair{&middlewareLabel_, &middlewareCombo_}, std::pair{&outputLabel_, &outputCombo_},
                             std::pair{&driverLabel_, &driverCombo_}};
     const std::array<std::string, 3> names{"Middleware", "Output", "Driver"};
-    const std::array<std::size_t, 3> visibleItems{1, 3, 3};
     for (std::size_t i = 0; i < fields.size(); ++i)
     {
         const float top = NextField(ControlHeight);
         *fields[i].first = &CreateFieldLabel(*content_, top, "Options." + names[i] + ".Label");
-        auto &combo = CreateComboBox(*content_,
+        auto &combo = CreateDropdown(*content_,
                                      TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
                                      {}, "Options." + names[i] + ".Combo");
-        ConfigureCombo(combo, visibleItems[i]);
-        // Expanded lists must receive clicks before the fields underneath them.
-        combo.SetZIndex(static_cast<std::int32_t>(200 - 2 * comboOrder_++));
+        ConfigureCombo(combo);
         AddFieldLine(*content_, combo, "Options." + names[i] + ".Line");
         *fields[i].second = &combo;
     }
-    RequireComponent<ComboBoxBehaviorComponent>(*middlewareCombo_)
+    RequireDropdown(*middlewareCombo_)
         .SetItems({std::wstring(texts_.Get("Options.middlewareFmod"))});
     outputComboId_ = outputCombo_->Id();
     driverComboId_ = driverCombo_->Id();
@@ -224,7 +219,6 @@ void OptionsPanel::Shutdown() noexcept
     railPointerInside_ = railKeyboard_ = railExpanded_ = false;
     railHoverSeconds_ = 0.0F;
     hitTestDirty_ = false;
-    comboOrder_ = 0;
     animationProgress_ = 0.0F;
     targetOpen_ = false;
     dragging_ = false;
@@ -524,8 +518,7 @@ void OptionsPanel::RefreshSkinSets()
     skinNames_ = SkinSetSelection::Instance().AvailableNames();
     if (skinCombo_ == nullptr)
         return;
-    auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*skinCombo_);
-    combo.SetItems(skinNames_);
+    RequireDropdown(*skinCombo_).SetItems(skinNames_);
     RefreshTexts();
 }
 
@@ -546,8 +539,7 @@ void OptionsPanel::RefreshTexts()
     }
     tooltip_.Set(*close_, {L"", L"Esc"});
     SetCaption(*languageLabel_, std::wstring(text.language));
-    auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*languageCombo_);
-    texts_.ApplyFont(combo);
+    auto &combo = RequireDropdown(*languageCombo_);
     const auto languages = texts_.Languages();
     for (std::size_t index = 0; index < languages.size(); ++index)
     {
@@ -558,8 +550,7 @@ void OptionsPanel::RefreshTexts()
         }
     }
     SetCaption(*skinLabel_, std::wstring(text.skin));
-    auto &skinCombo = RequireComponent<ComboBoxBehaviorComponent>(*skinCombo_);
-    texts_.ApplyFont(skinCombo);
+    auto &skinCombo = RequireDropdown(*skinCombo_);
     const auto selected = std::ranges::find(skinNames_, SkinSetSelection::Instance().CurrentName());
     if (selected != skinNames_.end())
         skinCombo.SetSelectedIndex(static_cast<std::size_t>(selected - skinNames_.begin()));
@@ -581,10 +572,8 @@ void OptionsPanel::RefreshAudioControls()
                             std::pair{driverLabel_, text.driver}};
     for (const auto &[node, value] : labels)
         SetCaption(*node, std::wstring(value));
-    for (auto *node : {middlewareCombo_, outputCombo_, driverCombo_})
-        texts_.ApplyFont(RequireComponent<ComboBoxBehaviorComponent>(*node));
 
-    auto &output = RequireComponent<ComboBoxBehaviorComponent>(*outputCombo_);
+    auto &output = RequireDropdown(*outputCombo_);
     std::vector<std::wstring> names;
     for (auto backend : Outputs)
         names.push_back(OutputName(backend, text));
@@ -600,7 +589,7 @@ void OptionsPanel::RefreshAudioControls()
         driverIndices_.push_back(driver.driverIndex);
         names.push_back(std::to_wstring(driver.driverIndex) + L": " + WideText(driver.name));
     }
-    auto &driver = RequireComponent<ComboBoxBehaviorComponent>(*driverCombo_);
+    auto &driver = RequireDropdown(*driverCombo_);
     if (names.empty())
         names.emplace_back(text.noDrivers);
     driver.SetItems(std::move(names));

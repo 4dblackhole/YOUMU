@@ -1,6 +1,7 @@
 #include "SongFilterPanel.h"
 #include "SongSelectionText.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiDropdown.h"
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -53,16 +54,10 @@ void SongFilterPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IWi
     Fill(*panel_, ui_colors::sky::Surface);
     title_ = &Label(*panel_, "SongFilter.Title", 24);
     modeLabel_ = &Label(*panel_, "SongFilter.ModeLabel");
-    mode_ = &CreateComboBox(*panel_, {}, {}, "SongFilter.Mode");
+    mode_ = &CreateDropdown(*panel_, {}, {}, "SongFilter.Mode");
     Fill(*mode_, ui_colors::sky::Pale);
     mode_->SetZIndex(20);
-    auto &combo = Component<ComboBoxBehaviorComponent>(*mode_);
-    combo.SetMaxVisibleItems(5);
-    combo.SetItemHeight(30);
-    combo.SetFontSize(16);
-    combo.SetTextColor(ui_colors::sky::Ink);
-    combo.SetSelectedTextColor(ui_colors::sky::Ink);
-    combo.SetPopupBackgroundColor(ui_colors::White);
+    RequireDropdown(*mode_).SetValueStyle(16, 600, ui_colors::sky::Ink);
     minimum_ = &Label(*panel_, "SongFilter.Minimum", 14);
     maximum_ = &Label(*panel_, "SongFilter.Maximum", 14);
     for (std::size_t row = 0; row < labels_.size(); ++row)
@@ -123,7 +118,7 @@ void SongFilterPanel::Close() noexcept
     for (auto &input : inputs_) if (input) input->SetVisible(false);
     if (overlay_)
     {
-        Component<ComboBoxBehaviorComponent>(*mode_).Collapse();
+        RequireDropdown(*mode_).Collapse();
         overlay_->SetVisible(false);
     }
 }
@@ -193,7 +188,7 @@ void SongFilterPanel::Layout()
 
 void SongFilterPanel::UpdateInputVisibility()
 {
-    const bool visible = IsVisible() && !Component<ComboBoxBehaviorComponent>(*mode_).IsExpanded();
+    const bool visible = IsVisible() && !RequireDropdown(*mode_).IsExpanded();
     for (std::size_t i = 0; i < inputs_.size(); ++i)
         if (inputs_[i]) inputs_[i]->SetVisible(visible && (i < 6 || difficultyAvailable_));
 }
@@ -217,11 +212,10 @@ void SongFilterPanel::RefreshTexts()
     std::vector<std::wstring> items;
     items.push_back(std::wstring{texts_->Get("SongFilter.allModes")});
     for (std::size_t i = 1; i < modes_.size(); ++i) items.push_back(song_select::DecodeDisplayText(modes_[i]));
-    auto &combo = Component<ComboBoxBehaviorComponent>(*mode_);
+    auto &combo = RequireDropdown(*mode_);
     combo.SetItems(std::move(items));
     const auto selected = std::ranges::find(modes_, draft_.mode);
     combo.SetSelectedIndex(selected == modes_.end() ? 0 : static_cast<std::size_t>(selected - modes_.begin()));
-    texts_->ApplyFont(combo);
     const char *key = "SongFilter.hint";
     switch (error_)
     {

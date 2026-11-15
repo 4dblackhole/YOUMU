@@ -1,6 +1,7 @@
 #include "RecordFilterPanel.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
+#include "Presentation/UiDropdown.h"
 #include "Presentation/ValueDialog.h"
 #include "Records/PlayRecordStore.h"
 #include <algorithm>
@@ -56,12 +57,10 @@ void RecordFilterPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, I
     for (std::size_t i = 0; i < choices_.size(); ++i)
     {
         choiceLabels_[i] = &Label(*panel_, "RecordFilter.Label." + std::to_string(i), 15);
-        choices_[i] = &CreateComboBox(*panel_, {}, {}, "RecordFilter.Choice." + std::to_string(i));
+        choices_[i] = &CreateDropdown(*panel_, {}, {}, "RecordFilter.Choice." + std::to_string(i));
         choices_[i]->SetZIndex(20);
         ApplySpriteStyle(*choices_[i], PaleBlue, FocusBlue);
-        auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*choices_[i]);
-        combo.SetFontSize(16); combo.SetItemHeight(30); combo.SetMaxVisibleItems(3);
-        combo.SetTextColor(DeepBlue); combo.SetSelectedTextColor(DeepBlue); combo.SetPopupBackgroundColor(PureWhite);
+        RequireDropdown(*choices_[i]).SetValueStyle(16, 600, DeepBlue);
     }
     for (std::size_t i = 0; i < rangeLabels_.size(); ++i)
         rangeLabels_[i] = &Label(*panel_, "RecordFilter.RangeLabel." + std::to_string(i));
@@ -107,7 +106,7 @@ void RecordFilterPanel::Close() noexcept
 {
     for (auto &input : inputs_) if (input) input->SetVisible(false);
     if (!overlay_) return;
-    for (auto *choice : choices_) RequireComponent<ComboBoxBehaviorComponent>(*choice).Collapse();
+    for (auto *choice : choices_) RequireDropdown(*choice).Collapse();
     overlay_->SetVisible(false);
 }
 void RecordFilterPanel::Shutdown() noexcept
@@ -176,7 +175,7 @@ void RecordFilterPanel::Layout()
 void RecordFilterPanel::UpdateInputVisibility()
 {
     const bool expanded = std::ranges::any_of(choices_, [](auto *choice)
-        { return RequireComponent<ComboBoxBehaviorComponent>(*choice).IsExpanded(); });
+        { return RequireDropdown(*choice).IsExpanded(); });
     for (auto &input : inputs_) if (input) input->SetVisible(IsVisible() && !expanded);
 }
 void RecordFilterPanel::RefreshTexts()
@@ -194,10 +193,10 @@ void RecordFilterPanel::RefreshTexts()
     {
         Text(*choiceLabels_[i], texts_->Get(flagKeys[i]));
         texts_->ApplyFont(RequireComponent<TextVisualComponent>(*choiceLabels_[i]));
-        auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*choices_[i]);
+        auto &combo = RequireDropdown(*choices_[i]);
         if (i == RecordFilterFlagCount) combo.SetItems({std::wstring{texts_->Get("RecordFilter.any")}, L"x", L"BPM"});
         else combo.SetItems({std::wstring{texts_->Get("RecordFilter.any")}, std::wstring{texts_->Get("RecordFilter.on")}, std::wstring{texts_->Get("RecordFilter.off")}});
-        combo.SetSelectedIndex(draft_.choices[i]); texts_->ApplyFont(combo);
+        combo.SetSelectedIndex(draft_.choices[i]);
     }
     Text(*conditionText_, draft_.condition.empty() ? texts_->Get("RecordFilter.noCondition") : std::wstring_view{draft_.condition});
     Text(*status_, error_.empty() ? std::wstring{texts_->Get("RecordFilter.hint")} :

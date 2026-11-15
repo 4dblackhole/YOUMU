@@ -181,6 +181,8 @@
     <ClInclude Include="Presentation\UiFonts.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\UiTooltip.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClInclude Include="Presentation\UiTooltip.h"><Filter>Presentation</Filter></ClInclude>
+    <ClCompile Include="Presentation\UiDropdown.cpp"><Filter>Presentation</Filter></ClCompile>
+    <ClInclude Include="Presentation\UiDropdown.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\ModePresentation.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\ModePresentation.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp"><Filter>Texts\EditorScene</Filter></ClCompile>

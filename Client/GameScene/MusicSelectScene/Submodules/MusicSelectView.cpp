@@ -65,6 +65,11 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     command_ = SongSelectCommand::None;
     if (!canvas_)
         return command_;
+    if (ProcessDropdownKeys(*canvas_, input))
+    {
+        tooltip_.Hide();
+        return command_;
+    }
     SynchronizeSearchText();
     if (textRevision_ != texts_.Revision())
     {

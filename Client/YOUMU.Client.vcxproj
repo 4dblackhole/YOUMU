@@ -264,6 +264,8 @@
     <ClInclude Include="Presentation\UiFonts.h" />
     <ClCompile Include="Presentation\UiTooltip.cpp" />
     <ClInclude Include="Presentation\UiTooltip.h" />
+    <ClCompile Include="Presentation\UiDropdown.cpp" />
+    <ClInclude Include="Presentation\UiDropdown.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />
     <ClCompile Include="Presentation\ModePresentation.cpp" />
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp" />

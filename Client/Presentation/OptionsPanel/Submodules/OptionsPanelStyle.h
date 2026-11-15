@@ -1,6 +1,7 @@
 #pragma once
 #include "PhantomCore.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiDropdown.h"
 #include "Presentation/UiFonts.h"
 #include "Texts/Options/OptionTexts.h"
 #include <Windows.h>
@@ -205,16 +206,10 @@ namespace options_ui
         line.SetZIndex(field.ZIndex() + 1);
     }
 
-    inline void ConfigureCombo(PhantomCore::Visual2DNode &node, const std::size_t visibleItems)
+    // Drop-down boxes are white fields; their value and list style come from UiDropdown.
+    inline void ConfigureCombo(PhantomCore::Visual2DNode &node)
     {
         SetFieldColors(node);
-        auto &combo = RequireComponent<PhantomCore::ComboBoxBehaviorComponent>(node);
-        combo.SetMaxVisibleItems(visibleItems);
-        combo.SetItemHeight(34.0F);
-        combo.SetFontSize(14.0F);
-        combo.SetTextColor(HeadingColor);
-        combo.SetSelectedTextColor(ui_colors::theme::Brand);
-        combo.SetPopupBackgroundColor(ui_colors::theme::Surface);
     }
 
     inline std::wstring WideText(const std::string &value)

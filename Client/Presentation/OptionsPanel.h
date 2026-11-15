@@ -192,7 +192,6 @@ class OptionsPanel final
     std::optional<std::size_t> captureRow_;
     std::wstring offsetDraft_;
     bool editingOffset_{}, replaceOffsetDraft_{};
-    std::size_t comboOrder_{};
 
     TextCatalog &texts_;
     OptionSettings &options_;

@@ -1,4 +1,5 @@
 #include "Presentation/PlayOptionsPanel.h"
+#include "Presentation/UiDropdown.h"
 #include <algorithm>
 #include <cmath>
 
@@ -80,7 +81,7 @@ void PlayOptionsPanel::UpdateInputs()
     if (height_ == 0 || logical.height <= 0) return;
     const float scale = static_cast<float>(height_) / logical.height;
     const auto viewport = viewport_->BoundsInCanvas();
-    const bool available = IsVisible() && progress_ >= 1 && !unit_->GetComponent<ComboBoxBehaviorComponent>()->IsExpanded();
+    const bool available = IsVisible() && progress_ >= 1 && !RequireDropdown(*unit_).IsExpanded();
     for (std::size_t i = 0; i < inputs_.size(); ++i)
     {
         const auto bounds = fields_[i]->BoundsInCanvas();

@@ -1,6 +1,7 @@
 #pragma once
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/UiDropdown.h"
 #include "Presentation/UiTooltip.h"
 #include "Presentation/PlayOptionsPanel.h"
 #include "SongSelectionState.h"
@@ -39,7 +40,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); }
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
         else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();

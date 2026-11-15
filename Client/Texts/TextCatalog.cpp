@@ -105,7 +105,3 @@ void TextCatalog::ApplyFont(TextVisualComponent &text) const
 {
     text.SetFont(CurrentProfile().font);
 }
-void TextCatalog::ApplyFont(ComboBoxBehaviorComponent &combo) const
-{
-    combo.SetFont(CurrentProfile().font);
-}

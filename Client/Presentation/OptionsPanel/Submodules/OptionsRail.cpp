@@ -242,7 +242,7 @@ void OptionsPanel::CollapseCombos()
 {
     for (auto *node : {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_})
         if (node)
-            RequireComponent<ComboBoxBehaviorComponent>(*node).Collapse();
+            RequireDropdown(*node).Collapse();
 }
 
 void OptionsPanel::UpdateContentLayout()

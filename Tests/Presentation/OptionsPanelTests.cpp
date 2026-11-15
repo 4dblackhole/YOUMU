@@ -3,6 +3,7 @@
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiDropdown.h"
 #include "Presentation/UiTooltip.h"
 #include "YOUMUAssets.h"
 
@@ -177,9 +178,9 @@ namespace
         }
         throw std::out_of_range("Node not found");
     }
-    ComboBoxBehaviorComponent &Combo(Visual2DCanvas &canvas, std::string_view name)
+    UiDropdownComponent &Combo(Visual2DCanvas &canvas, std::string_view name)
     {
-        return *FindNode(canvas.Root(), name).GetComponent<ComboBoxBehaviorComponent>();
+        return RequireDropdown(FindNode(canvas.Root(), name));
     }
     Action Select(Visual2DCanvas &canvas, std::string_view name, std::size_t index)
     {
@@ -704,8 +705,10 @@ namespace
         click("Options.Language.Combo");
         Check(Combo(canvas, "Options.Language.Combo").IsExpanded(), "Open the actual General popup.");
         click("Options.Rail.Display", true);
-        Check(!Combo(canvas, "Options.Language.Combo").IsExpanded() && Lit(canvas, "Display"),
-              "A rail click collapses open lists and moves to its section.");
+        Check(!Combo(canvas, "Options.Language.Combo").IsExpanded() && !Lit(canvas, "Display"),
+              "A press outside an open list only closes it; the control underneath does not act.");
+        click("Options.Rail.Display", true);
+        Check(Lit(canvas, "Display"), "With the list closed the rail click moves to its section.");
         static_cast<void>(panel.ProcessInput(InputState{}, std::nullopt, {}, router));
         const auto skin = FindNode(canvas.Root(), "Options.Skin.Combo").BoundsInCanvas();
         PointerInput hover;

@@ -47,7 +47,6 @@ class TextCatalog final
     [[nodiscard]] std::span<const LanguageProfile> Languages() const noexcept;
     void SetLanguage(Language language) noexcept;
     void ApplyFont(PhantomCore::TextVisualComponent &text) const;
-    void ApplyFont(PhantomCore::ComboBoxBehaviorComponent &combo) const;
 
   private:
     std::array<LanguageFile, 3> files_;

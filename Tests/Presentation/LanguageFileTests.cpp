@@ -50,7 +50,7 @@ namespace
     {
         TextCatalog empty(directory);
         Check(Logo(empty).menu[0] == L"Game Start" && Editor(empty).save == L"SAVE" &&
-                  MusicSelect(empty).sortModes[3] == L"BASE BPM",
+                  MusicSelect(empty).sortModes[3] == L"Base BPM",
               "Missing Korean and English files must use built-in English for every screen.");
         Check(empty.Get("MusicSelect.hpLevelLabel") == L"HP level",
               "Older language packs must retain an English fallback for the HP label.");

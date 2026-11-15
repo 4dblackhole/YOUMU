@@ -144,17 +144,18 @@ namespace
             if (!canvas) throw std::runtime_error("BPM sort Canvas missing.");
             auto *sort = Find(canvas->Root(), "SortSelector");
             if (!sort) throw std::runtime_error("BPM sort selector missing.");
-            auto *behavior = sort->GetComponent<ComboBoxBehaviorComponent>();
+            auto *behavior = sort->GetComponent<UiDropdownComponent>();
             if (!behavior) throw std::runtime_error("BPM sort behavior missing.");
             auto &combo = *behavior;
-            Check(combo.Items().size() == 4 && combo.Items()[3] == L"BASE BPM" && combo.MaxVisibleItems() == 4,
+            Check(combo.Items().size() == 4 && combo.Items()[3] == L"Base BPM",
                   "The Korean sort menu exposes Base BPM alongside existing modes.");
             Check(combo.SelectedIndex() == static_cast<std::size_t>(state.sortMode_),
                   "A newly initialized view reflects its retained sort mode.");
             Click(*canvas, *sort);
             Check(combo.IsExpanded(), "The actual sort menu must open.");
             const auto bounds = sort->BoundsInCanvas();
-            Click(*canvas, Point{bounds.x + bounds.width / 2, bounds.y - combo.ItemHeight() * 3.5F});
+            // The list hangs under the box: 4px of padding, then 34px rows.
+            Click(*canvas, Point{bounds.x + bounds.width / 2, bounds.y - 4.0F - 34.0F * 3.5F});
             InputState input;
             Check(view.Update(input, 0) == SongSelectCommand::None &&
                       state.sortMode_ == SongSelectionState::SortMode::BaseBpm &&
@@ -163,7 +164,7 @@ namespace
                   "Clicking Base BPM must reorder real cards and retain the focused song.");
             texts.SetLanguage(Language::English);
             static_cast<void>(view.Update(input, 0));
-            Check(combo.Items()[3] == L"BASE BPM" && combo.SelectedIndex() == 3,
+            Check(combo.Items()[3] == L"Base BPM" && combo.SelectedIndex() == 3,
                   "Language changes must retain the selected BPM mode.");
             state.searchText_ = L"slow";
             view.RebuildVisibleSongs();
