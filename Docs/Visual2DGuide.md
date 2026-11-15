@@ -202,6 +202,7 @@ inputRouter_.Process(*canvas_, pointer);
 노드의 역 World Transform으로 변환하므로 XYZ 회전, scale, 부모 Transform이
 표시와 판정에 똑같이 반영된다. ComboBox popup은 포커스가 다른 곳으로 이동해도
 자동으로 닫히지 않으며, 다시 field를 누르거나 항목을 선택할 때 닫힌다.
+게임 화면은 이 엔진 ComboBox 대신 Client의 공용 드롭다운(`UiDropdown`, [드롭다운](TextManagement.md#드롭다운))을 쓴다.
 
 ## PNG와 상태별 디자인
 
