@@ -323,6 +323,7 @@ void EditorView::BuildContent()
     DrawTabs();
     SyncInputControls();
     DrawFooter();
+    DrawCurvesDialog();
     DrawLetterbox();
     fields_.End();
     visual->Finish();

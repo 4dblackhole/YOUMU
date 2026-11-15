@@ -105,6 +105,12 @@ class EditorView final : public IEditorModeCanvas
     void SelectEffectType(const EditorEffectSelection &);
     void DrawExcludeChips(PhantomCore::Rect row);
     void DrawCurveRow(PhantomCore::Rect row);
+    // Curves dialog (YME [Interpolation]): list, name/expression with checking, preview.
+    void OpenCurves();
+    void CloseCurves();
+    void ApplyCurves();
+    void RenameCurve(const std::string &name);
+    void DrawCurvesDialog();
     void DrawSwitch(PhantomCore::Rect row, std::wstring caption, bool on, std::function<void()> toggle);
     [[nodiscard]] PhantomCore::Rect PanelBody() const noexcept;
     [[nodiscard]] std::wstring HeadValue(editor_layout::Channel) const;
@@ -179,6 +185,15 @@ class EditorView final : public IEditorModeCanvas
     bool buildFailed_{};
     bool testRequested_{};
     bool leaveRequested_{};
+    bool curvesOpen_{};
+    // Draft of the YME [Interpolation] table while the Curves dialog is open.
+    struct CurvesDraft
+    {
+        std::map<std::string, std::string, std::less<>> table;
+        // Current name -> name in the document, so renamed curves keep their effects.
+        std::map<std::string, std::string, std::less<>> origins;
+        std::string selected;
+    } curves_;
     // The pointer of the click being dispatched, for controls that read a position.
     std::optional<PhantomCore::Point> lastPointer_;
     bool toggleSelection_{}, rangeSelection_{}, shiftDown_{};

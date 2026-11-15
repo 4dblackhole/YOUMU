@@ -161,6 +161,7 @@
     <ClInclude Include="EditorScene\Submodules\EditorMenuBar.h" />
     <ClCompile Include="EditorScene\Submodules\EditorComposeView.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorChannelView.cpp" />
+    <ClCompile Include="EditorScene\Submodules\EditorCurvesDialog.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorTextFields.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorTextFields.h" />
     <ClInclude Include="EditorScene\Submodules\EditorSupport.h" />

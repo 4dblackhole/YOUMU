@@ -120,6 +120,13 @@ bool EditorView::UpdateKeyboard(const InputState &input)
     const bool controlDown = input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
     const bool altDown = input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU);
     bool leave = std::exchange(leaveRequested_, false);
+    if (curvesOpen_)
+    {
+        // The Curves dialog is modal: Escape cancels it and nothing else reacts.
+        if (input.WasKeyPressed(VK_ESCAPE))
+            CloseCurves();
+        return false;
+    }
     if (input.WasKeyPressed(VK_ESCAPE))
     {
         // Escape clears the nearest state first: selection or placement, the panel, then the editor.

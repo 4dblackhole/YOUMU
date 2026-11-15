@@ -506,7 +506,7 @@ void EditorView::DrawExcludeChips(Rect row)
 
 void EditorView::DrawCurveRow(Rect row)
 {
-    // Built-in curves and the YME's own [Interpolation] names.
+    // Built-in curves and the YME's own [Interpolation] names; Curves… edits the table.
     auto &draft = state_.effectForm;
     std::vector<std::pair<AutomationCurve, std::string>> curves{
         {AutomationCurve::Linear, {}}, {AutomationCurve::Exponential, {}}, {AutomationCurve::Harmonic, {}}};
@@ -519,8 +519,9 @@ void EditorView::DrawCurveRow(Rect row)
     std::wstring name = current == curves.end() || current->first == AutomationCurve::Expression
                             ? Wide(draft.curveName)
                             : std::wstring(text.curves[static_cast<std::size_t>(current - curves.begin())]);
+    const float buttonWidth = 84;
     Label({row.x, row.y, 44, row.height}, std::wstring(texts_.Get("Editor.curve")), {12, theme::Caption, TextAlignment::Leading, 700});
-    Button({row.x + 48, row.y, row.width - 48, row.height}, name, [this, curves, current] {
+    Button({row.x + 48, row.y, row.width - 48 - buttonWidth - 8, row.height}, name, [this, curves, current] {
         auto next = current == curves.end() ? curves.begin() : current + 1;
         if (next == curves.end())
             next = curves.begin();
@@ -528,6 +529,8 @@ void EditorView::DrawCurveRow(Rect row)
         state_.effectForm.curveName = next->second;
         state_.RequestRebuild();
     });
+    Button({row.x + row.width - buttonWidth, row.y, buttonWidth, row.height}, std::wstring(texts_.Get("Editor.curvesButton")),
+           [this] { OpenCurves(); });
 }
 
 void EditorView::DrawMusicPanel(Rect body)

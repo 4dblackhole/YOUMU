@@ -1,5 +1,18 @@
 #pragma once
 #include "Model/Submodules/EffectDocument.h"
+#include <stdexcept>
+#include <string>
+
+// A rejected expression and the zero-based character where parsing stopped.
+class InterpolationSyntaxError final : public std::invalid_argument
+{
+public:
+InterpolationSyntaxError(const std::string &message, std::size_t position) : std::invalid_argument(message), position_(position) {}
+[[nodiscard]] std::size_t Position() const noexcept { return position_; }
+
+private:
+std::size_t position_;
+};
 
 // Parsed once when loading a YME; evaluation never reparses or allocates.
 class InterpolationExpression final
