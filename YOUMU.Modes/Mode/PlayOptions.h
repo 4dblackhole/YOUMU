@@ -1,4 +1,5 @@
 #pragma once
+#include "Gauge/HpGaugeKind.h"
 #include "Judgement/JudgeLevel.h"
 #include <cmath>
 #include <cstdint>
@@ -25,6 +26,7 @@ struct PlayOptions
     bool preserveMusicPitch{true};
     bool preserveHitSoundPitch{true};
     std::optional<JudgeLevel> judgeLevel;
+    HpGaugeKind hpGauge{HpGaugeKind::Default};
 
     void Validate() const
     {
@@ -36,6 +38,8 @@ struct PlayOptions
         if (!validScroll || !validProbability || !validAccelerate)
             throw std::invalid_argument(
                 "Invalid play options: positive scroll speed, probability 0..1, Accelerate 0.5..2 required.");
+        if (FindHpGauge(hpGauge) == nullptr)
+            throw std::invalid_argument("Invalid play options: unknown HP gauge.");
     }
     double ScrollMultiplier(double baseBpm) const
     {

@@ -7,6 +7,59 @@
 
 namespace tests
 {
+    // HP, chart length and tag rows, and the row switches (UI-02 song filters).
+    void TestSongFilterRows()
+    {
+        SongCatalogEntry song;
+        song.music.tags = {"Cloud"};
+        song.patterns.resize(1);
+        auto &entry = song.patterns.front();
+        entry.pattern.hpLevel = HpLevel{12.5};
+        entry.pattern.tags = {"\xE6\x98\x9F"}; // A non-Latin pattern tag (U+661F).
+        entry.chartLengthSeconds = 95.0;
+        SongFilter filter;
+        filter.minimumHp = 12.5;
+        filter.maximumLength = 95.0;
+        filter.tag = L"cloud";
+        Require(filter.IsActive() && filter.Matches(song, entry),
+                "HP and length bounds are inclusive, and a tag matches the song's tags ignoring case.");
+        filter.tag = L"\u661F";
+        Require(filter.Matches(song, entry), "A tag also matches the pattern's own tags.");
+        filter.tag = L"clou";
+        Require(!filter.Matches(song, entry), "A tag must equal one tag; part of a tag is not enough.");
+        filter.switchedOff[static_cast<std::size_t>(SongFilterRow::Tag)] = true;
+        Require(filter.Matches(song, entry), "A switched-off row keeps its value and does not filter.");
+        filter.maximumLength = 94.0;
+        Require(!filter.Matches(song, entry), "Other rows keep filtering.");
+        entry.chartLengthSeconds.reset();
+        filter.maximumLength = 1000.0;
+        Require(!filter.Matches(song, entry), "A chart without a known length is excluded by a length bound.");
+
+        SongFilterDraft draft;
+        constexpr auto notes = SongFilterRow::Notes;
+        draft.SetValue(0, L"1000");
+        Require(draft.IsRowOn(notes), "A first value turns the row's switch on by itself.");
+        Require(draft.ToggleRow(notes) && !draft.IsRowOn(notes), "The switch turns the row off.");
+        draft.SetValue(1, L"1500");
+        draft.SetValue(0, L"1100");
+        Require(!draft.IsRowOn(notes), "Editing values of a switched-off row leaves it off.");
+        draft.SetValue(0, L" ");
+        draft.SetValue(1, L"");
+        draft.SetValue(0, L"900");
+        Require(draft.IsRowOn(notes), "A row emptied and given a new first value turns on again.");
+        Require(!draft.ToggleRow(SongFilterRow::Hp), "An empty row has no switch to turn.");
+        draft.SetTag(L"Cloud");
+        draft.ToggleRow(SongFilterRow::Tag);
+        SongFilter parsed;
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::None && parsed.minimumNotes == 900 &&
+                    parsed.tag == L"Cloud" && parsed.switchedOff[static_cast<std::size_t>(SongFilterRow::Tag)] &&
+                    !parsed.IsRowActive(SongFilterRow::Tag) && parsed.IsActive(),
+                "Applying keeps switched-off values for reopening while only switched-on rows filter.");
+        const auto reopened = FormatSongFilter(parsed);
+        Require(reopened.tag == L"Cloud" && !reopened.IsRowOn(SongFilterRow::Tag) && reopened.IsRowOn(notes),
+                "Reopening restores values and switch states.");
+    }
+
     void TestSongFilters()
     {
         SongSelectionState state;
@@ -24,7 +77,7 @@ namespace tests
         unknown.noteCount.reset();
         SongFilter countFilter;
         countFilter.minimumNotes = 0;
-        Require(!countFilter.Matches(unknown) && SongFilter{}.Matches(unknown),
+        Require(!countFilter.Matches(song, unknown) && SongFilter{}.Matches(song, unknown),
             "Unknown logical counts are excluded only when a note-count bound is active.");
         song.patterns[0].pattern.baseBpm = 90;
         song.patterns[1].pattern.mode = "Other";
@@ -68,11 +121,11 @@ namespace tests
 
         SongFilter parsed;
         SongFilterDraft draft;
-        draft.values = {L" 0 ", L"100", L"120.25", L"150", L"1", L"100", L"", L""};
+        draft.values = {L" 0 ", L"100", L"120.25", L"150", L"1", L"100", L"", L"", L"", L"", L"", L""};
         Require(ParseSongFilter(draft, parsed) == SongFilterError::None &&
                     parsed.minimumNotes == 0 && parsed.minimumBpm == 120.25,
                 "Integer count and fractional range bounds accept whitespace and inclusive endpoints.");
-        Require(FormatSongFilter(parsed).values == std::array<std::wstring, 8>{L"0", L"100", L"120.25", L"150", L"1", L"100", L"", L""},
+        Require(FormatSongFilter(parsed).values == std::array<std::wstring, 12>{L"0", L"100", L"120.25", L"150", L"1", L"100", L"", L"", L"", L"", L"", L""},
                 "Committed filters round-trip into editable values.");
         for (const auto bad : {L"-1", L"1.5", L"184467440737095516160", L"日本語"})
         {
@@ -99,6 +152,16 @@ namespace tests
         Require(ParseSongFilter(draft, parsed) == SongFilterError::ReversedRange, "Reject reversed bounds.");
         draft = {};
         Require(ParseSongFilter(draft, parsed) == SongFilterError::None && !parsed.IsActive(), "Empty bounds remove restrictions.");
+        draft.values[8] = L"0.99";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::Hp, "HP bounds use the 1-100 HP range.");
+        draft = {};
+        draft.values[10] = L"-1";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::Length, "Length is a nonnegative number of seconds.");
+        draft = {};
+        draft.values[11] = L"60";
+        draft.values[10] = L"61";
+        Require(ParseSongFilter(draft, parsed) == SongFilterError::ReversedRange, "Every range row rejects reversed bounds.");
+        TestSongFilterRows();
     }
 
     void TestSongBaseBpmSort()

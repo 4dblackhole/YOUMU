@@ -1,6 +1,8 @@
 #include "TestSupport.h"
 #include "Catalog/SongCatalogCacheVersion.h"
 #include "Mode/PlayGameModeFactory.h"
+#include <cmath>
+#include <map>
 
 namespace tests
 {
@@ -150,6 +152,35 @@ namespace tests
                     std::to_string(catalog.songs.size()) +
                     ", patterns=" + std::to_string(catalog.PatternCount()) + ").");
     }
+    // Song filter Length: the span from the first note to the last note entry, kept in the list index.
+    void TestSongCatalogChartLength()
+    {
+        TemporaryDirectory fixture("YOUMUChartLength");
+        const auto root = fixture.Path() / "Songs";
+        const auto cache = fixture.Path() / "Cache" / "index.bin";
+        WriteTextFile(root / "song.ymm", "Version: 1\nFile: song.mp3\nMusic Name 1: Title\n");
+        WriteTextFile(root / "song.mp3", "audio-placeholder");
+        WriteTextFile(root / "long.ymp", "Version: 1\nMusic metadata: song.ymm\nPattern Name: Long\nMode: Taiko\n"
+                                         "Base BPM: 120\n[Pattern]\n1/4,1,0\n--\n2/4,1,0\n");
+        WriteTextFile(root / "empty.ymp", "Version: 1\nMusic metadata: song.ymm\nPattern Name: Empty\nMode: Taiko\n"
+                                          "Base BPM: 120\n[Pattern]\n");
+        const auto lengths = [](const SongCatalogLoadResult &result)
+        {
+            std::map<std::string, std::optional<double>> found;
+            for (const auto &entry : result.songs.front().patterns)
+                found[entry.pattern.name] = entry.chartLengthSeconds;
+            return found;
+        };
+        const SongCatalog::PatternNoteCounter countNotes = [](const PatternDocument &pattern, const EffectDocument &effects,
+                                                              std::stop_token stop) { return CountPlayableNotes(pattern, effects, stop); };
+        const auto load = [&] { return SongCatalog::MetadataIndex(cache, countNotes).Load(root); };
+        const auto first = lengths(load());
+        // 4/4 at 120 BPM: a quarter is 0.5 s, so beat 2 of measure 1 to beat 3 of measure 2 is 2.5 s.
+        Require(first.size() == 2 && first.at("Long") && std::abs(*first.at("Long") - 2.5) < 1e-9 && !first.at("Empty"),
+                "Chart length spans the notes; a pattern without notes has no length.");
+        Require(lengths(load()) == first, "The disk index restores chart lengths.");
+    }
+
     void TestSongCatalogIndex()
     {
         TemporaryDirectory fixture("YOUMUIndex");

@@ -223,6 +223,22 @@ void MusicSelectView::UpdateFooterLayout(const SongSelectFrame &frame)
         x += layout::ModeChip.width;
         playOptionsButton_->SetBounds(TopLeft({x, cellTop, layout::PlayOptions.width, layout::PlayOptions.height}, height));
         x += layout::PlayOptions.width;
+        RefreshPlayOptionsBadge();
     }
     optionButton_->SetBounds(TopLeft({x, cellTop, layout::Gear.width, layout::Gear.height}, height));
+}
+
+void MusicSelectView::RefreshPlayOptionsBadge()
+{
+    if (!AllCreated(playOptionsButton_, playOptionsBadge_, playOptionsBadgeText_))
+        return;
+    const auto count = ChangedPlayOptionCount(selection_.playOptions_);
+    playOptionsBadge_->SetVisible(count > 0);
+    RequireComponent<TextVisualComponent>(*playOptionsBadgeText_).SetText(std::to_wstring(count));
+    // The badge follows the centred caption, 8 to its right (popups.css .count-badge).
+    const auto size = playOptionsButton_->NodeSize();
+    const auto &caption = RequireComponent<TextVisualComponent>(*playOptionsButton_);
+    const float captionRight = (size.width + EstimateCaptionWidth(caption.Text(), caption.FontSize())) * 0.5F;
+    playOptionsBadge_->SetBounds({std::min(captionRight + 8.0F, size.width - 18.0F), (size.height - 18.0F) * 0.5F, 18.0F, 18.0F});
+    playOptionsBadgeText_->SetBounds({0.0F, 0.0F, 18.0F, 18.0F});
 }

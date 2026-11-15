@@ -1,7 +1,9 @@
 #include "MusicSelectTestInput.h"
 #include "Presentation/PlayOptionsPanel.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
+#include "Presentation/UiDropdown.h"
 #include <Windows.h>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <utility>
@@ -55,6 +57,11 @@ namespace
             auto edit = std::make_unique<Edit>(); edits.push_back(edit.get()); return edit;
         }
     };
+    // A switch row is on when its knob sits at the right end of the track.
+    bool SwitchOn(Visual2DCanvas &canvas, std::string_view row)
+    {
+        return Find(Find(canvas.Root(), row), "Knob").Bounds().x > 10;
+    }
     void TestDraftValidationAndReset()
     {
         auto canvasOwner = std::make_unique<Visual2DCanvas>(Size{1280, 720}, CanvasScaleMode::Fixed);
@@ -63,38 +70,41 @@ namespace
         Window window;
         PlayOptionsPanel panel; panel.Initialize(canvas, texts, &window); panel.SetViewport(720);
         panel.Open({});
-        const auto start = Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas().y;
-        panel.Update(.1);
-        Check(Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas().y > start && !window.edits[0]->visible,
-              "Panel enters upward; native editors stay hidden during motion.");
-        panel.Update(.1);
         Check(window.edits.size() == 5 && window.edits[0]->visible && window.edits[1]->visible &&
                   !window.edits[2]->visible && !window.edits[3]->visible, "Only active fields appear after opening.");
-        const auto flag = [&](std::string_view name, bool value) {
-            auto action = ActionFor(canvas, name, ActionType::ValueChanged); action.value = value ? 1.0F : 0;
-            Check(panel.ProcessAction(action), "A visible flag can change.");
+        const auto panelBounds = Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas();
+        Check(std::abs(panelBounds.width - 960) < .5F && panelBounds.x > -640 && panelBounds.x + panelBounds.width < 640,
+              "The flat modal is 960 wide and centred.");
+        Check(Find(canvas.Root(), "PlayOptions.HpGauge.Clear").GetComponent<TextVisualComponent>()->Text() == L"Clear 60%" &&
+                  RequireDropdown(Find(canvas.Root(), "PlayOptions.HpGauge")).Items() == std::vector<std::wstring>{L"Default"},
+              "HP gauge offers the default gauge with its clear criterion.");
+        const auto click = [&](std::string_view name) {
+            Check(panel.ProcessAction(ActionFor(canvas, name)), "A visible control can be used.");
         };
-        auto unit = ActionFor(canvas, "PlayOptions.Unit", ActionType::SelectionChanged); unit.selectedIndex = 1;
-        Check(panel.ProcessAction(unit), "BPM mode can be selected.");
-        flag("PlayOptions.random", true); flag("PlayOptions.mirror", true);
-        flag("PlayOptions.ignoreScroll", true); flag("PlayOptions.metronome", true);
-        Check(panel.ProcessAction(ActionFor(canvas, "PlayOptions.accelerate.Label")), "Accelerate reveals pitch settings.");
-        flag("PlayOptions.musicPitch", false); flag("PlayOptions.hitPitch", true); flag("PlayOptions.overrideJudge", true);
+        click("PlayOptions.Unit.1");
+        click("PlayOptions.random"); click("PlayOptions.mirror");
+        click("PlayOptions.ignoreScroll"); click("PlayOptions.metronome");
+        click("PlayOptions.accelerate.More");
+        click("PlayOptions.musicPitch"); click("PlayOptions.overrideJudge");
         Check(window.edits[2]->visible && window.edits[3]->visible && window.edits[4]->visible,
-              "Judge and Random reveal their own editors; all expanded content fits 1280x720.");
+              "Judge and Random reveal their own editors.");
+        Check(Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas().height <= 720, "All expanded content fits 1280x720.");
         for (std::size_t i = 0; i < window.edits.size(); ++i)
             window.edits[i]->UserText(std::array{L"240", L"1.5", L"60.00", L"18446744073709551615", L"35"}[i]);
         Check(!panel.TakeApplied(), "Editing never publishes before the panel closes.");
-        panel.ProcessInput({}, std::nullopt);
-        Check(panel.ProcessAction(ActionFor(canvas, "PlayOptions.Close")) && !panel.IsVisible(), "Close applies immediately.");
+        panel.ProcessInput({});
+        Check(panel.ProcessAction(ActionFor(canvas, "PlayOptions.Apply")) && !panel.IsVisible(), "Done applies immediately.");
         auto applied = panel.TakeApplied();
         Check(applied && applied->scrollUnit == PlayOptions::ScrollUnit::Bpm && applied->scrollSpeed == 240 &&
                   applied->random && applied->mirror && applied->metronome && applied->ignoreScrollEffects &&
                   applied->randomSeed == UINT64_MAX && applied->randomAttemptProbability == .35 &&
                   applied->accelerate == 1.5 && !applied->preserveMusicPitch && applied->preserveHitSoundPitch &&
-                  applied->judgeLevel == JudgeLevel{60}, "Close preserves every independent existing option and uint64 precision.");
+                  applied->judgeLevel == JudgeLevel{60} && applied->hpGauge == HpGaugeKind::Default,
+              "Done preserves every independent existing option and uint64 precision.");
+        Check(ChangedPlayOptionCount(*applied) == 8 && ChangedPlayOptionCount({}) == 0,
+              "The Play options badge counts changed option groups; a plain play shows none.");
         Check(!panel.TakeApplied(), "A successful close publishes once.");
-        const auto open = [&] { panel.Open(*applied); panel.Update(.2); };
+        const auto open = [&] { panel.Open(*applied); };
         open();
         for (const auto &value : {L"0", L"nan", L"inf", L"garbage"})
         {
@@ -106,19 +116,19 @@ namespace
         window.edits[1]->UserText(L"0.5"); window.edits[2]->UserText(L"60.001"); panel.Close();
         Check(panel.IsVisible(), "JudgeLevel still requires exact hundredths.");
         window.edits[2]->UserText(L"60.00"); window.edits[3]->UserText(L"-1");
-        flag("PlayOptions.random", false); panel.Close();
-        Check(panel.IsVisible() && !panel.TakeApplied() && window.edits[3]->visible &&
-                  !Find(canvas.Root(), "PlayOptions.random").GetComponent<ToggleBehaviorComponent>()->IsChecked(),
+        click("PlayOptions.random"); panel.Close();
+        Check(panel.IsVisible() && !panel.TakeApplied() && window.edits[3]->visible && !SwitchOn(canvas, "PlayOptions.random"),
               "Invalid hidden Random input is repairable without silently enabling Random.");
         window.edits[3]->UserText(L"18446744073709551616"); panel.Close();
         Check(panel.IsVisible(), "Seed overflow is rejected.");
         window.edits[3]->UserText(L"0"); window.edits[4]->UserText(L"101"); panel.Close();
         Check(panel.IsVisible(), "Probability range remains 0..100 percent.");
-        Check(Find(canvas.Root(), "PlayOptions.Status").GetComponent<TextVisualComponent>()->Text().find(L"確認") != std::wstring::npos,
+        Check(Find(canvas.Root(), "PlayOptions.StatusText").GetComponent<TextVisualComponent>()->Text().find(L"確認") !=
+                  std::wstring::npos,
               "Error guidance uses the chosen explanation language.");
         Check(panel.ProcessAction(ActionFor(canvas, "PlayOptions.Reset")) && panel.IsVisible() && !panel.TakeApplied(),
               "Reset restores the draft; it is applied on close.");
-        window.edits[0]->cancel = true; panel.ProcessInput({}, std::nullopt);
+        window.edits[0]->cancel = true; panel.ProcessInput({});
         const auto defaults = panel.TakeApplied();
         Check(defaults && defaults->scrollUnit == PlayOptions::ScrollUnit::Multiplier && defaults->scrollSpeed == 1 &&
                   defaults->accelerate == 1 && !defaults->random && !defaults->mirror && !defaults->metronome &&
@@ -126,15 +136,13 @@ namespace
                   defaults->preserveMusicPitch && defaults->preserveHitSoundPitch && !defaults->judgeLevel,
               "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
         open();
-        auto hidden = ActionFor(canvas, "PlayOptions.hitPitch", ActionType::ValueChanged); hidden.value = 0;
-        Check(!panel.ProcessAction(hidden), "Hidden pitch controls reject stale actions.");
-        Check(panel.ProcessAction(ActionFor(canvas, "PlayOptions.accelerate.Label")), "Expand pitch again.");
-        canvas.SetFixedLogicalSize({900, 400}); panel.SetViewport(400);
-        const auto previous = Find(canvas.Root(), "PlayOptions.Content").BoundsInCanvas().y;
-        const auto bounds = Find(canvas.Root(), "PlayOptions.Viewport").BoundsInCanvas();
-        InputState wheel; InputStateTestAccess::Mouse(wheel, {}, -10);
-        panel.ProcessInput(wheel, Point{bounds.x + 10, bounds.y + 10});
-        Check(Find(canvas.Root(), "PlayOptions.Content").BoundsInCanvas().y > previous, "Small viewports scroll one three-column body.");
+        Check(!panel.ProcessAction(ActionFor(canvas, "PlayOptions.hitPitch")), "Hidden pitch controls reject stale actions.");
+        click("PlayOptions.accelerate.More");
+        // A 4:3 canvas scales the whole modal like the song select board.
+        canvas.SetFixedLogicalSize({960, 720}); panel.SetViewport(720);
+        const auto narrow = Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas();
+        Check(std::abs(narrow.width - 720) < .5F && narrow.x >= -480 && narrow.x + narrow.width <= 480,
+              "Narrow screens scale the modal down to fit.");
         panel.Dismiss(); Check(!panel.TakeApplied(), "Scene/lifetime dismissal never publishes unfinished values.");
         panel.Shutdown();
         canvasOwner.reset();
@@ -165,6 +173,7 @@ namespace
             Click("PlayOptions");
             Check(Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible(), "Footer opens the new in-game panel.");
             Check(view_->Update({}, .2) == SongSelectCommand::None, "Opening does not launch a chart.");
+            Check(!Find(canvas_->Root(), "PlayOptions.Badge").IsVisible(), "Plain play options show no badge.");
             const auto speed = Editor("PlayOptions.scrollSpeed.Field");
             if (!speed) throw std::runtime_error("Real native numeric editor is not visible.");
             firstEdit_ = speed;
@@ -190,7 +199,10 @@ namespace
                   "Closing preserves search and selected song/chart.");
             Click("PlayOptions"); static_cast<void>(view_->Update({}, .2));
             Check(GetWindowTextLengthW(Editor("PlayOptions.scrollSpeed.Field")) == 4, "Reopening shows the applied value.");
-            Click("PlayOptions.Reset"); Click("PlayOptions.Close");
+            Check(Find(canvas_->Root(), "PlayOptions.Badge").IsVisible() &&
+                      Find(Find(canvas_->Root(), "PlayOptions.Badge"), "Count").GetComponent<TextVisualComponent>()->Text() == L"1",
+                  "A changed scroll speed shows a badge of one.");
+            Click("PlayOptions.Reset"); Click("PlayOptions.Apply");
             Check(selection_.playOptions_.scrollSpeed == 1 && !Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible(),
                   "Actual pointer Reset then Close applies the default.");
             Click("PlayOptions"); static_cast<void>(view_->Update({}, .2));
@@ -255,5 +267,5 @@ void TestPlayOptionsPanel()
                   << '/' << report.rendered << '/' << report.cleaned << '\n';
     Check(result == 0 && report.tested && report.rendered && report.cleaned,
           "Native play option editing, rendering and cleanup must pass.");
-    std::cout << "Play options close/apply, Reset, validation, expansion, scrolling and native isolation passed.\n";
+    std::cout << "Play options Done/apply, Reset, validation, expansion, HP gauge, scaling and native isolation passed.\n";
 }

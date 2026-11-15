@@ -72,6 +72,7 @@ class MusicSelectView final
     bool ProcessAdditionMenu(const PhantomCore::InputState &input);
     void ApplyTexts();
     void ApplyTooltips();
+    void RefreshPlayOptionsBadge();
     void UpdateResponsiveLayout();
     void UpdateRecordPanelLayout();
     void UpdateSongInformationLayout();
@@ -157,6 +158,7 @@ class MusicSelectView final
     PhantomCore::NodeId modeSelectorId_{};
     PhantomCore::Visual2DNode *playOptionsButton_{};
     PhantomCore::NodeId playOptionsButtonId_{};
+    PhantomCore::Visual2DNode *playOptionsBadge_{}, *playOptionsBadgeText_{};
     PhantomCore::Visual2DNode *optionButton_{};
     PhantomCore::Visual2DNode *backButton_{};
     PhantomCore::Visual2DNode *backLabel_{};

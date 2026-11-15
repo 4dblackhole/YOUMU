@@ -223,6 +223,12 @@ void MusicSelectView::CreateFooter()
         playOptionsButtonId_ = playOptionsButton_->Id();
         StyleText(RequireComponent<TextVisualComponent>(*playOptionsButton_), 15.0F, 800, theme::InkSoft,
                   TextAlignment::Center);
+        // Gold count of options that differ from a plain play; hidden when there are none.
+        playOptionsBadge_ = &CreatePanel(*playOptionsButton_, {}, "PlayOptions.Badge");
+        ApplyFlatStyle(*playOptionsBadge_, theme::Sun);
+        SetCornerRadius(*playOptionsBadge_, 2.0F);
+        playOptionsBadgeText_ = &CreateNumber(*playOptionsBadge_, {0.0F, 0.0F, 18.0F, 18.0F}, L"", 12.0F, 700,
+                                              theme::BrandDeep, "Count", TextAlignment::Center, false);
     }
     // The gear opens the global options; Ctrl+O opens the same panel.
     optionButton_ = &cell("OptionSelect", "OptionSelect");
@@ -282,6 +288,7 @@ void MusicSelectView::ApplyTexts()
         SetCaption(*filterButton_, std::wstring(texts_.Get("SongFilter.button")));
     if (playOptionsButton_)
         SetCaption(*playOptionsButton_, std::wstring(texts_.Get("PlayOptions.title")));
+    RefreshPlayOptionsBadge();
     if (backLabel_)
         SetCaption(*backLabel_, std::wstring(text.back));
     if (goLabel_)

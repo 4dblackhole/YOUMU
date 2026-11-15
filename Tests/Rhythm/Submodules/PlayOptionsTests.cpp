@@ -34,6 +34,16 @@ namespace tests
     }
     void TestTaikoPlayOptions()
     {
+        // HP gauge choice (UI-02 Play options): only the default gauge exists and owns the 60% clear criterion.
+        PlayOptions gauge;
+        Require(gauge.hpGauge == HpGaugeKind::Default && HpGauges.size() == 1 &&
+                    FindHpGauge(HpGaugeKind::Default)->clearPercent == 60.0,
+                "Play options start with the default HP gauge and its 60% clear criterion.");
+        gauge.hpGauge = static_cast<HpGaugeKind>(7);
+        bool unknownRejected{};
+        try { gauge.Validate(); }
+        catch (const std::invalid_argument &) { unknownRejected = true; }
+        Require(unknownRejected, "An unknown HP gauge is not a valid play option.");
         PatternDocument pattern;
         pattern.mode = "Taiko";
         pattern.baseBpm = 120;

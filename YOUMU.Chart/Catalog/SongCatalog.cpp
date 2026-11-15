@@ -14,6 +14,25 @@
 
 namespace
 {
+    // Song filter Length: the span of the chart's notes, from the first note to the last note entry, so a
+    // trailing long note counts to its end. Notes inside removed timing spans do not play and are skipped.
+    [[nodiscard]] std::optional<double> ChartLengthSeconds(const MusicalTimeline &timeline,
+                                                           const PatternDocument &pattern)
+    {
+        std::optional<RhythmTime> first, last;
+        for (const auto &note : pattern.notes)
+        {
+            if (!timeline.IsPositionActive(note.position))
+                continue;
+            const auto time = timeline.Compile(note.position);
+            first = first ? std::min(*first, time) : time;
+            last = last ? std::max(*last, time) : time;
+        }
+        if (!first)
+            return std::nullopt;
+        return std::chrono::duration<double>(*last - *first).count();
+    }
+
     [[nodiscard]] std::string PathKey(
         const std::filesystem::path& path)
     {
@@ -104,12 +123,18 @@ namespace
             CheckChartLoadCancellation(stop);
             std::optional<std::size_t> noteCount;
             std::optional<std::pair<double, double>> bpmRange;
+            std::optional<double> chartLength;
             if constexpr (requires { parsed.document.notes; })
             {
                 if (parsed.Succeeded() && countNotes)
                     noteCount = countNotes(parsed.document);
                 if (parsed.Succeeded())
-                    try { bpmRange = MusicalTimeline(parsed.document, {}, stop).BpmRange(); }
+                    try
+                    {
+                        const MusicalTimeline timeline(parsed.document, {}, stop);
+                        bpmRange = timeline.BpmRange();
+                        chartLength = ChartLengthSeconds(timeline, parsed.document);
+                    }
                     catch (const ChartLoadCancelled&) { throw; }
                     catch (const std::exception &)
                     {
@@ -126,7 +151,7 @@ namespace
                 if (metadataOnly) parsed.document = {};
             CheckChartLoadCancellation(stop);
             return typename Cache::mapped_type{modified, size,
-                std::make_shared<const Parsed>(std::move(parsed)), noteCount, bpmRange};
+                std::make_shared<const Parsed>(std::move(parsed)), noteCount, bpmRange, chartLength};
         };
         std::error_code error;
         const auto modified = file.last_write_time(error);
@@ -370,6 +395,7 @@ SongCatalogLoadResult SongCatalog::Load(
         std::shared_ptr<const ParseResult<PatternDocument>> parsed;
         std::optional<std::size_t> noteCount;
         std::optional<std::pair<double, double>> bpmRange;
+        std::optional<double> chartLength;
         try
         {
             InvalidateChangedPatternEffect(patternCache_, effectCache_, path);
@@ -392,6 +418,7 @@ SongCatalogLoadResult SongCatalog::Load(
             parsed = cached.parsed;
             noteCount = cached.noteCount;
             bpmRange = cached.bpmRange;
+            chartLength = cached.chartLengthSeconds;
         }
         catch (const ChartLoadCancelled&) { throw; }
         catch (const std::exception& exception)
@@ -486,6 +513,7 @@ SongCatalogLoadResult SongCatalog::Load(
         pattern.pattern = parsed->document;
         pattern.noteCount = noteCount;
         pattern.bpmRange = bpmRange;
+        pattern.chartLengthSeconds = chartLength;
         auto& song = result.songs[target->second];
         song.patterns.push_back(std::move(pattern));
         if (progress)

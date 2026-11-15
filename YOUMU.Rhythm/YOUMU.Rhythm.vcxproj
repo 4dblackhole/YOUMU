@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Gauge\IHpGauge.h" />
+    <ClInclude Include="Gauge\HpGaugeKind.h" />
     <ClInclude Include="Gauge\BasicHpGauge.h" />
     <ClCompile Include="Gauge\BasicHpGauge.cpp" />
   </ItemGroup>

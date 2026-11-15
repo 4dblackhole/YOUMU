@@ -122,6 +122,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestNumericFieldsRejectEmbeddedNulls", TestNumericFieldsRejectEmbeddedNulls},
         {"TestSongCatalogIsolatesInvalidFiles", TestSongCatalogIsolatesInvalidFiles},
         {"TestSongCatalogIndex", TestSongCatalogIndex},
+        {"TestSongCatalogChartLength", TestSongCatalogChartLength},
         {"TestChartLoadCancellation", TestChartLoadCancellation},
         {"TestChartLoadJobLifetime", TestChartLoadJobLifetime},
         {"TestSongCatalogProgressSelection", TestSongCatalogProgressSelection},

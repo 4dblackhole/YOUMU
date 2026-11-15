@@ -133,6 +133,9 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
                                       o.preserveHitSoundPitch ? L"=" : L"↗"));
     if (o.judgeLevel)
         add("judgeLevel", std::format(L"{:.2f}", o.judgeLevel->Value()));
+    // The default gauge is a plain play; another chosen gauge shows its name (HP-02 has none yet).
+    if (const auto *gauge = FindHpGauge(o.hpGauge); gauge && o.hpGauge != HpGaugeKind::Default)
+        add("hpGauge", std::wstring(gauge->name.begin(), gauge->name.end()));
 
     constexpr float chipHeight = 26, gap = 6, padding = 10, top = 529;
     const float centerX = columns_.centerX + columns_.sideWidth * 0.5F;

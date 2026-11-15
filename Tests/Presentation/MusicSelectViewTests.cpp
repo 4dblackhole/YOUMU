@@ -637,6 +637,23 @@ namespace
             if (!button) throw std::runtime_error("Song filter button missing.");
             Click(*canvas, *button);
             static_cast<void>(view.Update(input, 0));
+            const auto knob = [&](std::size_t row) {
+                return Find(*Find(canvas->Root(), "SongFilter.Switch." + std::to_string(row)), "Knob")->Bounds().x;
+            };
+            Check(knob(0) > 10 && knob(4) < 10 && !Find(canvas->Root(), "SongFilter.Switch.4")->IsEnabled(),
+                  "A row with a value shows its switch on; an empty row's switch is off and inert.");
+            Click(*canvas, *Find(canvas->Root(), "SongFilter.Switch.0"));
+            static_cast<void>(view.Update(input, 0));
+            Click(*canvas, *Find(canvas->Root(), "SongFilter.Apply"));
+            static_cast<void>(view.Update(input, 0));
+            Check(!state.filter_.IsActive() && state.filter_.minimumNotes == 100 && Find(canvas->Root(), "Difficulty.0"),
+                  "Switching a row off keeps its value but stops it filtering.");
+            Click(*canvas, *button);
+            static_cast<void>(view.Update(input, 0));
+            Check(knob(0) < 10 && Find(canvas->Root(), "SongFilter.Switch.0")->IsEnabled(),
+                  "Reopening keeps the row switched off and switchable.");
+            Click(*canvas, *Find(canvas->Root(), "SongFilter.Switch.0"));
+            static_cast<void>(view.Update(input, 0));
             const auto selected = state.selectedPatternIndex_;
             const auto scroll = Find(canvas->Root(), "SongContent")->Bounds().y;
             InputStateTestAccess::Key(input, VK_DOWN, true);
@@ -970,19 +987,6 @@ namespace
         static_cast<void>(view.Update(input,0));input={};
         const auto contentY=Find(canvas->Root(),"SongContent")->BoundsInCanvas().y;
         const auto selectedSong=selection.focusedSongPosition_, selectedPattern=selection.selectedPatternIndex_;
-        const auto thread=GetCurrentThreadId();std::atomic_bool handled{};
-        std::jthread queryInput([&](std::stop_token stop){
-            while(!stop.stop_requested()&&!handled)
-            {
-                EnumThreadWindows(thread,[](HWND window,LPARAM p)->BOOL{
-                    wchar_t name[32]{};GetClassNameW(window,name,32);
-                    if(std::wstring_view(name)!=L"#32770"||!GetDlgItem(window,100))return TRUE;
-                    ShowWindow(window,SW_HIDE);SetDlgItemTextW(window,100,L"JudgeLevel >= 60 AND Random = true");
-                    PostMessageW(window,WM_COMMAND,IDOK,0);*reinterpret_cast<std::atomic_bool *>(p)=true;return FALSE;
-                },reinterpret_cast<LPARAM>(&handled));
-                std::this_thread::sleep_for(std::chrono::milliseconds{1});
-            }
-        });
         auto *recordPanel = Find(canvas->Root(),"RecordPanel");
         if (!recordPanel) throw std::runtime_error("Record panel missing.");
         const auto recordBounds = recordPanel->BoundsInCanvas();
@@ -990,9 +994,8 @@ namespace
         auto *filter = Find(canvas->Root(),"RecordFilter.Overlay");
         if (!filter) throw std::runtime_error("Record filter overlay missing.");
         Check(filter && filter->IsVisible() && rows()==6,"Record filtering opens separately and leaves records in their assigned area.");
-        Click(*canvas,*Find(canvas->Root(),"RecordFilter.Condition"));static_cast<void>(view.Update(input,0));queryInput.request_stop();queryInput.join();
-        Check(handled && filter->IsVisible() && rows()==6,"Direct history conditions remain a draft until Apply.");
-        static_cast<void>(view.Update(input,0)); // Release the nested dialog's keyboard gate.
+        Click(*canvas,*Find(canvas->Root(),"RecordFilter.Choice.1.1"));static_cast<void>(view.Update(input,0));
+        Check(filter->IsVisible() && rows()==6,"Choosing Random On remains a draft until Apply.");
         Click(*canvas,*Find(canvas->Root(),"RecordFilter.Apply"));static_cast<void>(view.Update(input,0));
         Check(!filter->IsVisible(),"Apply closes only the record filter.");wait(4);
         Check(recordPanel->BoundsInCanvas().x==recordBounds.x && recordPanel->BoundsInCanvas().width==recordBounds.width,
@@ -1001,7 +1004,7 @@ namespace
                   selection.focusedSongPosition_==selectedSong && selection.selectedPatternIndex_==selectedPattern,
               "Applying a record filter preserves song list scroll, search and the selected chart.");
         for(const auto &row:Find(canvas->Root(),"RecordRows")->Children())
-            Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only matching effective JudgeLevel records appear.");
+            Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only the Random plays (JudgeLevel 70) appear.");
         selection.selectedPatternIndex_=1;view.RefreshSelectionPresentation();static_cast<void>(view.Update(input,0));wait(0);
         {
             const auto *notice=Find(canvas->Root(),"RecordMessagePlate");

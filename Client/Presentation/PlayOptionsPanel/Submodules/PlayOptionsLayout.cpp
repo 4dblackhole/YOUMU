@@ -1,101 +1,188 @@
 #include "Presentation/PlayOptionsPanel.h"
 #include "Presentation/UiDropdown.h"
 #include <algorithm>
-#include <cmath>
+#include <array>
 
 using namespace PhantomCore;
+using namespace ui_modal;
 
-void PlayOptionsPanel::SetViewport(std::uint32_t height)
+// Body geometry from popups.css Play options: three 293.3 columns 16 apart, a 1px rule before the second and
+// third, content of those two indented 16. Fields are 40 tall, switch rows 48 with a bottom rule, groups 12 apart.
+namespace
+{
+    constexpr float BodyWidth = 912, Gap = 16, ColumnWidth = (BodyWidth - Gap * 2) / 3, Indent = 16;
+    constexpr float HeadingHeight = 20, FirstTop = 32, FieldGap = 12, LabelHeight = 18, FieldHeight = 40;
+    constexpr float SwitchHeight = 48, SubIndent = 14, NumberWidth = 112, RandomGap = 14;
+    [[nodiscard]] constexpr float ColumnLeft(const std::size_t column) noexcept
+    {
+        return (ColumnWidth + Gap) * static_cast<float>(column) + (column == 0 ? 0.0F : Indent);
+    }
+    [[nodiscard]] constexpr float ContentWidth(const std::size_t column) noexcept
+    {
+        return column == 0 ? ColumnWidth : ColumnWidth - Indent;
+    }
+    // Difficulty: scroll speed, accelerate (+ pitch switches), JudgeLevel override (+ box), HP gauge.
+    [[nodiscard]] constexpr float DifficultyHeight(const bool expanded, const bool judge) noexcept
+    {
+        float top = FirstTop + LabelHeight + 6 + FieldHeight + FieldGap; // Scroll speed.
+        top += 24 + 6 + FieldHeight + FieldGap;                          // Accelerate.
+        if (expanded)
+            top += 8 + SwitchHeight * 2 + 8;
+        top += SwitchHeight + (judge ? 8 + FieldHeight : 0.0F) + FieldGap;
+        return top + LabelHeight + 6 + FieldHeight; // HP gauge.
+    }
+    [[nodiscard]] constexpr float LayoutHeight(const bool random) noexcept
+    {
+        const float switches = FirstTop + SwitchHeight * 2 + FieldGap;
+        return random ? switches + RandomGap + (LabelHeight + 6 + FieldHeight) * 2 + 8 : switches;
+    }
+} // namespace
+
+void PlayOptionsPanel::SetViewport(const std::uint32_t height)
 {
     height_ = height;
-    if (panel_) Layout();
+    if (canvas_)
+        Layout();
+}
+
+float PlayOptionsPanel::ColumnHeight(const std::size_t column) const noexcept
+{
+    // A hidden invalid random value must remain repairable without enabling Random.
+    const bool randomDetails = draft_.random || errorField_ == Seed || errorField_ == Probability;
+    if (column == 0)
+        return DifficultyHeight(rateExpanded_, overrideJudge_);
+    if (column == 1)
+        return LayoutHeight(randomDetails);
+    return FirstTop + SwitchHeight * 2 + FieldGap;
+}
+
+void PlayOptionsPanel::PlaceSwitchRow(const Flag flag, const float left, const float top, const float width,
+                                      const float height)
+{
+    auto &row = flags_[flag];
+    row.row->SetVisible(true);
+    Place(*row.row, {left, top, width, SwitchHeight}, height);
+    row.label->SetBounds({0, 0, width - 52, SwitchHeight});
+    row.toggle->SetBounds({width - 40, (SwitchHeight - 24) / 2, 40, 24});
+    row.rule->SetBounds({0, 0, width, 1});
+}
+
+float PlayOptionsPanel::LayoutDifficulty(const float height)
+{
+    constexpr float left = ColumnLeft(0), width = ContentWidth(0);
+    float top = FirstTop;
+    Place(*labels_[Speed], {left, top, width, LabelHeight}, height);
+    top += LabelHeight + 6;
+    // The x / BPM tabs keep the mockup's measured widths (13px Nunito 800); the field follows 8 after them.
+    constexpr std::array UnitWidths{11.3F, 33.1F};
+    float tabLeft = left;
+    for (std::size_t i = 0; i < units_.size(); ++i)
+    {
+        Place(*units_[i], {tabLeft, top, UnitWidths[i], 28}, height);
+        SetTabSelected(*units_[i], (draft_.scrollUnit == PlayOptions::ScrollUnit::Bpm) == (i == 1));
+        tabLeft += UnitWidths[i] + 16;
+    }
+    PlaceField(*fields_[Speed], {tabLeft - 8, top, NumberWidth, FieldHeight}, height);
+    top += FieldHeight + FieldGap;
+
+    const float rateWidth = EstimateWidth(labels_[Rate]->GetComponent<TextVisualComponent>()->Text(), 13);
+    Place(*labels_[Rate], {left, top, rateWidth + 4, 24}, height);
+    Place(*rateRange_, {left + rateWidth + 8, top + 4, 80, 16}, height);
+    Place(*rateMore_, {left + width - 24, top, 24, 24}, height);
+    rateMoreIcon_->SetBounds({5, 5, 14, 14});
+    top += 24 + 6;
+    PlaceField(*fields_[Rate], {left, top, NumberWidth, FieldHeight}, height);
+    top += FieldHeight + FieldGap;
+    // The pitch switches hang 8 under the field and keep the usual gap below them.
+    if (rateExpanded_)
+        top += 8 - FieldGap;
+
+    flags_[MusicPitch].row->SetVisible(rateExpanded_);
+    flags_[HitPitch].row->SetVisible(rateExpanded_);
+    subRules_[0]->SetVisible(rateExpanded_);
+    if (rateExpanded_)
+    {
+        Place(*subRules_[0], {left, top, 2, SwitchHeight * 2 + 8}, height);
+        PlaceSwitchRow(MusicPitch, left + SubIndent, top, width - SubIndent, height);
+        PlaceSwitchRow(HitPitch, left + SubIndent, top + SwitchHeight + 8, width - SubIndent, height);
+        top += SwitchHeight * 2 + 8 + FieldGap;
+    }
+
+    PlaceSwitchRow(OverrideJudge, left, top, width, height);
+    top += SwitchHeight;
+    fields_[Judge]->SetVisible(overrideJudge_);
+    judgeUnit_->SetVisible(overrideJudge_);
+    subRules_[1]->SetVisible(overrideJudge_);
+    if (overrideJudge_)
+    {
+        top += 8;
+        Place(*subRules_[1], {left, top, 2, FieldHeight}, height);
+        PlaceField(*fields_[Judge], {left + SubIndent, top, NumberWidth, FieldHeight}, height);
+        Place(*judgeUnit_, {left + SubIndent + NumberWidth + 8, top, 60, FieldHeight}, height);
+        top += FieldHeight;
+    }
+    top += FieldGap;
+
+    const float gaugeWidth = EstimateWidth(gaugeLabel_->GetComponent<TextVisualComponent>()->Text(), 13);
+    Place(*gaugeLabel_, {left, top, gaugeWidth + 4, LabelHeight}, height);
+    Place(*gaugeClear_, {left + gaugeWidth + 8, top + 1, 120, 16}, height);
+    top += LabelHeight + 6;
+    Place(*gauge_, {left, top, width, FieldHeight}, height);
+    return top + FieldHeight;
+}
+
+float PlayOptionsPanel::LayoutLayoutColumn(const float height)
+{
+    constexpr float left = ColumnLeft(1), width = ContentWidth(1);
+    PlaceSwitchRow(Mirror, left, FirstTop, width, height);
+    PlaceSwitchRow(Random, left, FirstTop + SwitchHeight + FieldGap, width, height);
+    const bool randomDetails = draft_.random || errorField_ == Seed || errorField_ == Probability;
+    for (auto *node : {labels_[Seed], fields_[Seed], labels_[Probability], fields_[Probability], probabilityUnit_})
+        node->SetVisible(randomDetails);
+    if (!randomDetails)
+        return FirstTop + SwitchHeight * 2 + FieldGap;
+    const float subLeft = left + SubIndent, subWidth = width - SubIndent;
+    float top = FirstTop + SwitchHeight * 2 + FieldGap + RandomGap;
+    Place(*labels_[Seed], {subLeft, top, subWidth, LabelHeight}, height);
+    PlaceField(*fields_[Seed], {subLeft, top + LabelHeight + 6, subWidth, FieldHeight}, height);
+    top += LabelHeight + 6 + FieldHeight + 8;
+    Place(*labels_[Probability], {subLeft, top, subWidth, LabelHeight}, height);
+    PlaceField(*fields_[Probability], {subLeft, top + LabelHeight + 6, NumberWidth, FieldHeight}, height);
+    Place(*probabilityUnit_, {subLeft + NumberWidth + 8, top + LabelHeight + 6, 20, FieldHeight}, height);
+    return top + LabelHeight + 6 + FieldHeight;
 }
 
 void PlayOptionsPanel::Layout()
 {
-    if (!panel_ || height_ == 0) return;
-    const auto logical = canvas_->LogicalSize();
-    const float width = std::max(1.0F, std::min(1180.0F, logical.width - 48));
-    const float height = std::max(180.0F, logical.height - 48);
-    const float eased = progress_ * progress_ * (3 - 2 * progress_);
-    overlay_->SetBounds({-logical.width / 2, -logical.height / 2, logical.width, logical.height});
-    overlay_->SetClipRect({0, 0, logical.width, logical.height});
-    panel_->SetBounds({(logical.width - width) / 2, 24 - (1 - eased) * (height + 24), width, height});
-    title_->SetBounds({24, height - 60, std::max(width - 160, 1.0F), 40});
-    close_->SetBounds({width - 116, height - 54, 92, 34});
-    reset_->SetBounds({width - 124, 24, 100, 34});
-    status_->SetBounds({24, 14, std::max(width - 172, 1.0F), 58});
-    viewportHeight_ = std::max(height - 164, 1.0F);
-    const float bodyWidth = std::max(width - 48, 1.0F);
-    viewport_->SetBounds({24, 86, bodyWidth, viewportHeight_});
-    viewport_->SetClipRect({0, 0, bodyWidth, viewportHeight_});
-    const float column = std::max((bodyWidth - 40) / 3, 1.0F);
-    const auto place = [column](Visual2DNode &node, std::size_t group, float top, float height) {
-        node.SetBounds({(column + 20) * static_cast<float>(group), -top - height, column, height});
-    };
-    for (std::size_t i = 0; i < headings_.size(); ++i) place(*headings_[i], i, 0, 30);
-    float difficulty = 46, layout = 46, assist = 46;
-    const auto field = [&](Field index, std::size_t group, float &top) {
-        place(*labels_[index], group, top, index == Rate ? 30.0F : 22.0F);
-        top += index == Rate ? 36 : 28;
-        place(*fields_[index], group, top, 34);
-        top += 50;
-    };
-    const auto flag = [&](Flag index, std::size_t group, float &top) {
-        place(*flags_[index], group, top, 34); top += 42;
-        flags_[index]->GetComponent<TextVisualComponent>()->SetContentBounds({38, 0, std::max(column - 42, 1.0F), 34});
-    };
-    place(*unitLabel_, 0, difficulty, 22); difficulty += 28;
-    place(*unit_, 0, difficulty, 34); difficulty += 50;
-    field(Speed, 0, difficulty);
-    field(Rate, 0, difficulty);
-    flags_[MusicPitch]->SetVisible(rateExpanded_);
-    flags_[HitPitch]->SetVisible(rateExpanded_);
-    if (rateExpanded_) { flag(MusicPitch, 0, difficulty); flag(HitPitch, 0, difficulty); }
-    flag(OverrideJudge, 0, difficulty);
-    labels_[Judge]->SetVisible(overrideJudge_); fields_[Judge]->SetVisible(overrideJudge_);
-    if (overrideJudge_) field(Judge, 0, difficulty);
-    flag(Mirror, 1, layout); flag(Random, 1, layout);
-    // A hidden invalid random value must remain repairable without enabling Random.
-    const bool randomDetails = draft_.random || errorField_ == Seed || errorField_ == Probability;
-    for (const auto index : {Seed, Probability})
-    {
-        labels_[index]->SetVisible(randomDetails); fields_[index]->SetVisible(randomDetails);
-        if (randomDetails) field(index, 1, layout);
-    }
-    flag(IgnoreScroll, 2, assist); flag(Metronome, 2, assist);
-    contentHeight_ = std::max({difficulty, layout, assist});
-    scroll_ = std::clamp(scroll_, 0.0F, std::max(contentHeight_ - viewportHeight_, 0.0F));
-    content_->SetPosition({0, viewportHeight_ + scroll_});
-    for (auto *node : fields_)
-    {
-        node->SetClipRect({0, 0, column, 34});
-        node->GetComponent<TextVisualComponent>()->SetContentBounds({6, 0, std::max(column - 12, 1.0F), 34});
-    }
+    if (!canvas_ || !gauge_ || height_ == 0)
+        return;
+    const float height = std::max({ColumnHeight(0), ColumnHeight(1), ColumnHeight(2)});
+    modal_.Layout(height);
+    for (std::size_t i = 0; i < headings_.size(); ++i)
+        Place(*headings_[i], {ColumnLeft(i), 0, ContentWidth(i), HeadingHeight}, height);
+    for (std::size_t i = 0; i < columnRules_.size(); ++i)
+        Place(*columnRules_[i], {(ColumnWidth + Gap) * static_cast<float>(i + 1), 0, 1, height}, height);
+    static_cast<void>(LayoutDifficulty(height));
+    static_cast<void>(LayoutLayoutColumn(height));
+    PlaceSwitchRow(IgnoreScroll, ColumnLeft(2), FirstTop, ContentWidth(2), height);
+    PlaceSwitchRow(Metronome, ColumnLeft(2), FirstTop + SwitchHeight + FieldGap, ContentWidth(2), height);
+    for (std::size_t i = 0; i < fields_.size(); ++i)
+        StyleField(*fields_[i], inputs_[i] && inputs_[i]->HasFocus(), true);
     UpdateInputs();
 }
 
 void PlayOptionsPanel::UpdateInputs()
 {
-    const auto logical = canvas_->LogicalSize();
-    if (height_ == 0 || logical.height <= 0) return;
-    const float scale = static_cast<float>(height_) / logical.height;
-    const auto viewport = viewport_->BoundsInCanvas();
-    const bool available = IsVisible() && progress_ >= 1 && !RequireDropdown(*unit_).IsExpanded();
+    if (!canvas_ || !gauge_)
+        return;
+    const bool available = IsVisible() && !RequireDropdown(*gauge_).IsExpanded();
     for (std::size_t i = 0; i < inputs_.size(); ++i)
     {
-        const auto bounds = fields_[i]->BoundsInCanvas();
-        const bool visible = available && fields_[i]->IsVisible() &&
-            bounds.y >= viewport.y - .01F && bounds.y + bounds.height <= viewport.y + viewport.height + .01F;
-        fields_[i]->GetComponent<TextVisualComponent>()->SetText(inputs_[i] && visible ? L"" : numbers_[i]);
-        if (!inputs_[i]) continue;
-        const auto font = static_cast<std::uint32_t>(std::max(1.0F, std::round(16 * scale)));
-        const float editHeight = std::min(static_cast<float>(font) + 4, 28 * scale);
-        inputs_[i]->SetBounds({static_cast<std::int32_t>(std::round((bounds.x + logical.width / 2 + 6) * scale)),
-            static_cast<std::int32_t>(std::round((logical.height / 2 - bounds.y - bounds.height / 2) * scale - editHeight / 2)),
-            static_cast<std::uint32_t>(std::max(1.0F, std::round((bounds.width - 12) * scale))),
-            static_cast<std::uint32_t>(std::max(1.0F, std::round(editHeight)))});
-        inputs_[i]->SetFont(L"Segoe UI", font);
+        const bool visible = available && fields_[i]->IsVisible();
+        SetText(*fields_[i], inputs_[i] && visible ? std::wstring_view{} : std::wstring_view{numbers_[i]});
+        if (!inputs_[i])
+            continue;
+        PlaceTextInput(*inputs_[i], *fields_[i], *canvas_, height_, modal_.Scale());
         inputs_[i]->SetVisible(visible);
     }
 }
