@@ -184,13 +184,14 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `ScrollbarTrack/ScrollbarHandle`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
+| `Options` | `Drawer`(서랍 바탕), `Rail`, `RailButton`·`RailButton.On`(켜진 분류), `KeyCard`, `Keys.Slot.Main/Sub/Empty/Waiting` |
 | `Common` | `Icons.<이름>` 37개(흰색 36px 선 아이콘, 게임이 글자색을 곱해 씀) |
 
 표의 `/`는 여러 키를 줄여 쓴 것입니다. 정확한 키는 내장 INI를 참조합니다.
 버튼/패널 PNG는 기존 영역에 맞춰 표시하고 배치·입력 영역·런타임 텍스트는 유지합니다.
 `키.Hovered`, `키.Pressed`, `키.Disabled`로 상태별 이미지를 지정할 수 있습니다.
 생략한 상태는 기본 이미지를 사용하고 원래 RGB와 기존 불투명도를 적용합니다.
-곡 선택의 부품과 타이틀 메뉴 막대(`BindSkinPart`)는 그림의 불투명도를 그대로 씁니다. 그림이 없을 때 쓰는 대체 색의 알파는 그림에 곱하지 않으며,
+곡 선택·옵션 서랍의 부품과 타이틀 메뉴 막대(`BindSkinPart`)는 그림의 불투명도를 그대로 씁니다. 그림이 없을 때 쓰는 대체 색의 알파는 그림에 곱하지 않으며,
 꺼진 상태 그림이 없는 부품만 꺼졌을 때 0.45로 흐리게 그립니다. `BindSkinImage`로 연결한 나머지 그림은 대체 색의 알파를 그림에 곱합니다.
 기본 이미지가 없는 키는 상태 이미지만으로 활성화되지 않습니다. 언어별 문구는 PNG에 굽지 않는 것을 권장합니다.
 부모 패널에 이미지를 지정하면 내부 단색 채움만 숨겨 PNG가 가려지지 않게 합니다.
@@ -225,6 +226,9 @@ fallback을 사용합니다. 인디케이터는 별도 색 구간 요소로 구�
 `Panels/SheetEdge.png`(54×1080)는 논리 x 352에 놓이고 `Records/Row.png`(504×78)는 화면 왼쪽 끝에서 시작하는 기록 줄 판입니다.
 `Records/Selector.png`(372×48)는 정렬 선택 상자와 같은 모양에 바탕만 불투명한 스킨 바탕색입니다.
 `Background`와 `PlayOptions`는 내장 그림이 없어 단색 배경과 글자 버튼으로 그립니다.
+옵션 서랍의 `Options` 폴더는 서랍 바탕(`Drawer.png` 648×1080), 분류 막대(`Rail.png` 96×1080, 펼치면 가로로 늘림),
+분류 버튼(`RailButton[.Hovered/.On].png` 276×90, 펼친 폭 기준), Input 카드(`KeyCard[.Hovered].png` 480×96)와
+키 설정 칸(`Keys/Slot.{Main,Sub,Empty,Waiting}.png`, `Slot.Sub.Hovered.png`)입니다. 아이콘·글자·키 그림은 런타임 요소입니다.
 일시정지의 `InGame/Pause/Backdrop.png`는 사선 결이 있는 남색 58% 덮개(1920×1080)이며 화면 전체에 확장하여
 Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54, 화살표 포함)·준비 중 띠(746×9)도 같은 폴더의 PNG입니다.
 

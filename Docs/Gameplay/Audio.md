@@ -92,7 +92,10 @@ delay 또는 모드 전용 효과는 차트 명령과 라우터 mapping을 추�
 지원합니다. 이는 게임별 라우터를 거치며 새 오디오 채널 정책을 추가하지 않습니다.
 
 `#Volume`은 히트사운드 크기를 제어하며 대상은 HitSound/TickSound/UserInputFeedback입니다.
-음악과 UI 볼륨은 이 명령으로 변경할 수 없습니다. 히트사운드 표는 YME가 소유하고
+음악과 UI 볼륨은 이 명령으로 변경할 수 없습니다.
+플레이어 음량(옵션 패널의 Master·Music·Effects)은 bus의 기본 크기입니다. `Music` bus는 음악 음량,
+나머지 bus는 효과음 음량을 쓰고 `#Volume` 값은 그 위에 곱하며, 자동화를 초기화하면 플레이어 음량으로 돌아갑니다.
+값은 실행 요청에 복사한 진입 당시 설정입니다([음량](../TextManagement.md#음량)). 히트사운드 표는 YME가 소유하고
 등록할 파일은 YME 폴더 기준으로 해석합니다. YMP는 Effect file과 노트별 표 인덱스만
 참조합니다. 지점/Area 및 보간식 문법은 [YME](../Formats/Yme.md)가 기준입니다.
 

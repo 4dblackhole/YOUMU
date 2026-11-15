@@ -86,29 +86,14 @@ HP 게이지 부품 다섯 개(틀 · 채움 두 종류 · 클리어선 · 자�
 
 ## Options — 옵션 · 키 설정
 
-### `Options/`
-
-| 파일 | 크기 | 키 | 부품 |
-| --- | --- | --- | --- |
-| `Drawer.png` | 648×1080 |  | 옵션 서랍 바탕(왼쪽) |
-| `KeyCard.png` | 480×96 |  | Input 섹션의 키 설정 카드 |
-| `KeyCard.Hovered.png` | 480×96 |  | 〃 |
-| `Rail.png` | 96×1080 |  | 옵션 분류 막대(남색) |
-| `RailButton.png` | 276×90 |  | 분류 버튼. On = 켜진 분류(금빛 왼쪽 줄). 아이콘은 Common/Icons |
-| `RailButton.Hovered.png` | 276×90 |  | 〃 |
-| `RailButton.On.png` | 276×90 |  | 〃 |
+옵션 서랍·분류 막대·키 카드·키 설정 칸은 내장 Default Skin의 `Options`로 옮겼습니다. 키는 `[Options]`입니다.
 
 ### `Options/Keys/`
 
 | 파일 | 크기 | 키 | 부품 |
 | --- | --- | --- | --- |
-| `Glyph.Don.png` | 21×36 |  | 키 설정 열 머리의 키 그림(동 · 캇) |
+| `Glyph.Don.png` | 21×36 |  | 키 설정 열 머리의 키 그림(동 · 캇). 게임은 플레이 입력 패널의 키 그림을 줄여 쓰므로 읽지 않습니다 |
 | `Glyph.Kat.png` | 21×36 |  | 〃 |
-| `Slot.Empty.png` | 133×51 |  | 키 설정 칸: Main(메인) · Sub(보조, Hovered = × 보임) · Empty(빈 칸) · Waiting(입력 대기) |
-| `Slot.Main.png` | 133×72 |  | 〃 |
-| `Slot.Sub.png` | 133×51 |  | 〃 |
-| `Slot.Sub.Hovered.png` | 133×51 |  | 〃 |
-| `Slot.Waiting.png` | 133×51 |  | 〃 |
 
 ## Common — 공용 부품
 

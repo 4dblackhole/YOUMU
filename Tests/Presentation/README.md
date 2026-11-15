@@ -10,10 +10,14 @@ editing, Esc isolation, Reset/Close, preserved selection/search, rendering and c
 It replaces the removed native PlayOptionsDialog form test; PlayOptions value/range,
 launch snapshots and Retry contracts remain covered by domain/gameplay tests.
 
-## Options tabs and explanation languages
+## Options drawer and explanation languages
 
-`RunOptionsPanelTests.ps1` covers four-tab routing, per-tab scrolling, popup/input
-cleanup, hidden-action rejection, shared visible errors, unchanged device/key/
+`RunOptionsPanelTests.ps1` covers the 432px drawer and navy rail, rail clicks that
+scroll a section to the top, section tracking while scrolling (the last section at
+the bottom), Up/Down navigation, delayed rail expansion and folding, popup/input
+cleanup, the footer notice outside the body, kept scroll position on reopening,
+volume dragging that saves once on release and rejects values outside 0..100, key
+slots with hover-only clear buttons and the faint plus, unchanged device/key/
 resolution persistence and Japanese round trips. `RunLanguageFileTests.ps1`
 checks English captions/value formats, selected EN/KO/JA explanations, complete
 Japanese explanation-key coverage and existing immutable pack/fallback contracts.
@@ -280,7 +284,8 @@ The object list comes from the Client project so removed/stale objects are not l
 Immutable rectangle batches are expanded only in the recording renderer for visual assertions.
 It also checks actual asynchronous MP3 opening/playback with the FMOD NoSound output,
 accurate music duration/near-end seeking, editor DSP transport, pause/resume/negative pre-roll,
-dense cue deadlines, alias/voice reuse, expired-cue skipping and cleanup through EditorPlaybackTests.
+dense cue deadlines, alias/voice reuse, expired-cue skipping, the player's music/effects
+volume on song and hit-sound voices and cleanup through EditorPlaybackTests.
 Twelve actual MP3 pause/resume cycles cover reused stream initialization and target seeks separately,
 including negative pre-roll and seeks made while paused. The timeline stays frozen until both preparations finish.
 EditorModeTests checks time zoom at five scales, stable lane/head dimensions and zoomed snapping,
@@ -444,7 +449,8 @@ Links production SkinManifest/selection/binding and Logo/MusicSelect views in an
 deployment directory, without writing user skins or Option.ini. Checks UTF-8/BOM/CRLF/Unicode paths,
 scene-folder/image relativity, invalid paths/encoding/duplicates, per-component embedded fallback,
 partial skins, cache/reload, button states, full-screen logo replacement, song-select sheet/button
-replacement and restoration, and virtualized song-card bindings using the real bundled catalog.
+replacement and restoration, virtualized song-card bindings using the real bundled catalog, and that
+options rail icons keep their skin image while their colour follows the lit section.
 The test source uses MSVC Code Analysis. Native captures/manual input are reported separately.
 
 ## New difficulty metadata and file creation
@@ -502,7 +508,10 @@ to the Client rather than the converter project.
 production router object with the public SDK. FMOD uses NoSound; injected test
 clips/voices exercise successful, failed and throwing Stop calls. After the last
 router alias and voice release a Loading clip, it must remain retired until Ready
-and then release exactly once. No production audio backend is added.
+and then release exactly once. A bus probe backend checks that the player's music
+volume scales the Music bus, effects volume every other bus, YME volume automation
+multiplies on top and survives a volume change, and reset or re-created buses keep
+the player's volume. No production audio backend is added.
 
 ## New difficulty dialog
 
