@@ -18,7 +18,11 @@ the bottom), Up/Down navigation, delayed rail expansion and folding, popup/input
 cleanup, the footer notice outside the body, kept scroll position on reopening,
 volume dragging that saves once on release and rejects values outside 0..100, key
 slots with hover-only clear buttons and the faint plus, unchanged device/key/
-resolution persistence and Japanese round trips. `RunLanguageFileTests.ps1`
+resolution persistence and Japanese round trips. It also drives the shared tooltip:
+the half-second rest, a pointed child resolving to its registered ancestor, key
+chips for `Ctrl+O` and `Esc / Enter`, the quick switch to a neighbouring control,
+dismissal by a press until the pointer moves on, host suppression and opening above
+a control at the bottom edge. `RunLanguageFileTests.ps1`
 checks English captions/value formats, selected EN/KO/JA explanations, complete
 Japanese explanation-key coverage and existing immutable pack/fallback contracts.
 Japanese adds `ja` to the same INI Language field; stored ko/en remain valid.
