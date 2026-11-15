@@ -11,9 +11,7 @@
   BoldItalic·ExtraBoldItalic), Rajdhani, Press Start 2P. Nunito와 Barlow Semi Condensed는 UI 리디자인 글꼴이며
   [Google Fonts 저장소](https://github.com/google/fonts/tree/main/ofl)의 파일을 수정 없이 넣었습니다.
 
-`Assets/Skins/Default Skin Blue`는 확정 리디자인(UI-02)의 부품 PNG를 모아 둔 임시 폴더이며 팩에 넣지 않습니다.
-화면 묶음을 구현할 때마다 해당 부품을 `Default Skin`으로 옮기고, 모두 옮기면 이 폴더를 없앱니다.
-세부는 [스킨 부품](UIRedesign.md#스킨-부품)입니다.
+`Default Skin`의 그림은 확정 리디자인(UI-02)의 부품입니다. 세부는 [스킨 부품](UIRedesign.md#스킨-부품)입니다.
 
 AngelDream Handshaking MP3 1개·YMM 1개·YMP/YME 5쌍과 이펙트 테스트 WAV 2개는
 EXE에 넣지 않습니다. 추가 WAV는 기본 스킨의 Don/Kat 원본을 재사용한 테스트 파일입니다.
