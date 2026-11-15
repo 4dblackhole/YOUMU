@@ -55,7 +55,6 @@ class GameplayNoteView final
         PhantomCore::Visual2DNode *tail{};
         PhantomCore::Visual2DNode *tailOverlay{};
         PhantomCore::Visual2DNode *processing{};
-        PhantomCore::Visual2DNode *success{};
         PhantomCore::Visual2DNode *counter{};
         PhantomCore::Visual2DNode *counterText{};
         std::vector<TimedVisual> ticks;
@@ -65,7 +64,6 @@ class GameplayNoteView final
         RhythmTime endTime{};
         FocusNoteType focusType{FocusNoteType::None};
         PhantomCore::Size processingSize{};
-        PhantomCore::Size successSize{};
         float diameter{};
         float bodyWidth{};
         float tailWidth{};
@@ -87,7 +85,10 @@ class GameplayNoteView final
                                                         float multiplier) const;
     void HideTransientNoteVisuals();
     void RemoveUnusedNoteVisuals();
-    void PresentHitCounter(NoteVisualLayers &layers, const NoteProgress &progress, float visualHeight);
+    // focus: the badge under a balloon/DengDeng processing art; otherwise the roll badge on the lane.
+    void PresentHitCounter(NoteVisualLayers &layers, const NoteProgress &progress, bool focus);
+    void PresentFocusArt(PhantomCore::Visual2DNode &node, const NoteVisualLayers &layers, float scale,
+                         RhythmTime time, float alpha);
     void PresentFocusNoteProcessing(NoteVisualLayers &layers, const NoteProgress &progress, RhythmTime time);
     void PresentCompletionEffect(RhythmTime time);
 

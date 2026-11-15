@@ -44,28 +44,6 @@ void GameplayPresenter::PresentJudgementFeedback(const GameplayFeedback &feedbac
     }
 }
 
-void GameplayPresenter::PresentErrorMessage(std::string_view message)
-{
-    if (errorLabel_ == nullptr)
-    {
-        return;
-    }
-    std::string combined;
-    if (!backgroundWarning_.empty())
-    {
-        combined = backgroundWarning_;
-        if (!message.empty())
-            combined += " | " + std::string(message);
-        message = combined;
-    }
-    errorLabel_->SetVisible(!message.empty());
-    if (message.empty())
-        return;
-    const auto &text = Gameplay(texts_);
-    RequireComponent<TextVisualComponent>(*errorLabel_)
-        .SetText(std::wstring(text.errorPrefix) + Utf8ToWide(message, text.audioInitializationFailed));
-}
-
 void GameplayPresenter::UpdateAccuracyPresentation()
 {
     const auto accuracy = session_->Accuracy();

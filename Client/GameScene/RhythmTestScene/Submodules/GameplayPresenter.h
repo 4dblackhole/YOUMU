@@ -10,11 +10,13 @@
 #include "Texts/TextCatalog.h"
 #include "GameplayNoteView.h"
 #include "GameplayInputView.h"
+#include "GameplayKiaiView.h"
 #include <array>
 
-// Composes the gameplay screen: background, scroll gear and lane, HUD views
-// and error text. Each view owns its own nodes and state; the presenter places
-// them and forwards session time, feedback and input.
+// Composes the gameplay screen: background, scroll gear and lane and HUD views.
+// Each view owns its own nodes and state; the presenter places them and forwards
+// session time, feedback and input. The Scene shows diagnostics on the shared
+// screen error line, including BackgroundWarning.
 class GameplayPresenter final
 {
   public:
@@ -43,9 +45,13 @@ class GameplayPresenter final
     void OnResize(const std::uint32_t width, const std::uint32_t height);
     void Shutdown() noexcept;
     void ApplyFeedback(const GameplayFeedback &feedback);
-    void PresentErrorMessage(const std::string_view message);
     void UpdatePresentation(const RhythmTime time);
     void UpdateHp(const GameplayHpState &state) { hpView_.Update(state); }
+    // Why the chart's BG could not be shown (the screen keeps its plain colour), or empty.
+    [[nodiscard]] std::string_view BackgroundWarning() const noexcept
+    {
+        return backgroundWarning_;
+    }
     void SetDebugVisible(bool visible);
     [[nodiscard]] RhythmTime InitialTimelineTime() const;
     void UpdateInputPresentation(const PhantomCore::InputState &input, const double deltaSeconds);
@@ -80,12 +86,12 @@ class GameplayPresenter final
     GameplayHpView hpView_;
     GameplayStatisticsView statisticsView_;
     GameplayNoteView noteView_;
+    GameplayKiaiView kiaiView_;
     std::vector<std::filesystem::path> preparingImages_;
     GameplayInputView inputView_;
     PhantomCore::Visual2DNode *background_{};
     PhantomCore::Visual2DNode *scrollGearRoot_{};
     PhantomCore::Visual2DNode *scrollGearBorder_{};
-    PhantomCore::Visual2DNode *scrollGearSurface_{};
     PhantomCore::Visual2DNode *inputPresentationRoot_{};
     PhantomCore::Visual2DNode *inputPanel_{};
     PhantomCore::Visual2DNode *laneRoot_{};
@@ -95,7 +101,6 @@ class GameplayPresenter final
 #if defined(_DEBUG)
     PhantomCore::Visual2DNode *noteDebugLabel_{};
 #endif
-    PhantomCore::Visual2DNode *errorLabel_{};
     float laneWidth_{152.0F};
     float laneTileLength_{42.0F};
     float judgementLocalY_{76.0F};

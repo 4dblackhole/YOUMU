@@ -4,6 +4,7 @@
 #include "GameScene/RhythmTestScene/Submodules/GameplayPresenter.h"
 #include "Parsing/ChartParser.h"
 #include "Presentation/LaneKeyBeam.h"
+#include "Presentation/UiErrorLine.h"
 #include "Taiko/TaikoMode.h"
 #include "Time/RhythmTimer.h"
 #include <array>
@@ -259,7 +260,7 @@ namespace
             }
         };
         collect(collect, gear);
-        for (const auto name : {"ScrollGear.Border", "ScrollGear.Surface", "ScrollGear.Lane", "InputPresentation"})
+        for (const auto name : {"ScrollGear.Border", "ScrollGear.Lane", "InputPresentation"})
             Check(Node(root, name).Parent() == &gear, "Every gear branch must share the same transform parent.");
         const auto hud = Node(root, "Hud.GameProgress").BoundsInCanvas();
         const auto position = gear.Position();
@@ -548,6 +549,14 @@ namespace
                                           });
                 Check(aligned == 1,
                       "Coincident note and bar must stay centred together under Whole/Separate and resize.");
+                for (const auto &child : lane.Children())
+                {
+                    if (child->Name() != "Lane.MeasureLine" || !child->IsVisible())
+                        continue;
+                    const auto colour = child->GetComponent<SpriteVisualComponent>()->Style().normal;
+                    Check(Near(child->NodeSize().height, 2) && Near(colour.alpha, .5F),
+                          "Measure lines are 2 px at 50%, quieter than the notes (UI-02).");
+                }
             }
         }
         presenter.Shutdown();
@@ -668,6 +677,84 @@ namespace
         presenter.Shutdown();
     }
 
+    void TestScreenErrorLine()
+    {
+        AssetRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        UiErrorLine line(visuals);
+        Check(line.Canvas() == nullptr, "The error line must not create its Canvas before a diagnostic.");
+        line.Present({L"Effect file", L"quality-regression.yme:4", L"[HitSound] invalid value"}, 1280, 720);
+        auto &root = line.Canvas()->Root();
+        const auto text = [&](const char *name) { return std::wstring(Node(root, name).GetComponent<TextVisualComponent>()->Text()); };
+        Check(line.IsShown() && text("Hud.Error.Kind") == L"Effect file" && text("Hud.Error.Location") == L"quality-regression.yme:4" &&
+                  text("Hud.Error.Cause") == L"[HitSound] invalid value" && Node(root, "Hud.Error.LocationChip").IsVisible(),
+              "An effect diagnostic names its kind, file and line, and cause.");
+        const auto plate = Node(root, "Hud.Error").BoundsInCanvas();
+        Check(Near(plate.y + plate.height, 360 - UiErrorLine::Top) && Near(plate.x + plate.width * .5F, 0) &&
+                  plate.width < UiErrorLine::MaximumWidth,
+              "The strip hangs 20 below the top edge, centred, as wide as its text.");
+        line.Present({L"Audio", {}, std::wstring(400, L'x')}, 1280, 720);
+        Check(!Node(root, "Hud.Error.LocationChip").IsVisible() &&
+                  Near(Node(root, "Hud.Error").BoundsInCanvas().width, UiErrorLine::MaximumWidth),
+              "A cause without a file hides the chip, and a long cause stops at the maximum width on one line.");
+        visuals.OnResize(405, 720);
+        line.OnResize(405, 720);
+        Check(Node(root, "Hud.Error").BoundsInCanvas().width <= 405 - UiErrorLine::ScreenMargin * 2 + .01F,
+              "A narrow screen keeps the screen margin.");
+        line.Present({}, 1280, 720);
+        Check(!line.IsShown(), "A cleared diagnostic hides the line.");
+        line.Shutdown();
+    }
+    void TestKiaiJudgementCircle()
+    {
+        AssetRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        PatternDocument pattern;
+        pattern.mode = "Taiko";
+        pattern.baseBpm = 120;
+        for (int measure = 0; measure < 4; ++measure)
+            pattern.notes.push_back({{measure, {}}, 1});
+        EffectDocument effects;
+        effects.commands.push_back({.position = {1, {}}, .type = EffectCommandType::Kiai, .beginValue = 1, .endValue = 1});
+        effects.commands.push_back({.position = {2, {}}, .type = EffectCommandType::Kiai, .beginValue = 0, .endValue = 0});
+        auto loaded = TaikoMode{}.CreateSession(pattern, effects);
+        Check(loaded.Succeeded(), "Kiai fixture must load.");
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts;
+        GameplayPresenter presenter(visuals, texts);
+        presenter.Initialize({meshes, textRendering, renderer, audio, 1280, 720}, *loaded.session);
+        auto &root = visuals.FindCanvas(1)->Root();
+        const auto &timeline = loaded.session->Timeline();
+        const auto start = timeline.Compile({1, {}}), end = timeline.Compile({2, {}});
+        const auto gold = [&] { return Node(root, "Lane.JudgementCircle.Kiai").GetComponent<SpriteVisualComponent>()->Style().normal.alpha; };
+        presenter.UpdatePresentation(start - RhythmDuration{10'000});
+        Check(!Node(root, "Lane.JudgementCircle.Kiai").IsVisible() && !Node(root, "Lane.Kiai.Glow").IsVisible(),
+              "Outside Kiai the judgement circle is unchanged.");
+        presenter.UpdatePresentation(start + RhythmDuration{125'000});
+        Check(gold() > .4F && gold() < .7F, "Kiai fades in over 250 ms of song time.");
+        presenter.UpdatePresentation(start + RhythmDuration{250'000});
+        Check(Near(gold(), 1) && Node(root, "Lane.Kiai.Glow").IsVisible() && Node(root, "Lane.JudgementCircle.KiaiRing").IsVisible(),
+              "Full Kiai shows the gold circle, the glow and the ring.");
+        // 120 BPM: a beat is 500 ms. Just after a beat the pulse is near 1; late in the beat near 0.
+        presenter.UpdatePresentation(start + RhythmDuration{510'000});
+        const auto beat = Node(root, "Lane.JudgementCircle.KiaiRing").NodeSize().width;
+        presenter.UpdatePresentation(start + RhythmDuration{900'000});
+        Check(Node(root, "Lane.JudgementCircle.KiaiRing").NodeSize().width < beat,
+              "The ring is largest on the beat and shrinks before the next one.");
+        presenter.UpdatePresentation(end - RhythmDuration{10'000});
+        presenter.UpdatePresentation(end + RhythmDuration{125'000});
+        Check(gold() > 0 && gold() < 1, "Kiai fades out after its end.");
+        presenter.UpdatePresentation(start - RhythmDuration{1});
+        Check(!Node(root, "Lane.JudgementCircle.Kiai").IsVisible(), "A backward seek lands on the new state without fading.");
+        const auto glow = Node(root, "Lane.Kiai").ClipRect();
+        Check(glow.has_value() && Near(glow->height, Node(root, "ScrollGear.Lane").NodeSize().height),
+              "The glow is clipped to the lane, never over the input panel.");
+        presenter.Shutdown();
+    }
     void TestPresenterEventPriority()
     {
         AssetRenderer renderer;
@@ -688,11 +775,6 @@ namespace
         GameplayPresenter presenter(visuals, texts);
         presenter.Initialize({meshes, textRendering, renderer, audio, 1280, 720}, *loaded.session);
         auto &root = visuals.FindCanvas(1)->Root();
-        presenter.PresentErrorMessage("quality-regression.yme:4 [HitSound] invalid value");
-        auto &errorLabel = Node(root, "Hud.Error");
-        Check(errorLabel.IsVisible(), "An automation diagnostic must be visible in the gameplay HUD.");
-        presenter.PresentErrorMessage({});
-        Check(!errorLabel.IsVisible(), "Reset/cleared errors must hide the previous diagnostic.");
         NoteProcessResult rollover;
         rollover.events.push_back(Event(NoteEventType::Missed, JudgementGrade::Miss));
         rollover.events.push_back(Event(NoteEventType::HitAccepted, JudgementGrade::Max));
@@ -962,6 +1044,8 @@ int main()
         TestMeasureLinesShareNoteMotion();
         TestCountOnlyHeadsAndCounters();
         TestDengDengWrongOrderFeedback();
+        TestScreenErrorLine();
+        TestKiaiJudgementCircle();
         TestPresenterEventPriority();
         TestRollCompletionAndProcessedTicks();
         std::puts("Gameplay progress and judgement guide/marker/overlay tests passed.");

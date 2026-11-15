@@ -56,17 +56,20 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 플레이 Canvas 루트 (화면 중앙 원점, +Y 위쪽)
 ├─ Background                         화면 배경
 ├─ ScrollGear                         기어 전체의 위치·회전·배율
-│  ├─ ScrollGear.Border               기어 테두리
-│  ├─ ScrollGear.Surface              기어 바탕
+│  ├─ ScrollGear.Border               기어 띠(`Gear.Band`, 화면 왼쪽 끝부터 오른쪽 끝까지)
 │  ├─ ScrollGear.Lane                 레인 로컬 +Y, Taiko에서 -90° 회전
 │  │  ├─ Lane.SurfaceTile *           레인 배경 타일
 │  │  ├─ Lane.KeyBeam                 입력 키빔
+│  │  ├─ Lane.Kiai                    레인 크기로 잘린 Kiai 빛의 부모
+│  │  │  └─ Lane.Kiai.Glow            판정원 뒤 호박색 빛
 │  │  ├─ Lane.JudgementCircle         판정원
+│  │  │  ├─ Lane.JudgementCircle.Kiai 같은 판정원 그림의 옅은 금빛 덧그림
+│  │  │  ├─ Lane.JudgementCircle.KiaiRing 바깥 금빛 고리
 │  │  │  └─ Lane.Judgement.{등급}      MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR/OK 링·문구
 │  │  ├─ Lane.MeasureLine *           마디선
 │  │  └─ Lane.Notes                   노트 사이의 앞뒤 순서를 격리하는 레이어
 │  │     └─ Lane.Note.{id} *          노트별 표시 루트
-│  │        ├─ AmbientHead           헤드
+│  │        ├─ AmbientHead           헤드 (풍선·뎅뎅은 화면에 바로 서도록 반대로 회전)
 │  │        ├─ UntintedOverlay        헤드 무채색 덧그림 (일반 이미지)
 │  │        ├─ AmbientBody / BodyOverlay 롱노트 몸통 (해당 종류)
 │  │        ├─ AmbientTail / TailOverlay 롱노트 테일 (해당 종류)
@@ -80,18 +83,25 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 │  ├─ Progress.Track / Progress.Fill / Progress.Marker
 │  └─ Progress.CurrentTime / Progress.TotalTime
 ├─ Hud.Accuracy                       정확도 텍스트
-├─ Hud.Error                          오류 메시지
 ├─ Hud.JudgementGuide                 화면 하단 타이밍 인디케이터
 │  ├─ Judgement.Margin / Judgement.Band.0~4
 │  ├─ Judgement.Caption.0~2           EARLY / 0 / LATE
 │  ├─ Judgement.Zero                  0 기준선
 │  └─ Judgement.Marker
 │     └─ Judgement.MarkerFill
-├─ Hud.NoteProcessing.{id} *          중앙 풍선/뎅뎅 처리 이미지
-├─ Hud.NoteSuccess.{id} *             중앙 풍선 완료 이미지
-├─ Hud.NoteCounter.{id} *             롤·큰 롤·풍선·뎅뎅의 남은 타격 수 바탕
+├─ Hud.NoteProcessing.{id} *          중앙 풍선/뎅뎅 처리 그림(완료 연출 포함)
+├─ Hud.NoteCounter.{id} *             롤·큰 롤·풍선·뎅뎅의 남은 타격 수 배지
 │  └─ RemainingHits                   남은 타격 수 텍스트
 └─ Debug.NoteState                    Debug 구성의 상태 텍스트
+
+화면 오류 줄 Canvas (별도 화면 레이어 11, 첫 진단 때 생성, 플레이·로딩 공용)
+└─ Center 앵커 → Hud.ErrorLine
+   └─ Hud.Error                       흰 막
+      ├─ Hud.Error.Mark / Hud.Error.Icon 왼쪽 빨간 표지와 경고 아이콘
+      ├─ Hud.Error.Kind               종류(영어 캡션)
+      ├─ Hud.Error.LocationChip       파일 경로와 행(고정폭 글자, 없으면 숨김)
+      │  └─ Hud.Error.Location
+      └─ Hud.Error.Cause              원인
 
 일시정지 Canvas (별도 화면 레이어 10)
 └─ Center 앵커 → Pause.Root
@@ -111,8 +121,8 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 
 `ScrollGear`의 Transform을 바꾸면 그 아래의 모든 표시 요소가 함께 이동합니다.
 레인의 회전은 레인 하위에만 적용되므로 입력 키 이미지는 같은 기어 아래에서도 바로 서 있습니다.
-판정 링·문구는 판정원을 따라가되 Taiko의 레인 회전을 반대로 보정하여 글자를 세웁니다.
-중앙 풍선/뎅뎅 처리 이미지와 하단 타이밍 인디케이터·일시정지 메뉴는 화면 기준 UI입니다.
+판정 링·문구와 레인 위 풍선·뎅뎅 헤드는 판정원·노트를 따라가되 Taiko의 레인 회전을 반대로 보정하여 세웁니다.
+중앙 풍선/뎅뎅 처리 그림과 남은 타격 배지, 하단 타이밍 인디케이터, 일시정지 메뉴, 화면 오류 줄은 화면 기준 UI입니다.
 
 Canvas가 표시 노드를 소유하고 `GameplayPresenter`는 비소유 포인터만 보관합니다.
 `Shutdown`은 포인터를 해제한 뒤 소유 Canvas handle을 반납합니다. 판정용 노트·타이밍·점수는
@@ -199,19 +209,30 @@ Canvas는 `FixedHeight`이므로 창 높이에 비례해 이미지와 글자도
 각각 좌·우 기준으로 배치됩니다.
 
 현재 플레이 화면은 마디선, key beam, 노트 head,
-롱노트 body/tail/tick을 모두 회전된 Lane 부모 아래 둡니다. Balloon과 DengDeng은
-일반 롱노트 body/tail 없이 전용 PNG만 사용합니다. 시작 시각부터 종료 시각까지
-입력이 없으면 판정원에 멈추고, 첫 유효 입력부터 Penpot의 중앙 Focus UI로
-전환합니다. Balloon은 `accepted/required` 진행률만큼 점차 커지고 완료하면
-`BalloonBurst.png`를 200ms 표시합니다. DengDeng은 중앙의 소고를 회전시키고
-완료하면 같은 처리 이미지를 200ms 동안 페이드아웃합니다. 제한 시간 안에
+롱노트 body/tail/tick을 모두 회전된 Lane 부모 아래 둡니다. 마디선은 레인 폭 전체의 2px·50%(`#C7D9E6`) 선으로
+노트보다 약한 보조 정보입니다. Balloon과 DengDeng은
+일반 롱노트 body/tail 없이 전용 PNG만 사용합니다([UI-02](../DesignDecisions.md#ui-02-ui-리디자인)): 일반 노트와 같은 원판 × RollGold와 흰 테두리에
+풍선은 매듭과 끈, 뎅뎅은 손잡이와 옅은 북면 원만 더한 그림이며, 원판이 그림 위쪽 정사각형이고 매듭·손잡이가 그 아래에 매달립니다
+(기본 128×160). 원판 중심이 노트 위치이고 레인 회전과 관계없이 화면에 바로 섭니다. 시작 시각부터 종료 시각까지
+입력이 없으면 판정원에 멈추고, 첫 유효 입력부터 화면 가운데 처리 그림(`BalloonProcessing`·`DengDengProcessing`,
+같은 모양을 크게 그린 240×300, 논리 160×200)으로 전환합니다. 처리 그림의 원판 중심은 기어 아래 끝에서 144 아래입니다.
+Balloon은 `accepted/required` 진행률만큼 0.72→1.10배로 커지고 완료하면 같은 그림이 1.40배까지 커지며
+200ms 동안 사라집니다(터짐). DengDeng은 0.6초에 한 바퀴 시계 방향으로 돌고
+완료하면 같은 처리 그림을 200ms 동안 페이드아웃합니다. 제한 시간 안에
 완료하지 못한 노트는 종료 시각부터 원래 Lane 속도로 판정원을 지나갑니다.
-남은 횟수는 처리 중 `HitCounterCloud.png` 위에 표시합니다. 입력 패널은 각 키의 첫 번째
+남은 횟수는 남색 블록·금빛 표지·흰 기울인 숫자의 배지(`Hud.HitCountBadge`, 숫자는 게임이 Barlow Semi Condensed로 그림)
+하나로 표시합니다. 풍선·뎅뎅은 처리 그림 아래(그림과 14 겹침, 높이 60, 숫자 48px), 롤은 판정원 중심 오른쪽 52·레인 위 끝 2 아래
+(높이 38, 숫자 30px)이며 블록 폭은 자릿수만큼 넓어집니다.
+
+입력 패널(`InputPanel`)은 판의 결·나사 명암을 유지한 채 기어 바탕색 `#BAD1ED` 색조로 구운 그림이고, 콤보 라벨은 진한 잉크입니다.
+기어 띠(`Gear.Band`)는 사선 결이 있는 코발트 띠로, 화면 왼쪽 끝부터 오른쪽 끝까지 기어 위아래 4px 테두리와 입력 패널 왼쪽을 채웁니다.
+입력 패널은 각 키의 첫 번째
 할당 키에 `KeyLightStrong`, 나머지 할당 키에 `KeyLightWeak`를 표시합니다.
 점등 이미지는 흰색 알파 마스크에 노트와 같은 Ambient 색상을 곱하므로 Kat은
 청색, Don은 적색으로 표시됩니다. 약한 불빛은 Ambient 색조와 45% tint 알파를
 사용하고, 강한 불빛은 같은 색조의 채도를 높여 100% tint 알파로 표시하므로
-PNG 자체의 밝기 차이와 함께 강·약 상태가 명확히 구분됩니다. 키를 누를
+PNG 자체의 밝기 차이와 함께 강·약 상태가 명확히 구분됩니다. 키 얼굴은 첫 번째 할당 키를 누르면
+약한 색을 1.38배로 밝힌 선명한 색(회색 72% 키 그림에 곱하면 원래 색에 가까움), 나머지 할당 키면 약한 색, 평소에는 기본 색입니다. 키를 누를
 때마다 홀드 점등 위에 반투명 흰색 `KeyPressFlash` 십자광이 최대 불투명도로
 다시 켜지고 0.1초 동안 선형으로 투명해진 뒤 사라집니다.
 우측 정확도 표시는 같은 HUD 영역의 동적 텍스트로 노트별 평균을 소수점 둘째 자리까지 표시하고
@@ -228,8 +249,18 @@ HP가 게이지의 클리어 기준(`HpGaugeState::clearPercent`, 기본 60%) �
 숫자는 표시하지 않습니다.
 
 타이밍 인디케이터는 판정원 바로 아래 판(`Hud.TimingPanel`, 490×48, 기어 아래 16)에 두고 0점을 판정원의 화면 x에 맞춥니다.
-하단 진행 막대는 화면 아래 끝 전체 폭의 띠입니다. Kiai 판정원 강화, 풍선·뎅뎅 새 그림, 기어 띠와 입력 패널 색조의 확정 설계(미구현)는
-[플레이](../UIRedesign.md#플레이)에 있습니다.
+하단 진행 막대는 화면 아래 끝 전체 폭의 띠입니다.
+
+Kiai 구간(YME `#Kiai`, `PlaySession::IsKiaiActive`)에서는 판정원을 강화합니다. 같은 판정원 그림을 옅은 금빛(`#FFCF6E` 곱)으로 덧그리고,
+뒤에 호박색 빛(`Kiai.Glow`), 바깥에 금빛 고리 한 겹(`Kiai.Ring`)을 둡니다. 빛의 불투명도(0.40+0.25×맥동)와 고리 크기(반지름 51에서 +3)는
+박마다 커졌다 줄어듭니다(맥동 = (1 − 박 안의 위치)², 박은 4분음표). 켜고 꺼질 때는 곡 시간 250ms에 걸쳐 페이드하며, 일시정지 중에는
+그대로이고 뒤로 이동하면 페이드 없이 새 상태입니다. 빛은 레인 크기로 잘려 입력 패널 위로 번지지 않습니다. `GameplayKiaiView`가 소유합니다.
+
+화면 오류 줄(`UiErrorLine`)은 플레이·로딩 공용입니다. 화면 위 끝에서 20 아래 가운데에 높이 37의 흰 막(96%)과 왼쪽 빨간 4px 표지·경고 아이콘,
+종류(영어 캡션: `Effect file`·`Audio`·`Background image`), 파일 경로와 행(Consolas 칩), 원인을 한 줄로 둡니다. 폭은 글자만큼이고 최대
+720(좁은 화면은 양옆 32 여백)이며 넘치는 원인은 오른쪽에서 잘립니다. 자기 Canvas(레이어 11)를 가져 일시정지 덮개 위에 뜹니다.
+효과 파일 평가 오류는 YME 경로와 행·`[대상] 원인`, 오디오 초기화와 음악·히트사운드 준비 오류는 원인만, 채보 BG를 못 연 경우는 BG 경로와 원인입니다.
+효과 오류는 세션 Reset까지 유지되고 판정은 계속됩니다.
 
 ## 콤보·점수·판정 누적 HUD
 
@@ -363,7 +394,7 @@ UI 수정 시 해당 표시 파일과 `GameplaySupport.h`의 관련 상수만 �
 판정원의 자식인 판정 링·문구도 같은 부모 순서를 상속합니다.
 
 일반 롤·큰 롤(단무지)도 `DrumRollInputRule::Progress`의 실제 타격 수/요구 타격 수로
-기존 HitCounterCloud를 표시합니다. 첫 유효 타격 후 나타나며 요구 횟수를 넘겨도
+남은 타격 배지를 판정원 오른쪽 위에 표시합니다. 첫 유효 타격 후 나타나며 요구 횟수를 넘겨도
 남은 수는 0으로 유지하고, 종료/실패/초기화 시 숨깁니다. 풍선·뎅뎅과 같은 카운터를
 재사용하지만 롤의 헤드·몸통 이동과 판정·점수·종료 시각은 바꾸지 않습니다.
 

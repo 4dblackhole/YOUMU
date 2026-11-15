@@ -3,6 +3,9 @@
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 
+#include <cmath>
+#include <numbers>
+
 using namespace PhantomCore;
 
 using namespace song_select;
@@ -32,6 +35,49 @@ namespace
     }
     static_assert(FocusedHeight(3) == 172.0F);
 
+    // The now-playing mark: three gold bars before the title rising and falling out of step.
+    constexpr float NowPlayingWidth = 13.0F, NowPlayingHeight = 12.0F, NowPlayingRoom = 21.0F;
+    constexpr float NowPlayingBar = 3.0F, NowPlayingPitch = 5.0F;
+    constexpr double NowPlayingPeriod = 0.8, NowPlayingStagger = 0.27;
+
+    // 30% -> 100% -> 30% of the mark's height every 0.8 s with eased turns.
+    [[nodiscard]] float NowPlayingLevel(const double seconds) noexcept
+    {
+        const double phase = std::fmod(seconds / NowPlayingPeriod, 1.0);
+        const double rise = phase < 0.5 ? phase * 2.0 : (1.0 - phase) * 2.0;
+        const double eased = 0.5 - 0.5 * std::cos(rise * std::numbers::pi);
+        return static_cast<float>(0.3 + 0.7 * eased);
+    }
+
+    void LayoutNowPlaying(Visual2DNode &mark, const double seconds)
+    {
+        float x = 0.0F;
+        double ahead = 0.0;
+        // Bars stand on the mark's bottom edge.
+        for (const auto &bar : mark.Children())
+        {
+            bar->SetBounds({x, 0.0F, NowPlayingBar, NowPlayingHeight * NowPlayingLevel(seconds + ahead)});
+            x += NowPlayingPitch;
+            ahead += NowPlayingStagger;
+        }
+    }
+
+    Visual2DNode &CreateNowPlaying(Visual2DNode &card, const float left)
+    {
+        auto &mark = card.CreateChild("NowPlaying");
+        mark.SetBounds(TopLeft({left, 15.0F, NowPlayingWidth, NowPlayingHeight}, card.NodeSize().height));
+        for (int bar = 0; bar < 3; ++bar)
+            RequireComponent<SpriteVisualComponent>(CreateSprite(mark, {}, {}, "Bar"))
+                .SetStyle(VisualStyle{theme::Sun, theme::Sun, theme::Sun, theme::Sun});
+        LayoutNowPlaying(mark, 0.0);
+        mark.AddComponent<AnimatorComponent>([clock = 0.0](Visual2DNode &node, const double elapsed) mutable {
+            clock += elapsed;
+            LayoutNowPlaying(node, clock);
+        });
+        mark.SetVisible(false);
+        return mark;
+    }
+
     void StyleDifficulty(Visual2DNode &button, ScreenVisual2DManager &visuals, const bool selected)
     {
         ApplySkinPart(button, visuals, selected ? "DifficultySelected" : "Difficulty",
@@ -54,12 +100,8 @@ void SongListView::Attach(Visual2DCanvas &canvas, Visual2DInputRouter &router, V
     content_->SetSize(viewport.NodeSize());
     content_->SetPosition({0.0F, 0.0F});
     content_->SetZIndex(1);
-    scrollbarTrack_ = &CreatePanel(viewport, {}, "ScrollbarTrack");
-    ApplySkinPart(*scrollbarTrack_, visuals_, "ScrollbarTrack", {0.122F, 0.298F, 0.6F, 0.14F});
-    scrollbarTrack_->SetZIndex(2);
-    scrollbarHandle_ = &CreatePanel(viewport, {}, "ScrollbarHandle");
-    ApplySkinPart(*scrollbarHandle_, visuals_, "ScrollbarHandle", theme::Brand);
-    scrollbarHandle_->SetZIndex(3);
+    scrollbar_.Attach(viewport, "Scrollbar");
+    scrollbar_.SetZIndex(3);
 }
 
 void SongListView::SetLayout()
@@ -69,8 +111,8 @@ void SongListView::SetLayout()
     const Size size = viewport_->NodeSize();
     viewport_->SetClipRect({0.0F, 0.0F, size.width, size.height});
     content_->SetSize(size);
-    scrollbarTrack_->SetBounds({size.width - layout::ScrollbarWidth - 4.0F, layout::ContentTop, layout::ScrollbarWidth,
-                                std::max(size.height - layout::ContentTop * 2.0F, 1.0F)});
+    scrollbar_.SetRail({size.width - layout::ScrollbarWidth - 4.0F, layout::ContentTop, layout::ScrollbarWidth,
+                        std::max(size.height - layout::ContentTop * 2.0F, 1.0F)});
     UpdateScrollbar();
 }
 
@@ -79,8 +121,7 @@ void SongListView::Shutdown() noexcept
     difficultyButtonIds_.clear();
     cards_.clear();
     rows_.clear();
-    scrollbarHandle_ = nullptr;
-    scrollbarTrack_ = nullptr;
+    scrollbar_.Detach();
     content_ = nullptr;
     viewport_ = nullptr;
     router_ = nullptr;
@@ -125,6 +166,7 @@ void SongListView::UpdateVisibleCards()
         return;
     // Replacing cards invalidates hovered/pressed nodes before they are removed.
     router_->Reset(*canvas_);
+    ClearNameHints();
     std::vector<NodeId> ids;
     for (const auto &child : content_->Children())
         ids.push_back(child->Id());
@@ -204,7 +246,88 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
         }
     }
     const auto createId = editor_ ? CreateDifficultyButton(button, row.visiblePosition) : 0;
-    cards_.push_back({row.catalogIndex, row.top, height, &button, &title, &artist, row.visiblePosition, createId});
+    auto *nowPlaying = focused ? &CreateNowPlaying(button, textLeft) : nullptr;
+    cards_.push_back({row.catalogIndex, row.top, height, &button, &title, &artist, row.visiblePosition, createId,
+                      nowPlaying, textLeft, textWidth});
+    ApplyNowPlaying(cards_.back());
+}
+
+void SongListView::SetNowPlaying(const bool playing)
+{
+    if (playing == nowPlaying_)
+        return;
+    nowPlaying_ = playing;
+    for (const auto &card : cards_)
+        ApplyNowPlaying(card);
+}
+
+bool SongListView::IsNowPlayingShown() const noexcept
+{
+    return std::ranges::any_of(cards_, [](const SongCard &card) {
+        return card.nowPlaying != nullptr && card.nowPlaying->IsVisible();
+    });
+}
+
+void SongListView::ApplyNowPlaying(const SongCard &card) const
+{
+    if (card.nowPlaying == nullptr)
+        return;
+    // The mark takes room before the title, which keeps its right edge.
+    card.nowPlaying->SetVisible(nowPlaying_);
+    const float shift = nowPlaying_ ? NowPlayingRoom : 0.0F;
+    const float width = std::max(card.textWidth - shift, 1.0F);
+    card.title->SetBounds(TopLeft({card.textLeft + shift, 10.0F, width, 20.0F}, card.button->NodeSize().height));
+    card.title->SetClipRect({0.0F, 0.0F, width, 20.0F});
+}
+
+void SongListView::RefreshNameHints()
+{
+    if (tooltip_ == nullptr)
+        return;
+    const auto &songs = selection_.catalog_.songs;
+    for (auto &card : cards_)
+    {
+        if (card.catalogIndex >= songs.size())
+            continue;
+        const auto &song = songs[card.catalogIndex];
+        HintName(*card.title, song.music.names, card.titleHinted);
+        HintName(*card.artist, song.music.artists, card.artistHinted);
+    }
+}
+
+void SongListView::HintName(Visual2DNode &line, const std::vector<std::string> &names, bool &hinted)
+{
+    // A line hints every name when it has several, or the full one when its line cuts it.
+    const auto &text = RequireComponent<TextVisualComponent>(line);
+    const auto measured = text.MeasuredSize();
+    const auto &clip = line.ClipRect();
+    const bool cut = measured.has_value() && clip.has_value() && measured->width > clip->width + 0.5F;
+    const bool wanted = cut || NameCount(names) > 1;
+    if (wanted == hinted)
+        return;
+    hinted = wanted;
+    if (!wanted)
+    {
+        tooltip_->SetLine(line, {});
+        return;
+    }
+    auto all = AllNames(names);
+    tooltip_->SetLine(line, {all.empty() ? std::wstring(text.Text()) : std::move(all)});
+}
+
+void SongListView::ClearNameHints()
+{
+    if (tooltip_ == nullptr)
+        return;
+    for (auto &card : cards_)
+    {
+        // Only lines that were hinted are registered; the rest need no call.
+        if (card.titleHinted)
+            tooltip_->Set(*card.title, {});
+        if (card.artistHinted)
+            tooltip_->Set(*card.artist, {});
+        card.titleHinted = card.artistHinted = false;
+    }
 }
 
 NodeId SongListView::CreateDifficultyButton(Visual2DNode &card, const std::size_t visiblePosition)
@@ -291,20 +414,17 @@ void SongListView::ApplyScrollOffset()
 
 void SongListView::UpdateScrollbar()
 {
-    if (scrollbarHandle_ == nullptr || scrollbarTrack_ == nullptr || viewport_ == nullptr)
+    if (viewport_ == nullptr)
         return;
-    const float maximum = std::max(contentHeight_ - VisibleBottom(), 0.0F);
-    // Nothing to scroll: the rail and bar disappear instead of showing a full-length bar.
-    scrollbarTrack_->SetVisible(maximum > 0.0F);
-    scrollbarHandle_->SetVisible(maximum > 0.0F);
-    if (maximum <= 0.0F)
-        return;
-    const Rect track = scrollbarTrack_->Bounds();
     const float visibleHeight = std::max(VisibleBottom() - layout::ContentTop, 1.0F);
-    const float handleHeight =
-        std::max(32.0F, track.height * visibleHeight / std::max(contentHeight_ - layout::ContentTop, visibleHeight));
-    const float travel = std::max(track.height - handleHeight, 0.0F);
-    // Bounds are Y-up: offset zero puts the bar at the top of the rail.
-    scrollbarHandle_->SetBounds(
-        {track.x, track.y + travel * (1.0F - scrollOffset_ / maximum), track.width, handleHeight});
+    scrollbar_.SetRange(visibleHeight, std::max(contentHeight_ - layout::ContentTop, visibleHeight), scrollOffset_);
+}
+
+void SongListView::TrackScrollbar(const std::optional<Point> canvasPointer, const bool leftButtonDown)
+{
+    if (const auto offset = scrollbar_.Track(canvasPointer, leftButtonDown))
+    {
+        scrollOffset_ = *offset;
+        ApplyScrollOffset();
+    }
 }

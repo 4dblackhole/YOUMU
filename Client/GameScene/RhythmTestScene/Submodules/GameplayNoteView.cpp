@@ -1,5 +1,6 @@
 #include "GameplayNoteView.h"
 #include "GameplaySupport.h"
+#include "Presentation/UiFonts.h"
 
 #include <format>
 #include <limits>
@@ -25,9 +26,33 @@ namespace
                                                 L"Balloon",
                                                 L"DengDeng",
                                                 L"BalloonProcessing",
-                                                L"BalloonBurst",
                                                 L"DengDengProcessing",
-                                                L"HitCounterCloud"};
+                                                L"Hud.HitCountBadge"};
+
+    // Balloon/DengDeng art is upright: the plate's centre is the note position and the knot or the
+    // handle hangs below it. The plate is the art's top square, so its centre is half the width
+    // below the top edge.
+    [[nodiscard]] Point PlatePivot(const Size art) noexcept
+    {
+        return {0.5F, 1.0F - art.width * 0.5F / art.height};
+    }
+    // Centre of the processing art: 144 below the gear's bottom edge, which is the screen centre.
+    constexpr Point FocusArtCentre{0.0F, -144.0F};
+    // A balloon grows from 72% to 110% while it is hit and pops to 140% while fading.
+    constexpr float BalloonStartScale = 0.72F, BalloonEndScale = 1.10F, BalloonPopScale = 1.40F;
+    // DengDeng turns once every 0.6 s.
+    constexpr float DengDengTurnMicroseconds = 600'000.0F;
+
+    // Remaining-hit badge: navy block, gold mark, white slanted number. The focus badge hangs
+    // 14 under the processing art; the roll badge sits right of the judgement circle on the lane top.
+    struct BadgeStyle
+    {
+        float height, fontSize, minimumWidth, digitWidth, padding, leftInset, rightInset;
+    };
+    constexpr BadgeStyle FocusBadge{60.0F, 48.0F, 84.0F, 26.0F, 44.0F, 18.0F, 26.0F};
+    constexpr BadgeStyle RollBadge{38.0F, 30.0F, 60.0F, 17.0F, 36.0F, 4.0F, 10.0F};
+    constexpr float FocusBadgeTop = FocusArtCentre.y - 120.0F + 14.0F;
+    constexpr float RollBadgeOffset = 52.0F, RollBadgeTopInset = 2.0F;
 }
 
 void GameplayNoteView::AppendImagePaths(std::vector<std::filesystem::path> &paths)
@@ -187,14 +212,15 @@ void GameplayNoteView::UpdateMeasureLines(RhythmTime time, bool enabled)
                                       {
                                           auto &line = CreatePanel(*laneRoot_, {}, "Lane.MeasureLine");
                                           line.SetPivot({0.5F, 0.5F});
-                                          SetColor(line, {.78F, .85F, .90F, .72F});
+                                          // UI-02: 2 px at 50%, a supporting line quieter than the notes.
+                                          SetColor(line, {.78F, .85F, .90F, .5F});
                                           line.SetZIndex(1);
                                           measureLineVisuals_.push_back({{}, &line});
                                       }
                                       auto &visual = measureLineVisuals_[used++];
                                       visual.timing = it->timing;
                                       visual.node->SetVisible(true);
-                                      visual.node->SetSize({laneWidth_, 4});
+                                      visual.node->SetSize({laneWidth_, 2});
                                       visual.node->SetPosition(position);
                                   });
 }
@@ -269,9 +295,8 @@ void GameplayNoteView::CreateNoteVisual(const INote &source)
     const auto balloonImage = NoteImage(L"Balloon");
     const auto dengDengImage = NoteImage(L"DengDeng");
     const auto balloonProcessingImage = NoteImage(L"BalloonProcessing");
-    const auto balloonBurstImage = NoteImage(L"BalloonBurst");
     const auto dengDengProcessingImage = NoteImage(L"DengDengProcessing");
-    const auto counterImage = NoteImage(L"HitCounterCloud");
+    const auto counterImage = NoteImage(L"Hud.HitCountBadge");
 
     const auto noteSize = ScaledImageSize(visuals, noteImage);
     pixelsPerWholeNote_ = noteSize.width * 16.0F * SixteenthSpacingInHeadDiameters;
@@ -285,7 +310,6 @@ void GameplayNoteView::CreateNoteVisual(const INote &source)
     const auto balloonSize = ScaledImageSize(visuals, balloonImage);
     const auto dengDengSize = ScaledImageSize(visuals, dengDengImage);
     const auto balloonProcessingSize = ScaledImageSize(visuals, balloonProcessingImage);
-    const auto balloonBurstSize = ScaledImageSize(visuals, balloonBurstImage);
     const auto dengDengProcessingSize = ScaledImageSize(visuals, dengDengProcessingImage);
     const auto counterSize = ScaledImageSize(visuals, counterImage);
 
@@ -360,6 +384,13 @@ void GameplayNoteView::CreateNoteVisual(const INote &source)
     RequireComponent<SpriteVisualComponent>(*layers.ambient)
         .SetTint(customHead ? Color{1.0F, 1.0F, 1.0F, 1.0F} : ambientColor);
     layers.ambient->SetZIndex(3);
+    if (customHead)
+    {
+        // Keep the art upright inside Taiko's clockwise-rotated lane, like the judgement wording.
+        layers.ambient->SetPivot(PlatePivot(headSize));
+        layers.ambient->SetPosition({diameter * 0.5F, diameter * 0.5F});
+        layers.ambient->Transform().SetRotationRollPitchYaw(0.0F, 0.0F, HalfPi);
+    }
     if (!customHead)
     {
         layers.overlay = &CreateSprite(*layers.root, {0.0F, 0.0F, headSize.width, headSize.height},
@@ -374,19 +405,9 @@ void GameplayNoteView::CreateNoteVisual(const INote &source)
         layers.processing = &CreateSprite(canvas_->Root(),
                                           {0.0F, 0.0F, layers.processingSize.width, layers.processingSize.height},
                                           processingImage, std::format("Hud.NoteProcessing.{}", note->Id()));
-        layers.processing->SetPivot({0.5F, 0.5F});
+        layers.processing->SetPivot(PlatePivot(layers.processingSize));
         layers.processing->SetZIndex(7);
         layers.processing->SetVisible(false);
-        if (balloon)
-        {
-            layers.successSize = balloonBurstSize;
-            layers.success = &CreateSprite(canvas_->Root(),
-                                           {0.0F, 0.0F, balloonBurstSize.width, balloonBurstSize.height},
-                                           balloonBurstImage, std::format("Hud.NoteSuccess.{}", note->Id()));
-            layers.success->SetPivot({0.5F, 0.5F});
-            layers.success->SetZIndex(9);
-            layers.success->SetVisible(false);
-        }
     }
     if (customHead || roll)
     {
@@ -394,13 +415,11 @@ void GameplayNoteView::CreateNoteVisual(const INote &source)
                                        counterImage, std::format("Hud.NoteCounter.{}", note->Id()));
         layers.counter->SetZIndex(8);
         layers.counter->SetVisible(false);
-        layers.counterText = &CreateLabel(*layers.counter,
-                                          {0.0F, counterSize.height * 0.22F, counterSize.width,
-                                           counterSize.height * 0.58F},
-                                          L"", "RemainingHits");
+        layers.counterText = &CreateLabel(*layers.counter, {}, L"", "RemainingHits");
         auto &text = RequireComponent<TextVisualComponent>(*layers.counterText);
-        texts_->ApplyFont(text);
-        text.SetFontSize(22.0F);
+        auto face = ui_fonts::Number(800);
+        text.SetFont(std::move(face.font));
+        text.SetFontWeight(face.weight);
         text.SetTextColor({1.0F, 1.0F, 1.0F, 1.0F});
         text.SetHorizontalAlignment(TextAlignment::Center);
     }
@@ -416,7 +435,7 @@ void GameplayNoteView::HideTransientNoteVisuals()
             continue;
         NoteVisualLayers &layers = visual->second;
         layers.root->SetVisible(false);
-        for (auto *node : {layers.processing, layers.success, layers.counter})
+        for (auto *node : {layers.processing, layers.counter})
             if (node != nullptr)
                 node->SetVisible(false);
     }
@@ -492,7 +511,7 @@ void GameplayNoteView::UpdateNote(const INote &model, const RhythmTime time, con
         if (focusNote)
             PresentFocusNoteProcessing(layers, *note.progress, time);
         else
-            PresentHitCounter(layers, *note.progress, layers.diameter);
+            PresentHitCounter(layers, *note.progress, false);
         focusClaimed = true;
     }
 
@@ -524,18 +543,47 @@ void GameplayNoteView::UpdateLongNoteParts(NoteVisualLayers &layers, const NoteP
     }
 }
 
-void GameplayNoteView::PresentHitCounter(NoteVisualLayers &layers, const NoteProgress &progress,
-                                         const float visualHeight)
+void GameplayNoteView::PresentHitCounter(NoteVisualLayers &layers, const NoteProgress &progress, const bool focus)
 {
-    if (canvas_ == nullptr || layers.counter == nullptr || layers.counterText == nullptr)
+    if (canvas_ == nullptr || laneRoot_ == nullptr)
+        return;
+    if (layers.counter == nullptr || layers.counterText == nullptr)
         return;
 
-    const auto bounds = layers.counter->Bounds();
-    layers.counter->SetBounds({-bounds.width * 0.5F, visualHeight * 0.5F - bounds.height * 0.28F, bounds.width,
-                               bounds.height});
-    layers.counter->SetVisible(true);
     const std::size_t remaining = progress.required > progress.accepted ? progress.required - progress.accepted : 0;
-    RequireComponent<TextVisualComponent>(*layers.counterText).SetText(std::to_wstring(remaining));
+    const auto text = std::to_wstring(remaining);
+    const BadgeStyle &style = focus ? FocusBadge : RollBadge;
+    // The block widens with the digits instead of squeezing a long count.
+    const float width =
+        std::max(style.minimumWidth, static_cast<float>(text.size()) * style.digitWidth + style.padding);
+    Point origin{-width * 0.5F, FocusBadgeTop - style.height};
+    if (!focus)
+    {
+        // The lane is rotated, so its local judgement offset runs along the screen's x axis.
+        const auto lane = laneRoot_->BoundsInCanvas();
+        origin = {lane.x + judgementLocalY_ + RollBadgeOffset, lane.y + lane.height - RollBadgeTopInset - style.height};
+    }
+    layers.counter->SetBounds({origin.x, origin.y, width, style.height});
+    layers.counter->SetVisible(true);
+    const float lineHeight = style.fontSize * 1.2F;
+    layers.counterText->SetBounds({style.leftInset, (style.height - lineHeight) * 0.5F,
+                                   width - style.leftInset - style.rightInset, lineHeight});
+    auto &label = RequireComponent<TextVisualComponent>(*layers.counterText);
+    label.SetFontSize(style.fontSize);
+    label.SetText(text);
+}
+
+void GameplayNoteView::PresentFocusArt(Visual2DNode &node, const NoteVisualLayers &layers, const float scale,
+                                       const RhythmTime time, const float alpha)
+{
+    node.SetSize({layers.processingSize.width * scale, layers.processingSize.height * scale});
+    node.SetPosition(FocusArtCentre);
+    const float turns = layers.focusType == FocusNoteType::DengDeng
+                            ? static_cast<float>(time.count()) / DengDengTurnMicroseconds
+                            : 0.0F;
+    node.Transform().SetRotationRollPitchYaw(0.0F, 0.0F, -std::fmod(turns * TwoPi, TwoPi));
+    RequireComponent<SpriteVisualComponent>(node).SetTint({1.0F, 1.0F, 1.0F, alpha});
+    node.SetVisible(true);
 }
 
 void GameplayNoteView::PresentFocusNoteProcessing(NoteVisualLayers &layers, const NoteProgress &progress,
@@ -546,18 +594,11 @@ void GameplayNoteView::PresentFocusNoteProcessing(NoteVisualLayers &layers, cons
 
     const float completion =
         std::clamp(static_cast<float>(progress.accepted) / static_cast<float>(progress.required), 0.0F, 1.0F);
-    const float scale = layers.focusType == FocusNoteType::Balloon ? 0.72F + completion * 0.38F : 1.0F;
-    const Size size{layers.processingSize.width * scale, layers.processingSize.height * scale};
-    layers.processing->SetSize(size);
-    layers.processing->SetPosition({0.0F, 0.0F});
-    if (layers.focusType == FocusNoteType::DengDeng)
-    {
-        const float turns = static_cast<float>(time.count()) / 600'000.0F;
-        layers.processing->Transform().SetRotationRollPitchYaw(0.0F, 0.0F, std::fmod(turns * TwoPi, TwoPi));
-    }
-    RequireComponent<SpriteVisualComponent>(*layers.processing).SetTint({1.0F, 1.0F, 1.0F, 1.0F});
-    layers.processing->SetVisible(true);
-    PresentHitCounter(layers, progress, size.height);
+    const float scale = layers.focusType == FocusNoteType::Balloon
+                            ? BalloonStartScale + completion * (BalloonEndScale - BalloonStartScale)
+                            : 1.0F;
+    PresentFocusArt(*layers.processing, layers, scale, time, 1.0F);
+    PresentHitCounter(layers, progress, true);
 }
 
 void GameplayNoteView::PresentCompletionEffect(const RhythmTime time)
@@ -571,8 +612,8 @@ void GameplayNoteView::PresentCompletionEffect(const RhythmTime time)
             effect = completionEffects_.erase(effect);
             continue;
         }
-        if (elapsed >= RhythmDuration::zero() &&
-            (selected == completionEffects_.end() || effect->second > selected->second))
+        const bool started = elapsed >= RhythmDuration::zero();
+        if (started && (selected == completionEffects_.end() || effect->second > selected->second))
             selected = effect;
         ++effect;
     }
@@ -580,33 +621,18 @@ void GameplayNoteView::PresentCompletionEffect(const RhythmTime time)
         return;
 
     const auto visual = noteVisuals_.find(selected->first);
-    if (visual == noteVisuals_.end())
+    if (visual == noteVisuals_.end() || visual->second.processing == nullptr)
         return;
     NoteVisualLayers &layers = visual->second;
     presentedNoteIds_.push_back(selected->first);
     const float progress = std::clamp(static_cast<float>((time - selected->second).count()) /
                                           static_cast<float>(FocusSuccessDuration.count()),
                                       0.0F, 1.0F);
-    Visual2DNode *node = layers.processing;
-    Size size = layers.processingSize;
-    if (layers.focusType == FocusNoteType::Balloon && layers.success != nullptr)
-    {
-        node = layers.success;
-        const float burstScale = 0.82F + progress * 0.28F;
-        size = {layers.successSize.width * burstScale, layers.successSize.height * burstScale};
-    }
-    if (node == nullptr)
-        return;
-
-    node->SetSize(size);
-    node->SetPosition({0.0F, 0.0F});
-    if (layers.focusType == FocusNoteType::DengDeng)
-    {
-        const float turns = static_cast<float>(time.count()) / 600'000.0F;
-        node->Transform().SetRotationRollPitchYaw(0.0F, 0.0F, std::fmod(turns * TwoPi, TwoPi));
-    }
-    RequireComponent<SpriteVisualComponent>(*node).SetTint({1.0F, 1.0F, 1.0F, 1.0F - progress});
-    node->SetVisible(true);
+    // A finished balloon pops: the same art grows on and fades. DengDeng keeps turning and fades.
+    const float scale = layers.focusType == FocusNoteType::Balloon
+                            ? BalloonEndScale + progress * (BalloonPopScale - BalloonEndScale)
+                            : 1.0F;
+    PresentFocusArt(*layers.processing, layers, scale, time, 1.0F - progress);
 }
 
 void GameplayNoteView::RemoveUnusedNoteVisuals()
@@ -621,7 +647,7 @@ void GameplayNoteView::RemoveUnusedNoteVisuals()
         // Model IDs/images stay cached, so seeking backward can recreate visuals.
         // Remove independent HUD nodes before the Lane subtree owning long parts.
         const auto &layers = it->second;
-        for (auto *node : {layers.processing, layers.success, layers.counter, layers.root})
+        for (auto *node : {layers.processing, layers.counter, layers.root})
             if (node)
                 static_cast<void>(canvas_->RemoveNode(node->Id()));
         it = noteVisuals_.erase(it);

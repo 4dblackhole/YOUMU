@@ -3,6 +3,8 @@
 #include "PhantomCore.h"
 
 #include <map>
+#include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -34,10 +36,16 @@ class UiTooltip final
     // Registers or replaces a control's hint; an empty hint removes it. A pointed child shows its
     // nearest registered ancestor's hint.
     void Set(const PhantomCore::Visual2DNode &target, TooltipText text);
+    // Hints a line inside a control that keeps the pointer itself (a song card's title): it shows
+    // while the pointer is over the line and the pointed control contains it. Needs the pointer.
+    void SetLine(const PhantomCore::Visual2DNode &line, TooltipText text);
     // hovered comes from the host's input router; enabled is false while a modal hides the controls.
+    // pointer (Canvas coordinates) is needed only for lines registered with SetLine.
     void Update(double deltaSeconds, const PhantomCore::InputState &input, PhantomCore::NodeId hovered,
-                bool enabled = true);
+                bool enabled = true, std::optional<PhantomCore::Point> pointer = std::nullopt);
     void Hide() noexcept;
+    // Forgets every hint, for a host that rebuilds its controls.
+    void Clear() noexcept;
     [[nodiscard]] bool IsShown() const noexcept;
     [[nodiscard]] PhantomCore::NodeId ShownTarget() const noexcept
     {
@@ -49,7 +57,9 @@ class UiTooltip final
     {
         PhantomCore::Visual2DNode *plate{}, *line{}, *text{};
     };
-    [[nodiscard]] PhantomCore::NodeId ResolveTarget(PhantomCore::NodeId hovered) const;
+    [[nodiscard]] PhantomCore::NodeId ResolveTarget(PhantomCore::NodeId hovered,
+                                                    std::optional<PhantomCore::Point> pointer) const;
+    [[nodiscard]] PhantomCore::NodeId ResolveLine(PhantomCore::NodeId hovered, PhantomCore::Point pointer) const;
     void Show();
     void BuildContent(const TooltipText &text);
     void Layout();
@@ -65,8 +75,12 @@ class UiTooltip final
     std::vector<std::wstring> keyTexts_;
     std::vector<std::wstring> separatorTexts_;
     std::map<PhantomCore::NodeId, TooltipText> hints_;
+    // Hinted lines that take no pointer themselves (SetLine).
+    std::set<PhantomCore::NodeId> lines_;
     PhantomCore::NodeId armed_{}, dismissed_{};
     double waitSeconds_{}, clock_{}, hiddenAt_{-1.0};
     bool shown_{};
     float laidOutWidth_{};
+    // Lines of the shown label once a long name is broken to the plate width.
+    int labelLines_{1};
 };

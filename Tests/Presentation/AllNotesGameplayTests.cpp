@@ -138,7 +138,7 @@ namespace
             visuals_.Update(context.deltaSeconds);
             if (resultView_)
             {
-                static_cast<void>(resultView_->Update(context.input));
+                static_cast<void>(resultView_->Update(context.input, context.deltaSeconds));
                 return context.totalSeconds - resultStartedSeconds_ < 60;
             }
             const auto time = timer_.Now(context.audio.CaptureClockSnapshot().performanceCounterTicks);

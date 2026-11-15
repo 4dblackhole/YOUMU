@@ -1,6 +1,7 @@
 #pragma once
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/UiAlert.h"
 #include "Presentation/UiDropdown.h"
 #include "Presentation/UiTooltip.h"
 #include "Presentation/PlayOptionsPanel.h"
@@ -40,7 +41,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
         else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -52,6 +53,11 @@ class MusicSelectView final
     void RebuildVisibleSongs();
     void RefreshCatalogPresentation();
     void RefreshSelectionPresentation();
+    // Opens the shared alert above song select. Panels with text boxes close first, and until the
+    // alert is answered no key or pointer reaches song select.
+    void ShowAlert(AlertContent content);
+    // The scene reports whether the focused song is the one being heard.
+    void SetNowPlaying(const bool playing) { songList_.SetNowPlaying(playing); }
 
   private:
     using SortMode = SongSelectionState::SortMode;
@@ -80,7 +86,9 @@ class MusicSelectView final
     void UpdateLetterbox(PhantomCore::Size canvasSize, const song_select::SongSelectFrame &frame);
     void UpdateSheetLayout(const song_select::SongSelectFrame &frame);
     void RefreshSearchPresentation();
+    [[nodiscard]] PhantomCore::PointerInput CanvasPointerInput(const PhantomCore::InputState &input);
     void ProcessPointer(const PhantomCore::InputState &input);
+    bool ProcessAlert(const PhantomCore::InputState &input);
     bool ProcessActions();
     bool ProcessFilterPanel(const PhantomCore::InputState &input);
     bool ProcessFavoritesPanel(const PhantomCore::InputState &input);
@@ -114,6 +122,7 @@ class MusicSelectView final
     SongFavoriteTabs favoriteTabs_;
     SongFavoritesPanel favoritesPanel_;
     UiTooltip tooltip_;
+    UiAlert alert_;
     SongBackgroundPreview artwork_;
     SongListView songList_;
     std::uint64_t textRevision_{};

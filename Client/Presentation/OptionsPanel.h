@@ -4,6 +4,7 @@
 #include "App/SkinSetSelection.h"
 #include "PhantomCore.h"
 #include "Presentation/UiTooltip.h"
+#include "Presentation/UiScrollbar.h"
 #include "Mode/ModeInputLayout.h"
 #include "Texts/TextCatalog.h"
 
@@ -152,7 +153,8 @@ class OptionsPanel final
 
     // Frame.
     PhantomCore::Visual2DNode *panel_{}, *rail_{}, *title_{}, *close_{}, *headerRule_{};
-    PhantomCore::Visual2DNode *viewport_{}, *content_{}, *scrollRail_{}, *scrollThumb_{};
+    PhantomCore::Visual2DNode *viewport_{}, *content_{};
+    UiScrollbar scrollbar_;
     PhantomCore::Visual2DNode *footer_{}, *footerRule_{}, *statusBar_{}, *statusIcon_{}, *statusLabel_{};
     std::vector<std::pair<PhantomCore::Visual2DNode *, std::string>> icons_;
     std::array<Section, SectionCount> sections_{};
@@ -165,7 +167,6 @@ class OptionsPanel final
     float scrollOffset_{};
     bool railPointerInside_{}, railKeyboard_{}, railExpanded_{};
     float railHoverSeconds_{};
-    std::optional<float> scrollDragOffset_;
     // Layout changes outside ProcessInput invalidate the router's hit test on its next call.
     bool hitTestDirty_{};
     // Rail names and the close key; it runs in ProcessInput with the frame time Update saw.
