@@ -32,8 +32,7 @@ namespace
 } // namespace
 
 void GameplayAudioSession::Register(AudioSystem &audio, const PlaySession &session,
-                                    const GameplayLaunchRequest &request, const double playbackRate,
-                                    const RhythmTime time, const RhythmTimer &timer)
+                                    const GameplayLaunchRequest &request)
 {
     registered_ = true;
     error_.clear();
@@ -78,8 +77,6 @@ void GameplayAudioSession::Register(AudioSystem &audio, const PlaySession &sessi
     if (musicError.empty())
     {
         static_cast<void>(router_.ConfigurePlayback(session.Options(), musicError));
-        if (musicError.empty() && request.editorTestStart)
-            static_cast<void>(router_.SetEditorTestRate(playbackRate, time, timer, musicError));
     }
     if (!hitSoundError.empty() || !musicError.empty())
         error_ = !musicError.empty() ? musicError : hitSoundError;
@@ -111,11 +108,6 @@ void GameplayAudioSession::RestartResourcePolling() noexcept
     nextPoll_ = 0;
 }
 
-RhythmTime GameplayAudioSession::MusicDuration() const
-{
-    return router_.MusicDuration().value_or(RhythmTime{});
-}
-
 AudioPreparationState GameplayAudioSession::PrepareMusicAt(const double totalSeconds, const RhythmTime time,
                                                            const bool skipMusic)
 {
@@ -130,15 +122,6 @@ AudioPreparationState GameplayAudioSession::PrepareMusicAt(const double totalSec
 bool GameplayAudioSession::StartPreparedMusic(const RhythmTime time, const RhythmTimer &timer)
 {
     return !musicRegistered_ || router_.StartPreparedMusic(time, timer);
-}
-
-bool GameplayAudioSession::SetEditorTestRate(const double rate, const RhythmTime time, const RhythmTimer &timer)
-{
-    std::string error;
-    if (router_.SetEditorTestRate(rate, time, timer, error))
-        return true;
-    error_ = std::move(error);
-    return false;
 }
 
 void GameplayAudioSession::SeekMetronome(const std::span<const MetronomeBeat> beats, const RhythmTime time) noexcept

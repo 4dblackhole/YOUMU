@@ -56,11 +56,19 @@ return Cubic((low + high) * .5, y1, y2);
 InterpolationExpression::InterpolationExpression(std::string_view expression) : source_(expression)
 {
 if (source_.empty() || source_.size() > 4096)
-    throw std::invalid_argument("Interpolation expression is empty or too long.");
-Sum();
-Take(' ');
+    throw InterpolationSyntaxError("Interpolation expression is empty or too long.", 0);
+// Parse errors report where the parser stopped, so an editor can point at it.
+try
+{
+    Sum();
+    Take(' ');
+}
+catch (const std::invalid_argument &error)
+{
+    throw InterpolationSyntaxError(error.what(), cursor_);
+}
 if (cursor_ != source_.size())
-    throw std::invalid_argument("Unexpected interpolation token.");
+    throw InterpolationSyntaxError("Unexpected interpolation token.", cursor_);
 }
 bool InterpolationExpression::Take(char character)
 {

@@ -1,5 +1,6 @@
 #include "EditorMenuBar.h"
 #include "EditorSupport.h"
+#include "Presentation/UiFonts.h"
 #include <algorithm>
 #include <span>
 #include <stdexcept>
@@ -9,7 +10,8 @@ using namespace PhantomCore;
 
 namespace
 {
-    using namespace editor_ui;
+    namespace theme = ui_colors::theme;
+    using ui_colors::White;
     struct MenuItem
     {
         EditorMenuAction action;
@@ -27,6 +29,7 @@ namespace
         MenuItem{EditorMenuAction::Copy, "Editor.menuCopy", L"Ctrl+C"},
         MenuItem{EditorMenuAction::Paste, "Editor.menuPaste", L"Ctrl+V"},
         MenuItem{EditorMenuAction::PasteWithBlanks, "Editor.menuPasteWithBlanks", L"Ctrl+Shift+V"}};
+    constexpr float MenuWidth = 248, ItemHeight = 34, FileWidth = 56, EditWidth = 58, DocumentLeft = 130;
 
     std::span<const MenuItem> Items(bool edit)
     {
@@ -39,12 +42,24 @@ namespace
             throw std::logic_error("Editor menu node is missing a component.");
         return *component;
     }
-    void ConfigureText(Visual2DNode &node, TextCatalog &texts)
+    void SetText(Visual2DNode &node, std::wstring value, float size, std::uint16_t weight, Color color,
+                 bool number = false)
     {
         auto &label = Require<TextVisualComponent>(node);
-        texts.ApplyFont(label);
-        label.SetFontSize(18);
-        label.SetTextColor(Ink);
+        if (number)
+        {
+            auto face = ui_fonts::Number(weight);
+            label.SetFont(std::move(face.font));
+            label.SetFontWeight(face.weight);
+        }
+        else
+        {
+            label.SetFont(ui_fonts::Text(value));
+            label.SetFontWeight(weight);
+        }
+        label.SetFontSize(size);
+        label.SetTextColor(color);
+        label.SetText(std::move(value));
     }
     void Tint(Visual2DNode &node, Color color)
     {
@@ -52,22 +67,36 @@ namespace
     }
 }
 
-void EditorMenuBar::Initialize(Visual2DCanvas &canvas, TextCatalog &texts)
+void EditorMenuBar::Initialize(Visual2DNode &parent, TextCatalog &texts)
 {
-    if (canvas_)
+    if (parent_)
         throw std::logic_error("Editor menu is already initialized.");
-    canvas_ = &canvas;
+    parent_ = &parent;
     texts_ = &texts;
-    bar_ = &CreatePanel(canvas.Root(), {}, "Editor.MenuBar");
+    bar_ = &CreatePanel(parent, {}, "Editor.MenuBar");
     bar_->SetZIndex(100);
-    Tint(*bar_, editor_ui::Paper);
-    file_ = &CreateLabel(*bar_, {8, 0, 92, Height}, L"", "Editor.Menu.File");
-    edit_ = &CreateLabel(*bar_, {100, 0, 92, Height}, L"", "Editor.Menu.Edit");
-    ConfigureText(*file_, texts);
-    ConfigureText(*edit_, texts);
+    Tint(*bar_, theme::BrandDeep);
+    file_ = &CreateLabel(*bar_, {0, 0, FileWidth, Height}, L"", "Editor.Menu.File");
+    edit_ = &CreateLabel(*bar_, {FileWidth, 0, EditWidth, Height}, L"", "Editor.Menu.Edit");
+    for (auto *menu : {file_, edit_})
+        Require<TextVisualComponent>(*menu).SetHorizontalAlignment(TextAlignment::Center);
+    title_ = &CreateLabel(*bar_, {}, L"", "Editor.Document.Title");
+    artist_ = &CreateLabel(*bar_, {}, L"", "Editor.Document.Artist");
+    pattern_ = &CreateLabel(*bar_, {}, L"", "Editor.Document.Pattern");
+    dirtyDot_ = &CreatePanel(*bar_, {}, "Editor.Document.Unsaved");
+    Tint(*dirtyDot_, theme::Sun);
+    Require<SpriteVisualComponent>(*dirtyDot_).SetCornerRadius(4);
+    newBadge_ = &CreatePanel(*bar_, {}, "Editor.Document.New");
+    Tint(*newBadge_, theme::Sun);
+    newLabel_ = &CreateLabel(*newBadge_, {}, L"", "Editor.Document.NewLabel");
+    Require<TextVisualComponent>(*newLabel_).SetHorizontalAlignment(TextAlignment::Center);
+    modeBadge_ = &CreatePanel(*bar_, {}, "Editor.Document.Mode");
+    Tint(*modeBadge_, {1, 1, 1, .12F});
+    modeLabel_ = &CreateLabel(*modeBadge_, {}, L"", "Editor.Document.ModeLabel");
+    Require<TextVisualComponent>(*modeLabel_).SetHorizontalAlignment(TextAlignment::Center);
     popup_ = &CreatePanel(*bar_, {}, "Editor.Menu.Popup");
     popup_->SetZIndex(10);
-    Tint(*popup_, editor_ui::Ink);
+    Tint(*popup_, theme::RuleStrong);
     for (std::size_t i = 0; i < rows_.size(); ++i)
     {
         auto &row = rows_[i];
@@ -75,48 +104,91 @@ void EditorMenuBar::Initialize(Visual2DCanvas &canvas, TextCatalog &texts)
         row.node = &CreatePanel(*popup_, {}, "Editor.Menu.Item." + suffix);
         row.caption = &CreateLabel(*row.node, {}, L"", "Editor.Menu.Caption." + suffix);
         row.shortcut = &CreateLabel(*row.node, {}, L"", "Editor.Menu.Shortcut." + suffix);
-        ConfigureText(*row.caption, texts);
-        ConfigureText(*row.shortcut, texts);
         Require<TextVisualComponent>(*row.shortcut).SetHorizontalAlignment(TextAlignment::Trailing);
     }
-    Resize();
+    Resize(width_);
     SetOpen(Menu::None, false);
 }
 
-void EditorMenuBar::Resize()
+void EditorMenuBar::Resize(float frameWidth)
 {
-    if (!canvas_) return;
-    const auto size = canvas_->LogicalSize();
-    bar_->SetBounds({-size.width * .5F, size.height * .5F - Height, size.width, Height});
+    if (!parent_)
+        return;
+    width_ = frameWidth;
+    bar_->SetBounds({-frameWidth * .5F, 360.0F - Height, frameWidth, Height});
+    LayoutDocument();
+}
+
+void EditorMenuBar::SetDocument(EditorMenuDocument document)
+{
+    const bool changed = std::tie(document.title, document.artist, document.pattern, document.mode, document.created) !=
+                         std::tie(document_.title, document_.artist, document_.pattern, document_.mode, document_.created);
+    if (!changed)
+        return;
+    document_ = std::move(document);
+    labelsInitialized_ = false;
+}
+
+void EditorMenuBar::LayoutDocument()
+{
+    if (!parent_)
+        return;
+    using editor_ui::EstimateTextWidth;
+    // Title · artist [difficulty] and the unsaved dot read left to right after the menus.
+    const float right = width_ - 16 - 93 - 16;
+    float x = DocumentLeft;
+    const auto place = [&](Visual2DNode &node, const std::wstring &text, float size) {
+        const float w = std::min(EstimateTextWidth(text, size) + 4, std::max(0.0F, right - x));
+        node.SetBounds({x, (Height - size * 1.36F) * .5F, w, size * 1.36F});
+        x += w + 8;
+    };
+    place(*title_, document_.title, 15);
+    const auto artist = document_.artist.empty() ? std::wstring{} : L"· " + document_.artist;
+    place(*artist_, artist, 14);
+    const auto pattern = document_.pattern.empty() ? std::wstring{} : L"[" + document_.pattern + L"]";
+    place(*pattern_, pattern, 14);
+    newBadge_->SetVisible(!document_.created);
+    if (!document_.created)
+    {
+        newBadge_->SetBounds({x, (Height - 18) * .5F, 40, 18});
+        newLabel_->SetBounds({0, 1, 40, 16});
+        x += 48;
+    }
+    dirtyDot_->SetBounds({x, Height * .5F - 4, 8, 8});
+    modeBadge_->SetBounds({width_ - 16 - 93, 6, 93, 24});
+    modeLabel_->SetBounds({0, 3, 93, 18});
 }
 
 void EditorMenuBar::Refresh(bool dirty)
 {
-    if (!canvas_)
+    if (!parent_)
         return;
     if (labelsInitialized_ && dirty_ == dirty && textRevision_ == texts_->Revision())
         return;
     const auto items = Items(open_ == Menu::Edit);
-    const float width = open_ == Menu::Edit ? 430.0F : 320.0F;
-    popup_->SetBounds({open_ == Menu::Edit ? 100.0F : 8.0F, -34.0F * static_cast<float>(items.size()), width, 34.0F * static_cast<float>(items.size())});
-    Require<TextVisualComponent>(*file_).SetText(std::wstring(texts_->Get("Editor.fileMenu")));
-    Require<TextVisualComponent>(*edit_).SetText(std::wstring(texts_->Get("Editor.editMenu")));
-    ConfigureText(*file_, *texts_);
-    ConfigureText(*edit_, *texts_);
+    popup_->SetBounds({open_ == Menu::Edit ? FileWidth : 0.0F, -ItemHeight * static_cast<float>(items.size()) - 2,
+                       MenuWidth, ItemHeight * static_cast<float>(items.size()) + 2});
+    SetText(*file_, std::wstring(texts_->Get("Editor.fileMenu")), 14, 700, {1, 1, 1, .82F});
+    SetText(*edit_, std::wstring(texts_->Get("Editor.editMenu")), 14, 700, {1, 1, 1, .82F});
+    SetText(*title_, document_.title, 15, 800, White);
+    SetText(*artist_, document_.artist.empty() ? std::wstring{} : L"· " + document_.artist, 14, 600, {1, 1, 1, .72F});
+    SetText(*pattern_, document_.pattern.empty() ? std::wstring{} : L"[" + document_.pattern + L"]", 14, 800,
+            theme::Sun);
+    SetText(*modeLabel_, document_.mode, 12, 800, White, true);
+    SetText(*newLabel_, std::wstring(texts_->Get("Editor.newBadge")), 12, 800, theme::BrandDeep, true);
+    dirtyDot_->SetVisible(dirty);
+    LayoutDocument();
     for (std::size_t i = 0; i < rows_.size(); ++i)
     {
         auto &row = rows_[i];
         row.node->SetVisible(i < items.size());
-        if (i >= items.size()) continue;
-        row.node->SetBounds({1, 1 + 34.0F * static_cast<float>(items.size() - 1 - i), width - 2, 32});
-        row.caption->SetBounds({12, 4, width - 155, 24});
-        row.shortcut->SetBounds({width - 137, 4, 122, 24});
-        auto caption = std::wstring(texts_->Get(items[i].label));
-        if (items[i].action == EditorMenuAction::Save && dirty) caption += L" *";
-        Require<TextVisualComponent>(*row.caption).SetText(std::move(caption));
-        Require<TextVisualComponent>(*row.shortcut).SetText(std::wstring(items[i].shortcut));
-        ConfigureText(*row.caption, *texts_);
-        ConfigureText(*row.shortcut, *texts_);
+        if (i >= items.size())
+            continue;
+        row.node->SetBounds({1, 1 + ItemHeight * static_cast<float>(items.size() - 1 - i), MenuWidth - 2, ItemHeight});
+        row.caption->SetBounds({14, 7, MenuWidth - 120, 20});
+        row.shortcut->SetBounds({MenuWidth - 112, 8, 96, 18});
+        SetText(*row.caption, std::wstring(texts_->Get(items[i].label)), 14, 600, theme::Ink);
+        SetText(*row.shortcut, std::wstring(items[i].shortcut), 12, 600, theme::Caption, true);
     }
     dirty_ = dirty;
     textRevision_ = texts_->Revision();
@@ -141,7 +213,8 @@ bool EditorMenuBar::UpdateKeyboard(const EditorMenuInput &input, EditorMenuInput
         result.consumeKeyboard = result.consumePointer = true;
         return true;
     }
-    if (open_ == Menu::None) return false;
+    if (open_ == Menu::None)
+        return false;
     result.consumeKeyboard = result.consumePointer = true;
     if (input.dismiss)
         SetOpen(Menu::None, false);
@@ -173,7 +246,8 @@ void EditorMenuBar::UpdatePointer(const EditorMenuInput &input, EditorMenuInputR
             if (rows_[i].node->BoundsInCanvas().Contains(*point))
                 hovered_ = static_cast<int>(i);
     result.consumePointer = (point && bar_->BoundsInCanvas().Contains(*point)) || open_ != Menu::None;
-    if (!input.leftPressed && !input.rightPressed) return;
+    if (!input.leftPressed && !input.rightPressed)
+        return;
     if (input.leftPressed && (hoverFile_ || hoverEdit_))
     {
         const auto target = hoverEdit_ ? Menu::Edit : Menu::File;
@@ -193,11 +267,14 @@ void EditorMenuBar::UpdatePointer(const EditorMenuInput &input, EditorMenuInputR
 EditorMenuInputResult EditorMenuBar::Update(const EditorMenuInput &input, bool dirty)
 {
     EditorMenuInputResult result;
-    if (!canvas_) return result;
+    if (!parent_)
+        return result;
     Refresh(dirty);
     const auto before = std::tuple{open_, selected_, hovered_, hoverFile_, hoverEdit_};
-    if (!UpdateKeyboard(input, result)) UpdatePointer(input, result);
-    if (before != std::tuple{open_, selected_, hovered_, hoverFile_, hoverEdit_}) RefreshHighlight();
+    if (!UpdateKeyboard(input, result))
+        UpdatePointer(input, result);
+    if (before != std::tuple{open_, selected_, hovered_, hoverFile_, hoverEdit_})
+        RefreshHighlight();
     return result;
 }
 
@@ -213,28 +290,27 @@ void EditorMenuBar::SetOpen(Menu menu, bool keyboardSelection)
 
 void EditorMenuBar::RefreshHighlight()
 {
-    const auto highlightTab = [](Visual2DNode &node, bool active, bool hovered) {
-        Tint(node, active ? editor_ui::Blue : hovered ? editor_ui::Pale : editor_ui::Paper);
-        Require<TextVisualComponent>(node).SetTextColor(active ? editor_ui::White : editor_ui::Ink);
+    const auto highlightMenu = [](Visual2DNode &node, bool active, bool hovered) {
+        Tint(node, active ? Color{1, 1, 1, .14F} : hovered ? Color{1, 1, 1, .1F} : Color{1, 1, 1, 0});
+        Require<TextVisualComponent>(node).SetTextColor(active || hovered ? White : Color{1, 1, 1, .82F});
     };
-    highlightTab(*file_, open_ == Menu::File, hoverFile_);
-    highlightTab(*edit_, open_ == Menu::Edit, hoverEdit_);
+    highlightMenu(*file_, open_ == Menu::File, hoverFile_);
+    highlightMenu(*edit_, open_ == Menu::Edit, hoverEdit_);
     for (std::size_t i = 0; i < rows_.size(); ++i)
     {
         const bool selected = static_cast<int>(i) == (hovered_ >= 0 ? hovered_ : selected_);
-        auto &row = rows_[i];
-        Tint(*row.node, selected ? editor_ui::Blue : editor_ui::Paper);
-        Require<TextVisualComponent>(*row.caption).SetTextColor(selected ? editor_ui::White : editor_ui::Ink);
-        Require<TextVisualComponent>(*row.shortcut).SetTextColor(selected ? editor_ui::White : editor_ui::Ink);
+        Tint(*rows_[i].node, selected ? ui_colors::Rgb(0xE6EEFC) : White);
     }
 }
 
 void EditorMenuBar::Shutdown() noexcept
 {
-    if (bar_) bar_->SetVisible(false);
-    canvas_ = nullptr;
+    if (bar_)
+        bar_->SetVisible(false);
+    parent_ = nullptr;
     texts_ = nullptr;
     bar_ = file_ = edit_ = popup_ = nullptr;
+    title_ = artist_ = pattern_ = dirtyDot_ = modeBadge_ = modeLabel_ = newBadge_ = newLabel_ = nullptr;
     rows_ = {};
     open_ = Menu::None;
     selected_ = hovered_ = -1;

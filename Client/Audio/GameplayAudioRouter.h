@@ -41,8 +41,6 @@ public:
     // The player's volume: music scales the Music bus, effects every other bus.
     // Chart volume automation multiplies on top of it.
     void SetVolumes(float music, float effects);
-    bool SetEditorTestRate(double rate, RhythmTime position, const RhythmTimer &timer, std::string &error);
-    std::optional<RhythmTime> MusicDuration() const;
 
     // Input-driven cues start immediately. Timeline scheduling remains a
     // separate path for music and other deliberately future playback.
@@ -85,8 +83,6 @@ private:
 
     float musicPitch_{1.0F}, hitSoundPitch_{1.0F};
     float musicVolume_{1.0F}, effectsVolume_{1.0F};
-    bool editorTestPlayback_{};
-    std::map<PhantomCore::AudioPlaybackId, RhythmTime> scheduledCueTimes_;
     PhantomCore::AudioSystem* audioSystem_{};
     PhantomCore::AudioPlaybackManager& playback_;
     std::map<std::string, std::shared_ptr<PhantomCore::AudioBus>, std::less<>>

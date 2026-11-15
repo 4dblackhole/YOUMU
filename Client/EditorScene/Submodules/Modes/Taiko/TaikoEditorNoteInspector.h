@@ -30,7 +30,7 @@ class TaikoEditorNoteInspector final
   private:
     void Refresh(const IEditorDocument &);
     void Field(IEditorModeCanvas &, IEditorContext &, const TextCatalog &, float y,
-               std::wstring_view label, std::string &value, float x = 1530, float width = 340);
+               std::wstring_view label, std::string &value, float x, float width);
     void PositionFields(IEditorModeCanvas &, IEditorContext &, const TextCatalog &, float y,
                         std::wstring_view label, std::string &measure, std::string &beat);
     std::optional<EditorNoteSelection> selected_;

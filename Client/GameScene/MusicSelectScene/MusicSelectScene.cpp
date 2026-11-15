@@ -3,7 +3,6 @@
 #include "GameFlow/YOUMUSceneIds.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Submodules/MusicSelectView.h"
-#include "Submodules/NewDifficultyDialog.h"
 #include "GameFlow/SongLibrary.h"
 #include "Submodules/SongSelectionText.h"
 #include <stdexcept>
@@ -129,11 +128,9 @@ void MusicSelectScene::PollOsuImport()
 {
     const auto result = osuImport_.Poll();
     if (!result) return;
+    // A finished conversion only refreshes the list; there is no completion message.
     if (result->success)
-    {
         RefreshCatalog();
-        ShowOsuImportCompletion(*result, texts_);
-    }
     else
     {
         // The song list is unchanged; the alert carries the converter's own output.
@@ -149,22 +146,19 @@ void MusicSelectScene::CreateDifficulty(SceneManager &scenes)
     if (purpose_ != SongSelectPurpose::Editor || selection_.catalogLoading_ ||
         selection_.focusedSongPosition_ >= selection_.visibleSongIndices_.size())
         return;
-    auto &song = selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
+    const auto &song = selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
     library_->ReleaseAudio();
-    try
-    {
-        if (auto created = CreateDifficultyWithDialog(library_->CatalogRoot(), song, texts_))
-        {
-            song.patterns.push_back(std::move(*created));
-            selection_.selectedPatternIndex_ = song.patterns.size() - 1;
-            StartSelectedPattern(scenes);
-        }
-    }
-    catch (const std::exception &error)
-    {
-        selection_.SetLaunchError(SongSelectionState::LaunchErrorKind::Pattern, error.what());
-        view_->RefreshSelectionPresentation();
-    }
+    // No file exists until the editor's Create; leaving before it leaves the song unchanged.
+    GameplayLaunchRequest request{{}, {}, song.audioPath, "Taiko", SongTitle(song), L""};
+    request.globalOffsetMs = options_.Values().globalOffsetMs;
+    request.volumes = options_.Values().volumes;
+    request.songsRoot = library_->CatalogRoot();
+    request.songArtist = SongArtist(song);
+    request.editorNewDifficulty = std::make_shared<const SongCatalogEntry>(song);
+    selection_.ClearLaunchError();
+    launchRequest_->Set(std::move(request));
+    if (!scenes.ChangeScene(EditorSceneId))
+        throw std::runtime_error("Failed to enter the editor scene.");
 }
 void MusicSelectScene::Render(const RenderContext &)
 {

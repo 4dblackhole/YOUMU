@@ -8,7 +8,6 @@
 #include "EditorModeTests.h"
 #include "EditorPlaybackTests.h"
 #include "EditorScene/Submodules/EditorView.h"
-#include "EditorScene/Submodules/EditorWorkspaceStore.h"
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "GameScene/MusicSelectScene/Submodules/SongPreviewController.h"
 #include <chrono>
@@ -39,6 +38,14 @@ struct InputStateTestAccess
         input.Reset();
         input.SetMousePosition(x, y, true);
         input.SetMouseButton(MouseButton::Left, true, 1);
+    }
+    // The frame after Click: the button comes up over the same point.
+    static void Release(InputState &input, int x, int y)
+    {
+        input.Reset();
+        input.SetMousePosition(x, y, true);
+        input.mouseButtonsDown_[static_cast<std::size_t>(MouseButton::Left)] = true;
+        input.SetMouseButton(MouseButton::Left, false, 2);
     }
 };
 } // namespace PhantomCore
@@ -112,9 +119,10 @@ namespace
         return result;
     }
 
-    void TestEditorTestLaunch(ScreenVisual2DManager &visuals, const EngineServices &services, TextCatalog &texts)
+    // Save publishes the YME it actually wrote, so the session keeps opening that file.
+    void TestSavePublishesEffectPath()
     {
-        const auto root = std::filesystem::absolute("build/fixtures/EditorTestLaunch");
+        const auto root = std::filesystem::absolute("build/fixtures/EditorSaveEffectPath");
         std::filesystem::create_directories(root);
         std::ofstream(root / "Song.ymm") << "Version: 1\nFile: Music.wav\nMusic Name 1: Editor Test\n";
         std::ofstream(root / "Pattern.ymp") <<
@@ -124,82 +132,11 @@ namespace
         request.songsRoot = root;
         auto workspace = std::make_unique<EditorWorkspace>(request);
         workspace->Initialize();
-        workspace->Seek(1234.567);
-        workspace->SetPlaybackRate(2);
-        const auto snapshot = workspace->TestLaunchRequest();
-        Check(snapshot.editorTestStart == RhythmTime{1'234'567} && snapshot.playOptions.accelerate == 1 &&
-                  snapshot.patternPath == request.patternPath && snapshot.musicPath == request.musicPath,
-              "Test starts at the displayed editor time and 1x, using the saved current chart.");
-        EditorView view(visuals, *workspace, texts);
-        view.Initialize(services);
-        InputState click;
-        InputStateTestAccess::Click(click, 1655, 1053);
-        Check(!view.Update({0, 0, 1, click, services.audio, {}}) && view.TakeTestRequest() && !view.TakeTestRequest(),
-              "Test beside Save must publish one launch without leaving the editor selector route.");
         workspace->AddNote({2, {}}, 1);
-        const auto dirtyRevision = workspace->Document().Revision();
-        bool rejected = false;
-        try { static_cast<void>(workspace->TestLaunchRequest()); }
-        catch (const std::exception &) { rejected = true; }
-        Check(rejected && workspace->Document().Dirty() && workspace->Document().Revision() == dirtyRevision,
-              "An unsaved document cannot become a gameplay Test snapshot.");
-        const auto answerSave = [&](int answer)
-        {
-            const auto uiThread = GetCurrentThreadId();
-            struct Reply { int answer; std::atomic<bool> sent{}; } reply{answer};
-            std::jthread responder([&](std::stop_token stop)
-            {
-                while (!stop.stop_requested() && !reply.sent)
-                {
-                    EnumThreadWindows(uiThread, [](HWND window, LPARAM data) -> BOOL
-                    {
-                        wchar_t type[32]{};
-                        GetClassNameW(window, type, 32);
-                        if (std::wstring_view(type) != L"#32770") return TRUE;
-                        auto &target = *reinterpret_cast<Reply *>(data);
-                        target.sent = PostMessageW(window, WM_COMMAND, static_cast<WPARAM>(target.answer), 0) != FALSE;
-                        return FALSE;
-                    }, reinterpret_cast<LPARAM>(&reply));
-                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
-                }
-            });
-            InputStateTestAccess::Click(click, 1655, 1053);
-            static_cast<void>(view.Update({0, 0, 1, click, services.audio, {}}));
-            responder.request_stop();
-            responder.join();
-            Check(reply.sent, "Test must ask about saving the actual dirty editor document.");
-        };
-        answerSave(IDNO);
-        Check(!view.TakeTestRequest() && workspace->Document().Dirty() &&
-                  workspace->Document().Revision() == dirtyRevision,
-              "Declining Save must cancel Test and preserve the edited document.");
-        answerSave(IDYES);
-        Check(!workspace->Document().Dirty() && workspace->TestLaunchRequest().effectPath.has_value(),
+        workspace->Save();
+        Check(!workspace->Document().Dirty() && workspace->Request().effectPath.has_value() &&
+                  *workspace->Request().effectPath == workspace->Document().Effects().sourcePath,
               "A successful save must publish the actual YME selected by Save.");
-        Check(view.TakeTestRequest(), "Only successful Save may publish the dirty-document Test.");
-        workspace->AddNote({3, {}}, 2);
-        const auto failedRevision = workspace->Document().Revision();
-        const auto blockedStaging = root / "Pattern.ymp.editor.tmp";
-        std::filesystem::create_directory(blockedStaging);
-        answerSave(IDYES);
-        std::filesystem::remove(blockedStaging);
-        Check(!view.TakeTestRequest() && workspace->Document().Dirty() &&
-                  workspace->Document().Revision() == failedRevision && !workspace->Status().empty(),
-              "Failed Save must keep the document/Undo state and cancel Test with an error.");
-        workspace->Undo();
-        view.Shutdown();
-        const auto *identity = workspace.get();
-        EditorWorkspaceStore transfer;
-        transfer.Suspend(std::move(workspace));
-        workspace = transfer.Take();
-        Check(workspace.get() == identity && !transfer.Take() && workspace->TimeMilliseconds() == 1234.567 &&
-                  workspace->PlaybackRate() == 2,
-              "Only the original workspace survives the single-use Test return transfer.");
-        workspace->Undo();
-        Check(workspace->Document().Notes().size() == 2 && workspace->Document().Dirty(),
-              "Test return must preserve editor Undo rather than reopen the saved document.");
-        workspace->Redo();
-        Check(!workspace->Document().Dirty(), "Save identity and Redo must survive Test return.");
     }
 
     void TestAudioRangeSelection(Visual2DCanvas &canvas, EditorView &view, EditorWorkspace &state,
@@ -272,19 +209,6 @@ int main(int argc, char** argv)
     {
         std::string assetError;
         Check(InitializeBuiltInAssets(assetError), assetError.c_str());
-        if (argc > 1 && std::string_view(argv[1]) == "--test-launch")
-        {
-            RecordingRenderer renderer;
-            ScreenVisual2DManager visuals;
-            visuals.Initialize(renderer, {1920, 1080});
-            MeshRenderSystem meshes;
-            TextRenderSystem textRendering;
-            AudioSystem audio;
-            TextCatalog texts("Client/Texts/Languages");
-            TestEditorTestLaunch(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts);
-            std::cout << "Editor Test launch and workspace transfer passed.\n";
-            return 0;
-        }
         TestEditorMenu();
         TestEditorPlayback();
         TestEditorMetronome();
@@ -547,16 +471,13 @@ int main(int argc, char** argv)
         Check(hasText(std::wstring(state.Document().Dirty() ? Editor(texts).saveDirty
                                                             : Editor(texts).save)),
               "Existing footer Save must remain available.");
-        Check(hasText(L"TIMELINE") && !hasText(L"MUSIC FFT SPECTROGRAM"),
-              "Pattern tab must show the timeline without the audio analysis "
-              "tracks.");
+        Check(hasText(L"Compose") && hasText(L"Notes") && hasText(L"Scroll speed") && !hasText(L"Waveform"),
+              "Compose must stack the channel heads without the audio analysis tracks.");
         state.Seek(state.Document().Notes().front().timing.count() / 1000.0 + 1000);
         state.SelectTab(EditorTab::Audio);
         view.Build();
         visuals.Render({});
-        Check(hasText(L"MUSIC WAVEFORM") && hasText(L"MUSIC FFT SPECTROGRAM") &&
-                  hasText(L"EXPECTED HIT-SOUND FFT SPECTROGRAM"),
-              "Three audio tracks missing");
+        Check(hasText(L"Waveform") && hasText(L"Music") && hasText(L"Hit sounds"), "Three audio tracks missing");
         const auto coloredIn = [&](float top, float bottom)
         {
             return std::ranges::count_if(
@@ -565,13 +486,16 @@ int main(int argc, char** argv)
                 {
                     const auto corner = TransformPoint(
                         {packet.bounds.x, packet.bounds.y + packet.bounds.height, 0}, packet.nodeTransform);
-                    const float y = 540 - corner.y;
+                    const float y = 360 - corner.y;
                     return packet.type == DrawPacketType::Rectangle && y >= top && y < bottom &&
-                           corner.x >= 205 - 960 && corner.x < 1770 - 960 && packet.color.red > .3F &&
+                           corner.x >= 24 - 640 && corner.x < 1256 - 640 && packet.color.red > .3F &&
                            packet.color.green < .95F;
                 });
         };
-        Check(coloredIn(375, 587) > 10 && coloredIn(640, 852) > 10,
+        // The frame's track rows: waveform 1.2, music 1, expected hits .8 of the body below the tool row.
+        const float trackUnit = (642.0F - 138.0F - 20.0F - 24.0F) / 3;
+        const float musicTop = 138 + trackUnit * 1.2F + 36, hitTop = musicTop + trackUnit + 8;
+        Check(coloredIn(musicTop, musicTop + trackUnit) > 10 && coloredIn(hitTop, hitTop + trackUnit * .8F) > 10,
               "Music and expected hits must produce separate visible spectrum "
               "cells.");
 
@@ -605,7 +529,8 @@ int main(int argc, char** argv)
             view.Build();
         };
         waitDetails();
-        const std::size_t visibleColumns = 1565, detailBands = 212;
+        const auto visibleColumns = static_cast<std::size_t>(std::ceil((1280.0F - 48) * 1.5F));
+        const auto detailBands = static_cast<std::size_t>(std::ceil(trackUnit * 1.5F));
         const double tileSeconds = state.audioWindow / visibleColumns * 128;
         const double viewBegin = state.TimeMilliseconds() / 1000 - state.audioWindow * .25;
         const auto tileIndex = static_cast<std::int64_t>(std::floor(viewBegin / tileSeconds));
@@ -668,7 +593,8 @@ int main(int argc, char** argv)
         Visual2DInputRouter pointerRouter;
         PointerInput pointer{};
         pointer.available = true;
-        pointer.position = {205 + 8 + (1645 - 16) * .5F - 960, 540 - 937};
+        const auto timelineBounds = slider->BoundsInCanvas();
+        pointer.position = {timelineBounds.x + timelineBounds.width * .5F, timelineBounds.y + timelineBounds.height * .5F};
         pointer.leftButtonDown = pointer.leftButtonPressed = true;
         pointerRouter.Process(*canvas, pointer);
         Check(!view.Update({0, 0, 1, input, audio, {}}), "Unexpected scene exit");
@@ -679,43 +605,84 @@ int main(int argc, char** argv)
         pointerRouter.Process(*canvas, pointer);
         state.SelectTab(EditorTab::Metadata);
         view.Build();
-        Check(!slider->IsVisible(), "Metadata tab must hide the slider");
+        Check(slider->IsVisible(), "The footer timeline is shared by every tab.");
         auto *hiddenSelection = FindNode(canvas->Root(), "Audio.Selection.0");
-        auto *hiddenRate = FindNode(canvas->Root(), "Editor playback rate");
-        if (!hiddenSelection || !hiddenRate)
+        if (!hiddenSelection)
             throw std::runtime_error("Audio controls missing after tab switch.");
-        Check(!hiddenSelection->IsVisible() && !hiddenRate->IsVisible(),
-              "Metadata must hide audio selection hit areas and rate controls.");
+        Check(!hiddenSelection->IsVisible(), "Metadata must hide audio selection hit areas.");
         state.SelectTab(EditorTab::Audio);
         texts.SetLanguage(Language::English);
         view.Build();
         visuals.Render({});
-        Check(hasText(L"AUDIO") && hasText(L"MUSIC FFT SPECTROGRAM") && hasText(L"File"),
-              "Audio and menu labels not localized");
-        Check(hasText(L"METRONOME: OFF") && hasText(L"−1 ms") && hasText(L"+1 ms"),
+        Check(hasText(L"Audio") && hasText(L"Waveform") && hasText(L"File"), "Audio and menu labels not localized");
+        Check(hasText(L"Metronome") && hasText(L"−1") && hasText(L"+1"),
               "Audio tab must expose offset adjustment and metronome controls.");
-        auto *rateSlider = FindNode(canvas->Root(), "Editor playback rate");
-        if (!rateSlider)
-            throw std::runtime_error("Audio playback rate slider missing.");
-        Check(rateSlider->IsVisible(), "Audio playback rate slider must be visible.");
-        const auto rateBounds = rateSlider->BoundsInCanvas();
-        for (const float value : {0.0F, 1.0F})
-        {
-            pointer.position = {rateBounds.x + 8 + (rateBounds.width - 16) * value,
-                                rateBounds.y + rateBounds.height * .5F};
-            pointer.leftButtonDown = pointer.leftButtonPressed = true;
-            pointer.leftButtonReleased = false;
-            pointerRouter.Process(*canvas, pointer);
+        // Footer rate: − and + step 0.05 within 0.25..2.00; the value resets to 1.00x.
+        const auto clickFrame = [&](float x, float y) {
+            InputStateTestAccess::Click(input, static_cast<int>(x * 1.5F), static_cast<int>(y * 1.5F));
             Check(!view.Update({0, 0, 1, input, audio, {}}), "Rate control unexpectedly left the editor.");
-            const auto expected = value == 0 ? .25 : 2.0;
-            Check(state.PlaybackRate() == expected, "The rate slider must reach quarter and double speed.");
-            visuals.Render({});
-            Check(hasText(texts.Format("Editor.playbackRateFormat", expected)), "Current rate label missing.");
-            pointer.leftButtonDown = pointer.leftButtonPressed = false;
-            pointer.leftButtonReleased = true;
-            pointerRouter.Process(*canvas, pointer);
-        }
+            InputStateTestAccess::Reset(input);
+            static_cast<void>(view.Update({0, 0, 1, input, audio, {}}));
+        };
+        const float rateLeft = 172 + 12 + 44 + 12 + 128 + 12, rateY = 656 + 32;
+        for (int i = 0; i < 25; ++i)
+            clickFrame(rateLeft + 30 + 62 + 15, rateY);
+        Check(state.PlaybackRate() == 2.0, "The + step must stop at double speed.");
+        visuals.Render({});
+        Check(hasText(L"2.00x"), "Current rate label missing.");
+        for (int i = 0; i < 40; ++i)
+            clickFrame(rateLeft + 15, rateY);
+        Check(state.PlaybackRate() == .25, "The − step must stop at quarter speed.");
+        clickFrame(rateLeft + 30 + 31, rateY);
+        Check(state.PlaybackRate() == 1.0, "Clicking the rate value must return to 1.00x.");
         state.SetPlaybackRate(1);
+        // Leaving with unsaved changes asks through the shared alert. Nothing here saves the bundled chart.
+        {
+            const auto frame = [&](std::uint16_t key) {
+                if (key)
+                    InputStateTestAccess::Key(input, key);
+                else
+                    InputStateTestAccess::Reset(input);
+                return view.Update({0, 0, 1, input, audio, {}});
+            };
+            const auto alertOpen = [&] {
+                // The scrim carries the alert's visibility.
+                const auto *scrim = FindNode(canvas->Root(), "Alert");
+                return scrim != nullptr && scrim->IsVisible();
+            };
+            state.SelectNotes({});
+            state.ClosePanel();
+            state.AddNote({7, {1, 8}}, 1);
+            Check(state.Document().Dirty(), "The alert fixture needs an unsaved edit.");
+            bool left = false;
+            for (int i = 0; i < 3 && !alertOpen(); ++i)
+                left = left || frame(VK_ESCAPE);
+            Check(!left && alertOpen(), "Escape with unsaved changes must ask instead of leaving.");
+            visuals.Render({});
+            Check(hasText(L"Unsaved changes") && hasText(L"Discard") && hasText(L"Cancel") && hasText(L"Save"),
+                  "The unsaved alert offers Discard, Cancel and Save.");
+            const auto timeBefore = state.TimeMilliseconds();
+            Check(!frame('Z') && state.TimeMilliseconds() == timeBefore, "Editor shortcuts must wait behind the alert.");
+            Check(!frame(VK_ESCAPE) && !alertOpen() && state.Document().Dirty(),
+                  "Escape on the alert cancels and keeps the edit.");
+            for (int i = 0; i < 3 && !alertOpen(); ++i)
+                static_cast<void>(frame(VK_ESCAPE));
+            static_cast<void>(frame(0));
+            const auto *discard = FindNode(canvas->Root(), "Alert.Button0");
+            Check(discard != nullptr && alertOpen(), "The alert must reopen with its Discard button.");
+            const auto bounds = discard->BoundsInCanvas();
+            const auto logical = canvas->LogicalSize();
+            const int x = static_cast<int>((bounds.x + bounds.width * .5F + logical.width * .5F) * 1.5F);
+            const int y = static_cast<int>((logical.height * .5F - bounds.y - bounds.height * .5F) * 1.5F);
+            InputStateTestAccess::Click(input, x, y);
+            left = view.Update({0, 0, 1, input, audio, {}});
+            InputStateTestAccess::Release(input, x, y);
+            left = view.Update({0, 0, 1, input, audio, {}}) || left;
+            Check(left && !alertOpen(), "Discard on the alert must leave the editor.");
+            state.Undo();
+            Check(!state.Document().Dirty(), "The alert fixture must restore the bundled chart's saved state.");
+            static_cast<void>(frame(0));
+        }
         visuals.OnResize(900, 720);
         view.Resize(900, 720);
         view.Build();
@@ -724,18 +691,18 @@ int main(int argc, char** argv)
               "Editor view must resize the composed menu.");
         waitDetails();
         TestAudioRangeSelection(*canvas, view, state, renderer, texts);
-        state.SelectTab(EditorTab::Pattern);
+        state.SelectTab(EditorTab::Compose);
         state.SetRealtime(true);
         view.Build();
         visuals.Render({});
-        Check(hasText(L"−") && hasText(L"+") && hasText(L"TIME ZOOM 100%"),
-              "Realtime view must expose the time-axis zoom buttons and current scale.");
+        Check(hasText(L"−") && hasText(L"+") && hasText(L"Spacing") && hasText(L"50%"),
+              "Realtime view must expose the note spacing buttons and current spacing.");
         view.Shutdown();
         Check(visuals.CanvasCount() == 0, "Editor Canvas survived shutdown");
         visuals.OnResize(1920, 1080);
         TestEditorModes(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts,
                         [&renderer]() -> const std::vector<DrawPacket> & { return renderer.packets; });
-        TestEditorTestLaunch(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts);
+        TestSavePublishesEffectPath();
         std::cout << "Editor audio view tests passed.\n";
         return 0;
     }

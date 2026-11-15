@@ -147,13 +147,6 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
     kiaiView_.Update(*session_, time);
 }
 
-void GameplayPresenter::SetDebugVisible([[maybe_unused]] bool visible)
-{
-#if defined(_DEBUG)
-    if (noteDebugLabel_) noteDebugLabel_->SetVisible(visible);
-#endif
-}
-
 void GameplayPresenter::UpdateInputPresentation(const InputState& input, const double deltaSeconds)
 {
     inputView_.Update(session_->InputLayout(), input, deltaSeconds);

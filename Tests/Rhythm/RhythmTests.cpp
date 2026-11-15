@@ -85,7 +85,6 @@ int main(const int argumentCount, char *arguments[])
         {"TestTaikoRollAndTickRollRules", TestTaikoRollAndTickRollRules},
         {"TestCountOnlyRollHeadJudgements", TestCountOnlyRollHeadJudgements},
         {"TestDengDengEitherStart", TestDengDengEitherStart},
-        {"TestPartialPreviewNotes", TestPartialPreviewNotes},
         {"TestMeasureLineScrollEffects", TestMeasureLineScrollEffects},
         {"TestBalloonDengDengAndBuzzRules", TestBalloonDengDengAndBuzzRules},
         {"TestTimingAccuracyAndSessionAggregation", TestTimingAccuracyAndSessionAggregation},

@@ -1,4 +1,5 @@
 #include "../../EditorSupport.h"
+#include "App/AssetPaths.h"
 #include "App/SkinSetSelection.h"
 #include "TaikoEditorMode.h"
 #include "TaikoEditorTool.h"
@@ -51,32 +52,80 @@ bool TaikoEditorMode::HandleToolKey(IEditorContext &state, std::uint16_t key)
     return true;
 }
 
-void TaikoEditorMode::DrawTools(IEditorModeCanvas &canvas, IEditorContext &state,
-                                const TextCatalog &catalog)
+namespace
 {
-    const auto &text = TaikoEditor(catalog);
-    canvas.Box({24, 76, 70, 918}, Paper, 18);
-    canvas.Text({38, 86, 55, 25}, std::wstring(Editor(catalog).tools), 16);
-    canvas.Button({35, 122, 48, 48}, L"", [&state] { state.SelectTool(0); }, tool_ == 0);
-    canvas.Image({42, 129, 34, 34}, SkinSetSelection::Instance().Resolve(L"Editor/SelectionTool.png"), White);
-    canvas.Text({75, 125, 16, 18}, L"Q", 12);
-    canvas.Text({27, 171, 67, 25}, std::wstring(text.toolGroups[0]), 13);
+    constexpr float ButtonWidth = editor_layout::ToolButtonWidth;
+    PhantomCore::Rect ToolButton(PhantomCore::Rect strip, std::size_t index) noexcept
+    {
+        return {strip.x + editor_layout::ToolStripPadding + ButtonWidth * static_cast<float>(index), strip.y,
+                ButtonWidth, strip.height};
+    }
+    std::size_t VariantCount(Group group) noexcept
+    {
+        return static_cast<std::size_t>(std::ranges::count(Tools, group, &Tool::group));
+    }
+} // namespace
+
+void TaikoEditorMode::DrawTools(IEditorModeCanvas &canvas, IEditorContext &state,
+                                const TextCatalog &)
+{
+    areas_ = canvas.Areas();
+    const auto strip = areas_.tools;
+    canvas.Box(strip, ui_colors::theme::BrandDeep);
+    canvas.Image(strip, EditorSound(L"ToolStrip.png"), White);
+    // Q selects; W..U pick a note group, and pressing the current one cycles its variants.
+    const auto drawButton = [&](std::size_t index, bool on, wchar_t key) {
+        const auto r = ToolButton(strip, index);
+        if (on)
+        {
+            canvas.Box(r, {1, 1, 1, .14F});
+            canvas.Box({r.x, r.y + r.height - 3, r.width, 3}, ui_colors::theme::Sun);
+        }
+        canvas.Text({r.x + r.width - 13, r.y + 3, 10, 12}, std::wstring(1, key), 10,
+                    on ? ui_colors::theme::Sun : Color{1, 1, 1, .55F});
+        return r;
+    };
+    const auto select = drawButton(0, tool_ == 0, L'Q');
+    canvas.Image({select.x + 12, select.y + 10, 24, 24}, SkinSetSelection::Instance().Resolve(L"Editor/SelectionTool.png"),
+                 White);
+    canvas.Region(select, [&state] { state.SelectTool(0); });
     for (std::size_t i = 0; i < groupTools_.size(); ++i)
     {
-        const float y = 202 + static_cast<float>(i) * 80;
         const int id = groupTools_[i];
-        canvas.Button({35, y, 48, 48}, L"", [this, &state, i] { ActivateGroup(state, i); }, tool_ == id);
-        Circle(canvas, 59, y + 24, id, i == 1 ? 15.0F : 10.0F);
-        canvas.Text({27, y + 49, 67, 25}, std::wstring(Name(id, text.toolVariants)), 11);
-        canvas.Text({75, y + 3, 16, 18}, std::wstring(1, static_cast<wchar_t>(ToolKeys[i])), 12);
+        const auto r = drawButton(i + 1, tool_ == id, static_cast<wchar_t>(ToolKeys[i]));
+        const auto *tool = Find(id);
+        Circle(canvas, r.x + r.width * .5F, r.y + 22, id, i == 1 ? 9.5F : 7.0F);
+        if (tool && VariantCount(tool->group) > 1)
+        {
+            // One dot per variant; the current variant is gold.
+            const auto count = VariantCount(tool->group);
+            float x = r.x + (r.width - (4.0F * count + 3.0F * (count - 1))) * .5F;
+            for (const auto &variant : Tools)
+            {
+                if (variant.group != tool->group)
+                    continue;
+                canvas.Box({x, r.y + r.height - 10, 4, 4}, variant.id == id ? ui_colors::theme::Sun : Color{1, 1, 1, .28F});
+                x += 7;
+            }
+        }
+        canvas.Region(r, [this, &state, i] { ActivateGroup(state, i); });
     }
-    for (int i = 0; i < 2; ++i)
-    {
-        const int id = -2 - i;
-        const float y = 682 + static_cast<float>(i) * 80;
-        canvas.Button(
-            {35, y, 48, 48}, std::wstring(text.toolGroups[5 + i]), [&state, id] { state.SelectTool(id); }, tool_ == id);
-    }
+}
+
+bool TaikoEditorMode::OpenToolMenu(Point point)
+{
+    const auto strip = areas_.tools;
+    if (!strip.Contains(point))
+        return false;
+    const auto index = static_cast<std::size_t>((point.x - strip.x - editor_layout::ToolStripPadding) / ButtonWidth);
+    if (index < 1 || index > groupTools_.size())
+        return false;
+    const auto *tool = Find(groupTools_[index - 1]);
+    if (!tool || VariantCount(tool->group) < 2)
+        return false;
+    popup_ = static_cast<int>(index - 1);
+    pending_.reset();
+    return true;
 }
 
 void TaikoEditorMode::DrawToolMenu(IEditorModeCanvas &canvas, IEditorContext &state,
@@ -84,11 +133,14 @@ void TaikoEditorMode::DrawToolMenu(IEditorModeCanvas &canvas, IEditorContext &st
 {
     if (popup_ < 0)
         return;
+    const auto anchor = ToolButton(areas_.tools, static_cast<std::size_t>(popup_) + 1);
+    const int current = groupTools_.at(static_cast<std::size_t>(popup_));
     std::size_t row = 0;
     for (const auto &tool : Tools)
         if (static_cast<int>(tool.group) == popup_)
-            canvas.Button(
-                {105, 202 + static_cast<float>(row++) * 40, 220, 38},
-                std::wstring(Name(tool.id, TaikoEditor(catalog).toolVariants)),
-                [&state, id = tool.id] { state.SelectTool(id); });
+        {
+            const PhantomCore::Rect r{anchor.x, anchor.y + anchor.height + 34 * static_cast<float>(row++), 208, 34};
+            canvas.Button(r, std::wstring(Name(tool.id, TaikoEditor(catalog).toolVariants)),
+                          [&state, id = tool.id] { state.SelectTool(id); }, tool_ == tool.id && current == tool.id);
+        }
 }

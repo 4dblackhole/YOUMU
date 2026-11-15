@@ -1,4 +1,5 @@
 #include "EditorView.h"
+#include "Presentation/UiFonts.h"
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
@@ -157,13 +158,14 @@ void EditorView::PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t fi
     if (!audioRoots_[track])
     {
         auto &root = node->CreateChild(track == 0 ? "Audio.MusicSpectrum" : "Audio.HitSpectrum");
-        root.SetBounds({rect.x - 960, 540 - rect.y - rect.height, rect.width, rect.height});
-        root.SetClipRect({0, 0, rect.width, rect.height});
+        root.SetZIndex(2);
         audioRoots_[track] = &root;
         auto &overlay = root.CreateChild("Ruler");
         overlay.SetZIndex(1);
         audioOverlays_[track] = &overlay.AddComponent<EditorVisual>();
     }
+    PlaceNode(*audioRoots_[track], rect);
+    audioRoots_[track]->SetClipRect({0, 0, rect.width, rect.height});
     audioRoots_[track]->SetVisible(true);
     audioOverlays_[track]->Clear();
     auto &tiles = audioTiles_[track];
@@ -194,8 +196,9 @@ void EditorView::UpdateWaveformColumns(double begin, std::size_t columns)
 
 void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximumHz, double longestSound)
 {
-    const auto columns = static_cast<std::size_t>(std::clamp(std::ceil(MusicSpectrum.width * PixelScale()), 128.0F, 4096.0F));
-    const auto bands = static_cast<std::size_t>(std::clamp(std::ceil(MusicSpectrum.height * PixelScale()), 32.0F, 512.0F));
+    const auto &musicTrack = audioTracks_[1];
+    const auto columns = static_cast<std::size_t>(std::clamp(std::ceil(musicTrack.width * PixelScale()), 128.0F, 4096.0F));
+    const auto bands = static_cast<std::size_t>(std::clamp(std::ceil(musicTrack.height * PixelScale()), 32.0F, 512.0F));
     const double columnSeconds = state_.audioWindow / static_cast<double>(columns);
     const double tileSeconds = columnSeconds * TileColumns;
     const auto first = static_cast<std::int64_t>(std::floor(begin / tileSeconds));
@@ -218,7 +221,7 @@ void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximum
     }
     state_.Analysis().PrepareSpectrumTiles(requests);
     const auto &markers = state_.Analysis().Markers();
-    const std::array rectangles{MusicSpectrum, HitSpectrum};
+    const std::array rectangles{audioTracks_[1], audioTracks_[2]};
     for (std::size_t track = 0; track < rectangles.size(); ++track)
     {
         const auto rect = rectangles[track];
@@ -258,70 +261,86 @@ void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximum
     audioColumnsDocumentRevision_ = state_.Document().Revision();
 }
 
-void EditorView::DrawAudioSpectrum(const Rect rect, const double minimumHz, const double maximumHz)
+void EditorView::LayoutAudioTracks()
 {
+    // Waveform, music and expected hits share the width; heights follow 1.2 : 1 : .8.
+    const float left = 24, trackWidth = std::max(1.0F, frame_.width - 48);
+    const float top = editor_layout::BodyTop + 58, bottom = editor_layout::FooterTop - 14;
+    const float unit = (bottom - top - 20 - 24) / 3;
+    audioTracks_[0] = {left, top, trackWidth, unit * 1.2F};
+    audioTracks_[1] = {left, top + unit * 1.2F + 36, trackWidth, unit};
+    audioTracks_[2] = {left, audioTracks_[1].y + unit + 8, trackWidth, unit * .8F};
+}
+
+void EditorView::DrawAudioSpectrum(std::size_t track, const double minimumHz, const double maximumHz)
+{
+    const auto rect = audioTracks_[track];
     Box(rect, {0, 0, 0, 1});
-    for (const double frequency : {20.0, 100.0, 1000.0, 5000.0, maximumHz})
+    auto &overlay = *audioOverlays_[track - 1];
+    for (const double frequency : {100.0, 1000.0, 5000.0})
     {
         if (frequency < minimumHz || frequency > maximumHz)
             continue;
-        const float y = rect.y + rect.height * static_cast<float>(1 - std::log(frequency / minimumHz) /
-                                                                          std::log(maximumHz / minimumHz));
-        audioOverlays_[rect.y == MusicSpectrum.y ? 0 : 1]->AddRectangle({0, rect.height - (y - rect.y), rect.width, 1},
-                                                                        {1, 1, 1, .10F}, 0);
-        Text({125, std::clamp(y - 10, rect.y, rect.y + rect.height - 20), 78, 20},
-             frequency >= 1000 ? Decimal(frequency / 1000, 0) + std::wstring(texts_.Get("Common.kilohertzSuffix"))
-                               : Decimal(frequency, 0) + std::wstring(texts_.Get("Common.hertzSuffix")),
-             14);
+        const float fraction = static_cast<float>(1 - std::log(frequency / minimumHz) / std::log(maximumHz / minimumHz));
+        const float y = rect.y + rect.height * fraction;
+        overlay.AddRectangle({0, rect.height - (y - rect.y), rect.width, 1}, {1, 1, 1, .10F}, 0);
+        // Labels live in the overlay so the spectrum tiles cannot cover them (local origin bottom-left).
+        const auto label = frequency >= 1000
+                               ? Decimal(frequency / 1000, 0) + std::wstring(texts_.Get("Common.kilohertzSuffix"))
+                               : Decimal(frequency, 0) + std::wstring(texts_.Get("Common.hertzSuffix"));
+        const float top = std::clamp(y - 8, rect.y, rect.y + rect.height - 16) - rect.y;
+        auto face = ui_fonts::Number(700);
+        DrawPacket packet{};
+        packet.type = DrawPacketType::Text;
+        packet.bounds = {rect.width - 52, rect.height - top - 15, 46, 15};
+        packet.color = {1, 1, 1, .7F};
+        packet.text = std::make_shared<TextContent>(
+            TextContent{label, std::move(face.font), 11, TextAlignment::Trailing, {}, face.weight});
+        overlay.AddPacket(std::move(packet));
     }
-    for (std::size_t color = 0; color < SpectrumColors.size(); ++color)
-        Box({1795, rect.y + rect.height * static_cast<float>(SpectrumColors.size() - 1 - color) / SpectrumColors.size(),
-             18, rect.height / SpectrumColors.size() + .1F},
-            SpectrumColors[color]);
-    for (int tick = 0; tick <= 3; ++tick)
-        Text({1820, rect.y + (rect.height - 20) * tick / 3, 70, 20},
-             std::to_wstring(-30 * tick) + std::wstring(texts_.Get("Common.decibelsSuffix")), 14);
 }
 
 void EditorView::DrawAudioWaveform(const std::vector<WaveformPeak> &columns)
 {
-    Box(Waveform, {.035F, .045F, .05F, 1});
-    const float centerY = Waveform.y + Waveform.height * .5F;
-    Box({Waveform.x, centerY, Waveform.width, 1}, {.25F, .35F, .3F, 1});
+    const auto waveform = audioTracks_[0];
+    Box(waveform, {.035F, .045F, .05F, 1});
+    const float centerY = waveform.y + waveform.height * .5F;
+    Box({waveform.x, centerY, waveform.width, 1}, {.25F, .35F, .3F, 1});
     for (std::size_t column = 0; column < columns.size(); ++column)
     {
-        const float top = centerY - std::clamp(columns[column].maximum, -1.0F, 1.0F) * Waveform.height * .48F;
-        const float bottom = centerY - std::clamp(columns[column].minimum, -1.0F, 1.0F) * Waveform.height * .48F;
+        const float top = centerY - std::clamp(columns[column].maximum, -1.0F, 1.0F) * waveform.height * .48F;
+        const float bottom = centerY - std::clamp(columns[column].minimum, -1.0F, 1.0F) * waveform.height * .48F;
         if (bottom > top || top != centerY)
-            Box({Waveform.x + Waveform.width * static_cast<float>(column) / static_cast<float>(columns.size()), top,
-                 Waveform.width / static_cast<float>(columns.size()) + .1F, std::max(1.0F / PixelScale(), bottom - top)},
+            Box({waveform.x + waveform.width * static_cast<float>(column) / static_cast<float>(columns.size()), top,
+                 waveform.width / static_cast<float>(columns.size()) + .1F, std::max(1.0F / PixelScale(), bottom - top)},
                 {.24F, .67F, .46F, 1});
     }
-    Text({150, Waveform.y, 50, 20}, L"+1", 14);
-    Text({150, centerY - 10, 50, 20}, L"0", 14);
-    Text({150, Waveform.y + Waveform.height - 20, 50, 20}, L"−1", 14);
 }
 
 void EditorView::DrawAudioTimeRuler(const double begin)
 {
     // One time ruler and cursor align all three tracks to the editor time.
+    const auto waveform = audioTracks_[0];
     double step = std::pow(10.0, std::floor(std::log10(state_.audioWindow / 8)));
     const double ratio = state_.audioWindow / (8 * step);
     step *= ratio > 5 ? 10 : ratio > 2 ? 5 : ratio > 1 ? 2 : 1;
     for (double seconds = std::ceil(begin / step) * step; seconds <= begin + state_.audioWindow; seconds += step)
     {
-        const float x = Waveform.x + static_cast<float>((seconds - begin) / state_.audioWindow) * Waveform.width;
-        Text({std::clamp(x - 30, Waveform.x, Waveform.x + Waveform.width - 70), 126, 70, 22},
-             Decimal(seconds, step < 1 ? 2 : 0) + std::wstring(texts_.Get("Common.secondsSuffix")), 14);
-        Box({x, Waveform.y, 1, Waveform.height}, {1, 1, 1, .08F});
+        const float x = waveform.x + static_cast<float>((seconds - begin) / state_.audioWindow) * waveform.width;
+        Label({std::clamp(x + 4, waveform.x, waveform.x + waveform.width - 70), waveform.y + waveform.height - 18, 66, 16},
+              Decimal(seconds, step < 1 ? 2 : 0) + std::wstring(texts_.Get("Common.secondsSuffix")),
+              {11, {1, 1, 1, .6F}, TextAlignment::Leading, 700, true});
+        Box({x, waveform.y, 1, waveform.height}, {1, 1, 1, .08F});
         for (std::size_t track = 0; track < audioOverlays_.size(); ++track)
-            audioOverlays_[track]->AddRectangle({x - Waveform.x, 0, 1, MusicSpectrum.height}, {1, 1, 1, .08F}, 0);
+            audioOverlays_[track]->AddRectangle({x - waveform.x, 0, 1, audioTracks_[track + 1].height},
+                                                {1, 1, 1, .08F}, 0);
     }
-    Box({Waveform.x + Waveform.width * .25F, Waveform.y, 2, Waveform.height}, White);
-    for (auto *overlay : audioOverlays_)
+    Box({waveform.x + waveform.width * .25F - 1, waveform.y, 2, waveform.height}, ui_colors::theme::Sun);
+    for (std::size_t track = 0; track < audioOverlays_.size(); ++track)
     {
-        overlay->AddRectangle({MusicSpectrum.width * .25F, 0, 2, MusicSpectrum.height}, White, 0);
-        overlay->Finish();
+        const auto &rect = audioTracks_[track + 1];
+        audioOverlays_[track]->AddRectangle({rect.width * .25F - 1, 0, 2, rect.height}, ui_colors::theme::Sun, 0);
+        audioOverlays_[track]->Finish();
     }
 }
 
@@ -357,32 +376,39 @@ void EditorView::DrawAudio()
     UpdateAudioTiles(begin, minimumHz, maximumHz, longestSound);
 
     // Draw distinct tracks before their shared ruler/cursor and controls.
-    Box({112, 76, 1784, 797}, Paper, 8);
-    Text({132, 90, 400, 28}, std::wstring(text.waveform), 22);
-    Text({132, 340, 1500, 28}, std::wstring(text.musicSpectrum), 22);
-    Text({132, 606, 1500, 28}, std::wstring(text.hitSoundSpectrum), 22);
     DrawAudioWaveform(musicColumns_);
-    DrawAudioSpectrum(MusicSpectrum, minimumHz, maximumHz);
-    DrawAudioSpectrum(HitSpectrum, minimumHz, maximumHz);
+    DrawAudioSpectrum(1, minimumHz, maximumHz);
+    DrawAudioSpectrum(2, minimumHz, maximumHz);
     DrawAudioAlignment(begin);
     DrawAudioSelection(begin);
     DrawAudioTimeRuler(begin);
-    DrawPlaybackRateControl();
-    Button({1620, 85, 54, 32}, std::wstring(texts_.Get("Common.zoomIn")),
-           [this]
-           {
-               state_.audioWindow = std::max(.25, state_.audioWindow / 2);
-               state_.RequestRebuild();
-           });
-    Button({1684, 85, 54, 32}, std::wstring(texts_.Get("Common.zoomOut")),
-           [this]
-           {
-               state_.audioWindow = std::min(120.0, state_.audioWindow * 2);
-               state_.RequestRebuild();
-           });
-    Text({1748, 88, 140, 24}, Decimal(state_.audioWindow, 2) + std::wstring(texts_.Get("Common.secondsSuffix")), 16);
+    // Track names: the waveform's lies in this visual; the spectra's above their tile nodes.
+    const std::array captions{text.waveform, text.musicSpectrum, text.hitSoundSpectrum};
+    for (std::size_t track = 0; track < captions.size(); ++track)
+    {
+        const std::wstring caption(captions[track]);
+        const float captionWidth = EstimateTextWidth(caption, 12) + 12;
+        if (track == 0)
+        {
+            const auto rect = audioTracks_[0];
+            Box({rect.x + 8, rect.y + 6, captionWidth, 20}, {8 / 255.0F, 8 / 255.0F, 24 / 255.0F, .55F});
+            Label({rect.x + 14, rect.y + 6, captionWidth, 20}, caption, {12, {1, 1, 1, .88F}, TextAlignment::Leading, 700});
+            continue;
+        }
+        const auto &rect = audioTracks_[track];
+        auto &overlay = *audioOverlays_[track - 1];
+        overlay.AddRectangle({8, rect.height - 26, captionWidth, 20}, {8 / 255.0F, 8 / 255.0F, 24 / 255.0F, .55F}, 0);
+        DrawPacket packet{};
+        packet.type = DrawPacketType::Text;
+        packet.bounds = {14, rect.height - 26, captionWidth, 20};
+        packet.color = {1, 1, 1, .88F};
+        packet.text = std::make_shared<TextContent>(
+            TextContent{caption, ui_fonts::Text(caption), 12, TextAlignment::Leading, {}, 700});
+        overlay.AddPacket(std::move(packet));
+        overlay.Finish();
+    }
     if (state_.Analysis().Running() || state_.Analysis().SpectrumRunning())
-        Text({570, 90, 490, 28}, std::wstring(text.analyzingAudio), 18, Blue);
-    DrawTimeline();
-    DrawAudioControls();
+        Label({frame_.width - 324, editor_layout::BodyTop + 10, 300, 40}, std::wstring(text.analyzingAudio),
+              {13, ui_colors::theme::Brand, TextAlignment::Trailing, 700});
+    DrawAudioTools();
 }

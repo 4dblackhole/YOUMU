@@ -1,20 +1,34 @@
 #pragma once
-#include "EditorSupport.h"
+#include "EditorLayout.h"
 #include "EditorMenuBar.h"
+#include "EditorSupport.h"
+#include "EditorTextFields.h"
 #include "EditorVisual.h"
 #include "EditorWorkspace.h"
+#include "Presentation/UiAlert.h"
 #include "Texts/EditorScene/EditorTexts.h"
 #include <array>
 #include <functional>
 #include <optional>
-#include <vector>
+#include <span>
 #include <tuple>
+#include <vector>
+
+// Text placement for the editor's own captions. Rectangles are frame
+// coordinates; the text is centred vertically in its rectangle.
+struct EditorTextStyle
+{
+    float size{14};
+    PhantomCore::Color color{editor_ui::Ink};
+    PhantomCore::TextAlignment alignment{PhantomCore::TextAlignment::Leading};
+    std::uint16_t weight{700};
+    bool number{};
+};
 
 class EditorView final : public IEditorModeCanvas
 {
   public:
-    EditorView(PhantomCore::ScreenVisual2DManager &manager, EditorWorkspace &state,
-               TextCatalog &texts)
+    EditorView(PhantomCore::ScreenVisual2DManager &manager, EditorWorkspace &state, TextCatalog &texts)
         : visuals(manager), state_(state), texts_(texts)
     {
     }
@@ -26,46 +40,102 @@ class EditorView final : public IEditorModeCanvas
         if (node)
             ReloadSize();
     }
-    void Shutdown() noexcept
-    {
-        state_.Analysis().StopSpectrum();
-        controls.clear();
-        if (canvas.Get())
-            sliderInput_.Reset(*canvas.Get());
-        menuBar_.Shutdown();
-        for (auto &tiles : audioTiles_)
-            tiles.clear();
-        audioRoots_.fill(nullptr);
-        audioOverlays_.fill(nullptr);
-        audioColumnsKey_.reset();
-        canvas.Reset();
-        node = nullptr;
-        divisionSliderNode_ = nullptr;
-        timelineSliderNode_ = nullptr;
-        playbackRateSliderNode_ = nullptr;
-        audioSelectionNodes_.fill(nullptr);
-        audioSelectionAnchor_.reset();
-        visual = nullptr;
-    }
+    void Shutdown() noexcept;
     void Build();
     void ReloadSize();
     bool Update(const PhantomCore::UpdateContext &context);
-    bool TakeTestRequest() noexcept { return std::exchange(testRequested_, false); }
 
   private:
+    // Frame and drawing primitives.
+    [[nodiscard]] PhantomCore::Rect ToNode(PhantomCore::Rect) const noexcept;
+    [[nodiscard]] std::optional<PhantomCore::Point> DesignPoint(const PhantomCore::InputState &) const;
+    [[nodiscard]] float ContentRight() const noexcept;
+    void PlaceNode(PhantomCore::Visual2DNode &, PhantomCore::Rect) const;
+    void DrawLetterbox();
+    void Label(PhantomCore::Rect, std::wstring, EditorTextStyle = {});
+    void Icon(PhantomCore::Rect, std::wstring_view name, PhantomCore::Color);
+    // A block whose left (positive) or right (negative) edge leans by the slant towards the bottom.
+    void Slanted(PhantomCore::Rect, float leftLean, float rightLean, PhantomCore::Color);
+    void Control(PhantomCore::Rect, std::function<void()> action);
+    void FlatButton(PhantomCore::Rect, std::wstring, std::function<void()>, bool primary = false);
+    void Field(PhantomCore::Rect r, const wchar_t *label, std::string &value);
+    // A labelled inline field over `r`; without a window it falls back to the popup editor.
+    // Under an open modal layer the value is drawn only, since native editors would sit above it.
+    void InputField(PhantomCore::Rect r, std::wstring label, std::wstring text, EditorTextFields::Commit commit,
+                    bool number = false, bool showLabel = true, EditorTextFields::Commit typing = {});
+    [[nodiscard]] PhantomCore::TextInputBounds ScreenBounds(PhantomCore::Rect) const noexcept;
+
+    // Shell: tabs, footer and the shared time controls.
     void BuildContent();
-    void SyncInputControls();
-    void DrawNavigation();
+    void DrawTabs();
     void DrawFooter();
-    void RequestTest();
+    void DrawTransport(PhantomCore::Rect);
+    void DrawPlaybackRateControl(float x);
+    void DrawTimeline(PhantomCore::Rect);
     void DrawTimeInput(PhantomCore::Rect);
-    void DrawEffectRows();
-    void DrawEffectFields();
+    void SyncInputControls();
+    void SyncTimelineSlider();
+    void SyncDivisionSlider() noexcept;
+
+    // Compose: tool row, channel heads, ruler, chart and the right panel.
+    void DrawCompose();
+    void DrawToolRow();
+    void DrawBeatControl();
+    void DrawHeads();
+    void DrawZoneHeads();
+    void DrawChannelHead(editor_layout::Channel, std::wstring_view icon, std::wstring name, std::wstring value);
+    void DrawRuler();
+    void DrawPanel();
+    // Realtime channels under the lane, negative-delay cuts and the dragged beat range.
+    void DrawChannels();
+    void DrawCutsAndRange();
+    void Chip(float x, float middle, std::wstring text, PhantomCore::Color background, bool selected, float h = 18);
+    [[nodiscard]] double AutomationValueAt(EffectCommandType, std::string_view target, double fallback) const;
+    void DrawPanelHeader(std::wstring title);
+    void DrawTimingPanel(PhantomCore::Rect);
+    void DrawEffectPanel(PhantomCore::Rect, EditorPanel);
+    void DrawMusicPanel(PhantomCore::Rect);
+    void DrawListHeader(PhantomCore::Rect body, std::span<const std::pair<std::wstring_view, float>> columns);
+    void DrawListRow(PhantomCore::Rect row, std::span<const std::pair<std::wstring, float>> cells, bool selected,
+                     bool primary, std::function<void()> select, PhantomCore::Color color = editor_ui::Ink);
+    // The panel's last row: Delete at the left, Add and Apply at the right; returns the row's top.
+    float DrawPanelActions(PhantomCore::Rect body, std::size_t selected, std::function<void()> remove,
+                           std::function<void()> add, std::function<void()> apply);
+    void Segmented(PhantomCore::Rect row, std::span<const std::wstring> options, std::size_t selected,
+                   std::function<void(std::size_t)> choose);
+    void SelectEffectType(const EditorEffectSelection &);
+    void DrawExcludeChips(PhantomCore::Rect row);
+    void DrawCurveRow(PhantomCore::Rect row);
+    // Curves dialog (YME [Interpolation]): list, name/expression with checking, preview.
+    void OpenCurves();
+    void CloseCurves();
+    void ApplyCurves();
+    void RenameCurve(const std::string &name);
+    void DrawCurvesDialog();
+    void DrawSwitch(PhantomCore::Rect row, std::wstring caption, bool on, std::function<void()> toggle);
+    [[nodiscard]] PhantomCore::Rect PanelBody() const noexcept;
+    [[nodiscard]] std::wstring HeadValue(editor_layout::Channel) const;
     std::wstring EffectLabel(const EditorEffectSelection &) const;
     void SelectEffectRow(std::size_t);
-    void CycleEffectType();
-    void DrawScore();
-    void DrawTools();
+    [[nodiscard]] bool EffectInPanel(std::size_t row, EditorPanel) const;
+
+    // Audio tab.
+    void DrawAudio();
+    void DrawAudioTools();
+    void LayoutAudioTracks();
+    void UpdateAudioTiles(double begin, double minimumHz, double maximumHz, double longestSound);
+    void PrepareAudioTrack(std::size_t track, PhantomCore::Rect rect, std::int64_t first, std::int64_t last,
+                           bool invalidate);
+    void UpdateWaveformColumns(double begin, std::size_t columns);
+    void DrawAudioWaveform(const std::vector<WaveformPeak> &columns);
+    void DrawAudioTimeRuler(double begin);
+    void DrawAudioAlignment(double begin);
+    void InitializeAudioSelection();
+    void UpdateAudioSelection(PhantomCore::Visual2DNode &, const PhantomCore::PointerEvent &);
+    void DrawAudioSelection(double begin);
+    void DrawAudioSpectrum(std::size_t track, double minimumHz, double maximumHz);
+
+    // Input.
     void UpdateSliders(const PhantomCore::UpdateContext &context);
     EditorMenuInputResult UpdateMenu(const PhantomCore::InputState &input);
     void ExecuteMenuAction(EditorMenuAction action);
@@ -73,31 +143,39 @@ class EditorView final : public IEditorModeCanvas
     void UpdateTimelineNavigation(const PhantomCore::InputState &, bool keyboardAllowed, bool pointerAllowed);
     bool UpdateKeyboard(const PhantomCore::InputState &);
     void UpdatePointer(const PhantomCore::UpdateContext &);
-    void SyncDivisionSlider() noexcept;
-    void DrawTiming();
-    void DrawEffects();
-    void DrawAudio();
-    void UpdateAudioTiles(double begin, double minimumHz, double maximumHz, double longestSound);
-    void PrepareAudioTrack(std::size_t track, PhantomCore::Rect rect, std::int64_t first, std::int64_t last, bool invalidate);
-    void UpdateWaveformColumns(double begin, std::size_t columns);
-    void DrawAudioWaveform(const std::vector<WaveformPeak> &columns);
-    void DrawAudioTimeRuler(double begin);
-    void DrawAudioAlignment(double begin);
-    void DrawAudioControls();
-    void InitializeAudioSelection();
-    void UpdateAudioSelection(PhantomCore::Visual2DNode &, const PhantomCore::PointerEvent &);
-    void DrawAudioSelection(double begin);
-    void DrawPlaybackRateControl();
-    void DrawAudioSpectrum(PhantomCore::Rect rect, double minimumHz, double maximumHz);
-    void DrawTimeline();
-    void SyncTimelineSlider();
+    void StepPlaybackRate(int direction, bool coarse);
+    // Save, or Create for a new difficulty. A failure opens the alert (a rejected name or an existing
+    // folder goes to the status line); returns whether the document was written.
+    bool SaveDocument();
+    void Paste(bool includeBlanks);
+    // Shared alert (UI-02): unsaved changes on leaving, save and paste failures. While it is open it
+    // takes the pointer and keys; returns true when the editor should leave.
+    enum class AlertPurpose
+    {
+        Notice,
+        Leave
+    };
+    void ShowAlert(AlertContent content, AlertPurpose purpose);
+    void ShowFailure(AlertKind kind, std::string_view titleKey, std::string_view messageKey, std::string detail);
+    void ConfirmLeave();
+    bool UpdateAlert(const PhantomCore::InputState &input);
+    void StepSpacing(int direction);
+
+    // IEditorModeCanvas
+    EditorModeAreas Areas() const noexcept override;
     void Image(PhantomCore::Rect, const std::filesystem::path &, PhantomCore::Color) override;
     float PixelScale() const noexcept override;
     void Box(PhantomCore::Rect r, PhantomCore::Color color, float radius = 0) override;
     void Text(PhantomCore::Rect r, std::wstring text, float size = 20, PhantomCore::Color color = editor_ui::Ink) override;
     void Button(PhantomCore::Rect r, std::wstring text, std::function<void()> action, bool selected = false) override;
-    void Field(PhantomCore::Rect r, const wchar_t *label, std::string &value);
+    void Region(PhantomCore::Rect r, std::function<void()> action) override { Control(r, std::move(action)); }
+    void TextField(PhantomCore::Rect r, std::wstring label, std::wstring text,
+                   std::function<void(const std::string &)> commit, bool number) override
+    {
+        InputField(r, std::move(label), std::move(text), std::move(commit), number);
+    }
     [[nodiscard]] EditorTextSet Texts() const noexcept;
+
     PhantomCore::ScreenVisual2DManager &visuals;
     EditorWorkspace &state_;
     TextCatalog &texts_;
@@ -106,23 +184,40 @@ class EditorView final : public IEditorModeCanvas
     PhantomCore::Visual2DNode *node{};
     PhantomCore::Visual2DNode *divisionSliderNode_{};
     PhantomCore::Visual2DNode *timelineSliderNode_{};
-    PhantomCore::Visual2DNode *playbackRateSliderNode_{};
     std::array<PhantomCore::Visual2DNode *, 3> audioSelectionNodes_{};
     std::optional<RhythmTime> audioSelectionAnchor_;
     double audioSelectionViewBegin_{}, audioSelectionViewWindow_{};
     PhantomCore::Visual2DInputRouter sliderInput_;
+    UiAlert alert_;
+    PhantomCore::Visual2DInputRouter alertInput_;
+    AlertPurpose alertPurpose_{};
     EditorMenuBar menuBar_;
+    EditorTextFields fields_;
+    // Rectangles of this build's fields: a click elsewhere ends typing.
+    std::vector<PhantomCore::Rect> fieldRects_;
     EditorVisual *visual{};
+    editor_layout::Frame frame_{};
+    PhantomCore::Rect timelineRect_{};
+    PhantomCore::Rect divisionRect_{};
+    // Waveform, music spectrum and expected-hit spectrum.
+    std::array<PhantomCore::Rect, 3> audioTracks_{};
     bool buildFailed_{};
-    bool testRequested_{};
-    bool toggleSelection_{}, rangeSelection_{};
-    static constexpr PhantomCore::Rect DivisionSliderRect{1240, 6 + EditorMenuBar::Height, 480, 26};
-    static constexpr PhantomCore::Rect TimelineSliderRect{205, 915, 1645, 44};
-    static constexpr PhantomCore::Rect PlaybackRateSliderRect{1260, 88, 340, 26};
-    static constexpr PhantomCore::Rect Waveform{205, 153, 1565, 166};
-    static constexpr PhantomCore::Rect MusicSpectrum{205, 375, 1565, 212};
-    static constexpr PhantomCore::Rect HitSpectrum{205, 640, 1565, 212};
-    std::vector<Control> controls;
+    bool leaveRequested_{};
+    bool curvesOpen_{};
+    // True while building layers under a modal (the Curves dialog or the alert).
+    bool fieldsCovered_{};
+    // Draft of the YME [Interpolation] table while the Curves dialog is open.
+    struct CurvesDraft
+    {
+        std::map<std::string, std::string, std::less<>> table;
+        // Current name -> name in the document, so renamed curves keep their effects.
+        std::map<std::string, std::string, std::less<>> origins;
+        std::string selected;
+    } curves_;
+    // The pointer of the click being dispatched, for controls that read a position.
+    std::optional<PhantomCore::Point> lastPointer_;
+    bool toggleSelection_{}, rangeSelection_{}, shiftDown_{};
+    std::vector<::Control> controls;
     using AudioColumnsKey = std::tuple<double, double, double, std::uint64_t, std::size_t, std::size_t>;
     std::optional<AudioColumnsKey> audioColumnsKey_;
     const IEditorDocument *audioColumnsDocument_{};

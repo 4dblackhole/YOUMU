@@ -48,7 +48,6 @@ class GameplaySessionController final
     void Start(const PhantomCore::EngineServices &services, RhythmTime initialTime);
     void Update(const PhantomCore::UpdateContext &context);
     double PlaybackRate() const noexcept { return playbackRate_; }
-    void SetEditorTestRate(double rate, const PhantomCore::UpdateContext &context);
     PlayState CurrentState() const noexcept
     {
         return state_;
@@ -151,7 +150,6 @@ class GameplaySessionController final
     std::int64_t gameplayStartTicks_{};
     double completedElapsedSeconds_{};
     double playbackRate_{1.0};
-    RhythmTime testEndTime_{};
     bool playbackRequested_{};
     bool debugMode_{};
     bool pauseMenuOpen_{};

@@ -77,8 +77,6 @@ void GameplaySessionController::ProcessDebugTimeline(const InputState &input,
 {
     if constexpr (!ReferenceTimeDebug)
         return;
-    if (launchRequest_.editorTestStart)
-        return;
     if (timer_.CurrentState() != RhythmTimer::State::Paused)
         return;
 
@@ -139,12 +137,6 @@ void GameplaySessionController::ProcessRhythmInput(const UpdateContext &context,
             event.type != InputEventType::KeyReleased)
         {
             continue;
-        }
-        if (launchRequest_.editorTestStart && event.type == InputEventType::KeyPressed && event.code == VK_SPACE)
-        {
-            UpdateBeforeInput(input, eventIndex, timer_.Now(event.performanceCounterTicks));
-            PauseAt(event.performanceCounterTicks, true);
-            break;
         }
         if constexpr (ReferenceTimeDebug)
         {

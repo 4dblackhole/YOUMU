@@ -1,5 +1,6 @@
 #pragma once
 #include "Editing/IEditorDocument.h"
+#include <array>
 #include <set>
 #include <span>
 
@@ -7,10 +8,14 @@ struct EditorScoreState
 {
     int division{4};
     std::int64_t firstMeasure{};
-    bool realtime{};
+    bool realtime{true};
+    // Preview: the read-only play view of Compose.
+    bool preview{};
+    // Note spacing of the realtime lane; 1 is the game's spacing at Base BPM.
     static constexpr double MinimumRealtimeZoom = .25;
     static constexpr double MaximumRealtimeZoom = 4;
-    double realtimeZoom{1};
+    static constexpr std::array<double, 9> SpacingLevels{.25, .35, .5, .7, 1, 1.4, 2, 2.8, 4};
+    double realtimeZoom{.5};
 };
 
 // Modes can inspect the score and submit edits, but cannot access the worker,

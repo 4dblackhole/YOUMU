@@ -1,12 +1,7 @@
 #pragma once
-#include "PhantomCore.h"
 
 namespace taiko_editor_layout
 {
-    inline constexpr PhantomCore::Rect RealtimeLane{164, 351, 1324, 228};
-    inline constexpr float ScoreLeft = 205, MeasureWidth = 315, RowTop = 150, RowHeight = 100, StaffHeight = 48;
-    inline constexpr int MeasuresPerRow = 4, VisibleRows = 6;
-    inline constexpr float ScoreRight = ScoreLeft + MeasureWidth * MeasuresPerRow;
-    inline constexpr PhantomCore::Rect OverviewBounds{ScoreLeft, RowTop, MeasuresPerRow * MeasureWidth,
-                                                      VisibleRows * RowHeight};
+    // The score view lays four measures per row; the row count follows the area's height.
+    inline constexpr int MeasuresPerRow = 4;
 } // namespace taiko_editor_layout

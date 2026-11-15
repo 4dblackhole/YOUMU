@@ -9,6 +9,12 @@ void EditorWorkspace::Initialize()
 {
     if (!mode_)
         mode_ = CreateEditorMode(request_.mode);
+    if (!editor_ && request_.editorNewDifficulty)
+    {
+        editor_ = mode_->NewDocument(request_);
+        creating_ = true;
+        tab_ = EditorTab::Metadata;
+    }
     if (!editor_)
         editor_ = mode_->OpenDocument(request_);
     if (!editor_)
@@ -174,20 +180,45 @@ void EditorWorkspace::SetDivision(std::int64_t division)
 void EditorWorkspace::SetRealtime(bool realtime)
 {
     score_.realtime = realtime;
+    score_.preview = false;
+    RequestRebuild();
+}
+void EditorWorkspace::SetPreview()
+{
+    score_.realtime = false;
+    score_.preview = true;
+    mode_->CancelInteraction();
     RequestRebuild();
 }
 void EditorWorkspace::SelectTab(EditorTab value)
 {
+    if (creating_ && value != EditorTab::Metadata)
+        return;
     tab_ = value;
     listOffset = 0;
     mode_->CloseToolMenu();
+    RequestRebuild();
+}
+void EditorWorkspace::OpenPanel(EditorPanel panel)
+{
+    if (panel_ != panel)
+        listOffset = 0;
+    panel_ = panel;
+    tab_ = EditorTab::Compose;
+    mode_->CloseToolMenu();
+    RequestRebuild();
+}
+void EditorWorkspace::ClosePanel()
+{
+    panel_.reset();
+    listOffset = 0;
     RequestRebuild();
 }
 void EditorWorkspace::SelectTimingPosition(MusicalPosition p)
 {
     timingForm.measure = std::to_string(p.measure + 1);
     timingForm.fraction = Fraction(p.fraction);
-    SelectTab(EditorTab::Timing);
+    OpenPanel(EditorPanel::Timing);
 }
 void EditorWorkspace::RemoveTiming(std::size_t row)
 {
@@ -216,6 +247,61 @@ void EditorWorkspace::ApplyMeasureLength()
 {
     SetMeasureLength(Position(timingForm.measure, "0/1").measure, Position("1", timingForm.measureLength).fraction);
 }
+void EditorWorkspace::ApplyDelay()
+{
+    auto timing = Document().Timing();
+    const auto position = Position(timingForm.measure, timingForm.fraction);
+    const auto delay = Number(timingForm.delay);
+    std::erase_if(timing, [position](const auto &d) {
+        return d.position == position && d.type == TimingDirectiveType::DelayMilliseconds;
+    });
+    timing.push_back({position, TimingDirectiveType::DelayMilliseconds, delay});
+    editor_->ReplaceTiming(std::move(timing));
+    DocumentChanged();
+}
+void EditorWorkspace::AddTiming()
+{
+    switch (timingForm.kind)
+    {
+    case EditorTimingKind::Bpm: ApplyBpm(); break;
+    case EditorTimingKind::MeasureLength: ApplyMeasureLength(); break;
+    case EditorTimingKind::Delay: ApplyDelay(); break;
+    }
+}
+void EditorWorkspace::ApplyTimingRow()
+{
+    const auto row = ListAnchor();
+    if (!row)
+    {
+        AddTiming();
+        return;
+    }
+    const auto &timing = Document().Timing();
+    if (*row >= timing.size())
+        throw std::out_of_range("Timing row no longer exists.");
+    // A measure length keeps its carry rules; other kinds replace the row in one edit.
+    if (timingForm.kind == EditorTimingKind::MeasureLength)
+    {
+        const bool sameMeasure = timing[*row].type == TimingDirectiveType::MeasureLength &&
+                                 timing[*row].position.measure == Position(timingForm.measure, "0/1").measure;
+        if (!sameMeasure)
+            RemoveTiming(*row);
+        ApplyMeasureLength();
+        return;
+    }
+    auto replaced = timing;
+    replaced.erase(replaced.begin() + static_cast<std::ptrdiff_t>(*row));
+    const auto position = Position(timingForm.measure, timingForm.fraction);
+    const bool bpm = timingForm.kind == EditorTimingKind::Bpm;
+    const auto type = bpm ? TimingDirectiveType::Bpm : TimingDirectiveType::DelayMilliseconds;
+    const auto value = Number(bpm ? timingForm.bpm : timingForm.delay);
+    if (bpm && value <= 0)
+        throw std::invalid_argument("BPM must be positive.");
+    std::erase_if(replaced, [&](const auto &d) { return d.position == position && d.type == type; });
+    replaced.push_back({position, type, value});
+    editor_->ReplaceTiming(std::move(replaced));
+    DocumentChanged();
+}
 void EditorWorkspace::RemoveEffect(std::size_t row)
 {
     auto effects = Document().Effects();
@@ -234,6 +320,25 @@ void EditorWorkspace::RemoveEffect(std::size_t row)
 void EditorWorkspace::ApplyEffect()
 {
     editor_->ReplaceEffects(effectForm.Apply(Document().Effects()));
+    DocumentChanged();
+}
+void EditorWorkspace::ApplyEffectRow()
+{
+    const auto row = ListAnchor();
+    if (!row)
+    {
+        ApplyEffect();
+        return;
+    }
+    auto effects = Document().Effects();
+    if (*row < effects.commands.size())
+        effects.commands.erase(effects.commands.begin() + static_cast<std::ptrdiff_t>(*row));
+    else if (*row - effects.commands.size() < effects.hitSoundChanges.size())
+        effects.hitSoundChanges.erase(effects.hitSoundChanges.begin() +
+                                      static_cast<std::ptrdiff_t>(*row - effects.commands.size()));
+    else
+        throw std::out_of_range("Effect row no longer exists.");
+    editor_->ReplaceEffects(effectForm.Apply(effects));
     DocumentChanged();
 }
 std::pair<double, double> EditorWorkspace::TimelineRangeMilliseconds() const
@@ -255,34 +360,35 @@ void EditorWorkspace::SelectTool(int value)
 }
 void EditorWorkspace::Save()
 {
-    editor_->Save();
+    bool write = true;
+    if (creating_)
+    {
+        // Create writes the pair, then the editor continues on the files it wrote.
+        auto hitSounds = Document().Effects().hitSounds;
+        auto opened = mode_->CreateDocument(Document(), request_);
+        auto document = mode_->OpenDocument(opened);
+        request_ = std::move(opened);
+        editor_ = std::move(document);
+        creating_ = false;
+        audioSourceRevision_ = editor_->AudioSourceRevision();
+        analysis_.Invalidate();
+        // Create takes only the metadata; a hit sound table typed before it is saved into the new YME.
+        write = !hitSounds.empty();
+        if (write)
+        {
+            auto effects = Document().Effects();
+            effects.hitSounds = std::move(hitSounds);
+            editor_->Replace(Document().Pattern(), std::move(effects));
+        }
+        DocumentChanged();
+    }
+    if (write)
+        editor_->Save();
     const auto &effectPath = Document().Effects().sourcePath;
     request_.effectPath = effectPath.empty() ? std::nullopt : std::optional{effectPath};
     SetStatus({});
     savedPath_ = Document().SourcePath();
     RequestRebuild();
-}
-GameplayLaunchRequest EditorWorkspace::TestLaunchRequest() const
-{
-    if (Document().Dirty())
-        throw std::runtime_error("Save the current chart before starting Test.");
-    auto launch = request_;
-    launch.patternPath = Document().SourcePath();
-    const auto &effect = Document().Effects().sourcePath;
-    launch.effectPath = effect.empty() ? std::nullopt : std::optional{effect};
-    const auto files = mode_->AudioFiles(Document(), request_);
-    launch.musicPath = files.at("Music");
-    launch.mode = Document().Pattern().mode;
-    launch.patternTitle = editor_ui::Wide(Document().Pattern().name);
-    const auto &pattern = Document().Pattern();
-    launch.backgroundPath = pattern.backgroundFile.empty() ? std::filesystem::path{}
-        : (request_.songsRoot.empty() ? UserSongs() : request_.songsRoot) / L"BG" / pattern.backgroundFile;
-    launch.backgroundOffsetX = pattern.backgroundOffsetX;
-    launch.backgroundOffsetY = pattern.backgroundOffsetY;
-    launch.playOptions.accelerate = 1.0;
-    launch.playOptions.preserveMusicPitch = launch.playOptions.preserveHitSoundPitch = false;
-    launch.editorTestStart = Microseconds(timeMs_);
-    return launch;
 }
 void EditorWorkspace::PlaceNote(MusicalPosition position)
 {

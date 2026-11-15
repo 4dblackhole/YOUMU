@@ -47,7 +47,7 @@ Retry가 선택됩니다. Retry는 파일을 다시 준비하고 Retire는 결�
 
 시도의 시계가 처음 흐르기 전(`AttemptStarted`가 거짓: Loading, 시작 전에 연 메뉴, 로딩 실패)에는 로딩 화면이 남고 메뉴가 열린 동안
 가운데 곡 소개 띠(`Loading.Card`)를 숨깁니다. 원인은 [화면 오류 줄](Presentation.md#노트-스크롤과-자산)이 메뉴 위에 보여 줍니다.
-Retry로 다시 Loading에 들어가면 같은 규칙입니다. 에디터 Test는 이 메뉴를 쓰지 않으므로 Loading 동안만 로딩 화면입니다.
+Retry로 다시 Loading에 들어가면 같은 규칙입니다.
 좁은 화면에서는 메뉴 부모를 함께 축소하여 행·선택기·글자가 화면 안에 남습니다.
 
 `GameplayPauseLayout`은 Canvas 노드와 배치를, `GameplayPauseMenu`는 포커스·값·입력 의도와 행 상태 그림을

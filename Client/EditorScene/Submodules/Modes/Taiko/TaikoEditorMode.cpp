@@ -1,5 +1,6 @@
 #include "TaikoEditorMode.h"
 #include "../../EditorSupport.h"
+#include "../../EditorPatternCreation.h"
 #include "Parsing/ChartParser.h"
 #include "TaikoEditorPlacement.h"
 #include "TaikoEditorTool.h"
@@ -31,6 +32,32 @@ std::unique_ptr<IEditorDocument> TaikoEditorMode::OpenDocument(
         RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000});
 }
 
+std::unique_ptr<IEditorDocument> TaikoEditorMode::NewDocument(const GameplayLaunchRequest &request) const
+{
+    if (!request.editorNewDifficulty)
+        throw std::invalid_argument("A new difficulty needs its song.");
+    // Taiko, 120 BPM, offset 0 and 4/4 with no notes, timing commands or effects (EditorSongSelect.md).
+    PatternDocument pattern;
+    pattern.mode = std::string(Id());
+    const auto root = std::filesystem::absolute(request.songsRoot).lexically_normal();
+    pattern.musicMetadataFile =
+        std::filesystem::absolute(request.editorNewDifficulty->metadataPath).lexically_normal().lexically_relative(root);
+    return std::make_unique<ChartEditor>(std::move(pattern), EffectDocument{},
+                                         RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000});
+}
+
+GameplayLaunchRequest TaikoEditorMode::CreateDocument(const IEditorDocument &draft, const GameplayLaunchRequest &request) const
+{
+    if (!request.editorNewDifficulty)
+        throw std::invalid_argument("A new difficulty needs its song.");
+    const auto created = Create(request.songsRoot, *request.editorNewDifficulty, draft.Pattern());
+    auto opened = request;
+    opened.patternPath = created.patternPath;
+    opened.effectPath = created.effectPath;
+    opened.editorNewDifficulty.reset();
+    return opened;
+}
+
 bool TaikoEditorMode::CancelInteraction() noexcept
 {
     const bool hadSelection = inspector_.Clear();
@@ -41,17 +68,6 @@ bool TaikoEditorMode::CancelInteraction() noexcept
     popup_ = -1;
     return hadInteraction;
 }
-bool TaikoEditorMode::OpenToolMenu(Point point)
-{
-    const bool outsideToolColumn = point.x < 24 || point.x >= 94;
-    const bool outsideToolRows = point.y < 202 || point.y >= 682;
-    if (outsideToolColumn || outsideToolRows)
-        return false;
-    popup_ = static_cast<int>((point.y - 202) / 80);
-    pending_.reset();
-    return true;
-}
-
 void TaikoEditorMode::SelectTool(int value)
 {
     selectionAnchor_.reset();
@@ -72,12 +88,6 @@ void TaikoEditorMode::PlaceNote(IEditorContext &state, MusicalPosition p)
         state.Seek(state.Document().Timeline().Compile(p).count() / 1000.0);
     if (tool_ == 0)
     {
-        state.RequestRebuild();
-        return;
-    }
-    if (tool_ < 0)
-    {
-        state.SelectTimingPosition(p);
         state.RequestRebuild();
         return;
     }

@@ -6,15 +6,17 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+
+struct SongCatalogEntry;
 
 // Value snapshot for one scene entry. Shared transfer is encapsulated by
 // GameplayLaunchStore; an active session owns its copy.
 struct GameplayLaunchRequest
 {
-    static constexpr double EditorTestMinimumRate = .25, EditorTestMaximumRate = 2.0;
     std::filesystem::path patternPath;
     std::optional<std::filesystem::path> effectPath;
     std::filesystem::path musicPath;
@@ -34,8 +36,8 @@ struct GameplayLaunchRequest
 
     PlayOptions playOptions;
     std::wstring patternTitle;
-    // Present only for a saved editor Test. Normal play options stay unchanged.
-    std::optional<RhythmTime> editorTestStart;
+    // Editor only: create a difficulty for this song; patternPath stays empty until Create.
+    std::shared_ptr<const SongCatalogEntry> editorNewDifficulty;
 
     [[nodiscard]] bool IsValid() const noexcept
     {
@@ -51,7 +53,7 @@ struct GameplayLaunchRequest
         songTitle.clear();
         patternCreator.clear();
         patternTitle.clear();
-        editorTestStart.reset();
+        editorNewDifficulty.reset();
         globalOffsetMs = 0;
         volumes = {};
         playOptions = {};

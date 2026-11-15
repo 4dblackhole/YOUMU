@@ -18,7 +18,7 @@
 | [EditorModeFactory](../Client/EditorScene/Submodules/Modes/EditorModeFactory.cpp) | 에디터에서 사용할 `IEditorMode` 구현을 등록합니다. |
 | [ResultViewFactory](../Client/GameScene/ResultScene/Submodules/ResultViewFactory.cpp) | 모드 결과를 표시할 화면을 등록합니다. [IPlayResult](../YOUMU.Modes/Mode/Results/IPlayResult.h)와 [IPlayResultCollector](../YOUMU.Modes/Mode/Results/IPlayResultCollector.h)를 모드의 결과 데이터와 집계 규칙에 맞춰 구현합니다. |
 
-새 모드는 레인 배치와 노트 표시, 키 입력 표시, 결과 화면, 에디터 및 옵션 텍스트를 준비해야 합니다. 선곡 기본 모드와 새 패턴 생성, 디버그 샘플 차트에는 별도의 제품 정책이 있습니다. [선곡 기본값](../Client/GameScene/MusicSelectScene/Submodules/SongSelectionState.h) · [새 패턴 생성](../Client/GameScene/MusicSelectScene/Submodules/EditorPatternCreation.cpp) · [디버그 세션 구성](../Client/GameFlow/Submodules/GameplaySessionFactory.cpp)
+새 모드는 레인 배치와 노트 표시, 키 입력 표시, 결과 화면, 에디터 및 옵션 텍스트를 준비해야 합니다. 선곡 기본 모드와 새 패턴 생성, 디버그 샘플 차트에는 별도의 제품 정책이 있습니다. [선곡 기본값](../Client/GameScene/MusicSelectScene/Submodules/SongSelectionState.h) · [새 패턴 생성](../Client/EditorScene/Submodules/EditorPatternCreation.cpp)(모드의 `IEditorMode::NewDocument`·`CreateDocument`) · [디버그 세션 구성](../Client/GameFlow/Submodules/GameplaySessionFactory.cpp)
 
 ## 현재 범위와 검증
 

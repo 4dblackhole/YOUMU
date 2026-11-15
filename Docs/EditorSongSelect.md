@@ -23,9 +23,6 @@
 게임 모드 선택과 `Play options`는 없습니다. 곡 카드 오른쪽의 `+`가 유일한 에디터 전용 부품입니다.
 패턴이 없는 곡의 `+`에 두는 금빛 밑줄은 아직 없습니다.
 
-확정 설계 중 새 난이도를 입력 창 없이 에디터 Metadata 탭으로 여는 흐름과 .osu 변환의 진행·완료 표시 제거는
-에디터 묶음에서 구현하며([UI 리디자인](UIRedesign.md#에디터-곡-선택)), 아래 두 절은 현재 구현입니다.
-
 선택된 난이도 행을 누르거나 GO, Enter 또는 Space로 확정하면 선택 경로를 기록하고
 `YOUMU.Editor` Scene으로 이동합니다. 악보·실시간 뷰와 타이밍·메타데이터·
 이펙트 편집, YMP/YME 저장을 제공합니다. Escape는 미저장 변경의 폐기 여부를
@@ -34,22 +31,24 @@
 
 ## 새 난이도 생성
 
-에디터 곡 카드의 맨 오른쪽 `+`는 `New Difficulty`와 `Convert .osu` 두 항목의 팝업을 엽니다.
-New Difficulty는 기존 새 난이도 메타데이터 입력 창을 엽니다. 팝업 밖 클릭이나 Escape는
+에디터 곡 카드의 맨 오른쪽 `+`는 `New Difficulty`와 `Convert .osu` 두 항목의 팝업을 엽니다. 팝업 밖 클릭이나 Escape는
 팝업만 닫으며 뒤 화면을 실행하지 않습니다.
-난이도명, 제작자, 태그, Accuracy Difficulty(JudgeLevel 1.00~100.00, 0.01 단위, 기본 50.00), 기본 BPM과 offset을 입력한 뒤 `생성 후 편집`을 선택합니다.
-Taiko·120 BPM·offset 0ms·4/4로 시작하며 노트·타이밍 명령·YME 효과는 비어 있습니다.
-곡 자체의 YMM과 음원은 공유하고 수정하지 않습니다. 취소하면 파일을 만들지 않습니다.
+New Difficulty는 입력 창 없이 에디터를 그 곡의 [만들기 전 상태](ChartEditor.md#새-난이도)로 엽니다(Metadata 탭, `New` 표시,
+저장 버튼은 Create, Compose·Audio 잠김). Taiko·120 BPM·offset 0ms·4/4이며 노트·타이밍 명령·YME 효과는 비어 있습니다.
+Metadata에서 난이도명, 제작자, 태그, Accuracy Difficulty(JudgeLevel 1.00~100.00, 0.01 단위, 기본 50.00), HP, 기본 BPM과
+offset, BG를 입력하고 Create를 누르면 파일을 만든 뒤 같은 에디터에서 이어서 편집합니다. 곡 자체의 YMM과 음원은
+공유하고 수정하지 않습니다. Create 전에 나가면 파일을 만들지 않습니다.
 
 기존 난이도가 있는 곡은 그 난이도들의 곡 폴더를 재사용하고, 없는 곡은 YMM 파일명으로
 `Songs/Patterns/<YMM 이름>/<난이도명>/<YMM 이름> [<난이도명>].ymp/.yme`를 만듭니다.
 YMP의 YMM 참조는 Songs 기준, YME 참조는 같은 난이도 폴더 기준입니다.
 파일명 예약문자·경로·빈 이름은 거부하며 기존 난이도 폴더는 빈 폴더여도 덮어쓰지 않습니다.
-입력/파일 오류는 창에 표시하고 값을 유지하여 수정할 수 있습니다.
+이름·폴더 문제는 에디터 상태 문구에 이유를 두고, 그 밖의 쓰기 실패는 `Create failed` 경고 대화상자로 알립니다.
+어느 쪽이든 입력한 값은 그대로입니다.
 
-`MusicSelectView`는 생성 의도만 반환하고 `NewDifficultyDialog`가 입력 창/오류 표시를,
-`EditorPatternCreation`이 형식 검증·경로·새 파일 쓰기/실패 정리를 소유합니다.
-Scene은 생성된 경로를 기존 GameplayLaunchRequest에 넣어 deferred Editor 전환을 수행합니다.
+`MusicSelectView`는 생성 의도만 반환하고, Scene은 곡 항목을 `GameplayLaunchRequest::editorNewDifficulty`에 넣어
+deferred Editor 전환을 수행합니다. 모드의 `NewDocument`·`CreateDocument`가 초안과 Create를,
+`EditorScene/Submodules/EditorPatternCreation`이 형식 검증·경로·새 파일 쓰기/실패 정리를 소유합니다.
 재진입한 곡 선택은 카탈로그에서 새 난이도를 다시 읽습니다.
 
 ## osu!taiko 가져오기
@@ -79,10 +78,10 @@ Songs의 기존 YMM이 참조하는 음원을 크기와 실제 바이트로 비�
 Client의 OsuImportValidation이 반환 JSON v1과 저장 파일의 참조·행 수를 확인하고 실제 모드 세션을
 구성하여 원본 객체 수와 생성된 플레이 노트 수를 비교합니다. 실패는 공용 [경고 대화상자](TextManagement.md#경고-대화상자)
 (`Conversion failed`, 진단 상자에 변환기 출력, OK)로 표시하며
-기존/공유 Songs 파일은 삭제하지 않습니다. 성공한 결과만 완료 처리 후 목록을 갱신합니다.
+기존/공유 Songs 파일은 삭제하지 않습니다. 성공한 결과만 목록을 갱신합니다.
 
-변환 후 완료/변환 경고를 표시하고 곡 목록을 갱신합니다. 편집기는 목록에서 난이도를
-선택하여 엽니다. 원본 `.osu`와 음원은 수정하지 않습니다.
+변환이 끝나면 완료 안내 없이 곡 목록에 추가합니다. 변환하는 동안 곡 카드는 잠기며 따로 진행 표시는 없습니다.
+성공했을 때의 변환기 출력은 표시하지 않습니다. 편집기는 목록에서 난이도를 선택하여 엽니다. 원본 `.osu`와 음원은 수정하지 않습니다.
 `EditorOsuImport`가 파일 대화창과 백그라운드 자식 프로세스/결과 수명을 소유합니다.
 Scene은 완료 결과에 따라 카탈로그만 갱신하며 프레임에서 변환/음원 비교를 기다리지 않습니다.
 worker는 복사한 경로만 사용하고 프로그램 종료 시 진행 중인 작업이 끝날 때까지 기다릴 수 있습니다.

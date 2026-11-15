@@ -16,6 +16,8 @@ class TaikoEditorMode final : public IEditorMode
     }
     std::unique_ptr<IEditorDocument> OpenDocument(
         const GameplayLaunchRequest &) const override;
+    std::unique_ptr<IEditorDocument> NewDocument(const GameplayLaunchRequest &) const override;
+    GameplayLaunchRequest CreateDocument(const IEditorDocument &, const GameplayLaunchRequest &) const override;
     void SelectTool(int) override;
     void HandleToolKeys(IEditorContext &, const PhantomCore::InputState &) override;
     bool HandleToolKey(IEditorContext &, std::uint16_t);
@@ -35,6 +37,10 @@ class TaikoEditorMode final : public IEditorMode
     void DrawTools(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     void DrawChart(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     void DrawToolMenu(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
+    void DrawNotePanel(IEditorModeCanvas &canvas, IEditorContext &state, const TextCatalog &catalog) override
+    {
+        inspector_.Draw(canvas, state, catalog);
+    }
     void EditScore(IEditorContext &, PhantomCore::Point, bool erase) override;
     void ScrollScore(IEditorContext &, int direction) override;
     bool BeginScoreSelection(IEditorContext &, PhantomCore::Point) override;
@@ -48,11 +54,29 @@ class TaikoEditorMode final : public IEditorMode
 
   private:
     std::optional<MusicalPosition> SnapPosition(IEditorContext &, PhantomCore::Point) const;
+    // Areas lent by the last build; input hit-tests against what was drawn.
+    EditorModeAreas areas_;
     std::optional<MusicalPosition> selectionAnchor_;
     PhantomCore::Point selectionStart_{};
     bool selecting_{};
     void DrawOverview(IEditorModeCanvas &, IEditorContext &, const TextCatalog &);
     void DrawRealtime(IEditorModeCanvas &, IEditorContext &, const TextCatalog &);
+    void DrawPreview(IEditorModeCanvas &, IEditorContext &);
+    // One measure of the score view: its bar line x, number band top, lane band and width.
+    struct ScoreCell
+    {
+        std::int64_t measure{};
+        float x0{}, top{}, laneTop{}, width{}, laneHeight{}, bandLeft{}, bandRight{};
+    };
+    [[nodiscard]] const ScoreCell *ScoreCellAt(std::int64_t measure) const;
+    [[nodiscard]] const ScoreCell *ScoreCellNear(PhantomCore::Point) const;
+    [[nodiscard]] std::optional<PhantomCore::Point> ScorePoint(const MusicalTimeline &, MusicalPosition) const;
+    void DrawScoreBodies(IEditorModeCanvas &, IEditorContext &, const std::vector<CompiledPatternNote> &);
+    void DrawScoreRangeAndCursor(IEditorModeCanvas &, IEditorContext &);
+    std::vector<ScoreCell> scoreCells_;
+    // Metadata: an empty Chart by row added but not yet named.
+    bool addingMaker_{};
+    float scoreNormalRadius_{}, scoreBigRadius_{};
     void Circle(IEditorModeCanvas &, float x, float y, int type, float radius);
     const std::filesystem::path &SkinImage(std::wstring_view);
     std::uint64_t skinRevision_{};

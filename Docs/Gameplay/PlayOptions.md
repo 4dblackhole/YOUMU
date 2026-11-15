@@ -142,8 +142,7 @@ Completed·Cleared·Pause menu used의 Any/On/Off입니다. 스크롤속도는 �
 `TaikoSessionBuilder`는 판정/스크롤/박 컴파일을 맡습니다.
 `RhythmTimer`는 배속을 포함한 공통 시간 변환,
 `GameplayAudioRouter`는 음정 정책과 clip/bus/예약 재생을 맡습니다.
-시계는 에디터 Test를 위해 0.25배속까지 허용하지만 일반 `PlayOptions.accelerate` 검증은
-0.5~2.0을 유지합니다. Test의 가변 배속은 일시 상태이며 결과/설정 파일에 저장하지 않습니다.
+`RhythmTimer` 자체는 0.25배속까지 받지만 플레이의 `PlayOptions.accelerate` 검증은 0.5~2.0입니다.
 `PlayOptionsPanel`은 플레이 옵션 편집·검증·닫기 적용·Reset과 네이티브 입력 수명,
 그 Submodules/PlayOptionsLayout은 세 열과 펼침 좌표를 소유합니다. 공용 `UiModal`은 막·창·제목·바닥 버튼·오류 줄과
 모달 부품(밑줄 입력칸·스위치·밑줄 탭)을 그립니다. `HpGaugeKind`는 고를 수 있는 게이지와 클리어 기준 목록입니다.
