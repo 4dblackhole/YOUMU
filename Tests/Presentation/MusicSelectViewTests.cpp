@@ -767,6 +767,32 @@ namespace
               detail("Detail.HP.Value") == L"9.00" &&
               detail("Detail.BPM.Value") == L"120–180" &&
               detail("Detail.Length.Value") == L"2:05", "Selected pattern details use real data.");
+        {
+            // The figures sit in a 448-wide table: strong rules above and below, light ones between rows and columns.
+            const auto *information = Find(canvas->Root(), "SongInformation");
+            if (!information) throw std::runtime_error("Song information column missing.");
+            const auto column = information->BoundsInCanvas();
+            const float tableLeft = column.x + column.width * .5F - 224.0F;
+            const float tableTop = column.y + column.height - 419.5F;
+            std::array<Rect, 5> rules{};
+            for (std::size_t i = 0; i < rules.size(); ++i)
+            {
+                const auto *rule = Find(canvas->Root(), ("Detail.Rule." + std::to_string(i)).c_str());
+                Check(rule != nullptr && rule->IsVisible(), "Every figure table rule is shown for a chart.");
+                rules[i] = rule->BoundsInCanvas();
+            }
+            Check(std::abs(rules[0].x - tableLeft) < .01F && std::abs(rules[0].width - 448.0F) < .01F &&
+                      std::abs(rules[0].y + 1.0F - tableTop) < .01F && std::abs(rules[1].y - (tableTop - 137.0F)) < .01F,
+                  "Strong rules close the figure table above and below.");
+            Check(std::abs(rules[2].y - (tableTop - 69.0F)) < .01F && std::abs(rules[3].x - (tableLeft + 448.0F / 3.0F)) < .01F &&
+                      std::abs(rules[4].x - (tableLeft + 896.0F / 3.0F)) < .01F && std::abs(rules[3].height - 137.0F) < .01F,
+                  "Light rules divide the two rows and the three columns.");
+            const auto *artistIcon = Find(canvas->Root(), "ArtistIcon");
+            const bool hasArtist = !detail("SelectedArtist").empty();
+            Check(artistIcon != nullptr && artistIcon->IsVisible() == hasArtist &&
+                      artistIcon->BoundsInCanvas().x + 16.0F < column.x + column.width * .5F,
+                  "A music note stands before the artist name, as the quill does before the creator.");
+        }
         const auto *keyPanel = Find(canvas->Root(), "Options.Taiko.Keys");
         if (!keyPanel)
             throw std::runtime_error("Taiko key settings modal missing.");

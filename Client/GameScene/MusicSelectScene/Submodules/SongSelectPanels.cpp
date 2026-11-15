@@ -90,12 +90,15 @@ void MusicSelectView::CreateSongInformationPanel()
 
     selectedArtistLabel_ =
         &CreateCaption(panel, {}, L"", 15.0F, 700, theme::InkSoft, "SelectedArtist", TextAlignment::Center);
+    // A music note before the artist and a quill before the creator, in the light cobalt of the mock-up.
+    artistIcon_ = &CreateSprite(panel, {}, screenVisuals_.RegisterImage(Common(L"Icons.music")), "ArtistIcon");
+    RequireComponent<SpriteVisualComponent>(*artistIcon_).SetTint(theme::NameIcon);
     selectedSongLabel_ =
         &CreateCaption(panel, {}, L"", 30.0F, 900, theme::Ink, "SelectedSong", TextAlignment::Center);
     selectedCreatorLabel_ =
         &CreateCaption(panel, {}, L"", 14.0F, 700, theme::Ink, "SelectedCreator", TextAlignment::Center);
     creatorIcon_ = &CreateSprite(panel, {}, screenVisuals_.RegisterImage(Common(L"Icons.pencil")), "CreatorIcon");
-    RequireComponent<SpriteVisualComponent>(*creatorIcon_).SetTint(theme::InkSoft);
+    RequireComponent<SpriteVisualComponent>(*creatorIcon_).SetTint(theme::NameIcon);
 
     // Cobalt parallelogram with the chart name and its difficulty value.
     difficultyBlock_ = &CreatePanel(panel, {}, "DifficultyInformation");
@@ -108,6 +111,11 @@ void MusicSelectView::CreateSongInformationPanel()
     static_cast<void>(CreateNumber(*levelBadge_, {0.0F, 0.0F, 40.0F, 22.0F}, L"—", 14.0F, 800, theme::BrandDeep,
                                    "SelectedLevel", TextAlignment::Center));
 
+    for (std::size_t i = 0; i < statRules_.size(); ++i)
+    {
+        statRules_[i] = &CreateSprite(panel, {}, {}, "Detail.Rule." + std::to_string(i));
+        ApplyFlatStyle(*statRules_[i], i < 2 ? theme::RuleStrong : theme::Rule);
+    }
     for (std::size_t i = 0; i < StatNames.size(); ++i)
     {
         const std::string name = std::string("Detail.") + StatNames[i];
@@ -331,6 +339,9 @@ void MusicSelectView::RefreshSelectionPresentation()
         for (auto *caption : statCaptions_)
             if (caption)
                 caption->SetVisible(false);
+        for (auto *rule : statRules_)
+            if (rule)
+                rule->SetVisible(false);
         if (goButton_)
             goButton_->SetEnabled(false);
     };
@@ -339,6 +350,7 @@ void MusicSelectView::RefreshSelectionPresentation()
         artwork_.SetImage({}, board_->NodeSize());
         SetCaption(*selectedSongLabel_, L"");
         SetCaption(*selectedArtistLabel_, L"");
+        artistIcon_->SetVisible(false);
         clearPattern();
         return;
     }
@@ -348,7 +360,9 @@ void MusicSelectView::RefreshSelectionPresentation()
     const auto &song =
         selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
     SetCaption(*selectedSongLabel_, SongTitle(song));
-    SetCaption(*selectedArtistLabel_, FirstName(song.music.artists));
+    const std::wstring artist = FirstName(song.music.artists);
+    SetCaption(*selectedArtistLabel_, artist);
+    artistIcon_->SetVisible(!artist.empty());
     if (song.patterns.empty())
     {
         artwork_.SetImage({}, board_->NodeSize());
@@ -397,5 +411,8 @@ void MusicSelectView::RefreshSelectionPresentation()
         if (statValues_[i])
             RequireComponent<TextVisualComponent>(*statValues_[i]).SetText(values[i]);
     }
+    for (auto *rule : statRules_)
+        if (rule)
+            rule->SetVisible(true);
     UpdateSongInformationLayout();
 }

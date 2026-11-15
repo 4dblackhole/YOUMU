@@ -102,7 +102,7 @@ void MusicSelectView::UpdateRecordPanelLayout()
 void MusicSelectView::UpdateSongInformationLayout()
 {
     if (!AllCreated(informationPanel_, selectedSongLabel_, selectedArtistLabel_, selectedCreatorLabel_,
-                    difficultyBlock_, selectedPatternLabel_, levelBadge_, creatorIcon_))
+                    difficultyBlock_, selectedPatternLabel_, levelBadge_, creatorIcon_, artistIcon_))
     {
         return;
     }
@@ -121,11 +121,15 @@ void MusicSelectView::UpdateSongInformationLayout()
     selectedSongLabel_->SetClipRect({0.0F, 0.0F, textWidth, 36.0F});
     selectedCreatorLabel_->SetBounds(row(layout::CreatorTop, 20.0F));
 
-    // The quill sits right before the centred creator name.
-    const auto &creator = RequireComponent<TextVisualComponent>(*selectedCreatorLabel_);
-    const float creatorWidth = std::min(EstimateCaptionWidth(creator.Text(), 14.0F), textWidth);
-    creatorIcon_->SetBounds(
-        TopLeft({center - creatorWidth * 0.5F - 20.0F, layout::CreatorTop + 2.0F, 16.0F, 16.0F}, panel.height));
+    // The note and the quill sit right before the centred artist and creator names.
+    const auto placeIcon = [&](Visual2DNode &icon, Visual2DNode &label, const float size, const float top) {
+        const float width = std::min(EstimateCaptionWidth(RequireComponent<TextVisualComponent>(label).Text(), size),
+                                     textWidth);
+        const float left = center - width * 0.5F - layout::NameIconGap - layout::NameIconSize;
+        icon.SetBounds(TopLeft({left, top, layout::NameIconSize, layout::NameIconSize}, panel.height));
+    };
+    placeIcon(*artistIcon_, *selectedArtistLabel_, 15.0F, layout::ArtistTop + 3.0F);
+    placeIcon(*creatorIcon_, *selectedCreatorLabel_, 14.0F, layout::CreatorTop + 2.0F);
 
     // The block grows with the chart name and keeps the value badge at its right end.
     constexpr float badgeWidth = 40.0F, badgeHeight = 22.0F, nameLeft = 16.0F, badgeGap = 8.0F, blockRight = 14.0F;
@@ -143,6 +147,16 @@ void MusicSelectView::UpdateSongInformationLayout()
     levelBadge_->Children().front()->SetBounds({0.0F, 0.0F, badgeWidth, badgeHeight});
 
     const float gridLeft = center - layout::StatWidth * 1.5F;
+    const float tableWidth = layout::StatWidth * 3.0F;
+    const std::array<Rect, 5> rules{
+        Rect{gridLeft, layout::StatTableTop, tableWidth, 1.0F},
+        Rect{gridLeft, layout::StatTableTop + layout::StatTableHeight - 1.0F, tableWidth, 1.0F},
+        Rect{gridLeft, layout::StatRowRule, tableWidth, 1.0F},
+        Rect{gridLeft + layout::StatWidth, layout::StatTableTop, 1.0F, layout::StatTableHeight},
+        Rect{gridLeft + layout::StatWidth * 2.0F, layout::StatTableTop, 1.0F, layout::StatTableHeight}};
+    for (std::size_t i = 0; i < rules.size(); ++i)
+        if (statRules_[i] != nullptr)
+            statRules_[i]->SetBounds(TopLeft(rules[i], panel.height));
     for (std::size_t i = 0; i < statCaptions_.size(); ++i)
     {
         if (statCaptions_[i] == nullptr || statValues_[i] == nullptr)

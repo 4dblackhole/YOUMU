@@ -135,7 +135,9 @@ class MusicSelectView final
     PhantomCore::Visual2DNode *informationPanel_{};
     PhantomCore::Visual2DNode *difficultyBlock_{};
     PhantomCore::Visual2DNode *levelBadge_{};
-    PhantomCore::Visual2DNode *creatorIcon_{};
+    PhantomCore::Visual2DNode *creatorIcon_{}, *artistIcon_{};
+    // Table rules: top, bottom, between the rows, then between the columns.
+    std::array<PhantomCore::Visual2DNode *, 5> statRules_{};
     std::array<PhantomCore::Visual2DNode *, 6> statCaptions_{};
     std::array<PhantomCore::Visual2DNode *, 6> statValues_{};
     PhantomCore::Visual2DNode *browserPanel_{};

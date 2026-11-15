@@ -79,9 +79,14 @@ namespace song_select
         constexpr float CreatorTop = 335.5F;
         constexpr float DifficultyBlockTop = 367.5F;
         constexpr PhantomCore::Size DifficultyBlock{196.0F / 1.5F, 32.0F};
-        constexpr float StatWidth = 400.0F / 3.0F;
+        // Figures: a 3x2 table 448 wide. Strong rules above and below, light rules between rows and columns.
+        constexpr float StatWidth = 448.0F / 3.0F;
         constexpr float StatTop = 429.5F;
         constexpr float StatPitch = 69.0F;
+        constexpr float StatTableTop = StatTop - 10.0F;
+        constexpr float StatTableHeight = 137.0F;
+        constexpr float StatRowRule = StatTop + StatPitch - 11.0F;
+        constexpr float NameIconSize = 16.0F, NameIconGap = 6.0F;
 
         // Footer.
         constexpr PhantomCore::Size Back{203.0F / 1.5F, 54.0F};
