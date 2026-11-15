@@ -1,4 +1,3 @@
-#include "EditorPatternCreation.h"
 #include "EditorView.h"
 #include <algorithm>
 #include <cmath>
@@ -146,26 +145,6 @@ void EditorView::DrawPlaybackRateControl(float x)
     Control(slower, [this] { StepPlaybackRate(-1, shiftDown_); });
     Control(faster, [this] { StepPlaybackRate(1, shiftDown_); });
     Control(value, [this] { state_.SetPlaybackRate(1); });
-}
-
-void EditorView::SaveDocument()
-{
-    if (!state_.Creating())
-    {
-        state_.Save();
-        return;
-    }
-    try
-    {
-        state_.Save();
-    }
-    catch (const Error &error)
-    {
-        const auto key = error.reason == Failure::ExistingFolder ? "MusicSelect.createDifficultyExists"
-                         : error.reason == Failure::InvalidName  ? "MusicSelect.createDifficultyNameError"
-                                                                 : "MusicSelect.createDifficultyError";
-        state_.SetStatus(Utf8(std::wstring(texts_.Get(key))) + " (" + error.what() + ")");
-    }
 }
 
 void EditorView::StepPlaybackRate(int direction, bool coarse)

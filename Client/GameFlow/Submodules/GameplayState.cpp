@@ -5,31 +5,6 @@
 
 using namespace PhantomCore;
 
-void GameplaySessionController::SetEditorTestRate(double rate, const UpdateContext &context)
-{
-    const bool rateInRange = std::isfinite(rate) && rate >= GameplayLaunchRequest::EditorTestMinimumRate &&
-                             rate <= GameplayLaunchRequest::EditorTestMaximumRate;
-    if (!launchRequest_.editorTestStart || !rateInRange)
-        throw std::invalid_argument("Editor Test rate must be within 0.25..2.0.");
-    if (rate == playbackRate_ || state_ == PlayState::Ending) return;
-    const auto clock = context.audio.CaptureClockSnapshot();
-    if (state_ == PlayState::Gameplay)
-        time_ = timer_.Now(clock.performanceCounterTicks);
-    const bool running = state_ == PlayState::Gameplay;
-    if (playbackStart_)
-    {
-        audio_.PauseMusicAndStopSamples();
-        playbackStart_.reset();
-        audio_.ResetPollDeadline();
-    }
-    playbackRate_ = rate;
-    timer_.Start(clock.performanceCounterTicks, clock.performanceCounterFrequency, time_, rate);
-    timer_.AnchorDspClock(time_, clock.dspClock, clock.sampleRate);
-    if (!running) timer_.Pause(clock.performanceCounterTicks);
-    if (!audio_.SetEditorTestRate(rate, time_, timer_))
-        FailPlaybackPreparation();
-}
-
 bool GameplaySessionController::PrepareResources(const UpdateContext &context)
 {
     // Ready and Failed are latched; only the transition is handled here.
@@ -42,18 +17,11 @@ bool GameplaySessionController::PrepareResources(const UpdateContext &context)
         FailPlaybackPreparation();
         return false;
     }
-    if (prepared == AudioPreparationState::Ready && launchRequest_.editorTestStart)
-        testEndTime_ = std::max(testEndTime_, audio_.MusicDuration());
     return prepared == AudioPreparationState::Ready;
 }
 
 void GameplaySessionController::UpdateLoading(const UpdateContext &context)
 {
-    if (launchRequest_.editorTestStart && context.input.WasKeyPressed(VK_SPACE))
-    {
-        PauseAt(context.audio.CaptureClockSnapshot().performanceCounterTicks, true);
-        return;
-    }
     if (context.input.WasKeyPressed(VK_ESCAPE))
     {
         OpenPauseMenu(context);
@@ -67,19 +35,6 @@ void GameplaySessionController::UpdatePause(const UpdateContext &context)
 {
     if (!PrepareResources(context))
         return;
-    if (launchRequest_.editorTestStart)
-    {
-        if (context.input.WasKeyPressed(VK_SPACE))
-        {
-            if (playbackRequested_)
-                PauseAt(context.audio.CaptureClockSnapshot().performanceCounterTicks, true);
-            else if (CanContinue())
-                static_cast<void>(ContinueAt(context, time_, PlayControlType::Resume));
-        }
-        else if (playbackRequested_)
-            PrepareGameplay(context);
-        return;
-    }
     if (playbackRequested_)
     {
         // ESC cancels the pending start at its frozen target. Record the newly

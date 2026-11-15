@@ -60,7 +60,6 @@ EditorTextSet Editor(const TextCatalog &texts)
             texts.Get("Editor.musicSpectrum"),
             texts.Get("Editor.hitSoundSpectrum"),
             texts.Get("Editor.discardChanges"),
-            texts.Get("Editor.editorTitleSuffix"),
             texts.Get("Editor.ok"),
             texts.Get("Editor.cancel")};
 }

@@ -161,6 +161,7 @@
     <ClInclude Include="EditorScene\Submodules\EditorMenuBar.h" />
     <ClCompile Include="EditorScene\Submodules\EditorComposeView.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorChannelView.cpp" />
+    <ClCompile Include="EditorScene\Submodules\EditorAlerts.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorCurvesDialog.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorTextFields.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorTextFields.h" />
@@ -387,10 +388,6 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="EditorScene\Submodules\EditorWorkspaceStore.cpp" />
-    <ClInclude Include="EditorScene\Submodules\EditorWorkspaceStore.h" />
-    <ClCompile Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.cpp" />
-    <ClInclude Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.h" />
   </ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsRail.cpp" /></ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsVolume.cpp" /></ItemGroup>

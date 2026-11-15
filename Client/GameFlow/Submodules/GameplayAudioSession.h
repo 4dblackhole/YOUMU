@@ -22,8 +22,7 @@ class GameplayAudioSession final
     // Registers mode hit sounds, chart samples, the optional metronome and the
     // music track, then applies play options. Registration failures are kept
     // as Error(); resources fail to prepare until Register is called again.
-    void Register(PhantomCore::AudioSystem &audio, const PlaySession &session, const GameplayLaunchRequest &request,
-                  double playbackRate, RhythmTime time, const RhythmTimer &timer);
+    void Register(PhantomCore::AudioSystem &audio, const PlaySession &session, const GameplayLaunchRequest &request);
     [[nodiscard]] bool Registered() const noexcept { return registered_; }
 
     // Unthrottled readiness check before the Scene starts.
@@ -35,7 +34,6 @@ class GameplayAudioSession final
     void RestartResourcePolling() noexcept;
     // The next throttled poll runs on the next frame.
     void ResetPollDeadline() noexcept { nextPoll_ = 0; }
-    [[nodiscard]] RhythmTime MusicDuration() const;
 
     // Throttled music seek before a start. Ready also when there is no music
     // to prepare (debug playback or a session without a music track).
@@ -43,7 +41,6 @@ class GameplayAudioSession final
                                                                     bool skipMusic);
     // Starts the music at the timer's anchored deadline; true without music.
     [[nodiscard]] bool StartPreparedMusic(RhythmTime time, const RhythmTimer &timer);
-    [[nodiscard]] bool SetEditorTestRate(double rate, RhythmTime time, const RhythmTimer &timer);
 
     void SeekMetronome(std::span<const MetronomeBeat> beats, RhythmTime time) noexcept;
     // Schedules beats within the next 100 ms of chart time at most once each.

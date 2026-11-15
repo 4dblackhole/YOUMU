@@ -52,7 +52,6 @@ class GameplayPresenter final
     {
         return backgroundWarning_;
     }
-    void SetDebugVisible(bool visible);
     [[nodiscard]] RhythmTime InitialTimelineTime() const;
     void UpdateInputPresentation(const PhantomCore::InputState &input, const double deltaSeconds);
 

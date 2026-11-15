@@ -78,6 +78,7 @@
     <ClInclude Include="EditorScene\Submodules\EditorMenuBar.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorComposeView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorChannelView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="EditorScene\Submodules\EditorAlerts.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorCurvesDialog.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorTextFields.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorTextFields.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
@@ -296,10 +297,6 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayStatisticsView.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="EditorScene\Submodules\EditorWorkspaceStore.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
-    <ClInclude Include="EditorScene\Submodules\EditorWorkspaceStore.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
-    <ClCompile Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
-    <ClInclude Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsRail.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsVolume.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>

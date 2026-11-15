@@ -1,7 +1,6 @@
 #include "EditorView.h"
 #include "EditorTime.h"
 #include <shellapi.h>
-#include "Texts/GameIdentity.h"
 #include <algorithm>
 #include <format>
 #include <sstream>
@@ -91,6 +90,13 @@ bool EditorView::Update(const UpdateContext &context)
     }
     try
     {
+        if (alert_.IsOpen())
+        {
+            leave = UpdateAlert(input);
+            if (state_.NeedsRebuild())
+                Build();
+            return leave;
+        }
         if (auto rejected = fields_.Update())
             state_.SetStatus(*rejected);
         const auto menu = UpdateMenu(input);
@@ -143,9 +149,10 @@ bool EditorView::UpdateKeyboard(const InputState &input)
             leave = true;
     }
     if (leave && state_.Document().Dirty())
-        leave = MessageBoxW(GetActiveWindow(), Texts().discardChanges.data(),
-                            std::format(L"{} {}", GameName, Texts().editorTitleSuffix).c_str(),
-                            MB_YESNO | MB_ICONQUESTION) == IDYES;
+    {
+        ConfirmLeave();
+        leave = false;
+    }
     if (input.WasKeyPressed(VK_DELETE))
         state_.DeleteSelection();
     if (!controlDown && !altDown)
@@ -238,8 +245,8 @@ void EditorView::ExecuteMenuAction(EditorMenuAction action)
     case EditorMenuAction::Undo: state_.Undo(); break;
     case EditorMenuAction::Redo: state_.Redo(); break;
     case EditorMenuAction::Copy: state_.CopySelection(); break;
-    case EditorMenuAction::Paste: state_.PasteSelection(false); break;
-    case EditorMenuAction::PasteWithBlanks: state_.PasteSelection(true); break;
+    case EditorMenuAction::Paste: Paste(false); break;
+    case EditorMenuAction::PasteWithBlanks: Paste(true); break;
     case EditorMenuAction::OpenYmmFolder: OpenDocumentFolder(state_.MusicMetadataPath()); break;
     case EditorMenuAction::OpenYmpFolder: OpenDocumentFolder(state_.Document().SourcePath()); break;
     case EditorMenuAction::OpenYmeFolder: OpenDocumentFolder(state_.Document().Effects().sourcePath); break;

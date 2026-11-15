@@ -66,7 +66,6 @@ class EditorWorkspace final : public IEditorContext
     {
         return creating_;
     }
-    GameplayLaunchRequest TestLaunchRequest() const;
     std::filesystem::path MusicMetadataPath() const;
     const GameplayLaunchRequest &Request() const noexcept
     {

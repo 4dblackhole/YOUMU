@@ -20,7 +20,7 @@ struct MusicSelectTextSet
     std::wstring_view unsupportedModePrefix;
     std::wstring_view patternErrorPrefix;
     std::wstring_view unknownChartError;
-    std::wstring_view newDifficulty, convertOsu, importTitle, importComplete, osuFileFilter;
+    std::wstring_view newDifficulty, convertOsu, osuFileFilter;
 };
 
 [[nodiscard]] MusicSelectTextSet MusicSelect(const TextCatalog &texts);

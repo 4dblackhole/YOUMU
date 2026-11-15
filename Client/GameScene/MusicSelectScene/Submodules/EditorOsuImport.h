@@ -13,7 +13,6 @@ struct EditorOsuImportResult
     bool success{};
     std::string message;
 };
-void ShowOsuImportCompletion(const EditorOsuImportResult &result, const TextCatalog &texts);
 // Worker owns only copied paths and its child process, never Scene/audio/UI objects.
 class EditorOsuImport final
 {

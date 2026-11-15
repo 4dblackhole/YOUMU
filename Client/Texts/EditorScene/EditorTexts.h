@@ -67,7 +67,6 @@ struct EditorTextSet
     std::wstring_view hitSoundSpectrum;
 
     std::wstring_view discardChanges;
-    std::wstring_view editorTitleSuffix;
     std::wstring_view ok;
     std::wstring_view cancel;
 };

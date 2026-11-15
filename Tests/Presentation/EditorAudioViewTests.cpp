@@ -8,7 +8,6 @@
 #include "EditorModeTests.h"
 #include "EditorPlaybackTests.h"
 #include "EditorScene/Submodules/EditorView.h"
-#include "EditorScene/Submodules/EditorWorkspaceStore.h"
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "GameScene/MusicSelectScene/Submodules/SongPreviewController.h"
 #include <chrono>
@@ -39,6 +38,14 @@ struct InputStateTestAccess
         input.Reset();
         input.SetMousePosition(x, y, true);
         input.SetMouseButton(MouseButton::Left, true, 1);
+    }
+    // The frame after Click: the button comes up over the same point.
+    static void Release(InputState &input, int x, int y)
+    {
+        input.Reset();
+        input.SetMousePosition(x, y, true);
+        input.mouseButtonsDown_[static_cast<std::size_t>(MouseButton::Left)] = true;
+        input.SetMouseButton(MouseButton::Left, false, 2);
     }
 };
 } // namespace PhantomCore
@@ -112,9 +119,10 @@ namespace
         return result;
     }
 
-    void TestEditorTestLaunch()
+    // Save publishes the YME it actually wrote, so the session keeps opening that file.
+    void TestSavePublishesEffectPath()
     {
-        const auto root = std::filesystem::absolute("build/fixtures/EditorTestLaunch");
+        const auto root = std::filesystem::absolute("build/fixtures/EditorSaveEffectPath");
         std::filesystem::create_directories(root);
         std::ofstream(root / "Song.ymm") << "Version: 1\nFile: Music.wav\nMusic Name 1: Editor Test\n";
         std::ofstream(root / "Pattern.ymp") <<
@@ -124,36 +132,11 @@ namespace
         request.songsRoot = root;
         auto workspace = std::make_unique<EditorWorkspace>(request);
         workspace->Initialize();
-        workspace->Seek(1234.567);
-        workspace->SetPlaybackRate(2);
-        const auto snapshot = workspace->TestLaunchRequest();
-        Check(snapshot.editorTestStart == RhythmTime{1'234'567} && snapshot.playOptions.accelerate == 1 &&
-                  snapshot.patternPath == request.patternPath && snapshot.musicPath == request.musicPath,
-              "Test starts at the displayed editor time and 1x, using the saved current chart.");
         workspace->AddNote({2, {}}, 1);
-        const auto dirtyRevision = workspace->Document().Revision();
-        bool rejected = false;
-        try { static_cast<void>(workspace->TestLaunchRequest()); }
-        catch (const std::exception &) { rejected = true; }
-        Check(rejected && workspace->Document().Dirty() && workspace->Document().Revision() == dirtyRevision,
-              "An unsaved document cannot become a gameplay Test snapshot.");
         workspace->Save();
-        Check(!workspace->Document().Dirty() && workspace->TestLaunchRequest().effectPath.has_value(),
+        Check(!workspace->Document().Dirty() && workspace->Request().effectPath.has_value() &&
+                  *workspace->Request().effectPath == workspace->Document().Effects().sourcePath,
               "A successful save must publish the actual YME selected by Save.");
-        workspace->AddNote({3, {}}, 2);
-        workspace->Undo();
-        const auto *identity = workspace.get();
-        EditorWorkspaceStore transfer;
-        transfer.Suspend(std::move(workspace));
-        workspace = transfer.Take();
-        Check(workspace.get() == identity && !transfer.Take() && workspace->TimeMilliseconds() == 1234.567 &&
-                  workspace->PlaybackRate() == 2,
-              "Only the original workspace survives the single-use Test return transfer.");
-        workspace->Undo();
-        Check(workspace->Document().Notes().size() == 2 && workspace->Document().Dirty(),
-              "Test return must preserve editor Undo rather than reopen the saved document.");
-        workspace->Redo();
-        Check(!workspace->Document().Dirty(), "Save identity and Redo must survive Test return.");
     }
 
     void TestAudioRangeSelection(Visual2DCanvas &canvas, EditorView &view, EditorWorkspace &state,
@@ -226,19 +209,6 @@ int main(int argc, char** argv)
     {
         std::string assetError;
         Check(InitializeBuiltInAssets(assetError), assetError.c_str());
-        if (argc > 1 && std::string_view(argv[1]) == "--test-launch")
-        {
-            RecordingRenderer renderer;
-            ScreenVisual2DManager visuals;
-            visuals.Initialize(renderer, {1920, 1080});
-            MeshRenderSystem meshes;
-            TextRenderSystem textRendering;
-            AudioSystem audio;
-            TextCatalog texts("Client/Texts/Languages");
-            TestEditorTestLaunch();
-            std::cout << "Editor Test launch and workspace transfer passed.\n";
-            return 0;
-        }
         TestEditorMenu();
         TestEditorPlayback();
         TestEditorMetronome();
@@ -666,6 +636,53 @@ int main(int argc, char** argv)
         clickFrame(rateLeft + 30 + 31, rateY);
         Check(state.PlaybackRate() == 1.0, "Clicking the rate value must return to 1.00x.");
         state.SetPlaybackRate(1);
+        // Leaving with unsaved changes asks through the shared alert. Nothing here saves the bundled chart.
+        {
+            const auto frame = [&](std::uint16_t key) {
+                if (key)
+                    InputStateTestAccess::Key(input, key);
+                else
+                    InputStateTestAccess::Reset(input);
+                return view.Update({0, 0, 1, input, audio, {}});
+            };
+            const auto alertOpen = [&] {
+                // The scrim carries the alert's visibility.
+                const auto *scrim = FindNode(canvas->Root(), "Alert");
+                return scrim != nullptr && scrim->IsVisible();
+            };
+            state.SelectNotes({});
+            state.ClosePanel();
+            state.AddNote({7, {1, 8}}, 1);
+            Check(state.Document().Dirty(), "The alert fixture needs an unsaved edit.");
+            bool left = false;
+            for (int i = 0; i < 3 && !alertOpen(); ++i)
+                left = left || frame(VK_ESCAPE);
+            Check(!left && alertOpen(), "Escape with unsaved changes must ask instead of leaving.");
+            visuals.Render({});
+            Check(hasText(L"Unsaved changes") && hasText(L"Discard") && hasText(L"Cancel") && hasText(L"Save"),
+                  "The unsaved alert offers Discard, Cancel and Save.");
+            const auto timeBefore = state.TimeMilliseconds();
+            Check(!frame('Z') && state.TimeMilliseconds() == timeBefore, "Editor shortcuts must wait behind the alert.");
+            Check(!frame(VK_ESCAPE) && !alertOpen() && state.Document().Dirty(),
+                  "Escape on the alert cancels and keeps the edit.");
+            for (int i = 0; i < 3 && !alertOpen(); ++i)
+                static_cast<void>(frame(VK_ESCAPE));
+            static_cast<void>(frame(0));
+            const auto *discard = FindNode(canvas->Root(), "Alert.Button0");
+            Check(discard != nullptr && alertOpen(), "The alert must reopen with its Discard button.");
+            const auto bounds = discard->BoundsInCanvas();
+            const auto logical = canvas->LogicalSize();
+            const int x = static_cast<int>((bounds.x + bounds.width * .5F + logical.width * .5F) * 1.5F);
+            const int y = static_cast<int>((logical.height * .5F - bounds.y - bounds.height * .5F) * 1.5F);
+            InputStateTestAccess::Click(input, x, y);
+            left = view.Update({0, 0, 1, input, audio, {}});
+            InputStateTestAccess::Release(input, x, y);
+            left = view.Update({0, 0, 1, input, audio, {}}) || left;
+            Check(left && !alertOpen(), "Discard on the alert must leave the editor.");
+            state.Undo();
+            Check(!state.Document().Dirty(), "The alert fixture must restore the bundled chart's saved state.");
+            static_cast<void>(frame(0));
+        }
         visuals.OnResize(900, 720);
         view.Resize(900, 720);
         view.Build();
@@ -685,7 +702,7 @@ int main(int argc, char** argv)
         visuals.OnResize(1920, 1080);
         TestEditorModes(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts,
                         [&renderer]() -> const std::vector<DrawPacket> & { return renderer.packets; });
-        TestEditorTestLaunch();
+        TestSavePublishesEffectPath();
         std::cout << "Editor audio view tests passed.\n";
         return 0;
     }

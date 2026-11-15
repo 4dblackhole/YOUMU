@@ -34,14 +34,10 @@ void GameplaySessionController::InitializeSession()
     GameplaySessionFactory::PrepareDebugLaunchRequest(launchRequest_, debugMode_);
     if (!session_)
         session_ = GameplaySessionFactory::Create(launchRequest_, debugMode_);
-    if (!launchRequest_.editorTestStart && !session_->CanEnterGameplay())
-        throw std::runtime_error("A chart with no playable notes is available only in editor preview/test.");
+    if (!session_->CanEnterGameplay())
+        throw std::runtime_error("A chart with no playable notes cannot be played.");
     heldKeys_.reserve(session_->InputMapping().size());
-    playbackRate_ = launchRequest_.editorTestStart ? 1.0 : session_->Options().accelerate;
-    if (launchRequest_.editorTestStart)
-        for (const auto &lane : session_->Gear().Lanes())
-            for (const auto &note : lane->Notes())
-                testEndTime_ = std::max(testEndTime_, note->ExpireTime());
+    playbackRate_ = session_->Options().accelerate;
     time_ = initialTime_;
     sessionInitialized_ = true;
 }
@@ -64,17 +60,14 @@ bool GameplaySessionController::PrepareSession()
 
 void GameplaySessionController::RegisterAudio(AudioSystem &audio)
 {
-    audio_.Register(audio, *session_, launchRequest_, playbackRate_, time_, timer_);
+    audio_.Register(audio, *session_, launchRequest_);
 }
 
 AudioPreparationState GameplaySessionController::PrepareAudioResources(AudioSystem &audio)
 {
     if (!audio_.Registered())
         RegisterAudio(audio);
-    const auto prepared = audio_.PollResourcesNow();
-    if (launchRequest_.editorTestStart && prepared == AudioPreparationState::Ready)
-        testEndTime_ = std::max(testEndTime_, audio_.MusicDuration());
-    return prepared;
+    return audio_.PollResourcesNow();
 }
 void GameplaySessionController::Start(const EngineServices &services,
                                       const RhythmTime initialTime)
@@ -145,7 +138,7 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
         audio_.ScheduleMetronome(session_->metronomeBeats, time_, playbackRate_, timer_);
     if (exitTicks)
     {
-        if (!launchRequest_.editorTestStart && IsPatternComplete())
+        if (IsPatternComplete())
             EnterEnding(PlayEndReason::Completed);
         else
             PauseAt(*exitTicks, true);
@@ -154,9 +147,7 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
     // Completion is only detected while the song clock runs without the pause menu.
     if (pauseMenuOpen_ || timer_.CurrentState() != RhythmTimer::State::Running)
         return;
-    if (launchRequest_.editorTestStart && time_ >= testEndTime_ && IsPatternComplete())
-        EnterEnding(PlayEndReason::Completed);
-    else if (!launchRequest_.editorTestStart && !debugMode_ && IsPatternComplete())
+    if (!debugMode_ && IsPatternComplete())
     {
         completedElapsedSeconds_ += context.deltaSeconds;
         if (completedElapsedSeconds_ >= 3.0)

@@ -22,14 +22,14 @@ class PlaySessionLoader final
                 CheckChartLoadCancellation(stop);
                 auto result = CreatePlayGameMode(request.mode,
                     {RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000}, request.inputKeys,
-                     request.playOptions, request.editorTestStart})
+                     request.playOptions})
                     ->LoadSession(request.patternPath, request.effectPath, stop);
                 CheckChartLoadCancellation(stop);
-                if (result.Succeeded() && !request.editorTestStart && !result.session->CanEnterGameplay())
+                if (result.Succeeded() && !result.session->CanEnterGameplay())
                 {
                     result.session.reset();
                     result.diagnostics.push_back({DiagnosticSeverity::Error, {request.patternPath, 1, 1},
-                        "A chart with no playable notes is available only in editor preview/test."});
+                        "A chart with no playable notes cannot be played."});
                 }
                 return result;
             }

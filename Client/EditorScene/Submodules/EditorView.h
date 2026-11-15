@@ -5,6 +5,7 @@
 #include "EditorTextFields.h"
 #include "EditorVisual.h"
 #include "EditorWorkspace.h"
+#include "Presentation/UiAlert.h"
 #include "Texts/EditorScene/EditorTexts.h"
 #include <array>
 #include <functional>
@@ -43,7 +44,6 @@ class EditorView final : public IEditorModeCanvas
     void Build();
     void ReloadSize();
     bool Update(const PhantomCore::UpdateContext &context);
-    bool TakeTestRequest() noexcept { return std::exchange(testRequested_, false); }
 
   private:
     // Frame and drawing primitives.
@@ -144,8 +144,21 @@ class EditorView final : public IEditorModeCanvas
     bool UpdateKeyboard(const PhantomCore::InputState &);
     void UpdatePointer(const PhantomCore::UpdateContext &);
     void StepPlaybackRate(int direction, bool coarse);
-    // Save, or Create for a new difficulty (its failures are explained in the selected language).
-    void SaveDocument();
+    // Save, or Create for a new difficulty. A failure opens the alert (a rejected name or an existing
+    // folder goes to the status line); returns whether the document was written.
+    bool SaveDocument();
+    void Paste(bool includeBlanks);
+    // Shared alert (UI-02): unsaved changes on leaving, save and paste failures. While it is open it
+    // takes the pointer and keys; returns true when the editor should leave.
+    enum class AlertPurpose
+    {
+        Notice,
+        Leave
+    };
+    void ShowAlert(AlertContent content, AlertPurpose purpose);
+    void ShowFailure(AlertKind kind, std::string_view titleKey, std::string_view messageKey, std::string detail);
+    void ConfirmLeave();
+    bool UpdateAlert(const PhantomCore::InputState &input);
     void StepSpacing(int direction);
 
     // IEditorModeCanvas
@@ -175,6 +188,9 @@ class EditorView final : public IEditorModeCanvas
     std::optional<RhythmTime> audioSelectionAnchor_;
     double audioSelectionViewBegin_{}, audioSelectionViewWindow_{};
     PhantomCore::Visual2DInputRouter sliderInput_;
+    UiAlert alert_;
+    PhantomCore::Visual2DInputRouter alertInput_;
+    AlertPurpose alertPurpose_{};
     EditorMenuBar menuBar_;
     EditorTextFields fields_;
     // Rectangles of this build's fields: a click elsewhere ends typing.
@@ -186,10 +202,9 @@ class EditorView final : public IEditorModeCanvas
     // Waveform, music spectrum and expected-hit spectrum.
     std::array<PhantomCore::Rect, 3> audioTracks_{};
     bool buildFailed_{};
-    bool testRequested_{};
     bool leaveRequested_{};
     bool curvesOpen_{};
-    // True while building the layers under the Curves dialog.
+    // True while building layers under a modal (the Curves dialog or the alert).
     bool fieldsCovered_{};
     // Draft of the YME [Interpolation] table while the Curves dialog is open.
     struct CurvesDraft

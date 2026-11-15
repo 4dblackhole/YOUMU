@@ -196,12 +196,6 @@ void EditorOsuImport::Start(std::filesystem::path input, std::filesystem::path s
     job_ = std::async(std::launch::async,
                       [input = std::move(input), root = std::move(songsRoot)] { return Import(input, root); });
 }
-void ShowOsuImportCompletion(const EditorOsuImportResult &result, const TextCatalog &texts)
-{
-    const auto text = MusicSelect(texts);
-    const auto body = std::wstring(text.importComplete) + L"\n\n" + song_select::DecodeDisplayText(result.message);
-    MessageBoxW(GetActiveWindow(), body.c_str(), std::wstring(text.importTitle).c_str(), MB_OK | MB_ICONINFORMATION);
-}
 std::optional<EditorOsuImportResult> EditorOsuImport::Poll()
 {
     if (!job_.valid() || job_.wait_for(std::chrono::seconds{0}) != std::future_status::ready)

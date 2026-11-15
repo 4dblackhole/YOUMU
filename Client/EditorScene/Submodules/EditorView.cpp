@@ -34,6 +34,7 @@ void EditorView::Initialize(const EngineServices &services)
     timelineSliderNode_->GetComponent<SpriteVisualComponent>()->SetStyle(sliderStyle);
     InitializeAudioSelection();
     menuBar_.Initialize(*node, texts_);
+    alert_.Initialize(*canvas.Get(), &visuals);
     fields_.Initialize(services.windowControl);
     ReloadSize();
     Build();
@@ -44,7 +45,11 @@ void EditorView::Shutdown() noexcept
     state_.Analysis().StopSpectrum();
     controls.clear();
     if (canvas.Get())
+    {
         sliderInput_.Reset(*canvas.Get());
+        alertInput_.Reset(*canvas.Get());
+    }
+    alert_.Shutdown();
     menuBar_.Shutdown();
     fields_.Shutdown();
     fieldRects_.clear();
@@ -314,7 +319,8 @@ void EditorView::BuildContent()
     controls.clear();
     fieldRects_.clear();
     fields_.Begin();
-    fieldsCovered_ = curvesOpen_;
+    // Native editors would sit above a modal, so fields beneath one are drawn only.
+    fieldsCovered_ = curvesOpen_ || alert_.IsOpen();
     visual->Clear();
     Box({0, 0, frame_.width, layout::Height}, ui_colors::theme::Surface);
     if (state_.Tab() == EditorTab::Compose)
@@ -326,7 +332,7 @@ void EditorView::BuildContent()
     DrawTabs();
     SyncInputControls();
     DrawFooter();
-    fieldsCovered_ = false;
+    fieldsCovered_ = alert_.IsOpen();
     DrawCurvesDialog();
     DrawLetterbox();
     fields_.End();

@@ -6,14 +6,13 @@
 
 class EditorWorkspace;
 class EditorView;
-class EditorWorkspaceStore;
 
 class EditorScene final : public PhantomCore::GameScene
 {
   public:
     EditorScene(PhantomCore::ScreenVisual2DManager &visuals,
                 std::shared_ptr<GameplayLaunchStore> request,
-                TextCatalog &texts, std::shared_ptr<EditorWorkspaceStore> workspaceStore);
+                TextCatalog &texts);
     ~EditorScene() override;
     void Initialize(const PhantomCore::EngineServices &services) override;
     void Update(const PhantomCore::UpdateContext &context, PhantomCore::SceneManager &scenes) override;
@@ -22,9 +21,6 @@ class EditorScene final : public PhantomCore::GameScene
     void Shutdown() noexcept override;
 
   private:
-    std::shared_ptr<GameplayLaunchStore> launchStore_;
-    std::shared_ptr<EditorWorkspaceStore> workspaceStore_;
     std::unique_ptr<EditorWorkspace> workspace_;
     std::unique_ptr<EditorView> view_;
-    bool testStarting_{};
 };

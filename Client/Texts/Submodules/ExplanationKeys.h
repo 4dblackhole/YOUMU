@@ -5,12 +5,12 @@
 // Captions, buttons, units and value formats default to English. These keys
 // are explanatory copy; their selected-language translations remain independent.
 inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
-    "Editor.testControls", "Editor.testPaused", "Editor.saveBeforeTest", "Editor.selectionHelp",
+    "Editor.selectionHelp",
     "Editor.offsetAudioHelp", "Editor.finishLongNote", "Editor.timingHelp", "Editor.metadataHelp",
-    "Editor.audioHelp", "Editor.analyzingAudio", "Editor.excludeHelp", "Editor.delayCutFormat", "Editor.selectedCountFormat", "Editor.curveValid", "Editor.curveNameError", "Editor.curvePositionFormat", "Editor.audioSelectionHelp", "Editor.discardChanges", "Editor.savedFormat",
+    "Editor.audioHelp", "Editor.analyzingAudio", "Editor.excludeHelp", "Editor.delayCutFormat", "Editor.selectedCountFormat", "Editor.curveValid", "Editor.curveNameError", "Editor.curvePositionFormat", "Editor.audioSelectionHelp", "Editor.discardChanges", "Editor.saveFailedMessage", "Editor.pasteFailedMessage", "Editor.savedFormat",
     "TaikoEditor.effectsHelp", "TaikoEditor.selectNoteHelp",
     "MusicSelect.createDifficultyError", "MusicSelect.createDifficultyExists",
-    "MusicSelect.createDifficultyNameError", "MusicSelect.importComplete", "MusicSelect.importFailedMessage", "MusicSelect.noSongsAvailable", "MusicSelect.noDifficulties", "MusicSelect.catalogErrorPrefix", "MusicSelect.unsupportedModePrefix",
+    "MusicSelect.createDifficultyNameError", "MusicSelect.importFailedMessage", "MusicSelect.noSongsAvailable", "MusicSelect.noDifficulties", "MusicSelect.catalogErrorPrefix", "MusicSelect.unsupportedModePrefix",
     "MusicSelect.patternErrorPrefix", "MusicSelect.unknownChartError",
     "Result.pauseUsed", "Result.rewindUsed", "Result.noHpData", "Result.noTimingData",
     "Gameplay.audioInitializationFailed", "Pause.preparing", "Pause.retryDescription", "Pause.retireDescription",

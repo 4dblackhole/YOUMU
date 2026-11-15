@@ -9,7 +9,6 @@
 class GameplaySessionController;
 class GameplayPresenter;
 class GameplayPauseMenu;
-class EditorTestControls;
 class RhythmTestScene final : public PhantomCore::GameScene
 {
   public:
@@ -34,8 +33,6 @@ class RhythmTestScene final : public PhantomCore::GameScene
     void ShowResult(PhantomCore::SceneManager &scenes);
     void UpdatePauseMenu(const PhantomCore::UpdateContext &context, PhantomCore::SceneManager &scenes);
     bool PreparePresentation();
-    bool TryPreparePresentation();
-    void ReturnToEditor(PhantomCore::SceneManager &scenes);
     void PrepareLoadingBackground();
     void UpdateLoadingBackgroundLayout();
     // The loading screen stays until the attempt's clock first runs, also under a pause menu opened
@@ -47,12 +44,9 @@ class RhythmTestScene final : public PhantomCore::GameScene
     std::unique_ptr<GameplaySessionController> controller_;
     std::unique_ptr<GameplayPresenter> view_;
     std::unique_ptr<GameplayPauseMenu> pauseMenu_;
-    std::unique_ptr<EditorTestControls> testControls_;
     PhantomCore::ScreenVisual2DManager &visuals_;
     TextCatalog &texts_;
     GameplayLaunchRequest launch_;
-    std::shared_ptr<GameplayLaunchStore> launchStore_;
-    bool testPreparationFailed_{};
     PhantomCore::ScreenCanvasHandle loadingCanvas_;
     PhantomCore::Visual2DNode *loadingBackground_{};
     PhantomCore::Visual2DNode *loadingCard_{};

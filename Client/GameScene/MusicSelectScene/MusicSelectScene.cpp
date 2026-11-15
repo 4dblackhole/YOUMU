@@ -128,11 +128,9 @@ void MusicSelectScene::PollOsuImport()
 {
     const auto result = osuImport_.Poll();
     if (!result) return;
+    // A finished conversion only refreshes the list; there is no completion message.
     if (result->success)
-    {
         RefreshCatalog();
-        ShowOsuImportCompletion(*result, texts_);
-    }
     else
     {
         // The song list is unchanged; the alert carries the converter's own output.
