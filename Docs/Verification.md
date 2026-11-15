@@ -71,7 +71,8 @@ clang-analyzer/bugprone/performance 규칙이 있습니다. 일괄 서식 변경
 측정한 실제 경과 시간에 배속을 곱한 범위와 비교하지만, 숨김 실행의 준비 대기 한도(cold start 15초·
 Pause transport 10초)는 멈춤을 잡기 위한 고정 시간입니다.
 
-화면 합성 비용은 게임 실행 중 F7 성능 표시의 `Draws` 줄(1초 평균과 최대 draw 수)로 확인합니다.
+화면 합성 비용은 Debug 빌드 게임 실행 중 F7 성능 띠의 `Draws` 값(1초 평균과 `peak` 최대 draw 수)으로 확인합니다.
+Release 빌드의 띠에는 FPS와 UPS만 있습니다.
 같은 파이프라인과 텍스처 페이지를 쓰는 연속 primitive는 draw 하나로 묶이므로, 사각형·이미지·
 글자가 번갈아 나오는 화면일수록 값이 커집니다. 자세한 의미는 엔진
 [PerformanceStatistics](../Dependencies/PhantomCore/Docs/PerformanceStatistics.md)를 따릅니다.

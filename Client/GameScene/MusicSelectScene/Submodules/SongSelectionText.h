@@ -60,6 +60,26 @@ namespace song_select
         return song.music.artists.empty() ? L"—" : DecodeDisplayText(song.music.artists.front());
     }
 
+    // Every name of a list, for the tooltip of a line that shows only the first.
+    [[nodiscard]] inline std::wstring AllNames(const std::vector<std::string> &values)
+    {
+        std::wstring names;
+        for (const auto &value : values)
+        {
+            if (value.empty())
+                continue;
+            if (!names.empty())
+                names += L" · ";
+            names += DecodeDisplayText(value);
+        }
+        return names;
+    }
+
+    [[nodiscard]] inline std::size_t NameCount(const std::vector<std::string> &values)
+    {
+        return static_cast<std::size_t>(std::ranges::count_if(values, [](const auto &value) { return !value.empty(); }));
+    }
+
     [[nodiscard]] inline std::wstring PatternName(
         const SongCatalogPattern &pattern)
     {

@@ -143,11 +143,11 @@ void ResultScene::Update(const UpdateContext &context, SceneManager &scenes)
         UpdateRecordAlert(context.input);
         UpdateRecordStatus();
         // Behind the alert the result keeps animating but takes no input.
-        static_cast<void>(view_->Update(InputState{}));
+        static_cast<void>(view_->Update(InputState{}, context.deltaSeconds));
         return;
     }
     UpdateRecordStatus();
-    const auto action = view_->Update(context.input);
+    const auto action = view_->Update(context.input, context.deltaSeconds);
     if (action == ResultAction::Retry && (!retry_ || !retry_(scenes)))
         throw std::runtime_error("Failed to retry the completed pattern.");
     if (action == ResultAction::Back && !scenes.ChangeScene(LobbySceneId))

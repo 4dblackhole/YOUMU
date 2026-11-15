@@ -56,6 +56,8 @@ class MusicSelectView final
     // Opens the shared alert above song select. Panels with text boxes close first, and until the
     // alert is answered no key or pointer reaches song select.
     void ShowAlert(AlertContent content);
+    // The scene reports whether the focused song is the one being heard.
+    void SetNowPlaying(const bool playing) { songList_.SetNowPlaying(playing); }
 
   private:
     using SortMode = SongSelectionState::SortMode;

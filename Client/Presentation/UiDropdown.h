@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PhantomCore.h"
+#include "Presentation/UiScrollbar.h"
 
 #include <string>
 #include <vector>
@@ -62,6 +63,7 @@ class UiDropdownComponent final : public PhantomCore::Visual2DComponent
     PhantomCore::Color valueColour_{};
     // Open list on the Canvas root, kept and reused; the link tells either side when the other goes.
     PhantomCore::Visual2DNode *scrim_{}, *popup_{}, *popupLine_{}, *viewport_{}, *content_{};
+    UiScrollbar scrollbar_;
     UiDropdownLink *link_{};
     std::vector<Row> rows_;
 };

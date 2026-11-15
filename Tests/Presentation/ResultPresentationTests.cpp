@@ -29,6 +29,13 @@ namespace PhantomCore
 struct InputStateTestAccess
 {
     static void Key(InputState &input, std::uint16_t key) { input.Reset(); input.SetKey(key, true, 1); }
+    // A window of 1280x720: Canvas centre (0, 0) is window pixel (640, 360).
+    static void Mouse(InputState &input, Point canvasPoint)
+    {
+        input.BeginUpdate();
+        input.SetMousePosition(static_cast<std::int32_t>(canvasPoint.x + 640),
+                               static_cast<std::int32_t>(360 - canvasPoint.y), true);
+    }
 };
 } // namespace PhantomCore
 
@@ -176,7 +183,7 @@ namespace
             {
                 texts.SetLanguage(language);
                 InputState input;
-                static_cast<void>(view->Update(input));
+                static_cast<void>(view->Update(input, 0.0));
                 const auto *label = FindNode(canvas->Root(), "Result.Failure");
                 Check((label != nullptr) == fixture.showFailure,
                       "Only an HP-eligible completed failure is labelled; clear, retire and HP-disabled plays are not.");
@@ -232,7 +239,7 @@ namespace
             {
                 texts.SetLanguage(language);
                 InputState input;
-                static_cast<void>(view->Update(input));
+                static_cast<void>(view->Update(input, 0.0));
                 const auto *overlay = FindNode(canvas->Root(), "Result.ControlUsage");
                 Check((overlay != nullptr) == (mask > 0 && mask < 4),
                       "Only actual menu pause or Rewind adds an overlay; Debug pause and Resume do not.");
@@ -348,7 +355,7 @@ namespace
             }
             texts.SetLanguage(Language::English);
             InputState input;
-            static_cast<void>(view->Update(input));
+            static_cast<void>(view->Update(input, 0.0));
             const auto *background = FindNode(canvas->Root(), "Result.Sky");
             if (!background) throw std::runtime_error("Rebuilt result BG missing.");
             Check(renderer.ImagePath(background->GetComponent<SpriteVisualComponent>()->Style().normalImage) ==
@@ -657,7 +664,7 @@ namespace
               "Large result graphs use one batch and the judgement ring another, with constant widget count.");
         InputState input;
         for (int i = 0; i < 20; ++i)
-            Check(view->Update(input) == ResultAction::None, "Idle result view must not leave the Scene.");
+            Check(view->Update(input, 0.0) == ResultAction::None, "Idle result view must not leave the Scene.");
         Check(canvas->BuildDrawList().size() == packets.size(), "Idle updates must not rebuild graph nodes.");
         const auto *retry = FindNode(canvas->Root(), "Result.Retry");
         const auto *replay = FindNode(canvas->Root(), "Result.Replay");
@@ -684,12 +691,37 @@ namespace
             router.Reset(*canvas);
         };
         click(*retry);
-        Check(view->Update(input) == ResultAction::Retry, "A retry click must emit the neutral retry action.");
+        Check(view->Update(input, 0.0) == ResultAction::Retry, "A retry click must emit the neutral retry action.");
         click(*replay);
-        Check(view->Update(input) == ResultAction::None, "Disabled replay must not emit any action.");
+        Check(view->Update(input, 0.0) == ResultAction::None, "Disabled replay must not emit any action.");
         texts.SetLanguage(Language::English);
-        Check(view->Update(input) == ResultAction::None && HasText(*canvas, L"Accuracy by note group"),
+        Check(view->Update(input, 0.0) == ResultAction::None && HasText(*canvas, L"Accuracy by note group"),
               "Result strings must follow the shared language catalog.");
+        // Shared tooltips: Back with its keys, the score, the option chips and the chart creator.
+        const auto rest = [&](std::string_view name) -> std::wstring
+        {
+            const auto *target = FindNode(canvas->Root(), name);
+            if (!target)
+                throw std::runtime_error("Result tooltip target must exist.");
+            const auto b = target->BoundsInCanvas();
+            InputState pointed;
+            InputStateTestAccess::Mouse(pointed, {b.x + b.width / 2, b.y + b.height / 2});
+            static_cast<void>(view->Update(pointed, .3));
+            static_cast<void>(view->Update(pointed, .3));
+            const auto *tip = FindNode(canvas->Root(), "Tooltip");
+            const auto *label = tip ? FindNode(*tip, "Label") : nullptr;
+            if (!tip || !tip->IsVisible() || !label)
+                return L"(hidden)";
+            return std::wstring(label->GetComponent<TextVisualComponent>()->Text());
+        };
+        Check(rest("Result.Back").empty(), "Back hints only its keys, Esc / Enter.");
+        Check(rest("Result.Score") == texts.Get("Tooltips.score"), "Resting on the score names it.");
+        Check(rest("Result.Option.random") == texts.Get("Tooltips.appliedOptions"),
+              "Resting on an option chip names the applied options.");
+        Check(rest("Result.Rank") == L"(hidden)", "Parts without a hint show none.");
+        view->SetVisible(false);
+        Check(!FindNode(canvas->Root(), "Tooltip")->IsVisible(), "Hiding the result hides its hint.");
+        view->SetVisible(true);
         for (const Size size : {Size{1024, 768}, Size{2560, 1080}, Size{720, 1280}})
         {
             view->OnResize(static_cast<std::uint32_t>(size.width), static_cast<std::uint32_t>(size.height));
@@ -713,7 +745,7 @@ namespace
         pointer.leftButtonDown = pointer.leftButtonPressed = false;
         pointer.leftButtonReleased = true;
         pointerRouter.Process(*canvas, pointer);
-        Check(view->Update(input) == ResultAction::Back,
+        Check(view->Update(input, 0.0) == ResultAction::Back,
               "The result button click must request returning to song select.");
         pointerRouter.Reset(*canvas);
         view->Shutdown();

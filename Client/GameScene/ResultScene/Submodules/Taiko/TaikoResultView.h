@@ -3,6 +3,7 @@
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "TaikoResultLayout.h"
 #include "TaikoResultRing.h"
+#include "Presentation/UiTooltip.h"
 #include "Texts/TextCatalog.h"
 namespace taiko_result_ui
 {
@@ -18,7 +19,7 @@ class TaikoResultView final : public IResultView
     ~TaikoResultView() override;
     void Initialize(const PhantomCore::EngineServices &services) override;
     void SetVisible(bool visible) noexcept override;
-    ResultAction Update(const PhantomCore::InputState &input) override;
+    ResultAction Update(const PhantomCore::InputState &input, double deltaSeconds) override;
     void OnResize(std::uint32_t width, std::uint32_t height) override;
     void Shutdown() noexcept override;
 
@@ -45,6 +46,8 @@ class TaikoResultView final : public IResultView
     void BuildGraphLabels(PhantomCore::Visual2DNode &root, const taiko_result_ui::GraphData &data);
     void BuildActions(PhantomCore::Visual2DNode &root);
     void UpdateRingTooltip(std::optional<PhantomCore::Point> pointer);
+    // Registers a shared tooltip hint; the node starts taking the pointer if it did not.
+    void Hint(PhantomCore::Visual2DNode &node, TooltipText text);
     // Latin captions and user text. The face follows the string (Nunito or Noto Sans KR).
     PhantomCore::Visual2DNode &Label(PhantomCore::Visual2DNode &root, PhantomCore::Rect designBounds,
                                        std::wstring text, TextStyle style);
@@ -73,6 +76,7 @@ class TaikoResultView final : public IResultView
     PhantomCore::ScreenCanvasHandle canvasHandle_;
     PhantomCore::Visual2DCanvas *canvas_{};
     PhantomCore::Visual2DInputRouter router_;
+    UiTooltip tooltip_;
     PhantomCore::NodeId contentId_{}, backId_{}, retryId_{}, backgroundId_{}, frameId_{}, tooltipId_{};
     taiko_result_ui::layout::Columns columns_{};
     taiko_result_ui::JudgementRing ring_;

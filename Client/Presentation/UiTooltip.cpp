@@ -1,6 +1,8 @@
 #include "UiTooltip.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
+// The shared line breaking of the options notices (the engine lays text out on one line).
+#include "Presentation/OptionsPanel/Submodules/OptionsPanelStyle.h"
 
 #include <algorithm>
 #include <cmath>
@@ -77,6 +79,7 @@ void UiTooltip::Initialize(Visual2DCanvas &canvas)
 void UiTooltip::Shutdown() noexcept
 {
     hints_.clear();
+    lines_.clear();
     chips_.clear();
     separators_.clear();
     keyTexts_.clear();
@@ -93,6 +96,7 @@ void UiTooltip::Set(const Visual2DNode &target, TooltipText text)
     if (text.Empty())
     {
         hints_.erase(id);
+        lines_.erase(id);
         if (armed_ == id)
             Hide();
         return;
@@ -103,22 +107,50 @@ void UiTooltip::Set(const Visual2DNode &target, TooltipText text)
         Show();
 }
 
-NodeId UiTooltip::ResolveTarget(const NodeId hovered) const
+void UiTooltip::SetLine(const Visual2DNode &line, TooltipText text)
+{
+    const bool empty = text.Empty();
+    Set(line, std::move(text));
+    if (!empty)
+        lines_.insert(line.Id());
+}
+
+NodeId UiTooltip::ResolveTarget(const NodeId hovered, const std::optional<Point> pointer) const
 {
     if (canvas_ == nullptr || hovered == NodeId{})
         return {};
     for (const auto *node = canvas_->FindNode(hovered); node != nullptr; node = node->Parent())
+    {
+        if (lines_.contains(node->Id()))
+            continue;
         if (hints_.contains(node->Id()))
             return node->Id();
+    }
+    return pointer.has_value() ? ResolveLine(hovered, *pointer) : NodeId{};
+}
+
+NodeId UiTooltip::ResolveLine(const NodeId hovered, const Point pointer) const
+{
+    for (const auto id : lines_)
+    {
+        const auto *line = canvas_->FindNode(id);
+        if (line == nullptr || !line->IsVisible() || !line->BoundsInCanvas().Contains(pointer))
+            continue;
+        // The pointed control must hold the line, so a control drawn over it hides its hint.
+        for (const auto *owner = line->Parent(); owner != nullptr; owner = owner->Parent())
+            if (owner->Id() == hovered)
+                return id;
+    }
     return {};
 }
 
-void UiTooltip::Update(const double deltaSeconds, const InputState &input, const NodeId hovered, const bool enabled)
+void UiTooltip::Update(const double deltaSeconds, const InputState &input, const NodeId hovered, const bool enabled,
+                       const std::optional<Point> pointer)
 {
     if (root_ == nullptr)
         return;
     clock_ += std::max(deltaSeconds, 0.0);
-    const auto target = enabled ? ResolveTarget(hovered) : NodeId{};
+    const auto target = enabled ? ResolveTarget(hovered, pointer) : NodeId{};
     // A press, the wheel or a key hides the hint until the pointer moves to another control.
     bool dismissed = input.MouseWheelDelta() != 0.0F;
     for (const auto &event : input.Events())
@@ -164,6 +196,14 @@ void UiTooltip::Hide() noexcept
         root_->SetVisible(false);
 }
 
+void UiTooltip::Clear() noexcept
+{
+    Hide();
+    hints_.clear();
+    lines_.clear();
+    dismissed_ = {};
+}
+
 bool UiTooltip::IsShown() const noexcept
 {
     return shown_;
@@ -185,9 +225,13 @@ void UiTooltip::Show()
 
 void UiTooltip::BuildContent(const TooltipText &text)
 {
+    // A long name on its own breaks into lines at the plate's 300 width, like the mockup's tooltip.
+    const bool alone = text.keys.empty() && text.note.empty();
+    auto shown = alone ? options_ui::WrapText(text.label, TextSize, MaxWidth - PaddingX * 2) : text.label;
+    labelLines_ = 1 + static_cast<int>(std::ranges::count(shown, L'\n'));
     auto &label = Require<TextVisualComponent>(*label_);
-    label.SetText(text.label);
-    label.SetFont(ui_fonts::Text(text.label));
+    label.SetFont(ui_fonts::Text(shown));
+    label.SetText(std::move(shown));
     auto &note = Require<TextVisualComponent>(*note_);
     note.SetText(text.note);
     note.SetFont(ui_fonts::Text(text.note));
@@ -307,7 +351,7 @@ void UiTooltip::Layout()
     if (!keyTexts_.empty())
         contentWidth += (contentWidth > 0 ? Gap : 0.0F) + keysWidth;
     const float width = std::min(MaxWidth, contentWidth + PaddingX * 2);
-    const float height = PaddingY * 2 + (keyTexts_.empty() ? LineHeight : ChipHeight);
+    const float height = PaddingY * 2 + (keyTexts_.empty() ? LineHeight * static_cast<float>(labelLines_) : ChipHeight);
     laidOutWidth_ = width;
 
     // Under the control unless that leaves the screen; the arrow points at the control's centre.

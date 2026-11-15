@@ -121,6 +121,9 @@ Retire는 기존처럼 남은 논리 노트·미완료 롱노트를 MISS·0점�
   실패하면 공용 [경고 대화상자](../TextManagement.md#경고-대화상자)가 기록 파일 경로와 원인을 보여 줍니다.
   Close(Esc)는 닫기만 하고, Retry(Enter)는 같은 기록을 다시 저장합니다(다시 실패하면 대화상자가 다시 열림).
   대화상자가 열린 동안 결과 화면의 버튼·키는 동작하지 않습니다.
+- 공용 [툴팁](../TextManagement.md#툴팁): Back은 키 칩 `Esc / Enter`, 점수는 `Score`, 옵션 칩은 `Applied options`,
+  배너의 채보 제작자는 `Chart by`입니다. Retry·Replay에는 두지 않습니다(시안과 같음). 판정 비율 조각의 개수·비율 표시는
+  조각마다 위치를 따라가는 결과 화면 자체 표시로 남깁니다. View의 Update는 프레임 시간을 받아 툴팁 대기 시간을 셉니다.
 - 양옆 열 뒤에는 화면 끝에서 들어오는 흰 막(`Panels.Left`·`Panels.Right`)을 두어 BG 위에서도 읽히게 합니다.
 - 글꼴: 영어 문구는 Nunito, 한글·일본어가 들어간 문자열은 Noto Sans KR, 숫자는 Barlow Semi Condensed입니다
   (`Presentation/UiFonts.h`). SCORE·최대 콤보·정확도는 글꼴로 그리며 숫자 PNG를 쓰지 않습니다.

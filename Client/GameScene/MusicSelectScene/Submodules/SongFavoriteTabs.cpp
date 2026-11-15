@@ -24,8 +24,7 @@ void SongFavoriteTabs::Initialize(Visual2DNode &parent, ScreenVisual2DManager &v
     root_ = &parent.CreateChild("Favorites.Tabs");
     viewport_ = &root_->CreateChild("Favorites.TabViewport");
     content_ = &viewport_->CreateChild("Favorites.TabContent");
-    scrollbar_ = &CreateSlider(*root_, {}, 0, "Favorites.TabScroll");
-    ApplySpriteStyle(*scrollbar_, {0.122F, 0.298F, 0.6F, 0.14F}, {0.122F, 0.298F, 0.6F, 0.24F});
+    scrollbar_.Attach(*root_, "Favorites.TabScroll", UiScrollbar::Axis::Horizontal);
     // The star opens folder management; it is an icon, not a caption.
     manage_ = &CreateButton(*root_, {}, L"", "Favorites.Manage");
     ApplySpriteStyle(*manage_, {1.0F, 1.0F, 1.0F, 0.0F}, {1.0F, 1.0F, 1.0F, 0.72F});
@@ -35,7 +34,8 @@ void SongFavoriteTabs::Initialize(Visual2DNode &parent, ScreenVisual2DManager &v
 }
 void SongFavoriteTabs::Shutdown() noexcept
 {
-    root_ = viewport_ = content_ = scrollbar_ = manage_ = nullptr;
+    root_ = viewport_ = content_ = manage_ = nullptr;
+    scrollbar_.Detach();
     texts_ = nullptr;
     visuals_ = nullptr;
     tabs_.clear();
@@ -116,17 +116,20 @@ void SongFavoriteTabs::Layout()
     content_->SetBounds({-offset_, 0, extent_, TabHeight});
     manage_->SetBounds({width + 4.0F, 0, ManageWidth, TabHeight});
     // The horizontal bar lives in the gap under the tabs and appears only on overflow.
-    scrollbar_->SetBounds({0, -10, width, 8});
-    scrollbar_->SetVisible(extent_ > width);
-    RequireComponent<SliderBehaviorComponent>(*scrollbar_).SetValue(extent_ <= width ? 0 : offset_ / (extent_ - width));
+    scrollbar_.SetRail({0, -10, width, UiScrollbar::HorizontalGrabWidth});
+    scrollbar_.SetRange(width, extent_, offset_);
+}
+void SongFavoriteTabs::TrackScrollbar(const std::optional<Point> canvasPointer, const bool leftButtonDown)
+{
+    if (!root_) return;
+    if (const auto offset = scrollbar_.Track(canvasPointer, leftButtonDown))
+    {
+        offset_ = *offset;
+        Layout();
+    }
 }
 std::optional<std::uint64_t> SongFavoriteTabs::ProcessAction(const Action &action)
 {
-    if (scrollbar_ && action.type == ActionType::ValueChanged && action.source == scrollbar_->Id())
-    {
-        offset_ = action.value * std::max(extent_ - viewport_->NodeSize().width, 0.0F);
-        Layout();
-    }
     if (action.type == ActionType::Clicked)
         for (const auto &tab : tabs_) if (action.source == tab.node) return tab.folder;
     return std::nullopt;
