@@ -23,7 +23,10 @@ the half-second rest, a pointed child resolving to its registered ancestor, key
 chips for `Ctrl+O` and `Esc / Enter`, the quick switch to a neighbouring control,
 dismissal by a press until the pointer moves on, host suppression and opening above
 a control at the bottom edge. Drop-downs are the shared UiDropdown: list rows take
-clicks ahead of the fields under them, and a press outside an open list only closes it. `RunLanguageFileTests.ps1`
+clicks ahead of the fields under them, and a press outside an open list only closes it.
+The shared alert is checked for its layout, Enter/Esc answers, button clicks, the blocking
+scrim and detail scrolling; the result screen retries a failed record save through it, and
+song select keeps Enter and Esc away from the screen while it is open. `RunLanguageFileTests.ps1`
 checks English captions/value formats, selected EN/KO/JA explanations, complete
 Japanese explanation-key coverage and existing immutable pack/fallback contracts.
 Japanese adds `ja` to the same INI Language field; stored ko/en remain valid.
