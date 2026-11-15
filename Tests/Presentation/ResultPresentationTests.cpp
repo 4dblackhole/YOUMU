@@ -24,6 +24,14 @@
 
 using namespace PhantomCore;
 
+namespace PhantomCore
+{
+struct InputStateTestAccess
+{
+    static void Key(InputState &input, std::uint16_t key) { input.Reset(); input.SetKey(key, true, 1); }
+};
+} // namespace PhantomCore
+
 namespace
 {
 
@@ -750,6 +758,76 @@ namespace
         Check(PlayRecordStore(database).Query(patternPath,"Taiko","",0,10).size()==1,"Repeated result updates do not duplicate records.");
         scene.Shutdown();
     }
+    // A folder where the database file belongs makes every save fail until it is removed.
+    void TestResultRecordSaveFailure()
+    {
+        const auto directory=std::filesystem::temp_directory_path()/
+            ("YOUMU-result-record-failure-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::create_directories(directory);
+        struct Cleanup { std::filesystem::path path; ~Cleanup(){std::error_code e;std::filesystem::remove_all(path,e);} } cleanup{directory};
+        const auto database=directory/"plays.sqlite3", patternPath=directory/"fixture.ymp";
+        std::ofstream(patternPath)<<"Mode: Taiko";
+        NullRenderer renderer;ScreenVisual2DManager visuals;visuals.Initialize(renderer,{1280,720});
+        TextCatalog texts("Client/Texts/Languages");MeshRenderSystem meshes;TextRenderSystem textRendering;AudioSystem audio;
+        PatternDocument pattern;pattern.sourcePath=patternPath;pattern.mode="Taiko";
+        InputState idle,enter,escape;
+        InputStateTestAccess::Key(enter,VK_RETURN);
+        InputStateTestAccess::Key(escape,VK_ESCAPE);
+        for(const bool fixFirst:{false,true})
+        {
+            std::filesystem::create_directories(database);
+            auto loaded=TaikoMode(PlaySessionOptions{}).CreateSession(pattern);
+            Check(loaded.Succeeded(),"Record failure fixture loads its actual session summary.");
+            ResultViewContext display;display.recordDatabase=database;
+            ResultScene scene(loaded.session->TakeResult(PlayEndReason::Interrupted,RhythmTime{}),visuals,texts,display);
+            scene.Initialize({meshes,textRendering,renderer,audio,1280,720});scene.BeginScene();
+            SceneManager manager;
+            const auto &alert=scene.RecordAlert();
+            // Back or Retry reaching the view would throw here: this manager has no song select and no retry.
+            const auto waitForAlert=[&]{
+                const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds{5};
+                while(!alert.IsOpen()&&std::chrono::steady_clock::now()<deadline)
+                {
+                    scene.Update({0,0,0,idle,audio,{}},manager);
+                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                }
+                Check(alert.IsOpen(),"A failed record save opens the shared alert.");
+                scene.Update({0,0,0,idle,audio,{}},manager);
+            };
+            waitForAlert();
+            const auto &content=alert.Content();
+            Check(content.kind==AlertKind::Error&&content.title==L"Record not saved"&&
+                      content.detail.starts_with(database.wstring())&&content.buttons.size()==2&&
+                      content.buttons[0].cancel&&content.buttons[1].primary,
+                  "The alert names the record file and offers Close and Retry.");
+            if(fixFirst)
+            {
+                std::filesystem::remove(database);
+                scene.Update({0,0,0,enter,audio,{}},manager);
+                Check(!alert.IsOpen(),"Enter retries the save and closes the alert.");
+                const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds{5};
+                bool saved{};
+                while(!saved&&std::chrono::steady_clock::now()<deadline)
+                {
+                    scene.Update({0,0,0,idle,audio,{}},manager);
+                    saved=std::filesystem::is_regular_file(database)&&
+                          PlayRecordStore(database).Query(patternPath,"Taiko","",0,10).size()==1;
+                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                }
+                Check(saved&&!alert.IsOpen(),"A retry after the cause is gone saves the record once.");
+            }
+            else
+            {
+                scene.Update({0,0,0,enter,audio,{}},manager);
+                Check(!alert.IsOpen(),"Retry closes the alert while it saves again.");
+                waitForAlert();
+                scene.Update({0,0,0,escape,audio,{}},manager);
+                Check(!alert.IsOpen(),"A repeated failure asks again, and Close (Esc) keeps the result screen.");
+                std::filesystem::remove(database);
+            }
+            scene.Shutdown();
+        }
+    }
     class ReturnRoute final : public GameScene
     {
       public:
@@ -943,6 +1021,7 @@ int main()
         std::string error;
         Check(InitializeBuiltInAssets(error), error.c_str());
         TestResultRecordSaving();
+        TestResultRecordSaveFailure();
         TestFailureOverlay();
         TestControlUsageOverlay();
         TestHpCurveGeometry();

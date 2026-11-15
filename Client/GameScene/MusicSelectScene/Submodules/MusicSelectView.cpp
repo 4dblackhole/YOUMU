@@ -53,6 +53,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     favoritesPanel_.Initialize(*canvas_, texts_);
     if (recordPanel_) records_.InitializeFilter(*canvas_, services.windowControl);
     tooltip_.Initialize(*canvas_);
+    alert_.Initialize(*canvas_, &screenVisuals_);
     ApplyTexts();
     UpdateResponsiveLayout();
     RebuildVisibleSongs();
@@ -65,6 +66,11 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     command_ = SongSelectCommand::None;
     if (!canvas_)
         return command_;
+    if (ProcessAlert(input))
+    {
+        UpdateSearchInputVisibility();
+        return command_;
+    }
     if (ProcessDropdownKeys(*canvas_, input))
     {
         tooltip_.Hide();
@@ -134,6 +140,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 
 void MusicSelectView::Shutdown() noexcept
 {
+    alert_.Shutdown();
     tooltip_.Shutdown();
     playOptionsPanel_.Shutdown();
     records_.Shutdown();
@@ -188,6 +195,23 @@ void MusicSelectView::Shutdown() noexcept
     board_ = nullptr;
     canvas_ = nullptr;
     canvasHandle_.Reset();
+}
+
+void MusicSelectView::ShowAlert(AlertContent content)
+{
+    if (canvas_ == nullptr)
+        throw std::logic_error("Song select must be initialized before it shows an alert.");
+    // Native text boxes would float above the alert, so their panels close without applying.
+    CloseAdditionMenu();
+    filterPanel_.Close();
+    favoritesPanel_.Close();
+    records_.CloseFilter();
+    playOptionsPanel_.Dismiss();
+    tooltip_.Hide();
+    CollapseDropdowns(*canvas_);
+    inputRouter_.Reset(*canvas_);
+    alert_.Show(std::move(content));
+    UpdateSearchInputVisibility();
 }
 
 void MusicSelectView::RebuildVisibleSongs()

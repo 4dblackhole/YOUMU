@@ -262,6 +262,9 @@
     <ClInclude Include="Presentation\AccuracyText.h" />
     <ClInclude Include="Presentation\RankName.h" />
     <ClInclude Include="Presentation\UiFonts.h" />
+    <ClCompile Include="Presentation\UiAlert.cpp" />
+    <ClInclude Include="Presentation\UiAlert.h" />
+    <ClInclude Include="Presentation\UiTextWrap.h" />
     <ClCompile Include="Presentation\UiTooltip.cpp" />
     <ClInclude Include="Presentation\UiTooltip.h" />
     <ClCompile Include="Presentation\UiDropdown.cpp" />

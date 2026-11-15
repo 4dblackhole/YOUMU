@@ -1042,6 +1042,48 @@ namespace
         static_cast<void>(view.Update(keys,.2));
         Check(!panel->IsVisible(), "Ctrl+O closes global settings.");
     }
+    // While the shared alert is open, Enter and Esc answer it and never reach song select.
+    void TestAlertHoldsKeys()
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts("Client/Texts/Languages");
+        OptionSettings options("build/alert-unused.ini");
+        SongSelectionState state;
+        SongCatalogEntry song;
+        song.music.names = {"Song"};
+        song.patterns.resize(1);
+        state.catalog_.songs.push_back(std::move(song));
+        state.RebuildVisibleSongs();
+        MusicSelectView view(visuals, state, SongSelectPurpose::Gameplay, texts, options);
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas) throw std::runtime_error("Alert Canvas missing.");
+        InputState input;
+        const auto press = [&](const std::uint16_t key) {
+            input = {};
+            InputStateTestAccess::Key(input, key, true);
+            return view.Update(input, 0);
+        };
+        for (const std::uint16_t key : {std::uint16_t{VK_RETURN}, std::uint16_t{VK_ESCAPE}})
+        {
+            view.ShowAlert({AlertKind::Error, L"Conversion failed", L"", L"converter output", {{L"OK", true}}});
+            auto *alert = Find(canvas->Root(), "Alert");
+            if (!alert) throw std::runtime_error("Alert node missing.");
+            Check(press(key) == SongSelectCommand::None && alert->IsVisible(),
+                  "The frame that opens an alert passes its keys to nothing.");
+            Check(press(key) == SongSelectCommand::None && !alert->IsVisible(),
+                  "Enter or Esc answers the alert without reaching song select.");
+            const auto expected = key == VK_RETURN ? SongSelectCommand::Launch : SongSelectCommand::Back;
+            Check(press(key) == expected, "Once the alert closes, song select takes its keys again.");
+        }
+        view.Shutdown();
+        Check(visuals.CanvasCount() == 0, "The alert test releases its Canvas.");
+    }
 } // namespace
 
 int main()
@@ -1085,6 +1127,7 @@ int main()
         TestFavoriteFolders();
         TestHpInformation();
         TestRecordHistoryView();
+        TestAlertHoldsKeys();
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);
         TestSongPanelTransparency(SongSelectPurpose::Gameplay);
