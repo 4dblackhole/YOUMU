@@ -26,6 +26,8 @@ void MusicSelectView::ProcessPointer(const InputState &input)
         inputRouter_.Reset(*canvas_);
     else
         inputRouter_.Process(*canvas_, pointer);
+    songList_.TrackScrollbar(canvasPointer_, pointer.leftButtonDown);
+    favoriteTabs_.TrackScrollbar(canvasPointer_, pointer.leftButtonDown);
 
     // The wheel scrolls tabs first, then the song list, unless an overlay owns the pointer.
     const bool overlayOpen = IsSelectionModalVisible() || options_.IsVisible() || IsAdditionMenuOpen();

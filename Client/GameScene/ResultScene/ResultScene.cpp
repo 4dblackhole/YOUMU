@@ -67,7 +67,7 @@ void ResultScene::Update(const UpdateContext &context, SceneManager &scenes)
             text.SetText(std::move(status));
         }
     }
-    const auto action = view_->Update(context.input);
+    const auto action = view_->Update(context.input, context.deltaSeconds);
     if (action == ResultAction::Retry && (!retry_ || !retry_(scenes)))
         throw std::runtime_error("Failed to retry the completed pattern.");
     if (action == ResultAction::Back && !scenes.ChangeScene(LobbySceneId))

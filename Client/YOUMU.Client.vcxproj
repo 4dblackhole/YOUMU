@@ -266,6 +266,10 @@
     <ClInclude Include="Presentation\UiTooltip.h" />
     <ClCompile Include="Presentation\UiDropdown.cpp" />
     <ClInclude Include="Presentation\UiDropdown.h" />
+    <ClCompile Include="Presentation\UiScrollbar.cpp" />
+    <ClInclude Include="Presentation\UiScrollbar.h" />
+    <ClCompile Include="Presentation\PerformanceBand.cpp" />
+    <ClInclude Include="Presentation\PerformanceBand.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />
     <ClCompile Include="Presentation\ModePresentation.cpp" />
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp" />

@@ -55,8 +55,9 @@ void TaikoResultView::BuildSongBanner(Visual2DNode &root)
     NumberLabel(root, {blockX + nameWidth + badgeGap, 15, badgeWidth, 22}, L"—",
                 {14, 800, BrandText, TextAlignment::Center});
     Image(root, {blockX, 41, creatorIconSize, creatorIconSize}, creatorIcon_, "Result.CreatorIcon", Ink);
-    Label(root, {blockX + creatorIconSize + creatorGap, 38, blockWidth - creatorIconSize - creatorGap, 20}, creator,
-          {13, 600, Ink});
+    auto &creatorLine = Label(root, {blockX + creatorIconSize + creatorGap, 38, blockWidth - creatorIconSize - creatorGap, 20},
+                              creator, {13, 600, Ink});
+    Hint(creatorLine, {std::wstring(texts_.Get("Tooltips.chartBy"))});
 
     constexpr float titleX = 145;
     const float titleWidth = std::max(blockX - 20 - titleX, 1.0F);

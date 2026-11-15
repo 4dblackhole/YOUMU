@@ -1,6 +1,7 @@
 #pragma once
 #include "SongFavorites.h"
 #include "PhantomCore.h"
+#include "Presentation/UiScrollbar.h"
 #include "Texts/TextCatalog.h"
 #include <optional>
 
@@ -14,6 +15,8 @@ class SongFavoriteTabs final
     [[nodiscard]] std::optional<std::uint64_t> ProcessAction(const PhantomCore::Action &action);
     [[nodiscard]] bool IsManageAction(const PhantomCore::Action &action) const noexcept;
     bool Scroll(PhantomCore::Point position, float wheel);
+    // Follows a drag of the tab scrollbar; call once per frame after the input router.
+    void TrackScrollbar(std::optional<PhantomCore::Point> canvasPointer, bool leftButtonDown);
     [[nodiscard]] const PhantomCore::Visual2DNode *ManageButton() const noexcept { return manage_; }
 
   private:
@@ -28,7 +31,8 @@ class SongFavoriteTabs final
     void AddTab(std::uint64_t id, std::wstring name, bool selected, float &x);
     TextCatalog *texts_{};
     PhantomCore::ScreenVisual2DManager *visuals_{};
-    PhantomCore::Visual2DNode *root_{}, *viewport_{}, *content_{}, *scrollbar_{}, *manage_{};
+    PhantomCore::Visual2DNode *root_{}, *viewport_{}, *content_{}, *manage_{};
+    UiScrollbar scrollbar_;
     std::vector<Tab> tabs_;
     float offset_{}, extent_{};
     std::uint64_t revision_{~std::uint64_t{}}, textRevision_{}, selected_{};

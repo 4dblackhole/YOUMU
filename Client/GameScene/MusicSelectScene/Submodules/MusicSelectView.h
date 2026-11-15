@@ -52,6 +52,8 @@ class MusicSelectView final
     void RebuildVisibleSongs();
     void RefreshCatalogPresentation();
     void RefreshSelectionPresentation();
+    // The scene reports whether the focused song is the one being heard.
+    void SetNowPlaying(const bool playing) { songList_.SetNowPlaying(playing); }
 
   private:
     using SortMode = SongSelectionState::SortMode;

@@ -91,7 +91,8 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     ProcessPointer(input);
     // Hints rest while a panel, the options drawer or the addition menu covers the screen.
     const bool covered = IsSelectionModalVisible() || options_.IsVisible();
-    tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !covered && !IsAdditionMenuOpen());
+    songList_.RefreshNameHints();
+    tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !covered && !IsAdditionMenuOpen(), canvasPointer_);
     // Panels are processed in order; the first one that consumes input stops the rest.
     const bool panelConsumed =
         ProcessPlayOptionsPanel(input) || ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input);

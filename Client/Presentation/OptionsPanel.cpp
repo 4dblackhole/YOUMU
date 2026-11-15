@@ -60,17 +60,8 @@ void OptionsPanel::CreateFrame()
     viewport_ = &panel_->CreateChild("Options.Viewport");
     content_ = &viewport_->CreateChild("Options.Content");
 
-    // Scrollbar: a 12px grab area with a 6px rail and thumb.
-    scrollRail_ = &CreatePanel(*panel_, {}, "Options.Scrollbar");
-    SetPanelColor(*scrollRail_, Transparent);
-    scrollRail_->AddComponent<RectangleCollider2DComponent>();
-    scrollRail_->AddComponent<PointerReceiverComponent>();
-    scrollRail_->SetZIndex(5);
-    auto &scrollTrack = CreateSprite(*scrollRail_, {}, {}, "Track");
-    SetPanelColor(scrollTrack, ui_colors::theme::Rule);
-    scrollThumb_ = &CreateSprite(*panel_, {}, {}, "Options.ScrollThumb");
-    SetPanelColor(*scrollThumb_, ui_colors::theme::Brand);
-    scrollThumb_->SetZIndex(6);
+    scrollbar_.Attach(*panel_, "Options.Scrollbar");
+    scrollbar_.SetZIndex(5);
 
     // Footer: recovery and error notices stay outside the scrolling body.
     footer_ = &panel_->CreateChild("Options.Footer");
@@ -198,7 +189,8 @@ void OptionsPanel::Shutdown() noexcept
     heldSection_.reset();
     railSkinSection_.reset();
     panel_ = rail_ = title_ = close_ = headerRule_ = nullptr;
-    viewport_ = content_ = scrollRail_ = scrollThumb_ = nullptr;
+    viewport_ = content_ = nullptr;
+    scrollbar_.Detach();
     footer_ = footerRule_ = statusBar_ = statusIcon_ = statusLabel_ = nullptr;
     languageLabel_ = languageCombo_ = nullptr;
     songsLabel_ = songsField_ = songsBrowse_ = songsDefault_ = nullptr;
@@ -214,7 +206,6 @@ void OptionsPanel::Shutdown() noexcept
     driverIndices_.clear();
     panelId_ = languageComboId_ = skinComboId_ = outputComboId_ = driverComboId_ = {};
     previousDragPoint_.reset();
-    scrollDragOffset_.reset();
     contentHeight_ = viewportHeight_ = footerHeight_ = layoutCursor_ = scrollOffset_ = 0.0F;
     railPointerInside_ = railKeyboard_ = railExpanded_ = false;
     railHoverSeconds_ = 0.0F;
@@ -239,7 +230,7 @@ void OptionsPanel::Toggle()
     CancelKeyboardEdit();
     CollapseCombos();
     volumeDrag_.reset();
-    scrollDragOffset_.reset();
+    scrollbar_.Release();
     railKeyboard_ = railPointerInside_ = false;
     railHoverSeconds_ = 0.0F;
     if (railExpanded_)
@@ -284,7 +275,7 @@ void OptionsPanel::Close(Visual2DInputRouter *inputRouter)
     targetOpen_ = false;
     dragging_ = false;
     previousDragPoint_.reset();
-    scrollDragOffset_.reset();
+    scrollbar_.Release();
     volumeDrag_.reset();
     railKeyboard_ = railPointerInside_ = false;
     CollapseCombos();
@@ -380,34 +371,20 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
 
     if (ProcessVolumePointer(input, canvasPointer, hoveredNode))
         return consumedKey;
+    // The shared scrollbar follows its drag even when the pointer leaves the panel.
+    if (const auto offset = scrollbar_.Track(canvasPointer, input.IsMouseButtonDown(MouseButton::Left)))
+    {
+        scrollOffset_ = *offset;
+        heldSection_.reset();
+        ApplyScrollOffset(inputRouter);
+    }
     const bool insidePanel = canvasPointer.has_value() && panel_->BoundsInCanvas().Contains(*canvasPointer);
-    if (!insidePanel && !scrollDragOffset_)
+    if (!insidePanel && !scrollbar_.IsDragging())
     {
         dragging_ = false;
         previousDragPoint_.reset();
         return consumedKey;
     }
-
-    // Scrollbar: pressing the thumb keeps the grab point; pressing the rail centres the thumb there.
-    if (input.WasMouseButtonPressed(MouseButton::Left) && hoveredNode == scrollRail_->Id() && canvasPointer)
-    {
-        const auto thumb = scrollThumb_->BoundsInCanvas();
-        const float centre = thumb.y + thumb.height * 0.5F;
-        scrollDragOffset_ = thumb.Contains({thumb.x + 1, canvasPointer->y}) ? canvasPointer->y - centre : 0.0F;
-    }
-    if (scrollDragOffset_ && canvasPointer)
-    {
-        const auto track = scrollRail_->BoundsInCanvas();
-        const float thumbHeight = scrollThumb_->BoundsInCanvas().height;
-        const float travel = std::max(track.height - thumbHeight, 1.0F);
-        const float thumbTop = canvasPointer->y - *scrollDragOffset_ + thumbHeight * 0.5F;
-        const float ratio = std::clamp((track.y + track.height - thumbTop) / travel, 0.0F, 1.0F);
-        scrollOffset_ = ratio * std::max(contentHeight_ - viewportHeight_, 0.0F);
-        heldSection_.reset();
-        ApplyScrollOffset(inputRouter);
-    }
-    if (input.WasMouseButtonReleased(MouseButton::Left))
-        scrollDragOffset_.reset();
     if (!insidePanel)
         return consumedKey;
 

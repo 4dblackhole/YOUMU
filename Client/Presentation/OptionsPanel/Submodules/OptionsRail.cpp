@@ -259,19 +259,8 @@ void OptionsPanel::UpdateContentLayout()
 
 void OptionsPanel::UpdateScrollbar()
 {
-    const float maximum = contentHeight_ - viewportHeight_;
-    const bool scrollable = maximum > 0.0F;
-    scrollRail_->SetVisible(scrollable);
-    scrollThumb_->SetVisible(scrollable);
-    if (!scrollable)
-        return;
-    const float left = PanelWidth - ScrollbarWidth;
-    scrollRail_->SetBounds({left, footerHeight_, ScrollbarWidth, viewportHeight_});
-    for (const auto &child : scrollRail_->Children())
-        child->SetBounds({3, 0, 6, viewportHeight_});
-    const float thumbHeight = std::max(32.0F, viewportHeight_ * viewportHeight_ / contentHeight_);
-    const float thumbTop = HeaderHeight + (viewportHeight_ - thumbHeight) * (scrollOffset_ / maximum);
-    scrollThumb_->SetBounds(TopLeft({left + 3, thumbTop, 6, thumbHeight}, PanelHeight));
+    scrollbar_.SetRail({PanelWidth - ScrollbarWidth, footerHeight_, ScrollbarWidth, viewportHeight_});
+    scrollbar_.SetRange(viewportHeight_, contentHeight_, scrollOffset_);
 }
 
 bool OptionsPanel::CanProcessAction(NodeId source) const noexcept

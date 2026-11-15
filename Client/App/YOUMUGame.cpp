@@ -41,9 +41,6 @@ YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId,
     initialRequest.songsRoot = optionSettings_.SongsRoot();
     launchRequest_->Set(std::move(initialRequest));
     texts_.SetLanguage(optionSettings_.Values().language);
-    framesPerSecondText_ = texts_.Get("Performance.measuringFps");
-    updatesPerSecondText_ = texts_.Get("Performance.measuringUps");
-    drawCallsText_ = texts_.Get("Performance.measuringDraws");
     for (const auto &diagnostic : texts_.Diagnostics())
         OutputDebugStringA((diagnostic + "\n").c_str());
     SkinSetSelection::Instance().Initialize(optionSettings_.Values().skinSet);
@@ -149,10 +146,10 @@ void YOUMUGame::OnClientInitialized(const EngineServices &services)
 {
     // This hook runs before the first update/render; output switching retains clips.
     RestoreSavedAudioDriver(services.audio);
-    // Performance text is Client presentation, so the game owns the font and
+    // The performance band is Client presentation, so the game owns it and
     // chooses F7 independently from Engine scheduling.
-    performanceFont_ =
-        services.textRendering.LoadFontFile(YOUMU());
+    performanceBand_.Initialize(ScreenVisuals(), texts_);
+    performanceBand_.SetVisible(showPerformanceOverlay_);
 }
 
 void YOUMUGame::OnClientUpdated(const UpdateContext &context)
@@ -160,39 +157,21 @@ void YOUMUGame::OnClientUpdated(const UpdateContext &context)
     if (context.input.WasKeyPressed(VK_F7))
     {
         showPerformanceOverlay_ = !showPerformanceOverlay_;
+        performanceBand_.SetVisible(showPerformanceOverlay_);
     }
-    if (!context.performance.hasMeasurement ||
-        context.performance.measurementIndex == lastPerformanceMeasurementIndex_)
+    const bool measured = context.performance.hasMeasurement &&
+                          context.performance.measurementIndex != lastPerformanceMeasurementIndex_;
+    if (measured)
     {
-        return;
+        performanceBand_.Refresh(context.performance);
+        lastPerformanceMeasurementIndex_ = context.performance.measurementIndex;
     }
-    RefreshPerformanceText(context.performance);
-    lastPerformanceMeasurementIndex_ = context.performance.measurementIndex;
-}
-
-void YOUMUGame::OnClientRendered(const RenderContext &context)
-{
-    if (!showPerformanceOverlay_ || performanceFont_ == nullptr || context.textRendering == nullptr)
-    {
-        return;
-    }
-
-    constexpr float bottomMargin = 18.0F;
-    constexpr float lineHeight = 26.0F;
-    const float viewportHeight = static_cast<float>(context.height);
-    const float drawsY = std::max(viewportHeight - bottomMargin - lineHeight, 0.0F);
-    const float upsY = std::max(drawsY - lineHeight, 0.0F);
-    SubmitPerformanceLine(*context.textRendering, framesPerSecondText_, performanceFont_,
-                          std::max(upsY - lineHeight, 0.0F), static_cast<float>(context.width));
-    SubmitPerformanceLine(*context.textRendering, updatesPerSecondText_, performanceFont_, upsY,
-                          static_cast<float>(context.width));
-    SubmitPerformanceLine(*context.textRendering, drawCallsText_, performanceFont_, drawsY,
-                          static_cast<float>(context.width));
+    performanceBand_.Update();
 }
 
 void YOUMUGame::OnClientShuttingDown() noexcept
 {
-    performanceFont_.reset();
+    performanceBand_.Shutdown();
 }
 
 void YOUMUGame::RestoreSavedAudioDriver(AudioSystem &audio)
@@ -210,43 +189,4 @@ void YOUMUGame::RestoreSavedAudioDriver(AudioSystem &audio)
     if (selected == drivers.end()) return; // Keep the default device when hardware is unavailable.
     std::string error;
     if (!audio.SetOutputDriver(selected->driverIndex, error)) OutputDebugStringA(error.c_str());
-}
-
-void YOUMUGame::RefreshPerformanceText(const PerformanceStatistics &performance)
-{
-    framesPerSecondText_ =
-        std::wstring(texts_.Get("Performance.fps")) + L"  " + std::to_wstring(performance.framesPerSecond);
-    updatesPerSecondText_ =
-        std::wstring(texts_.Get("Performance.ups")) + L"  " + std::to_wstring(performance.updatesPerSecond);
-    // Average GPU draws per rendered frame and the busiest frame of the sample.
-    drawCallsText_ = std::wstring(texts_.Get("Performance.draws")) + L"  " +
-        std::to_wstring(performance.drawCallsPerFrame) + L" (" + std::wstring(texts_.Get("Performance.peak")) + L" " +
-        std::to_wstring(performance.peakDrawCallsPerFrame) + L")";
-}
-
-void YOUMUGame::SubmitPerformanceLine(TextRenderSystem &textRendering,
-                                           const std::wstring_view text,
-                                           const FontHandle &font,
-                                           const float layoutY, const float viewportWidth)
-{
-    constexpr float rightMargin = 18.0F;
-    constexpr float layoutWidth = 240.0F;
-    constexpr float lineHeight = 26.0F;
-    TextDrawCommand command;
-    command.positionPixels = {std::max(viewportWidth - rightMargin - layoutWidth, 0.0F), layoutY};
-    command.layoutSizePixels = {std::min(layoutWidth, std::max(viewportWidth - rightMargin, 1.0F)),
-                                lineHeight};
-    command.horizontalAlignment = TextHorizontalAlignment::Trailing;
-    command.verticalAlignment = TextVerticalAlignment::Center;
-    command.style.font = font;
-    command.style.fontSizePixels = 19.0F;
-
-    command.positionPixels.x += 1.5F;
-    command.positionPixels.y += 1.5F;
-    command.style.color = {0.0F, 0.0F, 0.0F, 0.70F};
-    textRendering.Submit(text, command);
-    command.positionPixels.x -= 1.5F;
-    command.positionPixels.y -= 1.5F;
-    command.style.color = {0.15F, 0.48F, 0.82F, 1.0F};
-    textRendering.Submit(text, command);
 }
