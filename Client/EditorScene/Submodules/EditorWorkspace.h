@@ -93,6 +93,8 @@ class EditorWorkspace final : public IEditorContext
     void SetFirstMeasure(std::int64_t) override;
     void SetDivision(std::int64_t);
     void SetRealtime(bool);
+    // Compose views: Realtime, Score or Preview (read-only).
+    void SetPreview();
     void RequestRebuild() noexcept override
     {
         rebuild_ = true;
@@ -165,8 +167,15 @@ class EditorWorkspace final : public IEditorContext
     void RemoveTiming(std::size_t);
     void ApplyBpm();
     void ApplyMeasureLength();
+    void ApplyDelay();
+    // Add writes the form at its position; Apply replaces the selected anchor row with it.
+    void AddTiming();
+    void ApplyTimingRow();
     void RemoveEffect(std::size_t);
     void ApplyEffect();
+    void ApplyEffectRow();
+    // The row that Shift+click extends from: the one the form below the list edits.
+    [[nodiscard]] std::optional<std::size_t> ListAnchor() const noexcept;
     double audioWindow{8.0};
     EditorTimingForm timingForm;
     EditorEffectForm effectForm;

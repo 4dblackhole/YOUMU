@@ -7,7 +7,7 @@
 
 struct EditorTextSet
 {
-    std::array<std::wstring_view, 5> tabs;
+    std::array<std::wstring_view, 3> tabs;
     std::wstring_view save;
     std::wstring_view saveDirty;
     std::wstring_view fileMenu;
@@ -46,7 +46,7 @@ struct EditorTextSet
 
     std::wstring_view effectsTitle;
     std::wstring_view effectsColumns;
-    std::array<std::wstring_view, 5> effectTypes;
+    std::array<std::wstring_view, 9> effectTypes;
     std::wstring_view startBeat;
     std::wstring_view endMeasureOptional;
     std::wstring_view endBeatOptional;

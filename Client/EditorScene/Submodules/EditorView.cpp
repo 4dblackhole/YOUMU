@@ -17,7 +17,11 @@ void EditorView::Initialize(const EngineServices &services)
     canvas = visuals.CreateOwnedCanvas({{layout::BaseWidth, layout::Height}, CanvasScaleMode::FixedHeight});
     static_cast<void>(canvas.SetVisible(true));
     node = &canvas.Get()->CreateNode(Anchor::Center, "Editor");
-    visual = &node->AddComponent<EditorVisual>();
+    // The editor draws on a surface above the sliders, whose own track and thumb it replaces;
+    // the sliders still take the pointer through it. Spectrum tiles sit above the surface.
+    auto &surface = node->CreateChild("Editor.Surface");
+    surface.SetZIndex(1);
+    visual = &surface.AddComponent<EditorVisual>();
     VisualStyle sliderStyle{};
     sliderStyle.normal.alpha = 0;
     sliderStyle.hovered.alpha = 0;
@@ -30,6 +34,7 @@ void EditorView::Initialize(const EngineServices &services)
     timelineSliderNode_->GetComponent<SpriteVisualComponent>()->SetStyle(sliderStyle);
     InitializeAudioSelection();
     menuBar_.Initialize(*node, texts_);
+    fields_.Initialize(services.windowControl);
     ReloadSize();
     Build();
 }
@@ -41,6 +46,8 @@ void EditorView::Shutdown() noexcept
     if (canvas.Get())
         sliderInput_.Reset(*canvas.Get());
     menuBar_.Shutdown();
+    fields_.Shutdown();
+    fieldRects_.clear();
     for (auto &tiles : audioTiles_)
         tiles.clear();
     audioRoots_.fill(nullptr);
@@ -207,8 +214,12 @@ void EditorView::Button(Rect r, std::wstring text, std::function<void()> action,
         Box({r.x, r.y, 1, r.height}, ui_colors::theme::RuleStrong);
         Box({r.x + r.width - 1, r.y, 1, r.height}, ui_colors::theme::RuleStrong);
     }
-    Label({r.x + 8, r.y, r.width - 16, r.height}, std::move(text),
-          {13, selected ? White : ui_colors::theme::BrandText, TextAlignment::Center, 700});
+    // Long captions shrink to fit their button.
+    float size = 13;
+    while (size > 9 && EstimateTextWidth(text, size) > r.width - 10)
+        --size;
+    Label({r.x + 4, r.y, r.width - 8, r.height}, std::move(text),
+          {size, selected ? White : ui_colors::theme::BrandText, TextAlignment::Center, 700});
     Control(r, std::move(action));
 }
 
@@ -219,14 +230,47 @@ void EditorView::FlatButton(Rect r, std::wstring text, std::function<void()> act
 
 void EditorView::Field(Rect r, const wchar_t *label, std::string &value)
 {
-    Label({r.x, r.y - 18, r.width, 16}, label, {12, ui_colors::theme::Caption, TextAlignment::Leading, 600});
+    InputField(r, label, Wide(value), [this, &value](const std::string &typed) {
+        value = typed;
+        state_.RequestRebuild();
+    }, true);
+}
+
+TextInputBounds EditorView::ScreenBounds(Rect r) const noexcept
+{
+    // Frame -> canvas logical (centre origin) -> window pixels.
+    const auto *surface = canvas.Get();
+    const float pixel = surface ? surface->PixelScale() : 1;
+    const auto size = surface ? surface->LogicalSize() : Size{layout::BaseWidth, layout::Height};
+    const float left = (r.x - frame_.width * .5F) * frame_.scale + size.width * .5F;
+    const float top = (r.y - layout::Height * .5F) * frame_.scale + size.height * .5F;
+    return {static_cast<std::int32_t>(std::lround(left * pixel)), static_cast<std::int32_t>(std::lround(top * pixel)),
+            static_cast<std::uint32_t>(std::max(1L, std::lround(r.width * frame_.scale * pixel))),
+            static_cast<std::uint32_t>(std::max(1L, std::lround(r.height * frame_.scale * pixel)))};
+}
+
+void EditorView::InputField(Rect r, std::wstring label, std::wstring text, EditorTextFields::Commit commit, bool number,
+                            bool showLabel)
+{
+    if (showLabel && !label.empty())
+        Label({r.x, r.y - 18, r.width, 16}, label, {12, ui_colors::theme::Caption, TextAlignment::Leading, 600});
     Box(r, {1, 1, 1, .74F});
-    Box({r.x, r.y + r.height - 2, r.width, 2}, ui_colors::theme::RuleStrong);
-    Label({r.x + 8, r.y, r.width - 16, r.height}, Wide(value), {15, ui_colors::theme::Ink});
-    Control(r, [this, label, &value] {
-        if (auto edited = EditText(label, value, Texts()))
+    Box({r.x, r.y + r.height - 2, r.width, 2}, ui_colors::Rgb(0xB5CFF5));
+    if (fields_.Available())
+    {
+        // The native editor sits inside the underline, inset from the box.
+        const Rect inner{r.x + 6, r.y + 4, r.width - 12, r.height - 8};
+        const auto font = static_cast<std::uint32_t>(std::max(1.0F, std::round(15 * PixelScale())));
+        fields_.Declare(std::format("{}@{:.0f},{:.0f}", Utf8(label), r.x, r.y), ScreenBounds(inner), font, text,
+                        std::move(commit), number);
+        fieldRects_.push_back(r);
+        return;
+    }
+    Label({r.x + 8, r.y, r.width - 16, r.height}, text, {15, ui_colors::theme::Ink, TextAlignment::Leading, 600, number});
+    Control(r, [this, label, text, commit] {
+        if (auto edited = EditText(label, Utf8(text), Texts()))
         {
-            value = *edited;
+            commit(*edited);
             state_.RequestRebuild();
         }
     });
@@ -240,6 +284,18 @@ EditorModeAreas EditorView::Areas() const noexcept
     areas.judgeX = layout::HeadWidth + layout::JudgeOffset;
     areas.score = {0, layout::TrackTop, right, layout::FooterTop - layout::TrackTop};
     areas.body = {0, layout::BodyTop, frame_.width, layout::BodyHeight};
+    // The chart's BG for Preview and the Metadata thumbnail.
+    {
+        const auto &pattern = state_.Document().Pattern();
+        const auto &root = state_.Request().songsRoot;
+        if (!pattern.backgroundFile.empty() && !root.empty())
+        {
+            std::error_code error;
+            auto path = root / L"BG" / pattern.backgroundFile;
+            if (std::filesystem::is_regular_file(path, error))
+                areas.background = std::move(path);
+        }
+    }
     areas.tools.y = layout::BodyTop;
     if (state_.Panel() == EditorPanel::Notes)
         areas.inspector = PanelBody();
@@ -254,6 +310,8 @@ void EditorView::BuildContent()
         if (root)
             root->SetVisible(state_.Tab() == EditorTab::Audio);
     controls.clear();
+    fieldRects_.clear();
+    fields_.Begin();
     visual->Clear();
     Box({0, 0, frame_.width, layout::Height}, ui_colors::theme::Surface);
     if (state_.Tab() == EditorTab::Compose)
@@ -266,6 +324,7 @@ void EditorView::BuildContent()
     SyncInputControls();
     DrawFooter();
     DrawLetterbox();
+    fields_.End();
     visual->Finish();
     textRevision_ = texts_.Revision();
     state_.FinishBuild();
@@ -295,6 +354,8 @@ void EditorView::Build()
             if (root)
                 root->SetVisible(false);
         controls.clear();
+        fieldRects_.clear();
+        fields_.Begin();
         visual->Clear();
         sliderInput_.Reset(*canvas.Get());
         divisionSliderNode_->SetVisible(false);
@@ -309,6 +370,7 @@ void EditorView::Build()
         SyncInputControls();
         DrawFooter();
         DrawLetterbox();
+        fields_.End();
         visual->Finish();
         state_.FinishBuild();
         textRevision_ = texts_.Revision();

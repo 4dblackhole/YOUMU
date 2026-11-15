@@ -18,11 +18,12 @@ struct EditorModeAreas
                            editor_layout::BaseWidth - editor_layout::HeadWidth, editor_layout::LaneHeight};
     // Current-time x of the realtime lane (the judgement line).
     float judgeX{editor_layout::HeadWidth + editor_layout::JudgeOffset};
-    PhantomCore::Rect score{editor_layout::HeadWidth, editor_layout::TrackTop,
-                            editor_layout::BaseWidth - editor_layout::HeadWidth,
+    PhantomCore::Rect score{0, editor_layout::TrackTop, editor_layout::BaseWidth,
                             editor_layout::FooterTop - editor_layout::TrackTop};
     // The body between the tab bar and the footer (Metadata).
     PhantomCore::Rect body{0, editor_layout::BodyTop, editor_layout::BaseWidth, editor_layout::BodyHeight};
+    // The chart's BG image for Preview and Metadata; empty when it has none.
+    std::filesystem::path background;
     // Body of the open note panel; empty while it is closed.
     PhantomCore::Rect inspector{};
 };
@@ -41,6 +42,17 @@ class IEditorModeCanvas
                       PhantomCore::Color color = {.17F, .34F, .47F, 1}) = 0;
     virtual void Image(PhantomCore::Rect, const std::filesystem::path &, PhantomCore::Color) = 0;
     virtual void Button(PhantomCore::Rect, std::wstring, std::function<void()>, bool selected = false) = 0;
+    // A labelled single-line field; `commit` receives the typed text (UTF-8) and may throw to reject it.
+    virtual void TextField(PhantomCore::Rect r, std::wstring label, std::wstring text,
+                           std::function<void(const std::string &)> commit, bool number = false)
+    {
+        // Without inline editors the caption sits above and the value reads as a button.
+        static_cast<void>(number);
+        static_cast<void>(commit);
+        if (!label.empty())
+            Text({r.x, r.y - 18, r.width, 16}, std::move(label), 12);
+        Button(r, std::move(text), [] {});
+    }
     // A clickable area over artwork the mode drew itself.
     virtual void Region(PhantomCore::Rect r, std::function<void()> action) { Button(r, {}, std::move(action)); }
 };

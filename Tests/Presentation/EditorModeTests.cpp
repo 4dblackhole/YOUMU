@@ -11,6 +11,7 @@
 #include <chrono>
 #include <filesystem>
 #include <limits>
+#include <iostream>
 #include <map>
 #include <ranges>
 #include <stdexcept>
@@ -36,9 +37,10 @@ namespace
 } // namespace
 namespace
 {
-    // Default areas lent to a mode: lane at y 160..312 with the judgement line at
-    // 184 + 152 * .62; score rows from x 24, 308 wide, the first row's notes at y 192.
-    constexpr float JudgeX = 184 + 152 * .62F, LaneY = 236, ScoreLeft = 24, MeasureWidth = 308, ScoreY = 192;
+    // Default areas lent to a mode: lane at y 160..312 with the judgement line at 184 + 152 * .62.
+    // Score (cursor in the first row): bar lines from x 40, measures 300 wide, the first lane band
+    // centred at y 173.5 (31 high below a 16-high number band, 10 below the area top 132).
+    constexpr float JudgeX = 184 + 152 * .62F, LaneY = 236, ScoreLeft = 40, MeasureWidth = 300, ScoreY = 173.5F;
     // At spacing 1 a whole note at Base BPM spans 16 sixteenths of 85% of the 128 * 152 / 228 head.
     constexpr float WholeNotePixels = 128 * (152 / 228.0F) * 16 * .85F;
 
@@ -292,15 +294,18 @@ namespace
                 {
                     const auto corner = TransformPoint(
                         {packet.bounds.x, packet.bounds.y + packet.bounds.height, 0}, packet.nodeTransform);
-                    const float y = 540 - corner.y;
+                    const float y = 360 - corner.y;
                     const bool colored = waveform ? packet.color.green > .5F && packet.color.red < .3F
                                                   : packet.color.red > .3F && packet.color.green < .95F;
                     return packet.type == DrawPacketType::Rectangle && y >= top && y < bottom &&
-                           corner.x >= 205 - 960 && corner.x < 1770 - 960 && colored;
+                           corner.x >= 24 - 640 && corner.x < 1256 - 640 && colored;
                 });
         };
-        Check(visibleColumns(153, 319, true) > 10 && visibleColumns(375, 587, false) > 10 &&
-                  visibleColumns(640, 852, false) > 10,
+        // Track rows of the 16:9 frame: waveform 1.2, music 1, expected hits .8 of the space below the tools.
+        const float unit = (642.0F - 138.0F - 20.0F - 24.0F) / 3;
+        const float musicTop = 138 + unit * 1.2F + 36, hitTop = musicTop + unit + 8;
+        Check(visibleColumns(138, 138 + unit * 1.2F, true) > 10 && visibleColumns(musicTop, musicTop + unit, false) > 10 &&
+                  visibleColumns(hitTop, hitTop + unit * .8F, false) > 10,
               "Ogg Vorbis must draw a waveform, music FFT and hit-sound FFT in the audio tab.");
         view.Shutdown();
         Check(visuals.CanvasCount() == 0, "The Vorbis view must release its canvases.");
@@ -348,6 +353,7 @@ namespace
         }
         EditorWorkspace state(CreateEditorMode("Taiko"),
                               std::make_unique<ChartEditor>(PatternDocument{}));
+        state.SetRealtime(false);
         state.SelectTool(1);
         RecordingCanvas canvas;
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
@@ -452,14 +458,20 @@ namespace
         pattern.timing = {{{0, {3, 4}}, TimingDirectiveType::Bpm, 120},
                           {{1, {1, 4}}, TimingDirectiveType::DelayMilliseconds, -1500}};
         EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
+        state.SetRealtime(false);
         state.SelectTool(0);
         RecordingCanvas overview;
         state.Mode().DrawChart(overview, state, TestCatalog(Language::English));
-        Check(overview.images.size() == 2 && std::ranges::find(overview.labels, L"1  2/4") != overview.labels.end() &&
-                  std::ranges::find(overview.labels, L"2  3/4") != overview.labels.end() &&
+        // Cut positions are washed red in the score and never snap.
+        const auto red = std::ranges::count_if(overview.rectangleColors, [](const auto &color) {
+            return color.red > .85F && color.green < .35F && std::abs(color.alpha - .4F) < .01F;
+        });
+        Check(red > 0 && std::ranges::find(overview.labels, L"1") != overview.labels.end() &&
+                  std::ranges::find(overview.labels, L"2") != overview.labels.end() &&
                   std::ranges::none_of(overview.labels, [](const auto &label) { return label.starts_with(L"BPM"); }),
-              "Overview must show effective bar lengths, exclude overwritten taps/BPM, and retain the new endpoint.");
-        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth, ScoreY}, false);
+              "The score must number its measures and mark the cut section without BPM captions.");
+        // Beats keep uniform widths: the note at 1/4 of the second measure sits a quarter into it.
+        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth * 1.25F, ScoreY}, false);
         RecordingCanvas selected;
         state.Mode().DrawNotePanel(selected, state, TestCatalog(Language::English));
         Check(std::ranges::find(selected.labels, L"1/4") != selected.labels.end(),
@@ -490,11 +502,113 @@ namespace
               "Realtime and overview must select the same surviving beat at the clipped bar boundary.");
     }
 
+    // Compose panels: timing kinds with Add/Apply, toggles with Exclude and Audio FX buses,
+    // all as single history steps on the document.
+    void TestComposePanelEdits()
+    {
+        PatternDocument pattern;
+        pattern.mode = "Taiko";
+        pattern.baseBpm = 120;
+        pattern.timing = {{{0, {}}, TimingDirectiveType::Bpm, 120}};
+        EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
+        state.OpenPanel(EditorPanel::Timing);
+        Check(state.Focus() == EditorFocus::Timing && state.Tab() == EditorTab::Compose,
+              "The Timing panel must own the timing list.");
+        state.timingForm.kind = EditorTimingKind::Delay;
+        state.timingForm.measure = "3";
+        state.timingForm.fraction = "0/1";
+        state.timingForm.delay = "-250";
+        state.AddTiming();
+        const auto delayRow = [&state]() -> std::optional<std::size_t> {
+            const auto &timing = state.Document().Timing();
+            for (std::size_t i = 0; i < timing.size(); ++i)
+                if (timing[i].type == TimingDirectiveType::DelayMilliseconds)
+                    return i;
+            return std::nullopt;
+        };
+        Check(delayRow() && state.Document().Timing()[*delayRow()].value == -250,
+              "Add must write a delay at the form's position.");
+        const auto revision = state.Document().Revision();
+        state.SelectListRow(*delayRow(), false, false);
+        Check(state.ListAnchor() == delayRow(), "The clicked row is the anchor the form edits.");
+        state.timingForm.fraction = "1/4";
+        state.timingForm.delay = "125";
+        state.ApplyTimingRow();
+        Check(state.Document().Timing().size() == 2 && state.Document().Timing()[*delayRow()].value == 125 &&
+                  state.Document().Timing()[*delayRow()].position == MusicalPosition{2, {1, 4}},
+              "Apply must move and change the selected row instead of adding another.");
+        state.Undo();
+        Check(state.Document().Revision() != revision && state.Document().Timing()[*delayRow()].value == -250,
+              "Apply must undo in one step.");
+        state.timingForm.kind = EditorTimingKind::Bpm;
+        state.timingForm.measure = "2";
+        state.timingForm.fraction = "0/1";
+        state.timingForm.bpm = "180";
+        state.AddTiming();
+        Check(state.Document().Timing().size() == 3, "Add must keep the other timing kinds.");
+
+        state.OpenPanel(EditorPanel::Zones);
+        auto &form = state.effectForm;
+        form.selection = EffectCommandType::Kiai;
+        form.startMeasure = "2";
+        form.startFraction = "0/1";
+        form.beginValue = form.endValue = "1";
+        state.ApplyEffect();
+        form.selection = EffectCommandType::SyncopationZone;
+        form.excluded = "1|2";
+        state.ApplyEffect();
+        const auto written = ChartEditor::WriteEffects(state.Document().Effects());
+        Check(written.find("#Kiai ON") != std::string::npos &&
+                  written.find("#Syncopation ON, Exclude=1|2") != std::string::npos,
+              "Zone toggles must write ON states and the Exclude divisors.");
+        form.excluded = "0";
+        bool rejected = false;
+        try
+        {
+            state.ApplyEffect();
+        }
+        catch (const std::invalid_argument &)
+        {
+            rejected = true;
+        }
+        Check(rejected, "Exclude divisors outside 1..1024 must be rejected.");
+
+        state.OpenPanel(EditorPanel::AudioEffects);
+        form.selection = EffectCommandType::LowPassCutoff;
+        form.audioBus = "Music";
+        form.startMeasure = "2";
+        form.startFraction = "0/1";
+        form.endMeasure = "3";
+        form.endFraction = "0/1";
+        form.beginValue = "800";
+        form.endValue = "20000";
+        form.curve = AutomationCurve::Exponential;
+        form.curveName.clear();
+        form.excluded.clear();
+        state.ApplyEffect();
+        const auto &commands = state.Document().Effects().commands;
+        const auto lowPass = std::ranges::find(commands, EffectCommandType::LowPassCutoff, &EffectCommand::type);
+        Check(lowPass != commands.end() && lowPass->target == "Music" && lowPass->endPosition.has_value(),
+              "Audio FX must keep its bus and Area.");
+        const auto row = static_cast<std::size_t>(lowPass - commands.begin());
+        state.SelectListRow(row, false, false);
+        form.Load(state.Document().Effects(), row);
+        Check(form.audioBus == "Music" && form.endMeasure == "3", "Loading an Audio FX row must restore bus and Area.");
+        form.beginValue = "1200";
+        state.ApplyEffectRow();
+        Check(std::ranges::count(state.Document().Effects().commands, EffectCommandType::LowPassCutoff,
+                                 &EffectCommand::type) == 1,
+              "Apply must replace the selected Audio FX row.");
+    }
+
     void TestInitialSelectionAndRealtimeGrid()
     {
         PatternDocument pattern;
         pattern.baseBpm = 120;
         EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
+        Check(state.Score().realtime, "Compose must open on the Realtime view.");
+        // The score view seeks to a clicked beat; the realtime lane keeps the cursor.
+        state.SetRealtime(false);
         state.PlaceNote({0, {1, 4}});
         Check(state.Document().Notes().empty() && !state.Mode().HasPendingPlacement() &&
                   state.TimeMilliseconds() == 500,
@@ -612,6 +726,7 @@ namespace
         source.baseBpm = 120;
         source.notes = {{{0, {}}, 1}, {{0, {1, 4}}, 2}, {{1, {}}, 2}, {{1, {1, 8}}, 1}, {{1, {1, 4}}, 1}};
         EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(source));
+        state.SetRealtime(false);
         state.SelectTool(0);
         RecordingCanvas canvas;
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::English));
@@ -1142,6 +1257,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
                   state.Document().FindNote(id)->head.note.extraData ==
                       std::vector<std::string>{"Custom=keep", "HitCount=6"},
               "The inspector must update the paired type/count and preserve unrelated options.");
+        state.SetRealtime(false);
         state.SelectTool(0);
         RecordingCanvas score;
         state.Mode().DrawChart(score, state, TestCatalog(Language::Korean));
@@ -1152,10 +1268,11 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
         Check(std::ranges::find(score.labels, std::wstring(Name(16, TaikoEditor(TestCatalog(Language::Korean)).toolVariants))) !=
                   score.labels.end(),
               "Selecting a note must expose the note panel.");
-        Check(std::ranges::any_of(score.images, [](const auto &path) { return path.filename() == L"DengDeng.png"; }),
-              "Score must draw the focus-note skin sprite.");
         state.SetRealtime(true);
+        score.images.clear();
         state.Mode().DrawChart(score, state, TestCatalog(Language::Korean));
+        Check(std::ranges::any_of(score.images, [](const auto &path) { return path.filename() == L"DengDeng.png"; }),
+              "The realtime lane must draw the focus-note skin sprite.");
         Check(std::ranges::any_of(score.labels,
                                   [](const auto &label) { return label.find(L"6 hits") != std::wstring::npos; }),
               "A long-note head must show its required hit count in both views.");
@@ -1177,8 +1294,8 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
         PatternDocument pattern;
         pattern.notes = {{{0, {}}, 11, 1, {}, {"HitCount=6"}}, {{40, {}}, 11, 2}};
         EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
+        state.SetRealtime(false);
         state.SelectTool(0);
-        state.SetFirstMeasure(4);
         RecordingCanvas score;
         state.Mode().DrawChart(score, state, TestCatalog(Language::English));
         state.Mode().EditScore(state, {800, ScoreY}, false);
@@ -1202,6 +1319,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     TestLastNoteSeeking();
     TestSelectionClipboardAndHistory();
     TestDelayViewsAndSnapping();
+    TestComposePanelEdits();
     TestSeekAndEffectEdits();
     TestInspectorMusicalTiming();
     TestRealtimeIgnoresScrollEffects();

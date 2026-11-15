@@ -88,17 +88,15 @@ void TaikoEditorNoteInspector::Field(IEditorModeCanvas &canvas, IEditorContext &
                                      const TextCatalog &catalog, float y, std::wstring_view label,
                                      std::string &value, float x, float width)
 {
-    canvas.Text({x, y, width, 18}, std::wstring(label), 12, ui_colors::theme::Caption);
-    canvas.Button({x, y + 20, width, 32}, Wide(value),
-                  [this, &state, &catalog, label = std::wstring(label), &value]
-                  {
-                      if (const auto edited = EditText(std::wstring(label), value, Editor(catalog)))
-                      {
-                          value = *edited;
-                          draftChanged_ = true;
-                          state.RequestRebuild();
-                      }
-                  });
+    static_cast<void>(catalog);
+    canvas.TextField({x, y + 20, width, 32}, std::wstring(label), Wide(value),
+                     [this, &state, &value](const std::string &typed)
+                     {
+                         value = typed;
+                         draftChanged_ = true;
+                         state.RequestRebuild();
+                     },
+                     true);
 }
 void TaikoEditorNoteInspector::PositionFields(IEditorModeCanvas &canvas, IEditorContext &state,
                                               const TextCatalog &catalog, float y,

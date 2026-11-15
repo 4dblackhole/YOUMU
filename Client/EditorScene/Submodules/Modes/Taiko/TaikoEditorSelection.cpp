@@ -2,6 +2,7 @@
 #include "TaikoEditorMode.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace PhantomCore;
 
@@ -19,12 +20,23 @@ std::optional<MusicalPosition> TaikoEditorMode::SnapPosition(IEditorContext &sta
     }
     if (overviewGrid_.empty())
         return {};
-    const auto grid = ScoreGridFor(areas_.score);
-    const auto x = std::clamp(point.x, grid.left, grid.Right() - .01F);
-    const auto y = std::clamp(point.y, grid.rowTop, grid.rowTop + grid.rowHeight * VisibleRows - .01F);
-    const auto measure = state.Score().firstMeasure +
-                         static_cast<std::int64_t>((y - grid.rowTop) / grid.rowHeight) * MeasuresPerRow +
-                         static_cast<std::int64_t>((x - grid.left) / grid.measureWidth);
+    // Dragging past a row edge keeps snapping inside the nearest drawn measure.
+    const ScoreCell *nearest = nullptr;
+    float distance = std::numeric_limits<float>::infinity();
+    for (const auto &cell : scoreCells_)
+    {
+        const float dx = std::max({cell.bandLeft - point.x, 0.0F, point.x - cell.bandRight});
+        const float dy = std::max({cell.top - point.y, 0.0F, point.y - (cell.laneTop + cell.laneHeight)});
+        if (dx + dy < distance)
+        {
+            distance = dx + dy;
+            nearest = &cell;
+        }
+    }
+    if (!nearest)
+        return {};
+    const auto measure = nearest->measure;
+    const auto x = std::clamp(point.x, nearest->x0, nearest->x0 + nearest->width);
     const auto begin =
         std::ranges::lower_bound(overviewGrid_, measure, {}, [](const auto &g) { return g.second.measure; });
     const auto end =
@@ -38,7 +50,7 @@ std::optional<MusicalPosition> TaikoEditorMode::SnapPosition(IEditorContext &sta
 
 bool TaikoEditorMode::BeginScoreSelection(IEditorContext &state, Point point)
 {
-    if (tool_ != 0 || !(state.Score().realtime ? areas_.lane : ScoreGridFor(areas_.score).Bounds()).Contains(point))
+    if (tool_ != 0 || state.Score().preview || !(state.Score().realtime ? areas_.lane : areas_.score).Contains(point))
         return false;
     const auto position = SnapPosition(state, point);
     if (!position)

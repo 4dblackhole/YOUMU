@@ -2,6 +2,7 @@
 #include "TaikoEditorMode.h"
 #include "Parsing/ChartParser.h"
 #include <algorithm>
+#include <format>
 #include <sstream>
 using namespace editor_ui;
 
@@ -15,6 +16,27 @@ namespace
             if (!result.empty())
                 result += '\n';
             result += value;
+        }
+        return result;
+    }
+    std::string JoinTags(const std::vector<std::string> &tags)
+    {
+        std::string result;
+        for (const auto &tag : tags)
+            result += (result.empty() ? "" : ", ") + tag;
+        return result;
+    }
+    std::vector<std::string> SplitTags(const std::string &value)
+    {
+        std::vector<std::string> result;
+        std::istringstream in(value);
+        std::string tag;
+        while (std::getline(in, tag, ','))
+        {
+            const auto first = tag.find_first_not_of(" \t");
+            if (first == std::string::npos)
+                continue;
+            result.push_back(tag.substr(first, tag.find_last_not_of(" \t") - first + 1));
         }
         return result;
     }
@@ -56,40 +78,73 @@ void TaikoEditorMode::DrawMetadata(IEditorModeCanvas &canvas, IEditorContext &st
         canvas.Text({lefts[column], top, widths[column], 22}, std::wstring(catalog.Get(headings[column])), 16,
                     ui_colors::theme::Ink);
 
-    const auto field = [&state, &canvas, &catalog](PhantomCore::Rect r, std::wstring title, std::string value,
-                                                   Apply apply) {
-        canvas.Text({r.x, r.y, r.width, 18}, title, 12, ui_colors::theme::Caption);
-        canvas.Button({r.x, r.y + 20, r.width, 32}, Wide(value),
-                      [&state, &catalog, title, value, apply]
-                      {
-                          if (auto edited = EditText(title, value, Editor(catalog)))
-                          {
-                              auto p = state.Document().Pattern();
-                              apply(p, *edited);
-                              state.Replace(p, state.Document().Effects());
-                              state.RequestRebuild();
-                          }
-                      });
+    // Fields commit on Enter or when focus leaves; the document validates the whole pattern.
+    const auto field = [&state, &canvas](PhantomCore::Rect r, std::wstring title, std::string value, Apply apply,
+                                         bool number = false) {
+        canvas.TextField({r.x, r.y + 20, r.width, 32}, std::move(title), Wide(value),
+                         [&state, apply](const std::string &typed)
+                         {
+                             auto p = state.Document().Pattern();
+                             apply(p, typed);
+                             state.Replace(p, state.Document().Effects());
+                             state.RequestRebuild();
+                         },
+                         number);
     };
     const auto &p = state.Document().Pattern();
     const float x0 = lefts[0], w0 = widths[0], half0 = (w0 - 10) * .5F;
     float y = top + 36;
     field({x0, y, w0, 52}, std::wstring(text.patternName), p.name, [](auto &d, const auto &value) { d.name = value; });
     y += 62;
-    field({x0, y, w0, 52}, std::wstring(text.makers), Join(p.makers),
-          [](auto &d, const auto &value) { d.makers = Lines(value); });
-    y += 62;
-    field({x0, y, w0, 52}, std::wstring(text.tags), Join(p.tags), [](auto &d, const auto &value) { d.tags = Lines(value); });
+    // Chart by: one row per creator; the first (★) is the one shown in song select and results.
+    auto makers = p.makers;
+    // Add shows an empty row; it joins the document once a name is typed.
+    if (makers.empty() || addingMaker_)
+        makers.emplace_back();
+    for (std::size_t i = 0; i < makers.size(); ++i)
+    {
+        const float rowY = y + 20 + 38 * static_cast<float>(i);
+        // Only the first row carries the caption.
+        canvas.TextField({x0, rowY, w0 - 38, 32}, i == 0 ? std::wstring(text.makers) : std::wstring{}, Wide(makers[i]),
+                         [this, &state, i](const std::string &typed)
+                         {
+                             addingMaker_ = false;
+                             auto d = state.Document().Pattern();
+                             if (d.makers.size() <= i)
+                                 d.makers.resize(i + 1);
+                             d.makers[i] = typed;
+                             std::erase_if(d.makers, [](const std::string &maker) { return maker.empty(); });
+                             state.Replace(d, state.Document().Effects());
+                             state.RequestRebuild();
+                         });
+        if (i == 0)
+            canvas.Text({x0 + w0 - 28, rowY + 6, 20, 20}, L"★", 15, ui_colors::theme::Sun);
+        else
+            canvas.Button({x0 + w0 - 32, rowY + 2, 28, 28}, L"✕", [&state, i] {
+                auto d = state.Document().Pattern();
+                if (i < d.makers.size())
+                    d.makers.erase(d.makers.begin() + static_cast<std::ptrdiff_t>(i));
+                state.Replace(d, state.Document().Effects());
+                state.RequestRebuild();
+            });
+    }
+    y += 20 + 38 * static_cast<float>(makers.size());
+    canvas.Button({x0, y, 84, 28}, std::wstring(catalog.Get("Editor.add")), [this, &state] {
+        addingMaker_ = true;
+        state.RequestRebuild();
+    });
+    y += 38;
+    field({x0, y, w0, 52}, std::wstring(text.tags), JoinTags(p.tags), [](auto &d, const auto &value) { d.tags = SplitTags(value); });
     y += 62;
     field({x0, y, half0, 52}, std::wstring(catalog.Get("Editor.accuracyDifficulty")), p.judgementLevel.Format(),
-          [](auto &d, const auto &value) { d.judgementLevel = ParseJudgeLevel(value); });
+          [](auto &d, const auto &value) { d.judgementLevel = ParseJudgeLevel(value); }, true);
     field({x0 + half0 + 10, y, half0, 52}, std::wstring(catalog.Get("Editor.hp")), p.hpLevel.Format(),
-          [](auto &d, const auto &value) { d.hpLevel = HpLevel{Number(value)}; });
+          [](auto &d, const auto &value) { d.hpLevel = HpLevel{Number(value)}; }, true);
     y += 62;
-    field({x0, y, half0, 52}, std::wstring(text.baseBpm), std::to_string(p.baseBpm),
-          [](auto &d, const auto &value) { d.baseBpm = Number(value); });
-    field({x0 + half0 + 10, y, half0, 52}, std::wstring(text.offsetMilliseconds), std::to_string(p.patternOffsetMilliseconds),
-          [](auto &d, const auto &value) { d.patternOffsetMilliseconds = Number(value); });
+    field({x0, y, half0, 52}, std::wstring(text.baseBpm), std::format("{:g}", p.baseBpm),
+          [](auto &d, const auto &value) { d.baseBpm = Number(value); }, true);
+    field({x0 + half0 + 10, y, half0, 52}, std::wstring(text.offsetMilliseconds), std::format("{:g}", p.patternOffsetMilliseconds),
+          [](auto &d, const auto &value) { d.patternOffsetMilliseconds = Number(value); }, true);
 
     const float x1 = lefts[1], w1 = widths[1];
     y = top + 36;
@@ -101,19 +156,26 @@ void TaikoEditorMode::DrawMetadata(IEditorModeCanvas &canvas, IEditorContext &st
     canvas.Text({x1, y + 26, w1, 22}, p.effectFile.empty() ? std::wstring(L"—") : p.effectFile.wstring(), 14,
                 ui_colors::theme::InkSoft);
     y += 62;
-    field({x1, y, w1, 52}, std::wstring(catalog.Get("Editor.backgroundFile")), Utf8(p.backgroundFile.wstring()),
+    // BG: a preview of the image beside its path and x/y offset.
+    const auto preview = canvas.Areas().background;
+    const PhantomCore::Rect thumbnail{x1, y + 20, 128, 72};
+    if (preview.empty())
+    {
+        canvas.Box(thumbnail, ui_colors::Rgb(0xDCE7F5));
+        canvas.Text({thumbnail.x + 34, thumbnail.y + 28, 80, 16}, L"NO IMAGE", 11, ui_colors::theme::Caption);
+    }
+    else
+        canvas.Image(thumbnail, preview, White);
+    const float bgLeft = x1 + 140, bgWidth = w1 - 140;
+    field({bgLeft, y, bgWidth, 52}, std::wstring(catalog.Get("Editor.backgroundFile")), Utf8(p.backgroundFile.wstring()),
           [](auto &d, const auto &value) { d.backgroundFile = std::filesystem::path(Wide(value)); });
     y += 62;
-    field({x1, y, w1, 52}, std::wstring(catalog.Get("Editor.backgroundOffset")),
-          std::to_string(p.backgroundOffsetX) + ", " + std::to_string(p.backgroundOffsetY),
-          [](auto &d, const auto &value)
-          {
-              const auto parsed = ChartParser{}.ParsePattern("[Metadata]\noffset: " + value);
-              if (!parsed.Succeeded())
-                  throw std::invalid_argument("Background offset requires x, y numbers.");
-              d.backgroundOffsetX = parsed.document.backgroundOffsetX;
-              d.backgroundOffsetY = parsed.document.backgroundOffsetY;
-          });
+    // BG offset: x and y in 1280x720 logical units.
+    const float halfBg = (bgWidth - 10) * .5F;
+    field({bgLeft, y, halfBg, 52}, L"x", std::format("{:g}", p.backgroundOffsetX),
+          [](auto &d, const auto &value) { d.backgroundOffsetX = Number(value); }, true);
+    field({bgLeft + halfBg + 10, y, halfBg, 52}, L"y", std::format("{:g}", p.backgroundOffsetY),
+          [](auto &d, const auto &value) { d.backgroundOffsetY = Number(value); }, true);
 
     const float x2 = lefts[2], w2 = widths[2];
     y = top + 36;

@@ -91,12 +91,16 @@ bool EditorView::Update(const UpdateContext &context)
     }
     try
     {
+        if (auto rejected = fields_.Update())
+            state_.SetStatus(*rejected);
         const auto menu = UpdateMenu(input);
         if (menu.action)
             ExecuteMenuAction(*menu.action);
-        if (!menu.consumeKeyboard)
+        // While a field has focus its keys type text; editor shortcuts wait.
+        const bool typing = fields_.Editing();
+        if (!menu.consumeKeyboard && !typing)
             leave = UpdateKeyboard(input);
-        UpdateTimelineNavigation(input, !menu.consumeKeyboard, !menu.consumePointer);
+        UpdateTimelineNavigation(input, !menu.consumeKeyboard && !typing, !menu.consumePointer);
         if (menu.consumePointer)
             sliderInput_.Reset(*canvas.Get());
         else
@@ -176,6 +180,8 @@ void EditorView::UpdatePointer(const UpdateContext &context)
     }
     if (!input.WasMouseButtonPressed(MouseButton::Left))
         return;
+    if (std::ranges::none_of(fieldRects_, [&](const Rect &r) { return r.Contains(*point); }))
+        fields_.BlurAll();
     // A press that grabbed a slider belongs to that slider.
     const auto captured = sliderInput_.CapturedNode();
     if (captured == divisionSliderNode_->Id() || captured == timelineSliderNode_->Id())

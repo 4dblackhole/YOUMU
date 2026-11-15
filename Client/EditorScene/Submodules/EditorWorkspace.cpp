@@ -174,6 +174,14 @@ void EditorWorkspace::SetDivision(std::int64_t division)
 void EditorWorkspace::SetRealtime(bool realtime)
 {
     score_.realtime = realtime;
+    score_.preview = false;
+    RequestRebuild();
+}
+void EditorWorkspace::SetPreview()
+{
+    score_.realtime = false;
+    score_.preview = true;
+    mode_->CancelInteraction();
     RequestRebuild();
 }
 void EditorWorkspace::SelectTab(EditorTab value)
@@ -231,6 +239,61 @@ void EditorWorkspace::ApplyMeasureLength()
 {
     SetMeasureLength(Position(timingForm.measure, "0/1").measure, Position("1", timingForm.measureLength).fraction);
 }
+void EditorWorkspace::ApplyDelay()
+{
+    auto timing = Document().Timing();
+    const auto position = Position(timingForm.measure, timingForm.fraction);
+    const auto delay = Number(timingForm.delay);
+    std::erase_if(timing, [position](const auto &d) {
+        return d.position == position && d.type == TimingDirectiveType::DelayMilliseconds;
+    });
+    timing.push_back({position, TimingDirectiveType::DelayMilliseconds, delay});
+    editor_->ReplaceTiming(std::move(timing));
+    DocumentChanged();
+}
+void EditorWorkspace::AddTiming()
+{
+    switch (timingForm.kind)
+    {
+    case EditorTimingKind::Bpm: ApplyBpm(); break;
+    case EditorTimingKind::MeasureLength: ApplyMeasureLength(); break;
+    case EditorTimingKind::Delay: ApplyDelay(); break;
+    }
+}
+void EditorWorkspace::ApplyTimingRow()
+{
+    const auto row = ListAnchor();
+    if (!row)
+    {
+        AddTiming();
+        return;
+    }
+    const auto &timing = Document().Timing();
+    if (*row >= timing.size())
+        throw std::out_of_range("Timing row no longer exists.");
+    // A measure length keeps its carry rules; other kinds replace the row in one edit.
+    if (timingForm.kind == EditorTimingKind::MeasureLength)
+    {
+        const bool sameMeasure = timing[*row].type == TimingDirectiveType::MeasureLength &&
+                                 timing[*row].position.measure == Position(timingForm.measure, "0/1").measure;
+        if (!sameMeasure)
+            RemoveTiming(*row);
+        ApplyMeasureLength();
+        return;
+    }
+    auto replaced = timing;
+    replaced.erase(replaced.begin() + static_cast<std::ptrdiff_t>(*row));
+    const auto position = Position(timingForm.measure, timingForm.fraction);
+    const bool bpm = timingForm.kind == EditorTimingKind::Bpm;
+    const auto type = bpm ? TimingDirectiveType::Bpm : TimingDirectiveType::DelayMilliseconds;
+    const auto value = Number(bpm ? timingForm.bpm : timingForm.delay);
+    if (bpm && value <= 0)
+        throw std::invalid_argument("BPM must be positive.");
+    std::erase_if(replaced, [&](const auto &d) { return d.position == position && d.type == type; });
+    replaced.push_back({position, type, value});
+    editor_->ReplaceTiming(std::move(replaced));
+    DocumentChanged();
+}
 void EditorWorkspace::RemoveEffect(std::size_t row)
 {
     auto effects = Document().Effects();
@@ -249,6 +312,25 @@ void EditorWorkspace::RemoveEffect(std::size_t row)
 void EditorWorkspace::ApplyEffect()
 {
     editor_->ReplaceEffects(effectForm.Apply(Document().Effects()));
+    DocumentChanged();
+}
+void EditorWorkspace::ApplyEffectRow()
+{
+    const auto row = ListAnchor();
+    if (!row)
+    {
+        ApplyEffect();
+        return;
+    }
+    auto effects = Document().Effects();
+    if (*row < effects.commands.size())
+        effects.commands.erase(effects.commands.begin() + static_cast<std::ptrdiff_t>(*row));
+    else if (*row - effects.commands.size() < effects.hitSoundChanges.size())
+        effects.hitSoundChanges.erase(effects.hitSoundChanges.begin() +
+                                      static_cast<std::ptrdiff_t>(*row - effects.commands.size()));
+    else
+        throw std::out_of_range("Effect row no longer exists.");
+    editor_->ReplaceEffects(effectForm.Apply(effects));
     DocumentChanged();
 }
 std::pair<double, double> EditorWorkspace::TimelineRangeMilliseconds() const

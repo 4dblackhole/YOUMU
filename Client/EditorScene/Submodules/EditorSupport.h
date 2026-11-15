@@ -43,6 +43,28 @@ namespace editor_ui
         return width;
     }
 
+    // Breaks a caption into lines no wider than `width` (estimated), after spaces;
+    // CJK text may break after any character.
+    [[nodiscard]] inline std::wstring WrapCaption(std::wstring_view text, float size, float width)
+    {
+        std::wstring result, line;
+        for (const wchar_t character : text)
+        {
+            line += character;
+            if (EstimateTextWidth(line, size) <= width)
+                continue;
+            // Break at the last space for words (Hangul too); before the overflowing character
+            // for kana/Han or one long word.
+            const auto space = line.find_last_of(L' ');
+            const bool kanaOrHan = (character >= 0x3040 && character <= 0x9FFF) || (character >= 0xF900 && character <= 0xFAFF);
+            const bool atSpace = !kanaOrHan && space != std::wstring::npos && space > 0;
+            const auto split = atSpace ? space : line.size() - 1;
+            result += line.substr(0, split) + L'\n';
+            line = line.substr(atSpace ? split + 1 : split);
+        }
+        return result + line;
+    }
+
 } // namespace editor_ui
 
 namespace editor_ui

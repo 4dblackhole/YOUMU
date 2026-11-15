@@ -158,6 +158,7 @@ void EditorView::PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t fi
     if (!audioRoots_[track])
     {
         auto &root = node->CreateChild(track == 0 ? "Audio.MusicSpectrum" : "Audio.HitSpectrum");
+        root.SetZIndex(2);
         audioRoots_[track] = &root;
         auto &overlay = root.CreateChild("Ruler");
         overlay.SetZIndex(1);
@@ -283,10 +284,19 @@ void EditorView::DrawAudioSpectrum(std::size_t track, const double minimumHz, co
         const float fraction = static_cast<float>(1 - std::log(frequency / minimumHz) / std::log(maximumHz / minimumHz));
         const float y = rect.y + rect.height * fraction;
         overlay.AddRectangle({0, rect.height - (y - rect.y), rect.width, 1}, {1, 1, 1, .10F}, 0);
-        Label({rect.x + rect.width - 52, std::clamp(y - 8, rect.y, rect.y + rect.height - 16), 46, 16},
-              frequency >= 1000 ? Decimal(frequency / 1000, 0) + std::wstring(texts_.Get("Common.kilohertzSuffix"))
-                                : Decimal(frequency, 0) + std::wstring(texts_.Get("Common.hertzSuffix")),
-              {11, {1, 1, 1, .7F}, TextAlignment::Trailing, 700, true});
+        // Labels live in the overlay so the spectrum tiles cannot cover them (local origin bottom-left).
+        const auto label = frequency >= 1000
+                               ? Decimal(frequency / 1000, 0) + std::wstring(texts_.Get("Common.kilohertzSuffix"))
+                               : Decimal(frequency, 0) + std::wstring(texts_.Get("Common.hertzSuffix"));
+        const float top = std::clamp(y - 8, rect.y, rect.y + rect.height - 16) - rect.y;
+        auto face = ui_fonts::Number(700);
+        DrawPacket packet{};
+        packet.type = DrawPacketType::Text;
+        packet.bounds = {rect.width - 52, rect.height - top - 15, 46, 15};
+        packet.color = {1, 1, 1, .7F};
+        packet.text = std::make_shared<TextContent>(
+            TextContent{label, std::move(face.font), 11, TextAlignment::Trailing, {}, face.weight});
+        overlay.AddPacket(std::move(packet));
     }
 }
 

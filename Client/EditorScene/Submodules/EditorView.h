@@ -2,6 +2,7 @@
 #include "EditorLayout.h"
 #include "EditorMenuBar.h"
 #include "EditorSupport.h"
+#include "EditorTextFields.h"
 #include "EditorVisual.h"
 #include "EditorWorkspace.h"
 #include "Texts/EditorScene/EditorTexts.h"
@@ -58,6 +59,10 @@ class EditorView final : public IEditorModeCanvas
     void Control(PhantomCore::Rect, std::function<void()> action);
     void FlatButton(PhantomCore::Rect, std::wstring, std::function<void()>, bool primary = false);
     void Field(PhantomCore::Rect r, const wchar_t *label, std::string &value);
+    // A labelled inline field over `r`; without a window it falls back to the popup editor.
+    void InputField(PhantomCore::Rect r, std::wstring label, std::wstring text, EditorTextFields::Commit commit,
+                    bool number = false, bool showLabel = true);
+    [[nodiscard]] PhantomCore::TextInputBounds ScreenBounds(PhantomCore::Rect) const noexcept;
 
     // Shell: tabs, footer and the shared time controls.
     void BuildContent();
@@ -76,25 +81,35 @@ class EditorView final : public IEditorModeCanvas
     void DrawToolRow();
     void DrawBeatControl();
     void DrawHeads();
+    void DrawZoneHeads();
     void DrawChannelHead(editor_layout::Channel, std::wstring_view icon, std::wstring name, std::wstring value);
     void DrawRuler();
     void DrawPanel();
+    // Realtime channels under the lane, negative-delay cuts and the dragged beat range.
+    void DrawChannels();
+    void DrawCutsAndRange();
+    void Chip(float x, float middle, std::wstring text, PhantomCore::Color background, bool selected, float h = 18);
+    [[nodiscard]] double AutomationValueAt(EffectCommandType, std::string_view target, double fallback) const;
     void DrawPanelHeader(std::wstring title);
     void DrawTimingPanel(PhantomCore::Rect);
     void DrawEffectPanel(PhantomCore::Rect, EditorPanel);
     void DrawMusicPanel(PhantomCore::Rect);
-    void OpenChannel(EditorPanel);
     void DrawListHeader(PhantomCore::Rect body, std::span<const std::pair<std::wstring_view, float>> columns);
     void DrawListRow(PhantomCore::Rect row, std::span<const std::pair<std::wstring, float>> cells, bool selected,
-                     std::function<void()> select);
-    // Delete sits at the left of the panel's last row; returns that row's top.
-    float DrawPanelActions(PhantomCore::Rect body, std::size_t selected, std::function<void()> remove);
+                     bool primary, std::function<void()> select, PhantomCore::Color color = editor_ui::Ink);
+    // The panel's last row: Delete at the left, Add and Apply at the right; returns the row's top.
+    float DrawPanelActions(PhantomCore::Rect body, std::size_t selected, std::function<void()> remove,
+                           std::function<void()> add, std::function<void()> apply);
+    void Segmented(PhantomCore::Rect row, std::span<const std::wstring> options, std::size_t selected,
+                   std::function<void(std::size_t)> choose);
+    void SelectEffectType(const EditorEffectSelection &);
+    void DrawExcludeChips(PhantomCore::Rect row);
+    void DrawCurveRow(PhantomCore::Rect row);
     void DrawSwitch(PhantomCore::Rect row, std::wstring caption, bool on, std::function<void()> toggle);
     [[nodiscard]] PhantomCore::Rect PanelBody() const noexcept;
     [[nodiscard]] std::wstring HeadValue(editor_layout::Channel) const;
     std::wstring EffectLabel(const EditorEffectSelection &) const;
     void SelectEffectRow(std::size_t);
-    void CycleEffectType(EditorPanel);
     [[nodiscard]] bool EffectInPanel(std::size_t row, EditorPanel) const;
 
     // Audio tab.
@@ -132,6 +147,11 @@ class EditorView final : public IEditorModeCanvas
     void Text(PhantomCore::Rect r, std::wstring text, float size = 20, PhantomCore::Color color = editor_ui::Ink) override;
     void Button(PhantomCore::Rect r, std::wstring text, std::function<void()> action, bool selected = false) override;
     void Region(PhantomCore::Rect r, std::function<void()> action) override { Control(r, std::move(action)); }
+    void TextField(PhantomCore::Rect r, std::wstring label, std::wstring text,
+                   std::function<void(const std::string &)> commit, bool number) override
+    {
+        InputField(r, std::move(label), std::move(text), std::move(commit), number);
+    }
     [[nodiscard]] EditorTextSet Texts() const noexcept;
 
     PhantomCore::ScreenVisual2DManager &visuals;
@@ -147,6 +167,9 @@ class EditorView final : public IEditorModeCanvas
     double audioSelectionViewBegin_{}, audioSelectionViewWindow_{};
     PhantomCore::Visual2DInputRouter sliderInput_;
     EditorMenuBar menuBar_;
+    EditorTextFields fields_;
+    // Rectangles of this build's fields: a click elsewhere ends typing.
+    std::vector<PhantomCore::Rect> fieldRects_;
     EditorVisual *visual{};
     editor_layout::Frame frame_{};
     PhantomCore::Rect timelineRect_{};

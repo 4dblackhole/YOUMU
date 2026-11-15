@@ -2,8 +2,7 @@
 
 EditorTextSet Editor(const TextCatalog &texts)
 {
-    return {{texts.Get("Editor.tabs.0"), texts.Get("Editor.tabs.1"), texts.Get("Editor.tabs.2"),
-             texts.Get("Editor.tabs.3"), texts.Get("Editor.tabs.4")},
+    return {{texts.Get("Editor.tabs.0"), texts.Get("Editor.tabs.1"), texts.Get("Editor.tabs.2")},
             texts.Get("Editor.save"),
             texts.Get("Editor.saveDirty"),
             texts.Get("Editor.fileMenu"),
@@ -40,7 +39,9 @@ EditorTextSet Editor(const TextCatalog &texts)
             texts.Get("Editor.effectsColumns"),
             {texts.Get("Editor.effectTypes.0"), texts.Get("Editor.effectTypes.1"),
              texts.Get("Editor.effectTypes.2"), texts.Get("Editor.effectTypes.3"),
-             texts.Get("Editor.effectTypes.4")},
+             texts.Get("Editor.effectTypes.4"), texts.Get("Editor.effectTypes.5"),
+             texts.Get("Editor.effectTypes.6"), texts.Get("Editor.effectTypes.7"),
+             texts.Get("Editor.effectTypes.8")},
             texts.Get("Editor.startBeat"),
             texts.Get("Editor.endMeasureOptional"),
             texts.Get("Editor.endBeatOptional"),

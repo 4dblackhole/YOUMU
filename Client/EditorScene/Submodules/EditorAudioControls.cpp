@@ -43,14 +43,8 @@ void EditorView::DrawAudioTools()
     };
     offsetStep(minusX, "Editor.offsetDecrease", -1);
     const Rect value{valueX, middle - 16, 92, 32};
-    Box(value, {1, 1, 1, .74F});
-    Box({value.x, value.y + value.height - 2, value.width, 2}, ui_colors::Rgb(0xB5CFF5));
-    Label(value, std::format(L"{:g} ms", offset), {15, theme::Ink, TextAlignment::Center, 800, true});
-    Control(value, [this] {
-        if (auto edited = EditText(std::wstring(Texts().offsetMilliseconds),
-                                   std::to_string(state_.Document().Pattern().patternOffsetMilliseconds), Texts()))
-            state_.SetPatternOffset(Number(*edited));
-    });
+    InputField(value, std::wstring(Texts().offsetMilliseconds), std::format(L"{:g}", offset),
+               [this](const std::string &typed) { state_.SetPatternOffset(Number(typed)); }, true, false);
     offsetStep(plusX, "Editor.offsetIncrease", 1);
 }
 

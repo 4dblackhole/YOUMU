@@ -59,6 +59,22 @@ class TaikoEditorMode final : public IEditorMode
     bool selecting_{};
     void DrawOverview(IEditorModeCanvas &, IEditorContext &, const TextCatalog &);
     void DrawRealtime(IEditorModeCanvas &, IEditorContext &, const TextCatalog &);
+    void DrawPreview(IEditorModeCanvas &, IEditorContext &);
+    // One measure of the score view: its bar line x, number band top, lane band and width.
+    struct ScoreCell
+    {
+        std::int64_t measure{};
+        float x0{}, top{}, laneTop{}, width{}, laneHeight{}, bandLeft{}, bandRight{};
+    };
+    [[nodiscard]] const ScoreCell *ScoreCellAt(std::int64_t measure) const;
+    [[nodiscard]] const ScoreCell *ScoreCellNear(PhantomCore::Point) const;
+    [[nodiscard]] std::optional<PhantomCore::Point> ScorePoint(const MusicalTimeline &, MusicalPosition) const;
+    void DrawScoreBodies(IEditorModeCanvas &, IEditorContext &, const std::vector<CompiledPatternNote> &);
+    void DrawScoreRangeAndCursor(IEditorModeCanvas &, IEditorContext &);
+    std::vector<ScoreCell> scoreCells_;
+    // Metadata: an empty Chart by row added but not yet named.
+    bool addingMaker_{};
+    float scoreNormalRadius_{}, scoreBigRadius_{};
     void Circle(IEditorModeCanvas &, float x, float y, int type, float radius);
     const std::filesystem::path &SkinImage(std::wstring_view);
     std::uint64_t skinRevision_{};

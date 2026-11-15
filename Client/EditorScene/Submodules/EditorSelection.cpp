@@ -89,6 +89,17 @@ bool EditorWorkspace::IsListRowSelected(std::size_t row) const noexcept
                                         : focus == EditorFocus::Effects && selectedEffects_.contains(row);
 }
 
+std::optional<std::size_t> EditorWorkspace::ListAnchor() const noexcept
+{
+    const auto focus = Focus();
+    if (focus == EditorFocus::Notes)
+        return std::nullopt;
+    const auto &anchor = focus == EditorFocus::Timing ? timingSelectionAnchor_ : effectSelectionAnchor_;
+    if (!anchor || !IsListRowSelected(*anchor))
+        return std::nullopt;
+    return anchor;
+}
+
 void EditorWorkspace::ClearEditSelection()
 {
     selectedNotes_.clear();

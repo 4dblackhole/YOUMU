@@ -98,13 +98,21 @@ void EditorView::DrawTransport(Rect area)
 
 void EditorView::DrawTimeInput(Rect rect)
 {
-    Box(rect, {1, 1, 1, .74F});
-    Box({rect.x, rect.y + rect.height - 2, rect.width, 2}, ui_colors::Rgb(0xB5CFF5));
-    Label(rect, TimeLabel(state_.TimeMilliseconds()), {17, theme::Ink, TextAlignment::Center, 800, true});
-    Control(rect, [this] {
-        if (auto value = EditText(std::wstring(Texts().currentTime), std::to_string(state_.TimeMilliseconds()), Texts()))
-            state_.Seek(Number(*value));
-    });
+    // While playing, the field shows the running time and does not take typing.
+    if (state_.Playing() || !fields_.Available())
+    {
+        Box(rect, {1, 1, 1, .74F});
+        Box({rect.x, rect.y + rect.height - 2, rect.width, 2}, ui_colors::Rgb(0xB5CFF5));
+        Label(rect, TimeLabel(state_.TimeMilliseconds()), {17, theme::Ink, TextAlignment::Center, 800, true});
+        if (!state_.Playing())
+            Control(rect, [this] {
+                if (auto value = EditText(std::wstring(Texts().currentTime), std::to_string(state_.TimeMilliseconds()), Texts()))
+                    state_.Seek(Number(*value));
+            });
+        return;
+    }
+    InputField(rect, std::wstring(Texts().currentTime), std::format(L"{:g}", state_.TimeMilliseconds()),
+               [this](const std::string &typed) { state_.Seek(Number(typed)); }, true, false);
 }
 
 void EditorView::DrawPlaybackRateControl(float x)

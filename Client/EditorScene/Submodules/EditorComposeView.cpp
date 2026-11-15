@@ -39,21 +39,23 @@ namespace
 
 void EditorView::DrawCompose()
 {
-    const bool realtime = state_.Score().realtime;
+    const bool realtime = state_.Score().realtime && !state_.Score().preview;
     if (realtime)
     {
         DrawHeads();
         DrawRuler();
+        DrawChannels();
     }
     state_.Mode().DrawChart(*this, state_, texts_);
     if (realtime)
     {
+        DrawCutsAndRange();
         // The current time crosses the ruler, lane and channels at the judgement line.
         const auto areas = Areas();
         Box({areas.judgeX - 1, layout::TrackTop, 2, layout::ChannelsBottom - layout::TrackTop}, theme::Sun);
         Box({areas.judgeX - 4, layout::TrackTop, 8, 4}, theme::Sun);
     }
-    if (state_.Mode().HasPendingPlacement())
+    if (state_.Mode().HasPendingPlacement() && !state_.Score().preview)
         Label({layout::HeadWidth + 12, layout::FooterTop - 30, ContentRight() - layout::HeadWidth - 24, 24},
               std::wstring(Texts().finishLongNote), {13, theme::Brand, TextAlignment::Leading, 700});
     DrawPanel();
@@ -67,20 +69,23 @@ void EditorView::DrawToolRow()
     Box({0, layout::BodyTop, frame_.width, layout::ToolRowHeight}, {1, 1, 1, .5F});
     Box({0, layout::TrackTop - 1, frame_.width, 1}, theme::RuleStrong);
     float x = layout::ViewTabsLeft;
-    const std::array<std::pair<std::string_view, bool>, 2> views{
-        std::pair{std::string_view{"Editor.realtime"}, true}, std::pair{std::string_view{"Editor.overview"}, false}};
-    for (const auto &[key, realtime] : views)
+    const auto &score = state_.Score();
+    const std::array<std::string_view, 3> views{"Editor.realtime", "Editor.overview", "Editor.preview"};
+    for (std::size_t i = 0; i < views.size(); ++i)
     {
-        std::wstring caption(texts_.Get(key));
+        std::wstring caption(texts_.Get(views[i]));
         const float w = EstimateTextWidth(caption, 14) + 2;
         const Rect r{x, layout::BodyTop, w, 40};
-        const bool on = state_.Score().realtime == realtime;
+        const bool on = i == 2 ? score.preview : !score.preview && score.realtime == (i == 0);
         Label(r, caption, {14, on ? theme::BrandText : theme::Caption, TextAlignment::Leading, 800});
         if (on)
             Box({r.x, r.y + r.height - 3, r.width, 3}, theme::Brand);
-        Control(r, [this, realtime] { state_.SetRealtime(realtime); });
+        Control(r, [this, i] { i == 2 ? state_.SetPreview() : state_.SetRealtime(i == 0); });
         x += w + layout::ViewTabGap;
     }
+    // Preview is read-only: no note tools or beat grid.
+    if (score.preview)
+        return;
     state_.Mode().DrawTools(*this, state_, texts_);
     DrawBeatControl();
 }
@@ -102,16 +107,13 @@ void EditorView::DrawBeatControl()
     x += 50;
     Label({x, middle - 10, 16, 20}, L"1/", {14, theme::Caption, TextAlignment::Leading, 800, true});
     const Rect input{x + 16, middle - 16, 84, 32};
-    Box(input, {1, 1, 1, .74F});
-    Box({input.x, input.y + input.height - 2, input.width, 2}, ui_colors::Rgb(0xB5CFF5));
     const bool custom = state_.Score().division > 16;
-    Label({input.x + 8, input.y, input.width - 16, input.height},
-          custom ? std::to_wstring(state_.Score().division) : std::wstring(L"17–1024"),
-          {14, custom ? theme::Ink : theme::Caption, TextAlignment::Leading, 700, true});
-    Control(input, [this] {
-        if (auto s = EditText(std::wstring(Texts().beatDivisionDialog), std::to_string(state_.Score().division), Texts()))
-            state_.SetDivision(Integer(*s));
-    });
+    InputField(input, std::wstring(Texts().beatDivisionDialog), custom ? std::to_wstring(state_.Score().division) : L"",
+               [this](const std::string &typed) {
+                   if (!typed.empty())
+                       state_.SetDivision(Integer(typed));
+               },
+               true, false);
 }
 
 std::wstring EditorView::HeadValue(Channel channel) const
@@ -141,12 +143,50 @@ std::wstring EditorView::HeadValue(Channel channel) const
                 bpm = directive.value;
             }
         }
-        return std::format(L"{:g} · {}", bpm, Wide(Fraction(timeline.MeasureLength(position.measure))));
+        // Lengths read in quarter notes, as in the Timing panel (4/4, 3/4 ...).
+        return std::format(L"{:g} · {}", bpm, Wide(MeasureLengthText(timeline.MeasureLength(position.measure))));
     }
     case Channel::ScrollSpeed:
         return std::format(L"×{:.2f}", document.EffectValueAt(EffectCommandType::ScrollSpeed, position));
     case Channel::Volume:
-        return std::format(L"{}%", std::lround(document.EffectValueAt(EffectCommandType::BusVolume, position) * 100));
+        return std::format(L"{}%", std::lround(AutomationValueAt(EffectCommandType::BusVolume, "HitSound", 1) * 100));
+    case Channel::AudioEffects:
+    {
+        // Only effects away from their neutral value are listed.
+        std::wstring text;
+        const auto append = [&text](std::wstring part) { text += (text.empty() ? L"" : L" · ") + part; };
+        const double reverb = AutomationValueAt(EffectCommandType::ReverbSend, {}, 0);
+        const double lowPass = AutomationValueAt(EffectCommandType::LowPassCutoff, {}, 20000);
+        const double highPass = AutomationValueAt(EffectCommandType::HighPassCutoff, {}, 20);
+        if (reverb != 0)
+            append(std::format(L"Rev {:.2f}", reverb));
+        if (lowPass != 20000)
+            append(std::format(L"LP {}", std::lround(lowPass)));
+        if (highPass != 20)
+            append(std::format(L"HP {}", std::lround(highPass)));
+        return text.empty() ? L"—" : text;
+    }
+    case Channel::HitSounds:
+    {
+        // The current sound of each key: the latest change at or before the cursor.
+        std::wstring text;
+        for (const auto &choice : state_.Mode().SoundChoices(texts_))
+        {
+            std::string sound = "Def";
+            std::optional<MusicalPosition> latest;
+            for (const auto &change : document.Effects().hitSoundChanges)
+            {
+                const bool applies = change.keyType == choice.keyType && change.position <= position;
+                if (applies && (!latest || *latest <= change.position))
+                {
+                    latest = change.position;
+                    sound = change.soundIndex;
+                }
+            }
+            text += (text.empty() ? L"" : L" · ") + Wide(sound);
+        }
+        return text;
+    }
     default:
         return {};
     }
@@ -161,7 +201,7 @@ void EditorView::DrawChannelHead(Channel channel, std::wstring_view icon, std::w
     if (open)
         Box({0, top, 4, h}, theme::Sun);
     Icon({9, top + (h - 18) * .5F, 18, 18}, icon, open ? White : theme::Brand);
-    Control(button, [this, channel, open] { open ? state_.ClosePanel() : OpenChannel(channel); });
+    Control(button, [this, channel, open] { open ? state_.ClosePanel() : state_.OpenPanel(channel); });
     Label({layout::HeadButtonWidth + 8, top, layout::HeadWidth - layout::HeadButtonWidth - 70, h}, std::move(name),
           {13, theme::Ink, TextAlignment::Leading, 700});
     Label({layout::HeadWidth - 70, top, 60, h}, std::move(value), {14, theme::Brand, TextAlignment::Trailing, 800, true});
@@ -207,6 +247,31 @@ void EditorView::DrawHeads()
 
     for (const auto &info : Channels)
         DrawChannelHead(info.channel, info.icon, std::wstring(texts_.Get(info.caption)), HeadValue(info.channel));
+    DrawZoneHeads();
+}
+
+void EditorView::DrawZoneHeads()
+{
+    // Zones carries three rows in its head: Syncopation, Kiai and bar lines with their current state.
+    const float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
+    Box({layout::HeadButtonWidth + 1, top, layout::HeadWidth - layout::HeadButtonWidth - 2, h - 1}, ui_colors::Rgb(0xF5F9FE));
+    const std::array<std::tuple<std::string_view, EffectCommandType, Color>, 3> rows{
+        std::tuple{std::string_view{"Editor.zoneSyncopation"}, EffectCommandType::SyncopationZone, ui_colors::Rgb(0xA640E6)},
+        std::tuple{std::string_view{"Editor.zoneKiai"}, EffectCommandType::Kiai, ui_colors::Rgb(0xF29A1E)},
+        std::tuple{std::string_view{"Editor.zoneBarLines"}, EffectCommandType::MeasureLineVisible, theme::Brand}};
+    const float rowHeight = 18, first = top + (h - rowHeight * 3) * .5F;
+    for (std::size_t i = 0; i < rows.size(); ++i)
+    {
+        const auto &[key, type, color] = rows[i];
+        const float y = first + rowHeight * static_cast<float>(i);
+        const bool bars = type == EffectCommandType::MeasureLineVisible;
+        const bool on = AutomationValueAt(type, {}, bars ? 1 : 0) >= .5;
+        Box({layout::HeadButtonWidth + 8, y + 3.5F, 3, 11}, color);
+        Label({layout::HeadButtonWidth + 17, y, 90, rowHeight}, std::wstring(texts_.Get(key)),
+              {12, theme::Ink, TextAlignment::Leading, 700});
+        Label({layout::HeadWidth - 50, y, 40, rowHeight}, on ? L"On" : L"Off",
+              {13, theme::Brand, TextAlignment::Trailing, 800, true});
+    }
 }
 
 void EditorView::StepSpacing(int direction)

@@ -7,7 +7,7 @@
 inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "Editor.testControls", "Editor.testPaused", "Editor.saveBeforeTest", "Editor.selectionHelp",
     "Editor.offsetAudioHelp", "Editor.finishLongNote", "Editor.timingHelp", "Editor.metadataHelp",
-    "Editor.audioHelp", "Editor.analyzingAudio", "Editor.effectNotEditable", "Editor.audioSelectionHelp", "Editor.discardChanges", "Editor.savedFormat",
+    "Editor.audioHelp", "Editor.analyzingAudio", "Editor.excludeHelp", "Editor.delayCutFormat", "Editor.selectedCountFormat", "Editor.audioSelectionHelp", "Editor.discardChanges", "Editor.savedFormat",
     "TaikoEditor.effectsHelp", "TaikoEditor.selectNoteHelp",
     "MusicSelect.newDifficultyDefaults", "MusicSelect.createDifficultyError", "MusicSelect.createDifficultyExists",
     "MusicSelect.createDifficultyNameError", "MusicSelect.importComplete", "MusicSelect.noSongsAvailable", "MusicSelect.noDifficulties", "MusicSelect.catalogErrorPrefix", "MusicSelect.unsupportedModePrefix",

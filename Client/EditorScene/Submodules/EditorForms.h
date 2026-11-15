@@ -52,22 +52,53 @@ enum class EditorFocus
     return std::nullopt;
 }
 
+// The Timing panel edits one directive kind at a time.
+enum class EditorTimingKind
+{
+    Bpm,
+    MeasureLength,
+    Delay
+};
 struct EditorTimingForm
 {
-    std::string measure{"1"}, fraction{"0/4"}, bpm{"120"}, measureLength{"4/4"};
+    EditorTimingKind kind{EditorTimingKind::Bpm};
+    std::string measure{"1"}, fraction{"0/4"}, bpm{"120"}, measureLength{"4/4"}, delay{"0"};
 };
 
+// How a command is edited: a number (Value or From/To over an Area) or an On/Off state.
+enum class EditorEffectValue
+{
+    Number,
+    Toggle
+};
 struct EditorEffectDefinition
 {
     EffectCommandType type;
     std::size_t labelIndex;
     bool hasAudioBus;
+    bool area;
+    EditorEffectValue value;
 };
+// Order within a channel is the order of its type buttons.
 inline constexpr std::array EditorEffectDefinitions{
-    EditorEffectDefinition{EffectCommandType::BusVolume, 0, true},
-    EditorEffectDefinition{EffectCommandType::MeasureLineVisible, 1, false},
-    EditorEffectDefinition{EffectCommandType::NoteSpeed, 2, false},
-    EditorEffectDefinition{EffectCommandType::ScrollSpeed, 3, false}};
+    EditorEffectDefinition{EffectCommandType::ScrollSpeed, 3, false, true, EditorEffectValue::Number},
+    EditorEffectDefinition{EffectCommandType::NoteSpeed, 2, false, false, EditorEffectValue::Number},
+    EditorEffectDefinition{EffectCommandType::BusVolume, 0, true, true, EditorEffectValue::Number},
+    EditorEffectDefinition{EffectCommandType::ReverbSend, 5, true, true, EditorEffectValue::Number},
+    EditorEffectDefinition{EffectCommandType::LowPassCutoff, 6, true, true, EditorEffectValue::Number},
+    EditorEffectDefinition{EffectCommandType::HighPassCutoff, 7, true, true, EditorEffectValue::Number},
+    EditorEffectDefinition{EffectCommandType::SyncopationZone, 8, false, false, EditorEffectValue::Toggle},
+    EditorEffectDefinition{EffectCommandType::Kiai, 4, false, false, EditorEffectValue::Toggle},
+    EditorEffectDefinition{EffectCommandType::MeasureLineVisible, 1, false, false, EditorEffectValue::Toggle}};
+[[nodiscard]] constexpr const EditorEffectDefinition *FindEffectDefinition(EffectCommandType type) noexcept
+{
+    for (const auto &definition : EditorEffectDefinitions)
+        if (definition.type == type)
+            return &definition;
+    return nullptr;
+}
+// Syncopation Exclude presets: quarter-note divisors (1 = quarter, 2 = eighth, 4 = sixteenth ...).
+inline constexpr std::array<std::size_t, 6> ExcludePresets{1, 2, 4, 3, 6, 8};
 
 struct EditorHitSoundTarget
 {
@@ -81,8 +112,13 @@ class EditorEffectForm
   public:
     std::string startMeasure{"1"}, startFraction{"0/4"}, endMeasure, endFraction;
     std::string beginValue{"1"}, endValue{"1"}, audioBus{"HitSound"}, curveName;
+    // Syncopation Exclude divisors, separated by |.
+    std::string excluded;
     EditorEffectSelection selection{EffectCommandType::BusVolume};
     AutomationCurve curve{AutomationCurve::Linear};
     void Load(const EffectDocument &, std::size_t row);
     [[nodiscard]] EffectDocument Apply(const EffectDocument &) const;
+
+  private:
+    [[nodiscard]] EffectDocument ApplyToggle(EffectDocument, EffectCommand) const;
 };
