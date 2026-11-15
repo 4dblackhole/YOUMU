@@ -8,6 +8,7 @@ if ($text.Contains(')YOUMU_ENGLISH"')) { throw 'English INI contains the reserve
 $header = "#pragma once`n#include <string_view>`ninline constexpr std::string_view EnglishDefaultIni = R`"YOUMU_ENGLISH($text)YOUMU_ENGLISH`";`n"
 $destination = [IO.Path]::GetFullPath($Output)
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination)) | Out-Null
-if (-not [IO.File]::Exists($destination) -or [IO.File]::ReadAllText($destination) -ne $header) {
+# -cne: a case-only edit such as "BASE BPM" -> "Base BPM" is a change; -ne would ignore it.
+if (-not [IO.File]::Exists($destination) -or [IO.File]::ReadAllText($destination) -cne $header) {
     [IO.File]::WriteAllText($destination, $header, $encoding)
 }
