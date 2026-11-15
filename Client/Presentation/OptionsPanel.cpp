@@ -1,12 +1,14 @@
 #include "OptionsPanel.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "OptionsPanel/Submodules/OptionsPanelStyle.h"
+#include "Presentation/SkinVisualComponent.h"
 
 #include "Texts/Options/OptionTexts.h"
 #include <Windows.h>
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -14,97 +16,171 @@ using namespace PhantomCore;
 
 using namespace options_ui;
 
-void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio,
-                              IWindowControl *window)
+namespace
+{
+    constexpr Color Transparent{1, 1, 1, 0};
+    constexpr float StatusTextWidth = 282, StatusLineHeight = 18;
+} // namespace
+
+void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio, IWindowControl *window)
 {
     canvas_ = &canvas;
     audio_ = &audio;
     window_ = window;
     inputLayouts_ = AvailableInputLayouts();
-    auto &leftAnchor = canvas.AnchorNode(Anchor::MiddleLeft);
-    leftAnchor.SetZIndex(100);
-    panel_ = &CreatePanel(leftAnchor, {-PanelWidth, -PanelHeight * 0.5F, PanelWidth, PanelHeight},
-                                         "Options.Panel");
-    panel_->SetZIndex(100);
-    SetPanelColor(*panel_, PanelColor);
-    panel_->AddComponent<RectangleCollider2DComponent>();
-    panel_->AddComponent<PointerReceiverComponent>();
-    panelId_ = panel_->Id();
-
-    title_ = &CreateLabel(*panel_, {24.0F, PanelHeight - 76.0F, PanelWidth - 48.0F, 44.0F}, L"",
-                                         "Options.Title");
-    auto &titleText = RequireComponent<TextVisualComponent>(*title_);
-    titleText.SetFontSize(30.0F);
-    titleText.SetTextColor(HeadingColor);
-
-    viewport_ = &panel_->CreateChild("Options.Viewport");
-    statusLabel_ = &CreateLabel(*panel_, {24, 24, PanelWidth - 48, 140}, L"", "Options.Status");
-    auto &status = RequireComponent<TextVisualComponent>(*statusLabel_);
-    status.SetFontSize(14);
-    status.SetTextColor(ui_colors::Error);
-    statusLabel_->SetVisible(false);
-    CreateTabs();
+    CreateFrame();
+    CreateRail();
+    CreateSections();
     RefreshTexts();
     panel_->SetVisible(false);
 }
 
+void OptionsPanel::CreateFrame()
+{
+    auto &leftAnchor = canvas_->AnchorNode(Anchor::MiddleLeft);
+    leftAnchor.SetZIndex(100);
+    panel_ = &CreatePanel(leftAnchor, {-PanelWidth, -PanelHeight * 0.5F, PanelWidth, PanelHeight}, "Options.Panel");
+    panel_->SetZIndex(100);
+    SetPanelColor(*panel_, DrawerColor);
+    BindPart(*panel_, "Drawer");
+    panel_->AddComponent<RectangleCollider2DComponent>();
+    panel_->AddComponent<PointerReceiverComponent>();
+    panelId_ = panel_->Id();
+
+    // Header: title and close button above the scrolling body.
+    title_ = &CreateCaption(*panel_, {BodyLeft + 24, 21, 240, 30}, 26, 900, HeadingColor, "Options.Title");
+    close_ = &CreateButton(*panel_, TopLeft({PanelWidth - 46, 18, 32, 32}, PanelHeight), L"", "Options.Close");
+    SetColors(*close_, Transparent, ui_colors::Rgb(0x1F4C99, .08F), ui_colors::Rgb(0x1F4C99, .16F), Transparent);
+    CreateIcon(*close_, {6, 6, 20, 20}, "Icons.x", ui_colors::theme::BrandText, "Icon");
+    headerRule_ = &CreateSprite(*panel_, TopLeft({BodyLeft, HeaderHeight - 1, BodyWidth, 1}, PanelHeight), {},
+                                "Options.HeaderRule");
+    SetPanelColor(*headerRule_, ui_colors::theme::Rule);
+
+    viewport_ = &panel_->CreateChild("Options.Viewport");
+    content_ = &viewport_->CreateChild("Options.Content");
+
+    // Scrollbar: a 12px grab area with a 6px rail and thumb.
+    scrollRail_ = &CreatePanel(*panel_, {}, "Options.Scrollbar");
+    SetPanelColor(*scrollRail_, Transparent);
+    scrollRail_->AddComponent<RectangleCollider2DComponent>();
+    scrollRail_->AddComponent<PointerReceiverComponent>();
+    scrollRail_->SetZIndex(5);
+    auto &scrollTrack = CreateSprite(*scrollRail_, {}, {}, "Track");
+    SetPanelColor(scrollTrack, ui_colors::theme::Rule);
+    scrollThumb_ = &CreateSprite(*panel_, {}, {}, "Options.ScrollThumb");
+    SetPanelColor(*scrollThumb_, ui_colors::theme::Brand);
+    scrollThumb_->SetZIndex(6);
+
+    // Footer: recovery and error notices stay outside the scrolling body.
+    footer_ = &panel_->CreateChild("Options.Footer");
+    footerRule_ = &CreateSprite(*footer_, {}, {}, "Rule");
+    SetPanelColor(*footerRule_, ui_colors::theme::Rule);
+    statusBar_ = &CreateSprite(*footer_, {}, {}, "Bar");
+    statusIcon_ = &CreateSprite(*footer_, {}, {}, "Icon");
+    ApplyIcon(*statusIcon_, "Icons.alert");
+    icons_.emplace_back(statusIcon_, "Icons.alert");
+    statusLabel_ = &CreateLabel(*footer_, {}, L"", "Options.Status");
+    StyleCaption(RequireComponent<TextVisualComponent>(*statusLabel_), 13, 400, ui_colors::theme::Danger);
+    footer_->SetVisible(false);
+}
+
+void OptionsPanel::BindPart(Visual2DNode &node, std::string key)
+{
+    if (visuals_)
+        BindSkinPart(node, *visuals_, "Options", std::move(key));
+}
+
+Visual2DNode &OptionsPanel::CreateIcon(Visual2DNode &parent, const Rect bounds, std::string key, const Color tint,
+                                       std::string name)
+{
+    auto &icon = CreateSprite(parent, TopLeft(bounds, parent.NodeSize().height), {}, std::move(name));
+    SetPanelColor(icon, tint);
+    ApplyIcon(icon, key);
+    icons_.emplace_back(&icon, std::move(key));
+    return icon;
+}
+
+void OptionsPanel::SetIconKey(Visual2DNode &icon, std::string key)
+{
+    const auto entry = std::ranges::find(icons_, &icon, &std::pair<Visual2DNode *, std::string>::first);
+    if (entry == icons_.end())
+        throw std::logic_error("An options icon must be created before its key changes.");
+    if (entry->second == key)
+        return;
+    entry->second = std::move(key);
+    ApplyIcon(icon, entry->second);
+}
+
+void OptionsPanel::ApplyIcon(Visual2DNode &icon, const std::string &key)
+{
+    const auto path = visuals_ ? SkinSetSelection::Instance().Image("Common", key) : std::filesystem::path{};
+    auto &sprite = RequireComponent<SpriteVisualComponent>(icon);
+    // Without an icon image the node would draw a solid tinted square, so it stays transparent.
+    auto style = sprite.Style();
+    const float alpha = path.empty() ? 0.0F : 1.0F;
+    style.normal.alpha = style.hovered.alpha = style.pressed.alpha = style.disabled.alpha = alpha;
+    sprite.SetStyle(style);
+    if (!path.empty())
+        sprite.SetImage(visuals_->RegisterImage(path));
+}
+
+void OptionsPanel::RefreshIcons()
+{
+    for (const auto &[icon, key] : icons_)
+        ApplyIcon(*icon, key);
+}
+
 void OptionsPanel::CreateLanguageControls()
 {
-    languageLabel_ = &CreateLabel(
-        *content_, {24.0F, contentHeight_ - 38.0F, PanelWidth - 48.0F, 28.0F}, L"", "Options.Language.Label");
-    auto &languageText = RequireComponent<TextVisualComponent>(*languageLabel_);
-    languageText.SetFontSize(18.0F);
-    languageText.SetTextColor(LabelColor);
-
+    const float top = NextField(ControlHeight);
+    languageLabel_ = &CreateFieldLabel(*content_, top, "Options.Language.Label");
     std::vector<std::wstring> languageNames;
     for (const LanguageProfile &profile : texts_.Languages())
-    {
         languageNames.emplace_back(profile.displayName);
-    }
-    languageCombo_ =
-        &CreateComboBox(*content_, {24.0F, contentHeight_ - 96.0F, PanelWidth - 48.0F, 46.0F},
-                                       std::move(languageNames), "Options.Language.Combo");
+    languageCombo_ = &CreateComboBox(*content_,
+                                     TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
+                                     std::move(languageNames), "Options.Language.Combo");
     languageComboId_ = languageCombo_->Id();
     ConfigureCombo(*languageCombo_, texts_.Languages().size());
-    languageCombo_->SetZIndex(50);
+    languageCombo_->SetZIndex(static_cast<std::int32_t>(200 - 2 * comboOrder_++));
+    AddFieldLine(*content_, *languageCombo_, "Options.Language.Line");
 }
 
 void OptionsPanel::CreateSkinControls()
 {
-    skinLabel_ = &CreateLabel(*content_, {24.0F, contentHeight_ - 38.0F, PanelWidth - 48.0F, 28.0F},
-                                             L"", "Options.Skin.Label");
-    auto &label = RequireComponent<TextVisualComponent>(*skinLabel_);
-    label.SetFontSize(18.0F);
-    label.SetTextColor(LabelColor);
-
+    const float top = NextField(ControlHeight);
+    skinLabel_ = &CreateFieldLabel(*content_, top, "Options.Skin.Label");
     skinNames_ = SkinSetSelection::Instance().AvailableNames();
-    skinCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 96.0F, PanelWidth - 48.0F, 46.0F}, skinNames_, "Options.Skin.Combo");
+    skinCombo_ = &CreateComboBox(*content_,
+                                 TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
+                                 skinNames_, "Options.Skin.Combo");
     skinComboId_ = skinCombo_->Id();
     ConfigureCombo(*skinCombo_, 4);
-    skinCombo_->SetZIndex(40);
-
+    skinCombo_->SetZIndex(static_cast<std::int32_t>(200 - 2 * comboOrder_++));
+    AddFieldLine(*content_, *skinCombo_, "Options.Skin.Line");
 }
 
 void OptionsPanel::CreateAudioControls()
 {
-    middlewareLabel_ =
-        &CreateFieldLabel(*content_, contentHeight_ - 38.0F, PanelWidth, "Options.Middleware.Label");
-    outputLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 166.0F, PanelWidth, "Options.Output.Label");
-    driverLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 294.0F, PanelWidth, "Options.Driver.Label");
-    middlewareCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 96.0F, PanelWidth - 48.0F, 46.0F},
-        {std::wstring(texts_.Get("Options.middlewareFmod"))}, "Options.Middleware.Combo");
-    outputCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 224.0F, PanelWidth - 48.0F, 46.0F}, {}, "Options.Output.Combo");
-    driverCombo_ = &CreateComboBox(
-        *content_, {24.0F, contentHeight_ - 352.0F, PanelWidth - 48.0F, 46.0F}, {}, "Options.Driver.Combo");
-    ConfigureCombo(*middlewareCombo_, 1);
-    ConfigureCombo(*outputCombo_, 3);
-    ConfigureCombo(*driverCombo_, 3);
-    // Expanded lists must receive clicks before the fields underneath them.
-    middlewareCombo_->SetZIndex(30);
-    outputCombo_->SetZIndex(20);
+    const std::array fields{std::pair{&middlewareLabel_, &middlewareCombo_}, std::pair{&outputLabel_, &outputCombo_},
+                            std::pair{&driverLabel_, &driverCombo_}};
+    const std::array<std::string, 3> names{"Middleware", "Output", "Driver"};
+    const std::array<std::size_t, 3> visibleItems{1, 3, 3};
+    for (std::size_t i = 0; i < fields.size(); ++i)
+    {
+        const float top = NextField(ControlHeight);
+        *fields[i].first = &CreateFieldLabel(*content_, top, "Options." + names[i] + ".Label");
+        auto &combo = CreateComboBox(*content_,
+                                     TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
+                                     {}, "Options." + names[i] + ".Combo");
+        ConfigureCombo(combo, visibleItems[i]);
+        // Expanded lists must receive clicks before the fields underneath them.
+        combo.SetZIndex(static_cast<std::int32_t>(200 - 2 * comboOrder_++));
+        AddFieldLine(*content_, combo, "Options." + names[i] + ".Line");
+        *fields[i].second = &combo;
+    }
+    RequireComponent<ComboBoxBehaviorComponent>(*middlewareCombo_)
+        .SetItems({std::wstring(texts_.Get("Options.middlewareFmod"))});
     outputComboId_ = outputCombo_->Id();
     driverComboId_ = driverCombo_->Id();
 }
@@ -112,41 +188,42 @@ void OptionsPanel::CreateAudioControls()
 void OptionsPanel::Shutdown() noexcept
 {
     keyRows_.clear();
+    keyOverlays_.clear();
     modeLabels_.clear();
     inputLayouts_.clear();
     resolutions_.clear();
+    icons_.clear();
+    volumes_ = {};
+    volumeDrag_.reset();
     window_ = nullptr;
+    sections_ = {};
+    activeSection_ = 0;
+    heldSection_.reset();
+    railSkinSection_.reset();
+    panel_ = rail_ = title_ = close_ = headerRule_ = nullptr;
+    viewport_ = content_ = scrollRail_ = scrollThumb_ = nullptr;
+    footer_ = footerRule_ = statusBar_ = statusIcon_ = statusLabel_ = nullptr;
+    languageLabel_ = languageCombo_ = nullptr;
+    songsLabel_ = songsField_ = songsBrowse_ = songsDefault_ = nullptr;
+    skinLabel_ = skinCombo_ = nullptr;
     resolutionLabel_ = resolutionCombo_ = nullptr;
-    offsetLabel_ = offsetField_ = offsetHint_ = nullptr;
-    songsLabel_ = songsField_ = songsDefault_ = nullptr;
-    captureRow_.reset();
-    editingOffset_ = false;
-    offsetDraft_.clear();
-    skinNames_.clear();
-    skinCombo_ = nullptr;
-    statusLabel_ = nullptr;
     middlewareLabel_ = outputLabel_ = driverLabel_ = nullptr;
     middlewareCombo_ = outputCombo_ = driverCombo_ = nullptr;
-    skinLabel_ = nullptr;
-    languageCombo_ = nullptr;
-    content_ = nullptr;
-    viewport_ = nullptr;
-    tabButtons_ = tabContents_ = {};
-    contentHeights_ = scrollOffsets_ = {};
-    activeTab_ = 0;
-    viewportHeight_ = ContentViewportHeight;
-    languageLabel_ = nullptr;
-    title_ = nullptr;
-    panel_ = nullptr;
-    keyOverlays_.clear();
-    panelId_ = {};
-    languageComboId_ = {};
-    skinComboId_ = {};
-    outputComboId_ = driverComboId_ = {};
+    offsetLabel_ = offsetField_ = offsetUnit_ = nullptr;
+    captureRow_.reset();
+    editingOffset_ = replaceOffsetDraft_ = false;
+    offsetDraft_.clear();
+    skinNames_.clear();
     driverIndices_.clear();
+    panelId_ = languageComboId_ = skinComboId_ = outputComboId_ = driverComboId_ = {};
     previousDragPoint_.reset();
+    scrollDragOffset_.reset();
+    contentHeight_ = viewportHeight_ = footerHeight_ = layoutCursor_ = scrollOffset_ = 0.0F;
+    railPointerInside_ = railKeyboard_ = railExpanded_ = false;
+    railHoverSeconds_ = 0.0F;
+    hitTestDirty_ = false;
+    comboOrder_ = 0;
     animationProgress_ = 0.0F;
-    scrollOffset_ = 0.0F;
     targetOpen_ = false;
     dragging_ = false;
     optionRevision_ = 0;
@@ -159,42 +236,63 @@ void OptionsPanel::Shutdown() noexcept
 void OptionsPanel::Toggle()
 {
     if (panel_ == nullptr)
-    {
         return;
-    }
     targetOpen_ = !targetOpen_;
     HideKeyOverlays();
     CancelKeyboardEdit();
+    CollapseCombos();
+    volumeDrag_.reset();
+    scrollDragOffset_.reset();
+    railKeyboard_ = railPointerInside_ = false;
+    railHoverSeconds_ = 0.0F;
+    if (railExpanded_)
+    {
+        railExpanded_ = false;
+        ApplyRailWidth();
+    }
     if (targetOpen_)
     {
         RefreshSkinSets();
         RefreshDisplayControls();
+        RefreshIcons();
     }
-    else
-        for (auto *node :
-             {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_})
-            RequireComponent<ComboBoxBehaviorComponent>(*node).Collapse();
     panel_->SetVisible(true);
     dragging_ = false;
     previousDragPoint_.reset();
+    hitTestDirty_ = true;
 }
 
 void OptionsPanel::Update(const double deltaSeconds)
 {
     if (panel_ == nullptr)
-    {
         return;
-    }
     if (optionRevision_ != options_.Revision())
         RefreshTexts();
     const float direction = targetOpen_ ? 1.0F : -1.0F;
     animationProgress_ = std::clamp(
         animationProgress_ + direction * static_cast<float>(deltaSeconds / AnimationSeconds), 0.0F, 1.0F);
     ApplyAnimationPosition();
+    UpdateRailExpansion(deltaSeconds);
+    RefreshRail();
     if (!targetOpen_ && animationProgress_ <= 0.0F)
-    {
         panel_->SetVisible(false);
-    }
+}
+
+void OptionsPanel::Close(Visual2DInputRouter *inputRouter)
+{
+    CancelKeyboardEdit();
+    // Closing is idempotent: another ESC during the slide must not reopen it.
+    targetOpen_ = false;
+    dragging_ = false;
+    previousDragPoint_.reset();
+    scrollDragOffset_.reset();
+    volumeDrag_.reset();
+    railKeyboard_ = railPointerInside_ = false;
+    CollapseCombos();
+    if (inputRouter)
+        inputRouter->Reset(*canvas_);
+    else
+        hitTestDirty_ = true;
 }
 
 bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inputRouter)
@@ -217,29 +315,27 @@ bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inpu
         }
         return false;
     }
-    if (auto *overlay = VisibleKeyOverlay())
+    if (VisibleKeyOverlay() != nullptr)
     {
-        if (captureRow_) CancelKeyboardEdit();
-        else overlay->panel->SetVisible(false);
+        if (captureRow_)
+            CancelKeyboardEdit();
+        else
+            HideKeyOverlays();
         inputRouter.Reset(*canvas_);
         return true;
     }
-    CancelKeyboardEdit();
-    // Closing is idempotent: another ESC during the slide must not reopen it.
-    targetOpen_ = false;
-    dragging_ = false;
-    previousDragPoint_.reset();
-    inputRouter.Reset(*canvas_);
-    for (auto *node : {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_})
-        RequireComponent<ComboBoxBehaviorComponent>(*node).Collapse();
+    Close(&inputRouter);
     return true;
 }
 
-bool OptionsPanel::ProcessInput(const InputState &input,
-                                const std::optional<Point> canvasPointer,
-                                const NodeId hoveredNode,
-                                Visual2DInputRouter &inputRouter)
+bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Point> canvasPointer,
+                                const NodeId hoveredNode, Visual2DInputRouter &inputRouter)
 {
+    if (hitTestDirty_)
+    {
+        inputRouter.InvalidateHitTest();
+        hitTestDirty_ = false;
+    }
     if (input.WasKeyPressed(VK_ESCAPE) && HandleKey(VK_ESCAPE, inputRouter))
         return true;
     if (OwnsKeyboard())
@@ -252,24 +348,76 @@ bool OptionsPanel::ProcessInput(const InputState &input,
             return true;
     }
     if (const auto *overlay = VisibleKeyOverlay())
+    {
+        UpdateKeyClearButtons(hoveredNode);
         return !canvasPointer || !overlay->panel->BoundsInCanvas().Contains(*canvasPointer);
+    }
     const bool panelShown = IsVisible() && panel_ != nullptr;
-    if (!panelShown || !canvasPointer.has_value() || !panel_->BoundsInCanvas().Contains(*canvasPointer))
+    if (!panelShown)
+        return false;
+
+    // The rail moves between sections with Up/Down; a pointer move ends keyboard expansion.
+    bool consumedKey = false;
+    for (const auto &event : input.Events())
+    {
+        const bool pointerEvent = event.type == InputEventType::MouseMoved ||
+                                  event.type == InputEventType::MouseButtonPressed;
+        if (pointerEvent)
+            railKeyboard_ = false;
+        if (!targetOpen_ || event.type != InputEventType::KeyPressed)
+            continue;
+        if (event.code == VK_UP || event.code == VK_DOWN)
+        {
+            StepSection(event.code == VK_UP ? -1 : 1);
+            consumedKey = true;
+        }
+    }
+    railPointerInside_ = canvasPointer.has_value() && rail_->BoundsInCanvas().Contains(*canvasPointer);
+    if (consumedKey)
+        inputRouter.InvalidateHitTest();
+
+    if (ProcessVolumePointer(input, canvasPointer, hoveredNode))
+        return consumedKey;
+    const bool insidePanel = canvasPointer.has_value() && panel_->BoundsInCanvas().Contains(*canvasPointer);
+    if (!insidePanel && !scrollDragOffset_)
     {
         dragging_ = false;
         previousDragPoint_.reset();
-        return false;
+        return consumedKey;
     }
+
+    // Scrollbar: pressing the thumb keeps the grab point; pressing the rail centres the thumb there.
+    if (input.WasMouseButtonPressed(MouseButton::Left) && hoveredNode == scrollRail_->Id() && canvasPointer)
+    {
+        const auto thumb = scrollThumb_->BoundsInCanvas();
+        const float centre = thumb.y + thumb.height * 0.5F;
+        scrollDragOffset_ = thumb.Contains({thumb.x + 1, canvasPointer->y}) ? canvasPointer->y - centre : 0.0F;
+    }
+    if (scrollDragOffset_ && canvasPointer)
+    {
+        const auto track = scrollRail_->BoundsInCanvas();
+        const float thumbHeight = scrollThumb_->BoundsInCanvas().height;
+        const float travel = std::max(track.height - thumbHeight, 1.0F);
+        const float thumbTop = canvasPointer->y - *scrollDragOffset_ + thumbHeight * 0.5F;
+        const float ratio = std::clamp((track.y + track.height - thumbTop) / travel, 0.0F, 1.0F);
+        scrollOffset_ = ratio * std::max(contentHeight_ - viewportHeight_, 0.0F);
+        heldSection_.reset();
+        ApplyScrollOffset(inputRouter);
+    }
+    if (input.WasMouseButtonReleased(MouseButton::Left))
+        scrollDragOffset_.reset();
+    if (!insidePanel)
+        return consumedKey;
 
     if (input.MouseWheelDelta() != 0.0F)
     {
         scrollOffset_ -= input.MouseWheelDelta() * 36.0F;
+        heldSection_.reset();
         ApplyScrollOffset(inputRouter);
     }
 
     const bool middlePressed = input.WasMouseButtonPressed(MouseButton::Middle);
-    const bool blankLeftPressed =
-        hoveredNode == panelId_ && input.WasMouseButtonPressed(MouseButton::Left);
+    const bool blankLeftPressed = hoveredNode == panelId_ && input.WasMouseButtonPressed(MouseButton::Left);
     if (middlePressed || blankLeftPressed)
     {
         dragging_ = true;
@@ -279,15 +427,15 @@ bool OptionsPanel::ProcessInput(const InputState &input,
     {
         scrollOffset_ += canvasPointer->y - previousDragPoint_->y;
         previousDragPoint_ = canvasPointer;
+        heldSection_.reset();
         ApplyScrollOffset(inputRouter);
     }
-    if (input.WasMouseButtonReleased(MouseButton::Middle) ||
-        input.WasMouseButtonReleased(MouseButton::Left))
+    if (input.WasMouseButtonReleased(MouseButton::Middle) || input.WasMouseButtonReleased(MouseButton::Left))
     {
         dragging_ = false;
         previousDragPoint_.reset();
     }
-    return false;
+    return consumedKey;
 }
 
 bool OptionsPanel::ProcessAction(const Action &action)
@@ -297,18 +445,23 @@ bool OptionsPanel::ProcessAction(const Action &action)
     if (!CanProcessAction(action.source))
         return false;
     if (action.type == ActionType::Clicked)
-        for (std::size_t i = 0; i < tabButtons_.size(); ++i)
-            if (action.source == tabButtons_[i]->Id())
+    {
+        if (action.source == close_->Id())
+        {
+            Close(nullptr);
+            return true;
+        }
+        for (std::size_t i = 0; i < sections_.size(); ++i)
+            if (action.source == sections_[i].railButton->Id())
             {
-                SelectTab(i);
+                ScrollToSection(i);
                 return true;
             }
+    }
     if (ProcessFieldAction(action))
         return true;
     if (action.type != ActionType::SelectionChanged)
-    {
         return false;
-    }
     if (action.source == languageComboId_)
     {
         const auto languages = texts_.Languages();
@@ -335,6 +488,8 @@ bool OptionsPanel::ProcessAction(const Action &action)
                 status_ = Status::SaveFailed;
                 statusDetail_ = std::move(error);
             }
+            RefreshIcons();
+            RefreshKeyImages();
         }
         RefreshTexts();
         return true;
@@ -369,19 +524,18 @@ void OptionsPanel::RefreshSkinSets()
 void OptionsPanel::RefreshTexts()
 {
     if (panel_ == nullptr)
-    {
         return;
-    }
     const OptionTextSet &text = Options(texts_);
-    auto &title = RequireComponent<TextVisualComponent>(*title_);
-    title.SetText(std::wstring(text.title));
-    texts_.ApplyFont(title);
-    auto &language = RequireComponent<TextVisualComponent>(*languageLabel_);
-    language.SetText(std::wstring(text.language));
-    texts_.ApplyFont(language);
-    auto &skin = RequireComponent<TextVisualComponent>(*skinLabel_);
-    skin.SetText(std::wstring(text.skin));
-    texts_.ApplyFont(skin);
+    SetCaption(*title_, std::wstring(text.title));
+    constexpr std::array SectionTextKeys{"Options.sections.General", "Options.sections.Display",
+                                         "Options.sections.Audio", "Options.sections.Input"};
+    for (std::size_t i = 0; i < sections_.size(); ++i)
+    {
+        const std::wstring name(texts_.Get(SectionTextKeys[i]));
+        SetCaption(*sections_[i].headerLabel, name);
+        SetCaption(*sections_[i].railLabel, name);
+    }
+    SetCaption(*languageLabel_, std::wstring(text.language));
     auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*languageCombo_);
     texts_.ApplyFont(combo);
     const auto languages = texts_.Languages();
@@ -393,18 +547,20 @@ void OptionsPanel::RefreshTexts()
             break;
         }
     }
+    SetCaption(*skinLabel_, std::wstring(text.skin));
     auto &skinCombo = RequireComponent<ComboBoxBehaviorComponent>(*skinCombo_);
     texts_.ApplyFont(skinCombo);
     const auto selected = std::ranges::find(skinNames_, SkinSetSelection::Instance().CurrentName());
     if (selected != skinNames_.end())
         skinCombo.SetSelectedIndex(static_cast<std::size_t>(selected - skinNames_.begin()));
     RefreshAudioControls();
+    RefreshVolumeControls();
     RefreshDisplayControls();
     RefreshOffsetControls();
     RefreshSongsControls();
     RefreshKeyControls();
     RefreshStatus();
-    RefreshTabs();
+    RefreshRail();
     optionRevision_ = options_.Revision();
 }
 
@@ -414,11 +570,7 @@ void OptionsPanel::RefreshAudioControls()
     const std::array labels{std::pair{middlewareLabel_, text.middleware}, std::pair{outputLabel_, text.output},
                             std::pair{driverLabel_, text.driver}};
     for (const auto &[node, value] : labels)
-    {
-        auto &label = RequireComponent<TextVisualComponent>(*node);
-        label.SetText(std::wstring(value));
-        texts_.ApplyFont(label);
-    }
+        SetCaption(*node, std::wstring(value));
     for (auto *node : {middlewareCombo_, outputCombo_, driverCombo_})
         texts_.ApplyFont(RequireComponent<ComboBoxBehaviorComponent>(*node));
 
@@ -505,7 +657,7 @@ void OptionsPanel::SelectDriver(const int index)
         RestoreAudio(audio_->RequestedOutput(), previousDriver, statusDetail_);
 }
 
-void OptionsPanel::RefreshStatus()
+std::wstring OptionsPanel::StatusText(bool &error) const
 {
     const auto &text = Options(texts_);
     std::wstring value;
@@ -518,6 +670,7 @@ void OptionsPanel::RefreshStatus()
             return saved.driverName != DriverName(active);
         return saved.driverIndex >= 0 && saved.driverIndex != active;
     };
+    error = status_ != Status::None;
     if (status_ == Status::SaveFailed)
         value = text.saveError;
     else if (status_ == Status::AudioFailed)
@@ -538,17 +691,36 @@ void OptionsPanel::RefreshStatus()
             value += L"\n";
         value += std::wstring(text.loadWarning) + L"\n" + WideText(options_.LoadWarning());
     }
-    auto &label = RequireComponent<TextVisualComponent>(*statusLabel_);
-    label.SetText(value);
-    texts_.ApplyFont(label);
-    for (const auto &overlay : keyOverlays_)
-    {
-        auto &keyStatus = RequireComponent<TextVisualComponent>(*overlay.status);
-        keyStatus.SetText(value);
-        texts_.ApplyFont(keyStatus);
-    }
-    statusLabel_->SetVisible(!value.empty());
+    return value;
+}
+
+void OptionsPanel::RefreshStatus()
+{
+    bool error = false;
+    const auto value = WrapText(StatusText(error), 13, StatusTextWidth);
+    SetCaption(*statusLabel_, value);
+    const auto colour = error ? ui_colors::theme::Danger : WarningColor;
+    RequireComponent<TextVisualComponent>(*statusLabel_).SetTextColor(colour);
+    SetPanelColor(*statusBar_, colour);
+    TintIcon(*statusIcon_, colour);
+    const auto lines = 1 + std::ranges::count(value, L'\n');
+    footerHeight_ = value.empty() ? 0.0F
+                                  : std::max(FooterMinimumHeight, 36.0F + StatusLineHeight * static_cast<float>(lines));
+    footer_->SetVisible(!value.empty());
+    LayoutFooter();
+    for (auto &overlay : keyOverlays_)
+        RefreshKeyOverlay(overlay);
     UpdateContentLayout();
+}
+
+void OptionsPanel::LayoutFooter()
+{
+    const float height = std::max(footerHeight_, FooterMinimumHeight);
+    footer_->SetBounds({BodyLeft, 0, BodyWidth, height});
+    footerRule_->SetBounds(TopLeft({0, 0, BodyWidth, 1}, height));
+    statusBar_->SetBounds(TopLeft({24, 10, 3, height - 24}, height));
+    statusIcon_->SetBounds(TopLeft({36, 16, 18, 18}, height));
+    statusLabel_->SetBounds(TopLeft({62, 16, StatusTextWidth, height - 30}, height));
 }
 
 bool OptionsPanel::IsVisible() const noexcept
@@ -564,12 +736,6 @@ void OptionsPanel::ApplyAnimationPosition()
 
 void OptionsPanel::ApplyScrollOffset(Visual2DInputRouter &inputRouter)
 {
-    const float maximum = std::max(contentHeight_ - viewportHeight_, 0.0F);
-    scrollOffset_ = std::clamp(scrollOffset_, 0.0F, maximum);
-    if (content_ != nullptr)
-    {
-        content_->SetPosition({0.0F, viewportHeight_ - contentHeight_ + scrollOffset_});
-    }
-    scrollOffsets_.at(activeTab_) = scrollOffset_;
+    UpdateContentLayout();
     inputRouter.InvalidateHitTest();
 }

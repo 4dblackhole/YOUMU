@@ -1,5 +1,6 @@
 #pragma once
 
+#include "App/AudioVolumes.h"
 #include "Mode/PlayOptions.h"
 #include "Common/RhythmTypes.h"
 #include <cstdint>
@@ -24,6 +25,7 @@ struct GameplayLaunchRequest
     std::wstring patternCreator;
     // Freeze settings for this attempt, including a Result retry.
     std::int32_t globalOffsetMs{};
+    AudioVolumes volumes;
     std::map<std::string, std::vector<std::uint16_t>> inputKeys;
     std::wstring songArtist;
     std::filesystem::path songsRoot;
@@ -51,6 +53,7 @@ struct GameplayLaunchRequest
         patternTitle.clear();
         editorTestStart.reset();
         globalOffsetMs = 0;
+        volumes = {};
         playOptions = {};
         inputKeys.clear();
         songArtist.clear();

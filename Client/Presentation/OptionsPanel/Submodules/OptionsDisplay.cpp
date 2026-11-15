@@ -7,18 +7,19 @@ using namespace PhantomCore;
 using namespace options_ui;
 void OptionsPanel::CreateDisplayControls()
 {
-    resolutionLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 174, PanelWidth, "Options.Resolution.Label");
-    resolutionCombo_ = &CreateComboBox(*content_, {24, contentHeight_ - 232, PanelWidth - 48, 46},
-                                                      {}, "Options.Resolution.Combo");
+    const float top = NextField(ControlHeight);
+    resolutionLabel_ = &CreateFieldLabel(*content_, top, "Options.Resolution.Label");
+    resolutionCombo_ = &CreateComboBox(
+        *content_, TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_), {},
+        "Options.Resolution.Combo");
     ConfigureCombo(*resolutionCombo_, 4);
-    resolutionCombo_->SetZIndex(9);
+    resolutionCombo_->SetZIndex(static_cast<std::int32_t>(200 - 2 * comboOrder_++));
+    AddFieldLine(*content_, *resolutionCombo_, "Options.Resolution.Line");
 }
 
 void OptionsPanel::RefreshDisplayControls()
 {
-    auto &label = RequireComponent<TextVisualComponent>(*resolutionLabel_);
-    label.SetText(std::wstring(Options(texts_).resolution));
-    texts_.ApplyFont(label);
+    SetCaption(*resolutionLabel_, std::wstring(Options(texts_).resolution));
     resolutions_.clear();
     const auto current =
         window_ ? window_->ClientSize()

@@ -43,6 +43,7 @@ void GameplayAudioSession::Register(AudioSystem &audio, const PlaySession &sessi
         error_ = initializationError;
         return;
     }
+    router_.SetVolumes(request.volumes.Music(), request.volumes.Effects());
 
     std::string hitSoundError;
     if (const auto *presentation = FindModePresentation(session.InputLayout().modeId))

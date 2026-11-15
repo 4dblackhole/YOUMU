@@ -768,27 +768,28 @@ namespace
               detail("Detail.BPM.Value") == L"120–180" &&
               detail("Detail.Length.Value") == L"2:05", "Selected pattern details use real data.");
         const auto *keyPanel = Find(canvas->Root(), "Options.Taiko.Keys");
-        const auto *keyBackground = Find(canvas->Root(), "Options.Taiko.KeyLayout");
-        if (!keyPanel || !keyBackground)
-            throw std::runtime_error("Taiko settings must use the Gameplay input panel image.");
+        if (!keyPanel)
+            throw std::runtime_error("Taiko key settings modal missing.");
+        // Column heads: the Gameplay key faces at one height, Kat raised above Don as on the input panel.
         constexpr std::array<Rect, 4> gameplayKeys{{
             {16, 68, 39, 70}, {68, 92, 39, 70}, {120, 92, 39, 70}, {172, 68, 39, 70}}};
-        const auto panelBounds = keyBackground->Bounds();
+        constexpr float columnWidth = (432.0F - 48.0F - 30.0F) / 4.0F, faceScale = 24.0F / 70.0F;
+        const auto panelHeight = keyPanel->NodeSize().height;
         std::size_t keyIndex{};
         for (const auto &child : keyPanel->Children())
         {
             if (child->Name() != "Options.Taiko.KeyImage") continue;
             Check(keyIndex < gameplayKeys.size(), "Unexpected extra Gameplay key image.");
             const auto actual = child->Bounds();
-            const auto expected = gameplayKeys[keyIndex++];
-            const auto scale = panelBounds.width / 228.0F;
-            Check(std::abs(actual.x - (panelBounds.x + expected.x * scale)) < .01F &&
-                  std::abs(actual.y - (panelBounds.y + (228 - expected.y - expected.height) * scale)) < .01F &&
-                  std::abs(actual.width - expected.width * scale) < .01F &&
-                  std::abs(actual.height - expected.height * scale) < .01F,
-                  "Taiko settings key images must match the Gameplay panel proportions and positions.");
+            const auto expected = gameplayKeys[keyIndex];
+            const float centre = 24.0F + columnWidth * .5F + (columnWidth + 10.0F) * static_cast<float>(keyIndex++);
+            const float top = 78.0F + (expected.y - 68.0F) * faceScale;
+            Check(child->IsVisible() && std::abs(actual.x + actual.width * .5F - centre) < .01F &&
+                  std::abs(panelHeight - actual.y - actual.height - top) < .01F &&
+                  std::abs(actual.width - expected.width * faceScale) < .01F && std::abs(actual.height - 24.0F) < .01F,
+                  "Taiko key settings heads must reuse the Gameplay key faces over their columns.");
         }
-        Check(keyIndex == gameplayKeys.size(), "Taiko settings must display all four Gameplay key images.");
+        Check(keyIndex == gameplayKeys.size(), "Taiko key settings must display all four Gameplay key faces.");
         auto *image = Find(canvas->Root(), "PreviewImage");
         auto *preview = Find(canvas->Root(), "BackgroundPreview");
         if (!image || !preview) throw std::runtime_error("Background nodes missing.");

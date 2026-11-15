@@ -2,6 +2,7 @@
 #include "PhantomCore.h"
 #include "Modes/IEditorAudioSource.h"
 #include "Time/RhythmTimer.h"
+#include <algorithm>
 #include <optional>
 
 // Editor-only transport/audio owner. Sources and cues come from the mode;
@@ -23,6 +24,12 @@ class EditorPlayback final
     void Initialize(PhantomCore::AudioSystem &audio) noexcept
     {
         audio_ = &audio;
+    }
+    // The player's volume at editor entry: music for the song, effects for hit sounds and the metronome.
+    void SetVolumes(float music, float effects) noexcept
+    {
+        musicVolume_ = std::max(music, 0.0F);
+        effectsVolume_ = std::max(effects, 0.0F);
     }
     void Toggle();
     void Pause() noexcept;
@@ -82,6 +89,7 @@ class EditorPlayback final
     RhythmTime position_{}, startPosition_{}, end_{};
     std::uint64_t dspAnchorClock_{};
     double rate_{1};
+    float musicVolume_{1}, effectsVolume_{1};
     bool wanted_{}, running_{}, primed_{}, musicPositioned_{};
     std::string error_;
 };

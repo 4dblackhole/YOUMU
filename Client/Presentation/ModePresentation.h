@@ -25,25 +25,22 @@ struct ModeHitSoundFile
     std::wstring_view file;
 };
 
-// One binding column of a key overlay, in the layout's binding order. The face
-// image is placed on the layout image using bounds in that image's pixels.
+// One binding column of a key overlay, in the layout's binding order: the gameplay
+// input panel's key face, its tint and its bounds in that panel's pixels. The column
+// head draws the face at a common height, keeping the faces' vertical offsets.
 struct ModeKeyOverlayFace
 {
     std::string_view skinImage;
     PhantomCore::Color tint;
     PhantomCore::Rect sourceBounds;
-    std::wstring_view heading;
 };
 
-// A centered key editor opened from one entry in the Input tab.
+// A centred key settings modal opened from one card in the options Input section.
 struct ModeKeyOverlay
 {
     std::string_view nodePrefix;
     std::string_view titleTextKey;
-    std::string_view layoutImage;
-    float layoutImageSourceSize;
     std::span<const ModeKeyOverlayFace> faces;
-    float settingsEntryHeight;
 };
 
 struct ModePresentation

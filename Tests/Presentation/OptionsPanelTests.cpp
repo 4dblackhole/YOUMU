@@ -3,9 +3,12 @@
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
 #include "Presentation/UiColors.h"
+#include "YOUMUAssets.h"
 
 #include <Windows.h>
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -17,6 +20,10 @@ namespace PhantomCore
 struct InputStateTestAccess
 {
     static void Wheel(InputState &input, float delta) { input.Reset(); input.AddMouseWheel(delta, 1); }
+    static void Key(InputState &input, std::uint16_t key) { input.Reset(); input.SetKey(key, true, 1); }
+    static void Move(InputState &input) { input.Reset(); input.AddMouseDelta(1, 0, 1); }
+    static void Press(InputState &input) { input.Reset(); input.SetMouseButton(MouseButton::Left, true, 1); }
+    static void Release(InputState &input) { input.BeginUpdate(); input.SetMouseButton(MouseButton::Left, false, 2); }
 };
 } // namespace PhantomCore
 
@@ -60,9 +67,12 @@ namespace
             if (const auto *overlay = presentation->keyOverlay)
             {
                 Check(overlay->faces.size() == layout->bindings.size(), "A key overlay has one face per binding.");
-                Check(!overlay->nodePrefix.empty() && overlay->layoutImageSourceSize > 0 &&
-                          overlay->settingsEntryHeight > 0 && !texts.Get(Language::English, overlay->titleTextKey).empty(),
-                      "A key overlay needs node names, a title text and positive layout sizes.");
+                const bool positiveFaces = std::ranges::all_of(overlay->faces, [](const ModeKeyOverlayFace &face) {
+                    return face.sourceBounds.width > 0 && face.sourceBounds.height > 0;
+                });
+                Check(!overlay->nodePrefix.empty() && positiveFaces &&
+                          !texts.Get(Language::English, overlay->titleTextKey).empty(),
+                      "A key overlay needs node names, a title text and sized key faces.");
             }
         }
         Check(FindModePresentation("Unknown") == nullptr && FindModePresentation("") == nullptr,
@@ -178,12 +188,22 @@ namespace
         action.selectedIndex = index;
         return action;
     }
-    void Tab(OptionsPanel &panel, Visual2DCanvas &canvas, std::string_view name)
+    // A rail click scrolls the continuous body to that section.
+    void Section(OptionsPanel &panel, Visual2DCanvas &canvas, std::string_view name)
     {
         Action action;
         action.type = ActionType::Clicked;
-        action.source = FindNode(canvas.Root(), std::string("Options.Tab.") + std::string(name)).Id();
-        Check(panel.ProcessAction(action), "An options tab click must be consumed.");
+        action.source = FindNode(canvas.Root(), std::string("Options.Rail.") + std::string(name)).Id();
+        Check(panel.ProcessAction(action), "An options rail click must be consumed.");
+    }
+    bool Lit(Visual2DCanvas &canvas, std::string_view name)
+    {
+        return FindNode(FindNode(canvas.Root(), std::string("Options.Rail.") + std::string(name)), "Marker").IsVisible();
+    }
+    float Top(Visual2DNode &node)
+    {
+        const auto bounds = node.BoundsInCanvas();
+        return bounds.y + bounds.height;
     }
 
     void TestPanelAppearanceAndClosing(OptionsPanel &panel, Visual2DCanvas &canvas,
@@ -192,12 +212,17 @@ namespace
         const auto luminance = [](Color c) { return .2126F * c.red + .7152F * c.green + .0722F * c.blue; };
         const auto background =
             FindNode(canvas.Root(), "Options.Panel").GetComponent<SpriteVisualComponent>()->Style().normal;
-        const auto field =
-            FindNode(canvas.Root(), "Options.Output.Combo").GetComponent<SpriteVisualComponent>()->Style().normal;
-        Check(background.alpha == 1 &&
-                  luminance(background) + .06F < luminance(ui_colors::sky::Background),
-              "The options surface must visibly separate from the scene background.");
-        Check(luminance(field) > luminance(background) + .06F, "Fields must remain visible on the darker panel.");
+        const auto rail = FindNode(canvas.Root(), "Options.Rail").GetComponent<SpriteVisualComponent>()->Style().normal;
+        Check(background.alpha == 1 && rail.alpha == 1 && luminance(rail) + .5F < luminance(background),
+              "The opaque drawer is edged by its navy category rail.");
+        const auto field = FindNode(canvas.Root(), "Options.Output.Combo").BoundsInCanvas();
+        const auto line = FindNode(canvas.Root(), "Options.Output.Line").BoundsInCanvas();
+        Check(line.height == 2 && line.y == field.y && line.width == field.width,
+              "Fields carry the redesign's two-pixel underline.");
+        const auto drawer = FindNode(canvas.Root(), "Options.Panel").BoundsInCanvas();
+        Check(drawer.width == 432 && drawer.height == 720 &&
+                  FindNode(canvas.Root(), "Options.Rail").BoundsInCanvas().width == 64,
+              "The drawer is 432 wide with a 64px rail.");
         const auto b = FindNode(canvas.Root(), "Options.Output.Combo").BoundsInCanvas();
         PointerInput pointer;
         pointer.position = {b.x + b.width / 2, b.y + b.height / 2};
@@ -328,7 +353,7 @@ namespace
               "The panel must expose the retained startup warning.");
         Check(settings.Save(values, error), "Could not restore the option test fixture.");
         panel.Update(0);
-        Tab(panel, canvas, "Audio");
+        Section(panel, canvas, "Audio");
         Check(Combo(canvas, "Options.Middleware.Combo").Items() == std::vector<std::wstring>{L"FMOD"},
               "Only installed middleware may appear.");
         Check(panel.ProcessAction(Select(canvas, "Options.Driver.Combo", 0)) && backend->lastSetDriver == 0,
@@ -356,7 +381,7 @@ namespace
         const auto bounds = FindNode(canvas.Root(), "Options.Output.Combo").BoundsInCanvas();
         static_cast<void>(click({bounds.x + bounds.width / 2, bounds.y + bounds.height / 2}));
         Check(Combo(canvas, "Options.Output.Combo").IsExpanded(), "Output list must open through pointer input.");
-        const auto actions = click({bounds.x + bounds.width / 2, bounds.y - 2.5F * 42.0F});
+        const auto actions = click({bounds.x + bounds.width / 2, bounds.y - 2.5F * 34.0F});
         Check(actions.size() == 1 && actions.front().source == FindNode(canvas.Root(), "Options.Output.Combo").Id() &&
               actions.front().selectedIndex == 2 && panel.ProcessAction(actions.front()),
               "The ASIO popup row must receive clicks ahead of the driver field below it.");
@@ -373,7 +398,7 @@ namespace
               audio.ActiveOutput() == AudioOutputBackend::Asio && audio.ActiveDriverIndex() == 5 &&
               settings.Values().audioOutput == AudioOutputBackend::Asio,
               "Saving failure must restore runtime audio and preserve persisted values.");
-        Tab(panel, canvas, "General");
+        Section(panel, canvas, "General");
         Check(panel.ProcessAction(Select(canvas, "Options.Language.Combo", 0)) &&
               texts.CurrentLanguage() == Language::English,
               "Saving failure must preserve the current language.");
@@ -392,7 +417,7 @@ namespace
         Check(!FindNode(canvas.Root(), "Options.Driver.Combo").IsEnabled() &&
               Combo(canvas, "Options.Driver.Combo").Items().size() == 1,
               "An empty device list must be explicit and non-selectable.");
-        Tab(panel, canvas, "Audio");
+        Section(panel, canvas, "Audio");
         TestPanelAppearanceAndClosing(panel, canvas, router);
         panel.Shutdown();
         Check(!panel.ProcessAction(actions.front()), "A closed panel must reject stale Canvas actions.");
@@ -446,7 +471,7 @@ namespace
             action.type = ActionType::Clicked;
             Check(panel.ProcessAction(action), "Option field click is consumed.");
         };
-        Tab(panel, canvas, "Display");
+        Section(panel, canvas, "Display");
         Check(panel.ProcessAction(Select(canvas, "Options.Resolution.Combo", 1)) && window.size.width == 960 &&
                   settings.Values().windowHeight == 540,
               "Resolution applies and persists immediately.");
@@ -460,7 +485,7 @@ namespace
                   settings.Values().windowWidth == 960,
               "Native resize failure preserves saved size.");
         window.reject = false;
-        Tab(panel, canvas, "Audio");
+        Section(panel, canvas, "Audio");
         click("Options.Offset.Field");
         Check(panel.OwnsKeyboard(), "Offset field captures numeric input.");
         for (const auto key : {'1', '0', '0'})
@@ -477,7 +502,7 @@ namespace
         panel.HandleKey(VK_DELETE, router);
         panel.HandleKey(VK_RETURN, router);
         Check(settings.Values().globalOffsetMs == -5 && panel.OwnsKeyboard(), "Invalid draft preserves saved offset.");
-        Tab(panel, canvas, "Input");
+        Section(panel, canvas, "Input");
         Check(!panel.OwnsKeyboard() && settings.Values().globalOffsetMs == -5,
               "Switching away from an invalid offset draft cancels only its edit state.");
         click("Options.Taiko.OpenKeys");
@@ -490,7 +515,7 @@ namespace
             pointer.leftButtonDown = pointer.leftButtonPressed = true;
             router.Process(canvas, pointer);
             Check(router.HoveredNode() == FindNode(canvas.Root(), "Options.Key.Taiko.LeftKat.0").Id(),
-                  "The leftmost key receives pointer input where the key panel overlaps the options panel.");
+                  "The key modal receives pointer input above its scrim and the options drawer.");
             pointer.leftButtonDown = pointer.leftButtonPressed = false;
             pointer.leftButtonReleased = true;
             router.Process(canvas, pointer);
@@ -512,8 +537,21 @@ namespace
         click("Options.Key.Taiko.LeftDon.3");
         panel.HandleKey('G', router);
         Check(settings.Values().modeKeys.at("Taiko").at("LeftDon")[3] == 'G', "Third auxiliary slot saved.");
+        auto &clear = FindNode(canvas.Root(), "Options.Key.Taiko.LeftDon.3.Clear");
+        Check(!clear.IsVisible(), "The clear button stays hidden until its slot is pointed at.");
+        {
+            const auto slot = FindNode(canvas.Root(), "Options.Key.Taiko.LeftDon.3").BoundsInCanvas();
+            PointerInput hover{};
+            hover.available = true;
+            hover.position = {slot.x + 8.0F, slot.y + slot.height / 2};
+            router.Process(canvas, hover);
+            static_cast<void>(panel.ProcessInput(InputState{}, hover.position, router.HoveredNode(), router));
+        }
+        Check(clear.IsVisible(), "Pointing at an assigned auxiliary slot shows its clear button.");
         click("Options.Key.Taiko.LeftDon.3.Clear");
         Check(settings.Values().modeKeys.at("Taiko").at("LeftDon")[3] == 0, "Auxiliary slot can be cleared independently.");
+        Check(FindNode(canvas.Root(), "Options.Key.Taiko.LeftDon.3").GetComponent<TextVisualComponent>()->Text() == L"+",
+              "An unassigned auxiliary slot shows only a faint plus.");
         click("Options.Key.Taiko.RightDon.0");
         panel.HandleKey(VK_ESCAPE, router);
         panel.HandleKey(VK_ESCAPE, router);
@@ -555,55 +593,106 @@ namespace
               "A loaded native clip must remain usable after output/driver selection.");
         std::cout << "Actual FMOD Automatic -> WASAPI and driver selection passed (loaded clip retained).\n";
     }
-    void TestTabsAndJapanese(const std::filesystem::path &folder)
+    void TestSectionsAndJapanese(const std::filesystem::path &folder)
     {
-        OptionSettings settings(folder / "Tabs.ini");
+        OptionSettings settings(folder / "Sections.ini");
         std::string error;
-        Check(settings.Load(error), "Create tab settings fixture.");
+        Check(settings.Load(error), "Create section settings fixture.");
         AudioSystem audio;
-        Check(audio.Initialize({}, &CreateBackend, &CreateClip, error), "Initialize tab audio fixture.");
+        Check(audio.Initialize({}, &CreateBackend, &CreateClip, error), "Initialize section audio fixture.");
         TextCatalog texts("Client/Texts/Languages");
         Visual2DCanvas canvas;
         Visual2DInputRouter router;
         OptionsPanel panel(texts, settings);
         panel.Initialize(canvas, audio);
         panel.Toggle(); panel.Update(.2);
-        Check(FindNode(canvas.Root(), "Options.Content.General").IsVisible() &&
-                  !FindNode(canvas.Root(), "Options.Content.Audio").IsVisible(), "Only the selected General body starts visible.");
-        const auto before = settings.Values().language;
-        Tab(panel, canvas, "Audio");
-        Check(!panel.ProcessAction(Select(canvas, "Options.Language.Combo", 2)) && settings.Values().language == before,
-              "Queued selections from a hidden tab must not change persisted settings.");
+        auto &viewport = FindNode(canvas.Root(), "Options.Viewport");
+        auto &general = FindNode(canvas.Root(), "Options.Section.General");
+        auto &audioHeader = FindNode(canvas.Root(), "Options.Section.Audio");
+        Check(general.IsVisible() && audioHeader.IsVisible() && Lit(canvas, "General") && !Lit(canvas, "Audio"),
+              "All sections share one body and the first section starts lit.");
+        Check(std::abs(Top(viewport) - Top(general) - 22) < .01F, "The first section starts at the top of the body.");
+
+        // A rail click brings its section to the top and lights it until the body is scrolled by hand.
+        Section(panel, canvas, "Audio");
+        Check(Lit(canvas, "Audio") && !Lit(canvas, "General") && std::abs(Top(viewport) - Top(audioHeader) - 22) < .01F,
+              "A rail click scrolls its section to the top of the body.");
+        Section(panel, canvas, "Input");
+        Check(Lit(canvas, "Input"), "The last section stays lit even though the body cannot scroll it to the top.");
+        InputState wheel;
+        InputStateTestAccess::Wheel(wheel, 1);
+        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        Check(Lit(canvas, "Audio") && !Lit(canvas, "Input"), "Scrolling by hand lights the section hanging at the top.");
+        InputStateTestAccess::Wheel(wheel, 10);
+        for (int i = 0; i < 10; ++i)
+            static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        Check(Lit(canvas, "General") && std::abs(Top(viewport) - Top(general) - 22) < .01F,
+              "Scrolling back to the top lights the first section.");
+        InputStateTestAccess::Wheel(wheel, -100);
+        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        Check(Lit(canvas, "Input"), "At the very bottom the last section is lit.");
+
+        // Up/Down step through the rail and expand its names; a pointer move folds them again.
+        auto &rail = FindNode(canvas.Root(), "Options.Rail");
+        InputState keys;
+        InputStateTestAccess::Key(keys, VK_UP);
+        Check(panel.ProcessInput(keys, Point{0, 0}, {}, router) && Lit(canvas, "Audio"), "Up moves to the previous section.");
+        panel.Update(.016);
+        Check(rail.BoundsInCanvas().width == 184 &&
+                  FindNode(FindNode(canvas.Root(), "Options.Rail.Audio"), "Label").IsVisible(),
+              "Keyboard navigation expands the rail with section names.");
+        InputState move;
+        InputStateTestAccess::Move(move);
+        static_cast<void>(panel.ProcessInput(move, Point{0, 0}, {}, router));
+        panel.Update(.016);
+        Check(rail.BoundsInCanvas().width == 64, "A pointer move folds the keyboard expansion.");
+        const auto railBounds = rail.BoundsInCanvas();
+        const Point onRail{railBounds.x + 20, railBounds.y + 300};
+        static_cast<void>(panel.ProcessInput(move, onRail, {}, router));
+        panel.Update(.2);
+        Check(rail.BoundsInCanvas().width == 64, "The rail waits before expanding under the pointer.");
+        panel.Update(.15);
+        Check(rail.BoundsInCanvas().width == 184, "Resting on the rail expands it over the body.");
+        static_cast<void>(panel.ProcessInput(move, Point{railBounds.x + 300, railBounds.y + 300}, {}, router));
+        panel.Update(.016);
+        Check(rail.BoundsInCanvas().width == 64, "Leaving the expanded rail folds it at once.");
+
+        // Errors stay in the footer outside the scrolling body; reopening keeps the place.
         backend->rejectAsio = true;
         Check(panel.ProcessAction(Select(canvas, "Options.Output.Combo", 2)), "Produce a recoverable audio error.");
-        auto &audioBody = FindNode(canvas.Root(), "Options.Content.Audio");
-        const auto unscrolled = audioBody.BoundsInCanvas().y;
-        InputState wheel; InputStateTestAccess::Wheel(wheel, -10);
-        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
-        const auto scrolled = audioBody.BoundsInCanvas().y;
-        Check(scrolled > unscrolled && FindNode(canvas.Root(), "Options.Status").IsVisible(),
-              "An error remains visible outside the scrolling active tab body.");
-        Tab(panel, canvas, "General");
-        Tab(panel, canvas, "Audio");
-        Check(audioBody.BoundsInCanvas().y == scrolled, "Each tab retains its own scroll offset.");
-        backend->rejectAsio = false;
-        Tab(panel, canvas, "General");
+        auto &footer = FindNode(canvas.Root(), "Options.Footer");
+        Check(footer.IsVisible() && Top(footer) <= viewport.BoundsInCanvas().y + .01F,
+              "An error remains visible below the scrolling body.");
+        Section(panel, canvas, "Display");
+        const auto shown = Top(FindNode(canvas.Root(), "Options.Section.Display"));
+        panel.Toggle();
+        panel.Update(.2);
+        panel.Toggle();
+        panel.Update(.2);
+        Check(Lit(canvas, "Display") && Top(FindNode(canvas.Root(), "Options.Section.Display")) == shown,
+              "Reopening keeps the scroll position and the lit section.");
+        Section(panel, canvas, "General");
         Check(panel.ProcessAction(Select(canvas, "Options.Language.Combo", 2)) && texts.CurrentLanguage() == Language::Japanese,
               "Japanese explanations can be selected and persisted.");
-        Check(FindNode(canvas.Root(), "Options.Title").GetComponent<TextVisualComponent>()->Text() == L"OPTIONS" &&
-                  FindNode(canvas.Root(), "Options.Tab.Display").GetComponent<TextVisualComponent>()->Text() == L"Display" &&
-                  FindNode(canvas.Root(), "Options.Offset.Hint").GetComponent<TextVisualComponent>()->Text() ==
-                      texts.Get(Language::Japanese, "Options.offsetHint"),
-              "Japanese changes help copy while captions and tab names remain English.");
+        Check(panel.ProcessAction(Select(canvas, "Options.Output.Combo", 2)), "Produce the audio error in Japanese.");
+        backend->rejectAsio = false;
+        const auto status = FindNode(canvas.Root(), "Options.Status").GetComponent<TextVisualComponent>()->Text();
+        Check(FindNode(canvas.Root(), "Options.Title").GetComponent<TextVisualComponent>()->Text() == L"Options" &&
+                  FindNode(FindNode(canvas.Root(), "Options.Rail.Display"), "Label")
+                          .GetComponent<TextVisualComponent>()->Text() == L"Display" &&
+                  status.find(texts.Get(Language::Japanese, "Options.audioError")) != std::wstring_view::npos,
+              "Japanese changes explanations while captions and section names remain English.");
         OptionSettings restored(settings.Path());
         Check(restored.Load(error) && restored.Values().language == Language::Japanese,
               "The ja setting survives restart with the existing INI field.");
-        const auto click = [&](std::string_view name)
+        // Rail buttons keep their expanded width; only the icon column shows while the rail is folded.
+        const auto click = [&](std::string_view name, const bool railButton = false)
         {
             const auto b = FindNode(canvas.Root(), name).BoundsInCanvas();
             PointerInput pointer;
             pointer.available = true;
-            pointer.position = {b.x + b.width / 2, b.y + b.height / 2};
+            pointer.position = {railButton ? b.x + 32 : b.x + b.width / 2, b.y + b.height / 2};
             pointer.leftButtonDown = pointer.leftButtonPressed = true;
             router.Process(canvas, pointer);
             pointer.leftButtonDown = pointer.leftButtonPressed = false;
@@ -613,19 +702,70 @@ namespace
         };
         click("Options.Language.Combo");
         Check(Combo(canvas, "Options.Language.Combo").IsExpanded(), "Open the actual General popup.");
-        click("Options.Tab.Display");
-        Check(!Combo(canvas, "Options.Language.Combo").IsExpanded() &&
-                  FindNode(canvas.Root(), "Options.Content.Display").IsVisible(),
-              "A pointer tab switch collapses old popups and activates its body.");
+        click("Options.Rail.Display", true);
+        Check(!Combo(canvas, "Options.Language.Combo").IsExpanded() && Lit(canvas, "Display"),
+              "A rail click collapses open lists and moves to its section.");
+        static_cast<void>(panel.ProcessInput(InputState{}, std::nullopt, {}, router));
         const auto skin = FindNode(canvas.Root(), "Options.Skin.Combo").BoundsInCanvas();
         PointerInput hover;
         hover.available = true;
         hover.position = {skin.x + skin.width / 2, skin.y + skin.height / 2};
         router.Process(canvas, hover);
         Check(router.HoveredNode() == FindNode(canvas.Root(), "Options.Skin.Combo").Id(),
-              "The next hit test must target the new visible tab rather than the old field at that position.");
-        Tab(panel, canvas, "Input");
-        Check(!FindNode(canvas.Root(), "Options.Content.Display").IsVisible(), "Only Input remains visible.");
+              "The next hit test must target the field now under the pointer.");
+        panel.Shutdown();
+    }
+
+    void TestVolumes(const std::filesystem::path &folder)
+    {
+        constexpr AudioVolumes half{50, 50, 100};
+        Check(half.Music() == .25F && half.Effects() == .5F && AudioVolumes{}.Music() == 1,
+              "Master scales music and effects linearly.");
+        OptionSettings settings(folder / "Volumes.ini");
+        std::string error;
+        Check(settings.Load(error) && settings.Values().volumes == AudioVolumes{}, "First-run volumes are all 100%.");
+        AudioSystem audio;
+        Check(audio.Initialize({}, &CreateBackend, &CreateClip, error), "Initialize volume audio fixture.");
+        TextCatalog texts;
+        Visual2DCanvas canvas;
+        Visual2DInputRouter router;
+        OptionsPanel panel(texts, settings);
+        panel.Initialize(canvas, audio);
+        panel.Toggle();
+        panel.Update(.2);
+        Section(panel, canvas, "Audio");
+        auto &track = FindNode(canvas.Root(), "Options.Volume.Music");
+        auto &value = *FindNode(canvas.Root(), "Options.Volume.Music.Value").GetComponent<TextVisualComponent>();
+        const auto bounds = track.BoundsInCanvas();
+        Check(value.Text() == L"100%", "Each volume shows its saved percentage.");
+        InputState input;
+        InputStateTestAccess::Press(input);
+        const Point quarter{bounds.x + 5 + (bounds.width - 10) * .25F, bounds.y + bounds.height / 2};
+        static_cast<void>(panel.ProcessInput(input, quarter, track.Id(), router));
+        Check(value.Text() == L"25%" && settings.Values().volumes.music == 100,
+              "Dragging shows the new value but saves only on release.");
+        InputStateTestAccess::Release(input);
+        static_cast<void>(panel.ProcessInput(input, Point{bounds.x + bounds.width + 40, bounds.y}, {}, router));
+        Check(value.Text() == L"100%" && settings.Values().volumes.music == 100,
+              "A drag released past the end keeps the clamped maximum.");
+        InputStateTestAccess::Press(input);
+        static_cast<void>(panel.ProcessInput(input, quarter, track.Id(), router));
+        InputStateTestAccess::Release(input);
+        static_cast<void>(panel.ProcessInput(input, quarter, {}, router));
+        Check(settings.Values().volumes == AudioVolumes{100, 25, 100}, "Releasing saves only the dragged volume.");
+        OptionSettings restored(settings.Path());
+        Check(restored.Load(error) && restored.Values().volumes.music == 25, "Volumes survive restart.");
+        auto candidate = settings.Values();
+        candidate.volumes.effects = 101;
+        Check(!settings.Save(candidate, error) && settings.Values().volumes.effects == 100,
+              "Volumes outside 0..100 are rejected.");
+        {
+            std::ofstream file(folder / "BadVolume.ini");
+            file << "[Audio]\nMasterVolume=-1\n";
+        }
+        OptionSettings invalid(folder / "BadVolume.ini");
+        Check(!invalid.Load(error) && invalid.Values().volumes == AudioVolumes{} && !invalid.LoadWarning().empty(),
+              "A volume outside its range falls back to defaults with a warning.");
         panel.Shutdown();
     }
 }
@@ -638,11 +778,14 @@ int main()
     try
     {
         std::filesystem::create_directory(folder);
+        std::string error;
+        Check(InitializeBuiltInAssets(error), error.c_str());
         TestModePresentationRegistry();
         TestInvalidOptionFallback(folder);
         TestOptions(folder);
         TestExtraOptions(folder);
-        TestTabsAndJapanese(folder);
+        TestSectionsAndJapanese(folder);
+        TestVolumes(folder);
         TestActualAudio();
         std::filesystem::remove_all(folder);
         std::cout << "Options panel and persistence tests passed.\n";

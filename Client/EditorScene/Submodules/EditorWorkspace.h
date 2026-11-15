@@ -25,7 +25,11 @@ class EditorWorkspace final : public IEditorContext
     }
     void Initialize();
     void UpdateAnalysis();
-    void InitializePlayback(PhantomCore::AudioSystem &audio) noexcept { playback_.Initialize(audio); }
+    void InitializePlayback(PhantomCore::AudioSystem &audio) noexcept
+    {
+        playback_.Initialize(audio);
+        playback_.SetVolumes(request_.volumes.Music(), request_.volumes.Effects());
+    }
     void ShutdownPlayback() noexcept { playback_.Shutdown(); }
     void UpdatePlayback();
     void TogglePlayback();

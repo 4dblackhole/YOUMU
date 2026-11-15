@@ -143,6 +143,8 @@ namespace
             throw std::runtime_error("The skin option must name one folder.");
         if (values.audioMiddleware != "FMOD")
             throw std::runtime_error("Only the FMOD audio middleware is installed.");
+        if (!values.volumes.IsValid())
+            throw std::runtime_error("Volumes must be whole percentages within 0..100.");
         static_cast<void>(OutputName(values.audioOutput));
         if (!IsValidWindowExtent(values.windowWidth) || !IsValidWindowExtent(values.windowHeight))
             throw std::runtime_error("Window dimensions must be within 1..16384 pixels.");
@@ -225,6 +227,9 @@ namespace
                     throw std::runtime_error("DriverIndex must be an integer.");
             }
             else if (key == "DriverName") values.driverName = value;
+            else if (key == "MasterVolume") values.volumes.master = ReadInteger<int>(value);
+            else if (key == "MusicVolume") values.volumes.music = ReadInteger<int>(value);
+            else if (key == "EffectsVolume") values.volumes.effects = ReadInteger<int>(value);
         }
     }
 
@@ -316,7 +321,9 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\n\r\n[Display]\r\nWidth=" << values.windowWidth << "\r\nHeight=" << values.windowHeight
              << "\r\n\r\n[Audio]\r\nMiddleware=" << values.audioMiddleware
              << "\r\nOutput=" << OutputName(values.audioOutput) << "\r\nDriverIndex=" << values.driverIndex
-             << "\r\nDriverName=" << values.driverName << "\r\n";
+             << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master
+             << "\r\nMusicVolume=" << values.volumes.music << "\r\nEffectsVolume=" << values.volumes.effects
+             << "\r\n";
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             file << "\r\n[Keys." << mode << "]\r\n";

@@ -39,8 +39,8 @@ namespace
     }
     bool IsSceneSection(const std::string_view section)
     {
-        constexpr std::array<std::string_view, 7> Sections{"Folders", "Logo",   "InGame", "MusicSelect",
-                                                            "Result",  "Common", "Loading"};
+        constexpr std::array<std::string_view, 8> Sections{"Folders", "Logo",   "InGame",  "MusicSelect",
+                                                            "Result",  "Common", "Loading", "Options"};
         return std::ranges::find(Sections, section) != Sections.end();
     }
     std::string Identifier(std::wstring_view value)

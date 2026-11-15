@@ -279,6 +279,7 @@ void EditorPlayback::PrimeMusic()
             if (voice)
                 Require(voices_.Stop(musicVoice_, error), error);
             AudioPlaybackSettings settings;
+            settings.volume = musicVolume_;
             settings.pitch = static_cast<float>(rate_);
             settings.startPaused = true;
             settings.startPositionMicroseconds = static_cast<std::uint64_t>(std::max(position_, Time{}).count());
@@ -304,6 +305,7 @@ bool EditorPlayback::BeginPreparedPlayback()
         if (!musicPositioned_)
         {
             AudioPlaybackSettings settings;
+            settings.volume = musicVolume_;
             settings.pitch = static_cast<float>(rate_);
             settings.startPaused = true;
             settings.startPositionMicroseconds = static_cast<std::uint64_t>(std::max(position_, Time{}).count());
@@ -363,6 +365,7 @@ void EditorPlayback::ScheduleHitSounds()
             continue;
         const auto time = track.times[track.cursor++];
         AudioPlaybackSettings settings;
+        settings.volume = effectsVolume_;
         settings.pitch = static_cast<float>(rate_);
         settings.startDspClock = DspClockAt(time);
         std::string error;

@@ -15,7 +15,6 @@ std::wstring_view InputBindingName(const TextCatalog &texts, std::string_view mo
 OptionTextSet Options(const TextCatalog &texts)
 {
     return {texts.Get("Options.resolution"),     texts.Get("Options.globalOffset"),
-            texts.Get("Options.offsetHint"),     texts.Get("Options.keys"),
             texts.Get("Options.primary"),        texts.Get("Options.auxiliary"),
             texts.Get("Options.pressKey"),       texts.Get("Options.windowError"),
             texts.Get("Options.inputError"),     texts.Get("Options.title"),

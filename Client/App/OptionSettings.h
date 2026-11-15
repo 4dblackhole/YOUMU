@@ -1,5 +1,6 @@
 #pragma once
 
+#include "App/AudioVolumes.h"
 #include "PhantomCore.h"
 #include "Texts/TextCatalog.h"
 
@@ -16,6 +17,7 @@ struct OptionValues
     PhantomCore::AudioOutputBackend audioOutput{PhantomCore::AudioOutputBackend::Automatic};
     int driverIndex{-1};
     std::string driverName;
+    AudioVolumes volumes;
     std::uint32_t windowWidth{1280}, windowHeight{720};
     std::int32_t globalOffsetMs{};
     std::filesystem::path songsPath; // Empty selects the development/deployment default.

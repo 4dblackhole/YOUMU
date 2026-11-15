@@ -38,6 +38,9 @@ public:
                                             PhantomCore::AudioLoadMode loadMode = PhantomCore::AudioLoadMode::Sample);
     PhantomCore::AudioPreparationState PrepareResources();
     bool ConfigurePlayback(const PlayOptions &options, std::string &error);
+    // The player's volume: music scales the Music bus, effects every other bus.
+    // Chart volume automation multiplies on top of it.
+    void SetVolumes(float music, float effects);
     bool SetEditorTestRate(double rate, RhythmTime position, const RhythmTimer &timer, std::string &error);
     std::optional<RhythmTime> MusicDuration() const;
 
@@ -76,8 +79,12 @@ private:
         std::string_view busId,
         PhantomCore::AudioEffectType type);
     void ApplyAutomationValue(const AutomationValue& value);
+    [[nodiscard]] float BusGain(std::string_view busId) const noexcept;
+    // Applies the player's volume times the bus's current automation value.
+    void ApplyBusVolume(std::string_view busId, PhantomCore::AudioBus& bus);
 
     float musicPitch_{1.0F}, hitSoundPitch_{1.0F};
+    float musicVolume_{1.0F}, effectsVolume_{1.0F};
     bool editorTestPlayback_{};
     std::map<PhantomCore::AudioPlaybackId, RhythmTime> scheduledCueTimes_;
     PhantomCore::AudioSystem* audioSystem_{};

@@ -21,12 +21,11 @@ namespace
     // Face bounds come from the 228px gameplay input panel so the key editor
     // and the gameplay key display share one skin layout.
     constexpr std::array TaikoKeyFaces{
-        ModeKeyOverlayFace{"KeyButtonLeftKat", {.04F, .57F, .81F, 1}, {16, 68, 39, 70}, L"Left K"},
-        ModeKeyOverlayFace{"KeyButtonLeftDon", {.92F, .07F, .11F, 1}, {68, 92, 39, 70}, L"Left D"},
-        ModeKeyOverlayFace{"KeyButtonRightDon", {.92F, .07F, .11F, 1}, {120, 92, 39, 70}, L"Right D"},
-        ModeKeyOverlayFace{"KeyButtonRightKat", {.04F, .57F, .81F, 1}, {172, 68, 39, 70}, L"Right K"}};
-    constexpr ModeKeyOverlay TaikoKeyOverlay{
-        "Options.Taiko", "Options.taikoKeySettings", "InputPanel", 228.0F, TaikoKeyFaces, 84.0F};
+        ModeKeyOverlayFace{"KeyButtonLeftKat", {.04F, .57F, .81F, 1}, {16, 68, 39, 70}},
+        ModeKeyOverlayFace{"KeyButtonLeftDon", {.92F, .07F, .11F, 1}, {68, 92, 39, 70}},
+        ModeKeyOverlayFace{"KeyButtonRightDon", {.92F, .07F, .11F, 1}, {120, 92, 39, 70}},
+        ModeKeyOverlayFace{"KeyButtonRightKat", {.04F, .57F, .81F, 1}, {172, 68, 39, 70}}};
+    constexpr ModeKeyOverlay TaikoKeyOverlay{"Options.Taiko", "Options.taikoKeySettings", TaikoKeyFaces};
 
     constexpr std::array TaikoCaptions{
         ModeBindingCaption{"LeftKat", "Bindings.LeftKat"},

@@ -109,6 +109,7 @@ void SongLibrary::UpdatePlayback(const double deltaSeconds, const Screen screen)
     const bool songSelect = screen == Screen::SongSelect;
     if (songSelect && song != nullptr)
         trackChosen_ = true;
+    player_.SetVolumeScale(options_.Values().volumes.Music());
     player_.SyncTrack(song != nullptr ? song->audioPath : std::filesystem::path{}, songSelect);
     const auto endBehavior = songSelect ? SongPreviewController::EndBehavior::Repeat
                                         : SongPreviewController::EndBehavior::Report;

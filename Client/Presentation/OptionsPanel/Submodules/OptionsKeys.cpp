@@ -1,6 +1,7 @@
 #include "OptionsPanelStyle.h"
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/SkinVisualComponent.h"
 #include "App/SkinSetSelection.h"
 #include <algorithm>
 
@@ -9,6 +10,15 @@ using namespace PhantomCore;
 using namespace options_ui;
 namespace
 {
+    // Key settings modal (UI-02): 432 wide, four binding columns of one main and three auxiliary slots.
+    constexpr float ModalWidth = 432, ModalHeight = 314, ModalPadding = 24;
+    constexpr float GridTop = 78, ColumnGap = 10, HeadHeight = 34, FaceHeight = 24;
+    constexpr float MainTop = GridTop + HeadHeight + 6, MainHeight = 48, SubTop = MainTop + MainHeight + 10;
+    constexpr float SubHeight = 34, SubPitch = 40, ClearSize = 22;
+    constexpr float StatusHeight = 46, StatusTextWidth = 346;
+    constexpr Color Transparent{1, 1, 1, 0};
+    constexpr auto SlotColor = ui_colors::Rgb(0xFFFFFF, .8F), EmptySlotColor = ui_colors::Rgb(0xFFFFFF, .45F);
+
     std::wstring KeyName(std::uint16_t key, const TextCatalog &catalog)
     {
         UINT scan = MapVirtualKeyW(key, MAPVK_VK_TO_VSC_EX);
@@ -20,128 +30,167 @@ namespace
             return name;
         return std::wstring(catalog.Get("Options.virtualKeyPrefix")) + std::to_wstring(key);
     }
+    float ColumnWidth(const std::size_t columns)
+    {
+        const auto count = static_cast<float>(std::max<std::size_t>(columns, 1));
+        return (ModalWidth - 2 * ModalPadding - ColumnGap * (count - 1)) / count;
+    }
+    Rect SlotBounds(const std::size_t column, const std::size_t slot, const float width)
+    {
+        const float x = ModalPadding + (width + ColumnGap) * static_cast<float>(column);
+        if (slot == 0)
+            return {x, MainTop, width, MainHeight};
+        return {x, SubTop + SubPitch * static_cast<float>(slot - 1), width, SubHeight};
+    }
+    InputKeyOverrides SavedOverrides(const OptionValues &values, const std::string &mode)
+    {
+        const auto saved = values.modeKeys.find(mode);
+        return saved == values.modeKeys.end() ? InputKeyOverrides{} : saved->second;
+    }
 } // namespace
+
 void OptionsPanel::CreateKeyControls()
 {
-    float top = 38;
     for (const auto &layout : inputLayouts_)
     {
-        modeLabels_.push_back(
-            &CreateFieldLabel(*content_, contentHeight_ - top, PanelWidth, "Options.Keys." + layout.modeId));
-        top += 52;
         const auto *presentation = FindModePresentation(layout.modeId);
         if (presentation && presentation->keyOverlay)
         {
-            CreateKeyOverlay(layout, *presentation->keyOverlay, top);
-            top += presentation->keyOverlay->settingsEntryHeight;
+            CreateKeyOverlay(layout, *presentation->keyOverlay);
             continue;
         }
+        // A mode without an overlay edits each binding slot on its own row.
+        modeLabels_.push_back(nullptr);
         for (const auto &binding : layout.bindings)
             for (std::size_t slot = 0; slot < binding.keys.size(); ++slot)
             {
                 KeyRow row{layout.modeId, binding.id, binding.displayName, slot};
                 const auto name = "Options.Key." + row.mode + "." + row.binding + "." + std::to_string(slot);
-                row.label = &CreateFieldLabel(*content_, contentHeight_ - top, PanelWidth, name + ".Label");
-                row.label->GetComponent<TextVisualComponent>()->SetFontSize(15);
+                const float top = NextField(ControlHeight);
+                row.label = &CreateFieldLabel(*content_, top, name + ".Label");
                 row.button = &CreateButton(
-                    *content_, {24, contentHeight_ - top - 46, PanelWidth - 48, 38}, L"", name);
-                VisualStyle style{};
-                style.normal = FieldColor;
-                style.hovered = FieldHoverColor;
-                style.pressed = ui_colors::options::Pressed;
-                style.disabled = ui_colors::options::Disabled;
-                RequireComponent<SpriteVisualComponent>(*row.button).SetStyle(style);
-                RequireComponent<TextVisualComponent>(*row.button).SetFontSize(18);
-                RequireComponent<TextVisualComponent>(*row.button).SetTextColor(HeadingColor);
+                    *content_, TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_), L"",
+                    name);
+                StyleFieldButton(*row.button, true);
+                AddFieldLine(*content_, *row.button, name + ".Line");
                 keyRows_.push_back(std::move(row));
-                top += 84;
             }
     }
 }
-void OptionsPanel::CreateKeyOverlay(const ModeInputLayout &layout, const ModeKeyOverlay &description,
-                                    const float top)
+
+void OptionsPanel::CreateKeyOverlay(const ModeInputLayout &layout, const ModeKeyOverlay &description)
 {
     const std::string prefix(description.nodePrefix);
-    const std::wstring title(texts_.Get(description.titleTextKey));
-    KeyOverlay overlay{&description};
-    // The settings list keeps one entry; the editor itself is a centered overlay.
-    overlay.open = &CreateButton(*content_, {24, contentHeight_ - top - 46, PanelWidth - 48, 38}, title,
-                                 prefix + ".OpenKeys");
-    SetPanelColor(*overlay.open, FieldColor);
-    RequireComponent<TextVisualComponent>(*overlay.open).SetTextColor(HeadingColor);
-    // Root-level Z order keeps this centered overlay above the options anchor.
-    overlay.panel = &CreatePanel(canvas_->Root(), {-450, -325, 900, 650}, prefix + ".Keys");
-    overlay.panel->SetZIndex(200);
-    SetPanelColor(*overlay.panel, ui_colors::result::Surface);
-    overlay.title = &CreateLabel(*overlay.panel, {40, 580, 700, 40}, title, prefix + ".Title");
-    auto &caption = RequireComponent<TextVisualComponent>(*overlay.title);
-    texts_.ApplyFont(caption); caption.SetFontSize(30); caption.SetTextColor(HeadingColor);
-    overlay.close = &CreateButton(*overlay.panel, {834, 588, 42, 42}, L"×", prefix + ".CloseKeys");
-    SetPanelColor(*overlay.close, ui_colors::sky::Accent);
-    overlay.status = &CreateLabel(*overlay.panel, {60, 20, 780, 65}, L"", prefix + ".Status");
-    RequireComponent<TextVisualComponent>(*overlay.status).SetTextColor(ui_colors::Error);
-    RequireComponent<TextVisualComponent>(*overlay.status).SetFontSize(15);
+    KeyOverlay overlay{&description, layout.modeId};
 
-    // Reuse the gameplay input panel image and key faces at the same layout.
-    constexpr Rect LayoutImageBounds{365, 395, 170, 170};
-    overlay.faces.assign(description.faces.size(), nullptr);
-    if (visuals_)
+    // Input section card: the mode name above, the key summary inside.
+    const float top = NextField(KeyCardHeight);
+    modeLabels_.push_back(&CreateFieldLabel(*content_, top, "Options.Keys." + layout.modeId));
+    overlay.open = &CreateButton(*content_,
+                                 TopLeft({ContentLeft, top + ControlOffset, FieldWidth, KeyCardHeight}, contentHeight_),
+                                 L"", prefix + ".OpenKeys");
+    SetColors(*overlay.open, ui_colors::Rgb(0xFFFFFF, .7F), FieldHoverColor, FieldPressedColor, FieldDisabledColor);
+    BindPart(*overlay.open, "KeyCard");
+    auto &marker = CreateSprite(*overlay.open, TopLeft({0, 0, 4, KeyCardHeight}, KeyCardHeight), {}, "Marker");
+    SetPanelColor(marker, ui_colors::theme::Brand);
+    CreateIcon(*overlay.open, {16, 18, 28, 28}, "Icons.drum", ui_colors::theme::BrandText, "Icon");
+    overlay.openTitle = &CreateCaption(*overlay.open, {56, 14, 206, 20}, 15, 700, HeadingColor, "Title");
+    overlay.openSummary = &PhantomCore::CreateLabel(*overlay.open, TopLeft({56, 34, 206, 16}, KeyCardHeight), L"",
+                                                    "Summary");
+    StyleNumber(RequireComponent<TextVisualComponent>(*overlay.openSummary), 12, 500, ui_colors::theme::Caption,
+                TextAlignment::Leading, false);
+    CreateIcon(*overlay.open, {274, 23, 18, 18}, "Icons.chev-right", ui_colors::theme::BrandText, "Chevron");
+
+    // Modal: a scrim over the whole canvas and the centred panel above it.
+    auto &root = canvas_->Root();
+    overlay.scrim = &CreatePanel(root, {}, prefix + ".KeysScrim");
+    overlay.scrim->SetZIndex(199);
+    SetPanelColor(*overlay.scrim, ScrimColor);
+    overlay.scrim->AddComponent<RectangleCollider2DComponent>();
+    overlay.scrim->AddComponent<PointerReceiverComponent>();
+    overlay.panel = &CreatePanel(root, {-ModalWidth * 0.5F, -ModalHeight * 0.5F, ModalWidth, ModalHeight}, prefix + ".Keys");
+    overlay.panel->SetZIndex(200);
+    SetPanelColor(*overlay.panel, ModalColor);
+    overlay.title = &CreateCaption(*overlay.panel, {ModalPadding, 28, 300, 32}, 26, 900, HeadingColor, prefix + ".Title");
+    overlay.close = &CreateButton(*overlay.panel, TopLeft({ModalWidth - ModalPadding - 32, 28, 32, 32}, ModalHeight), L"",
+                                  prefix + ".CloseKeys");
+    SetColors(*overlay.close, Transparent, ui_colors::Rgb(0x1F4C99, .08F), ui_colors::Rgb(0x1F4C99, .16F), Transparent);
+    CreateIcon(*overlay.close, {6, 6, 20, 20}, "Icons.x", ui_colors::theme::BrandText, "Icon");
+
+    // Waiting and error notices sit on a strip that extends the panel downward.
+    overlay.status = &CreatePanel(*overlay.panel, {0, -StatusHeight, ModalWidth, StatusHeight}, prefix + ".Status");
+    SetPanelColor(*overlay.status, ModalColor);
+    auto &statusBar = CreateSprite(*overlay.status, TopLeft({ModalPadding, 0, 3, 30}, StatusHeight), {}, "Bar");
+    SetPanelColor(statusBar, ui_colors::theme::Brand);
+    overlay.statusIcon = &CreateIcon(*overlay.status, {ModalPadding + 12, 6, 18, 18}, "Icons.info",
+                                     ui_colors::theme::Brand, "Icon");
+    auto &statusText = PhantomCore::CreateLabel(*overlay.status, TopLeft({ModalPadding + 38, 0, 346, 30}, StatusHeight),
+                                                L"", "Text");
+    StyleCaption(RequireComponent<TextVisualComponent>(statusText), 13, 600, ui_colors::theme::Brand);
+    overlay.status->SetVisible(false);
+
+    // Column heads reuse the gameplay input panel's key faces, scaled to one height.
+    const auto columns = layout.bindings.size();
+    const float width = ColumnWidth(columns);
+    float faceTop = 0, faceHeight = 0;
+    for (std::size_t i = 0; i < description.faces.size(); ++i)
     {
-        const auto path = SkinSetSelection::Instance().Image("InGame", std::string(description.layoutImage));
-        if (!path.empty())
-            overlay.layoutImage = &CreateSprite(*overlay.panel, LayoutImageBounds, visuals_->RegisterImage(path),
-                                                prefix + ".KeyLayout");
-        const float scale = LayoutImageBounds.width / description.layoutImageSourceSize;
-        for (std::size_t i = 0; i < description.faces.size(); ++i)
-        {
-            const auto &face = description.faces[i];
-            const auto keyPath = SkinSetSelection::Instance().Image("InGame", std::string(face.skinImage));
-            if (keyPath.empty()) continue;
-            const auto &bounds = face.sourceBounds;
-            auto &key = CreateSprite(*overlay.panel, {LayoutImageBounds.x + bounds.x * scale,
-                LayoutImageBounds.y + (description.layoutImageSourceSize - bounds.y - bounds.height) * scale,
-                bounds.width * scale, bounds.height * scale}, visuals_->RegisterImage(keyPath), prefix + ".KeyImage");
-            RequireComponent<SpriteVisualComponent>(key).SetTint(face.tint);
-            overlay.faces[i] = &key;
-        }
+        const auto &bounds = description.faces[i].sourceBounds;
+        faceTop = i == 0 ? bounds.y : std::min(faceTop, bounds.y);
+        faceHeight = std::max(faceHeight, bounds.height);
+    }
+    const float faceScale = faceHeight > 0 ? FaceHeight / faceHeight : 0.0F;
+    overlay.faces.assign(description.faces.size(), nullptr);
+    for (std::size_t i = 0; i < description.faces.size() && i < columns; ++i)
+    {
+        const auto &face = description.faces[i];
+        const float faceWidth = face.sourceBounds.width * faceScale;
+        const float left = SlotBounds(i, 0, width).x + (width - faceWidth) * 0.5F;
+        auto &key = CreateSprite(*overlay.panel,
+                                 TopLeft({left, GridTop + (face.sourceBounds.y - faceTop) * faceScale, faceWidth,
+                                          face.sourceBounds.height * faceScale},
+                                         ModalHeight),
+                                 {}, prefix + ".KeyImage");
+        RequireComponent<SpriteVisualComponent>(key).SetTint(face.tint);
+        overlay.faces[i] = &key;
     }
 
-    // One column per binding. Rows preserve their slot number, including empty
-    // auxiliary bindings. Four columns use the original 200px spacing.
-    const auto columns = layout.bindings.size();
-    const float columnStep = columns <= 4 ? 200.0F : 780.0F / static_cast<float>(columns);
-    const float columnWidth = std::min(170.0F, columnStep - 30.0F);
+    // Slots keep their slot number, including empty auxiliary keys.
+    overlay.firstRow = keyRows_.size();
     for (std::size_t column = 0; column < columns; ++column)
     {
         const auto &binding = layout.bindings[column];
-        const float x = 60 + columnStep * static_cast<float>(column);
-        auto &heading = CreateLabel(*overlay.panel, {x, 350, columnWidth, 30},
-                                    column < description.faces.size() ? std::wstring(description.faces[column].heading)
-                                                                      : WideText(binding.displayName),
-                                    prefix + ".Heading");
-        auto &headingText = RequireComponent<TextVisualComponent>(heading);
-        texts_.ApplyFont(headingText); headingText.SetFontSize(22); headingText.SetTextColor(HeadingColor);
         for (std::size_t slot = 0; slot < binding.keys.size(); ++slot)
         {
             KeyRow row{layout.modeId, binding.id, binding.displayName, slot};
-            const float y = 285.0F - 61.0F * static_cast<float>(slot);
             const auto name = "Options.Key." + row.mode + "." + row.binding + "." + std::to_string(slot);
-            row.button = &CreateButton(*overlay.panel, {x, y, slot ? columnWidth - 38 : columnWidth, 48}, L"", name);
-            SetPanelColor(*row.button, slot ? FieldColor : ui_colors::sky::Accent);
-            auto &buttonText = RequireComponent<TextVisualComponent>(*row.button);
-            buttonText.SetFontSize(20); buttonText.SetTextColor(slot ? HeadingColor : ui_colors::White);
-            if (slot)
+            const auto bounds = SlotBounds(column, slot, width);
+            row.button = &CreateButton(*overlay.panel, TopLeft(bounds, ModalHeight), L"", name);
+            SetPanelColor(*row.button, slot == 0 ? SlotColor : EmptySlotColor);
+            if (slot > 0)
             {
-                row.clear = &CreateButton(*overlay.panel, {x + columnWidth - 34, y, 34, 48}, L"×", name + ".Clear");
-                SetPanelColor(*row.clear, FieldColor);
-                RequireComponent<TextVisualComponent>(*row.clear).SetTextColor(HeadingColor);
+                // The clear button shows only while its slot is pointed at.
+                row.clear = &CreateButton(*overlay.panel,
+                                          TopLeft({bounds.x + bounds.width - ClearSize - 2,
+                                                   bounds.y + (bounds.height - ClearSize) * 0.5F, ClearSize, ClearSize},
+                                                  ModalHeight),
+                                          L"", name + ".Clear");
+                row.clear->SetZIndex(2);
+                SetColors(*row.clear, Transparent, ui_colors::Rgb(0x1F4C99, .08F), ui_colors::Rgb(0x1F4C99, .16F),
+                          Transparent);
+                CreateIcon(*row.clear, {4, 4, 14, 14}, "Icons.x", ui_colors::theme::Caption, "Icon");
+                row.clear->SetVisible(false);
             }
             keyRows_.push_back(std::move(row));
         }
     }
+    overlay.rowCount = keyRows_.size() - overlay.firstRow;
+    overlay.scrim->SetVisible(false);
     overlay.panel->SetVisible(false);
     keyOverlays_.push_back(std::move(overlay));
+    RefreshKeyImages();
 }
+
 OptionsPanel::KeyOverlay *OptionsPanel::VisibleKeyOverlay() noexcept
 {
     const auto found = std::ranges::find_if(keyOverlays_, [](const KeyOverlay &overlay) {
@@ -149,77 +198,189 @@ OptionsPanel::KeyOverlay *OptionsPanel::VisibleKeyOverlay() noexcept
     });
     return found == keyOverlays_.end() ? nullptr : &*found;
 }
+
 const OptionsPanel::KeyOverlay *OptionsPanel::VisibleKeyOverlay() const noexcept
 {
     return const_cast<OptionsPanel *>(this)->VisibleKeyOverlay();
 }
+
 void OptionsPanel::HideKeyOverlays() noexcept
 {
     for (auto &overlay : keyOverlays_)
-        overlay.panel->SetVisible(false);
-}
-void OptionsPanel::RefreshKeyImages()
-{
-    if (!visuals_) return;
-    const auto refresh = [this](Visual2DNode *node, std::string_view name) {
-        if (!node) return;
-        const auto path = SkinSetSelection::Instance().Image("InGame", std::string(name));
-        if (!path.empty()) RequireComponent<SpriteVisualComponent>(*node).SetImage(visuals_->RegisterImage(path));
-    };
-    for (auto &overlay : keyOverlays_)
     {
-        refresh(overlay.layoutImage, overlay.description->layoutImage);
-        for (std::size_t i = 0; i < overlay.faces.size(); ++i)
-            refresh(overlay.faces[i], overlay.description->faces[i].skinImage);
+        overlay.panel->SetVisible(false);
+        overlay.scrim->SetVisible(false);
     }
 }
+
+void OptionsPanel::ShowKeyOverlay(KeyOverlay &overlay)
+{
+    CancelKeyboardEdit();
+    CollapseCombos();
+    RefreshKeyImages();
+    RefreshIcons();
+    // The scrim follows the current logical size, which grows on wide windows.
+    const auto size = canvas_->LogicalSize();
+    overlay.scrim->SetBounds({-size.width * 0.5F, -size.height * 0.5F, size.width, size.height});
+    overlay.scrim->SetVisible(true);
+    overlay.panel->SetVisible(true);
+    RefreshKeyOverlay(overlay);
+    hitTestDirty_ = true;
+}
+
+void OptionsPanel::RefreshKeyImages()
+{
+    if (!visuals_)
+        return;
+    for (auto &overlay : keyOverlays_)
+        for (std::size_t i = 0; i < overlay.faces.size(); ++i)
+        {
+            if (!overlay.faces[i])
+                continue;
+            const auto path = SkinSetSelection::Instance().Image("InGame", std::string(overlay.description->faces[i].skinImage));
+            auto &sprite = RequireComponent<SpriteVisualComponent>(*overlay.faces[i]);
+            overlay.faces[i]->SetVisible(!path.empty());
+            if (!path.empty())
+                sprite.SetImage(visuals_->RegisterImage(path));
+        }
+}
+
 void OptionsPanel::RefreshKeyControls()
 {
     const auto &text = Options(texts_);
-    for (const auto &overlay : keyOverlays_)
-        for (auto *node : {overlay.open, overlay.title})
-        {
-            auto &caption = RequireComponent<TextVisualComponent>(*node);
-            caption.SetText(std::wstring(texts_.Get(overlay.description->titleTextKey)));
-            texts_.ApplyFont(caption);
-        }
     std::size_t rowIndex = 0;
     for (std::size_t i = 0; i < inputLayouts_.size(); ++i)
     {
-        auto &heading = RequireComponent<TextVisualComponent>(*modeLabels_[i]);
-        heading.SetText(WideText(inputLayouts_[i].modeId) + L" · " + std::wstring(text.keys));
-        texts_.ApplyFont(heading);
-        const auto saved = options_.Values().modeKeys.find(inputLayouts_[i].modeId);
-        const auto resolved = ResolveInputLayout(inputLayouts_[i], saved == options_.Values().modeKeys.end()
-                                                                             ? InputKeyOverrides{}
-                                                                             : saved->second);
+        if (auto *label = modeLabels_[i])
+            SetCaption(*label, WideText(inputLayouts_[i].modeId));
+        const auto resolved = ResolveInputLayout(inputLayouts_[i], SavedOverrides(options_.Values(), inputLayouts_[i].modeId));
         for (const auto &binding : resolved.bindings)
             for (std::size_t slot = 0; slot < binding.keys.size(); ++slot, ++rowIndex)
             {
                 auto &row = keyRows_[rowIndex];
-                auto name = InputBindingName(texts_, row.mode, row.binding);
-                if (row.label)
-                {
-                    auto &label = RequireComponent<TextVisualComponent>(*row.label);
-                    label.SetText((name.empty() ? WideText(row.displayName) : std::wstring(name)) + L" · " +
-                                  std::wstring(slot == 0 ? text.primary : text.auxiliary));
-                    texts_.ApplyFont(label);
-                }
-                auto &button = RequireComponent<TextVisualComponent>(*row.button);
-                button.SetText(captureRow_ == rowIndex ? std::wstring(text.pressKey)
-                                                       : binding.keys[slot] == 0 ? L"—" : KeyName(binding.keys[slot], texts_));
-                texts_.ApplyFont(button);
+                if (row.label == nullptr)
+                    continue;
+                const auto name = InputBindingName(texts_, row.mode, row.binding);
+                SetCaption(*row.label, (name.empty() ? WideText(row.displayName) : std::wstring(name)) + L" · " +
+                                           std::wstring(slot == 0 ? text.primary : text.auxiliary));
+                RequireComponent<TextVisualComponent>(*row.button)
+                    .SetText(captureRow_ == rowIndex ? std::wstring(L"···")
+                             : binding.keys[slot] == 0 ? std::wstring(L"—")
+                                                       : KeyName(binding.keys[slot], texts_));
             }
     }
+    for (auto &overlay : keyOverlays_)
+        RefreshKeyOverlay(overlay);
 }
+
+void OptionsPanel::RefreshKeyOverlay(KeyOverlay &overlay)
+{
+    const auto &text = Options(texts_);
+    const std::wstring title(texts_.Get(overlay.description->titleTextKey));
+    SetCaption(*overlay.title, title);
+    SetCaption(*overlay.openTitle, title);
+    const auto layout = std::ranges::find(inputLayouts_, overlay.mode, &ModeInputLayout::modeId);
+    const auto resolved = ResolveInputLayout(*layout, SavedOverrides(options_.Values(), overlay.mode));
+
+    // Card summary: main keys, then the first auxiliary keys.
+    std::wstring mains, subs;
+    for (const auto &binding : resolved.bindings)
+    {
+        const auto separator = mains.empty() ? L"" : L" · ";
+        mains += separator + (binding.keys.empty() || binding.keys[0] == 0 ? L"—" : KeyName(binding.keys[0], texts_));
+        const bool hasSub = binding.keys.size() > 1 && binding.keys[1] != 0;
+        subs += separator + (hasSub ? KeyName(binding.keys[1], texts_) : std::wstring(L"—"));
+    }
+    RequireComponent<TextVisualComponent>(*overlay.openSummary).SetText(mains + L"  /  " + subs);
+
+    std::size_t rowIndex = overlay.firstRow;
+    for (const auto &binding : resolved.bindings)
+        for (std::size_t slot = 0; slot < binding.keys.size(); ++slot, ++rowIndex)
+        {
+            auto &row = keyRows_[rowIndex];
+            const bool waiting = captureRow_ == rowIndex;
+            const bool empty = binding.keys[slot] == 0;
+            row.assigned = !empty;
+            const char *part = waiting ? "Keys.Slot.Waiting" : slot == 0 ? "Keys.Slot.Main"
+                                                           : empty       ? "Keys.Slot.Empty"
+                                                                         : "Keys.Slot.Sub";
+            const auto fill = waiting ? FieldHoverColor : empty ? EmptySlotColor : SlotColor;
+            SetSkinBaseStyle(*row.button, VisualStyle{fill, FieldHoverColor, FieldPressedColor, FieldDisabledColor});
+            BindPart(*row.button, part);
+            auto &label = RequireComponent<TextVisualComponent>(*row.button);
+            if (waiting)
+            {
+                label.SetText(L"···");
+                StyleCaption(label, 17, 800, ui_colors::theme::Brand, TextAlignment::Center);
+            }
+            else if (empty)
+            {
+                label.SetText(L"+");
+                StyleCaption(label, 18, 600, ui_colors::Rgb(0x4B6184, .6F), TextAlignment::Center);
+            }
+            else
+            {
+                label.SetText(KeyName(binding.keys[slot], texts_));
+                StyleNumber(label, slot == 0 ? 24.0F : 17.0F, 800, HeadingColor, TextAlignment::Center);
+            }
+        }
+
+    // The notice appears only while waiting for a key or after a rejected one.
+    bool error = false;
+    std::wstring notice;
+    if (captureRow_ && *captureRow_ >= overlay.firstRow && *captureRow_ < overlay.firstRow + overlay.rowCount)
+        notice = text.pressKey;
+    if (status_ != Status::None)
+        notice = StatusText(error);
+    overlay.status->SetVisible(!notice.empty());
+    // The strip grows downward with the wrapped notice.
+    notice = WrapText(notice, 13, StatusTextWidth);
+    const float textHeight = 12 + 18 * static_cast<float>(1 + std::ranges::count(notice, L'\n'));
+    const float stripHeight = std::max(StatusHeight, textHeight + 16);
+    overlay.status->SetBounds({0, -stripHeight, ModalWidth, stripHeight});
+    const auto colour = error ? ui_colors::theme::Danger : ui_colors::theme::Brand;
+    for (const auto &child : overlay.status->Children())
+    {
+        if (child->Name() == "Text")
+        {
+            child->SetBounds(TopLeft({ModalPadding + 38, 0, StatusTextWidth, textHeight}, stripHeight));
+            SetCaption(*child, notice);
+            RequireComponent<TextVisualComponent>(*child).SetTextColor(colour);
+        }
+        else if (child->Name() == "Bar")
+        {
+            child->SetBounds(TopLeft({ModalPadding, 0, 3, textHeight}, stripHeight));
+            SetPanelColor(*child, colour);
+        }
+        else if (child.get() == overlay.statusIcon)
+            child->SetBounds(TopLeft({ModalPadding + 12, (std::min(textHeight, 30.0F) - 18) * 0.5F, 18, 18}, stripHeight));
+    }
+    SetIconKey(*overlay.statusIcon, error ? "Icons.alert" : "Icons.info");
+    TintIcon(*overlay.statusIcon, colour);
+}
+
+void OptionsPanel::UpdateKeyClearButtons(const NodeId hoveredNode)
+{
+    const auto *overlay = VisibleKeyOverlay();
+    if (overlay == nullptr)
+        return;
+    for (std::size_t rowIndex = overlay->firstRow; rowIndex < overlay->firstRow + overlay->rowCount; ++rowIndex)
+    {
+        auto &row = keyRows_[rowIndex];
+        if (row.clear == nullptr)
+            continue;
+        const bool pointed = hoveredNode == row.button->Id() || hoveredNode == row.clear->Id();
+        const bool clearable = row.assigned && captureRow_ != rowIndex;
+        row.clear->SetVisible(pointed && clearable);
+    }
+}
+
 void OptionsPanel::CaptureKey(std::uint16_t key)
 {
     const auto &row = keyRows_.at(*captureRow_);
     auto candidate = options_.Values();
     const auto layout = std::ranges::find(inputLayouts_, row.mode, &ModeInputLayout::modeId);
-    const auto saved = candidate.modeKeys.find(row.mode);
-    auto resolved = ResolveInputLayout(*layout, saved == candidate.modeKeys.end() ? InputKeyOverrides{}
-                                                                                        : saved->second);
+    auto resolved = ResolveInputLayout(*layout, SavedOverrides(candidate, row.mode));
     const auto binding = std::ranges::find(resolved.bindings, row.binding, &ModeInputBinding::id);
     binding->keys[row.slot] = key;
     candidate.modeKeys[row.mode][row.binding] = binding->keys;
@@ -229,6 +390,7 @@ void OptionsPanel::CaptureKey(std::uint16_t key)
     RefreshKeyControls();
     RefreshStatus();
 }
+
 bool OptionsPanel::ProcessFieldAction(const Action &action)
 {
     if (action.type == ActionType::SelectionChanged && action.source == resolutionCombo_->Id())
@@ -244,7 +406,8 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
         if (action.source == overlay->close->Id())
         {
             CancelKeyboardEdit();
-            overlay->panel->SetVisible(false);
+            HideKeyOverlays();
+            hitTestDirty_ = true;
             return true;
         }
         // CanProcessAction admits only nodes inside the visible overlay.
@@ -254,11 +417,15 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
             {
                 captureRow_ = i;
                 CaptureKey(0);
+                keyRows_[i].clear->SetVisible(false);
                 return true;
             }
             if (action.source == keyRows_[i].button->Id())
             {
-                CancelKeyboardEdit(); captureRow_ = i; RefreshKeyControls(); return true;
+                CancelKeyboardEdit();
+                captureRow_ = i;
+                RefreshKeyControls();
+                return true;
             }
         }
         return true;
@@ -266,9 +433,10 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
     for (auto &overlay : keyOverlays_)
         if (action.source == overlay.open->Id())
         {
-            CancelKeyboardEdit(); RefreshKeyImages(); overlay.panel->SetVisible(true); return true;
+            ShowKeyOverlay(overlay);
+            return true;
         }
-    if (action.source == songsField_->Id())
+    if (action.source == songsField_->Id() || action.source == songsBrowse_->Id())
     {
         CancelKeyboardEdit();
         ChooseSongsFolder();

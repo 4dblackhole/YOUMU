@@ -13,6 +13,7 @@
     <ProjectReference Include="..\YOUMU.Chart\YOUMU.Chart.vcxproj"><Project>{A2222222-2222-4222-8222-222222222222}</Project></ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="App\AudioVolumes.h" />
     <ClInclude Include="GameFlow\GameplayLaunchRequest.h" />
     <ClInclude Include="GameFlow\ChartLoadJob.h" />
     <ClCompile Include="GameFlow\ChartLoadJob.cpp" />

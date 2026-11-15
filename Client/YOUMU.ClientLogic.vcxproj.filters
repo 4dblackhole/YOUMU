@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="App" />
     <Filter Include="EditorScene" />
     <Filter Include="EditorScene\Submodules" />
     <Filter Include="GameFlow" />
     <Filter Include="GameScene" />
     <Filter Include="GameScene\MusicSelectScene" />
     <Filter Include="GameScene\MusicSelectScene\Submodules" />
+    <ClInclude Include="App\AudioVolumes.h"><Filter>App</Filter></ClInclude>
     <ClInclude Include="GameFlow\GameplayLaunchRequest.h"><Filter>GameFlow</Filter></ClInclude>
     <ClInclude Include="GameFlow\ChartLoadJob.h"><Filter>GameFlow</Filter></ClInclude>
     <ClCompile Include="GameFlow\ChartLoadJob.cpp"><Filter>GameFlow</Filter></ClCompile>

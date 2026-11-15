@@ -10,37 +10,41 @@ using namespace options_ui;
 
 void OptionsPanel::CreateSongsControls()
 {
-    songsLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 174, PanelWidth, "Options.Songs.Label");
-    songsField_ = &CreateButton(*content_, {24, contentHeight_ - 232, PanelWidth - 48, 46}, L"",
-                                               "Options.Songs.Folder");
-    songsField_->SetClipRect({0, 0, PanelWidth - 48, 46});
-    songsDefault_ = &CreateButton(*content_, {24, contentHeight_ - 276, PanelWidth - 48, 32}, L"",
-                                                 "Options.Songs.Default");
-    for (auto *node : {songsField_, songsDefault_})
-    {
-        VisualStyle style{};
-        style.normal = FieldColor;
-        style.hovered = FieldHoverColor;
-        style.pressed = ui_colors::options::Pressed;
-        style.disabled = ui_colors::options::Disabled;
-        RequireComponent<SpriteVisualComponent>(*node).SetStyle(style);
-        auto &text = RequireComponent<TextVisualComponent>(*node);
-        text.SetFontSize(15);
-        text.SetTextColor(HeadingColor);
-    }
+    // Path box and Browse on one row; the default-folder text button below them.
+    constexpr float PathWidth = 213, BrowseWidth = 87, ButtonHeight = 32;
+    const float top = NextField(ControlHeight + 6 + ButtonHeight);
+    const float controlTop = top + ControlOffset;
+    songsLabel_ = &CreateFieldLabel(*content_, top, "Options.Songs.Label");
+    songsField_ = &CreateButton(*content_, TopLeft({ContentLeft, controlTop, PathWidth, ControlHeight}, contentHeight_),
+                                L"", "Options.Songs.Folder");
+    StyleFieldButton(*songsField_, false);
+    AddFieldLine(*content_, *songsField_, "Options.Songs.Line");
+    songsBrowse_ = &CreateButton(*content_,
+                                 TopLeft({ContentLeft + FieldWidth - BrowseWidth, controlTop + 4, BrowseWidth, ButtonHeight},
+                                         contentHeight_),
+                                 L"", "Options.Songs.Browse");
+    SetColors(*songsBrowse_, ui_colors::Rgb(0xFFFFFF, .72F), FieldHoverColor, FieldPressedColor, FieldDisabledColor);
+    StyleCaption(RequireComponent<TextVisualComponent>(*songsBrowse_), 13, 800, ui_colors::theme::BrandText,
+                 TextAlignment::Center);
+    AddFieldLine(*content_, *songsBrowse_, "Options.Songs.BrowseLine");
+    songsDefault_ = &CreateButton(
+        *content_, TopLeft({ContentLeft, controlTop + ControlHeight + 6, 160, ButtonHeight}, contentHeight_), L"",
+        "Options.Songs.Default");
+    SetColors(*songsDefault_, {1, 1, 1, 0}, ui_colors::Rgb(0x1F4C99, .06F), ui_colors::Rgb(0x1F4C99, .12F),
+              {1, 1, 1, 0});
+    auto &defaultText = RequireComponent<TextVisualComponent>(*songsDefault_);
+    StyleCaption(defaultText, 13, 800, ui_colors::theme::BrandText);
+    defaultText.SetContentBounds({12, 0, 160 - 24, ButtonHeight});
 }
 
 void OptionsPanel::RefreshSongsControls()
 {
     const std::array values{std::pair{songsLabel_, std::wstring(texts_.Get("Options.songsFolder"))},
                             std::pair{songsField_, options_.SongsRoot().wstring()},
+                            std::pair{songsBrowse_, std::wstring(texts_.Get("Options.browse"))},
                             std::pair{songsDefault_, std::wstring(texts_.Get("Options.defaultSongsFolder"))}};
     for (const auto &[node, value] : values)
-    {
-        auto &text = RequireComponent<TextVisualComponent>(*node);
-        text.SetText(value);
-        texts_.ApplyFont(text);
-    }
+        SetCaption(*node, value);
 }
 
 void OptionsPanel::ChooseSongsFolder()

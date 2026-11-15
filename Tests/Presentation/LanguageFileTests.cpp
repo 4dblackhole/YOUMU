@@ -109,10 +109,10 @@ int main()
         for (const auto language : {Language::Korean, Language::English, Language::Japanese})
         {
             shipped.SetLanguage(language);
-            Check(shipped.Get("Options.title") == L"OPTIONS" && shipped.Get("Editor.menuSave") == L"Save" &&
+            Check(shipped.Get("Options.title") == L"Options" && shipped.Get("Editor.menuSave") == L"Save" &&
                       shipped.Get("Result.errorAxis") == L"Error (ms)",
                   "Titles, action captions and numeric-axis labels must remain English.");
-            Check(shipped.Get("Options.offsetHint") == shipped.Get(language, "Options.offsetHint") &&
+            Check(shipped.Get("Options.saveError") == shipped.Get(language, "Options.saveError") &&
                       shipped.Get("MusicSelect.patternErrorPrefix") == shipped.Get(language, "MusicSelect.patternErrorPrefix"),
                   "Explanations and error notices use the selected language.");
         }

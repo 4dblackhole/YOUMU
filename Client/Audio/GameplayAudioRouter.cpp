@@ -41,6 +41,7 @@ bool GameplayAudioRouter::Initialize(
             Shutdown();
             return false;
         }
+        ApplyBusVolume(name, *bus);
         buses_.emplace(std::string(name), std::move(bus));
     }
 
@@ -324,11 +325,7 @@ void GameplayAudioRouter::ResetAutomation()
     appliedValues_.clear();
     for (const auto name : {"HitSound", "TickSound", "UserInputFeedback"})
         if (auto *bus = FindBus(name))
-        {
-            std::string error;
-            if (!bus->SetVolume(1, error))
-                lastError_ = std::move(error);
-        }
+            ApplyBusVolume(name, *bus);
     for (auto &[bus, effects] : effects_)
         for (auto &[type, effect] : effects)
         {
@@ -338,6 +335,28 @@ void GameplayAudioRouter::ResetAutomation()
             else
                 lastError_ = std::move(error);
         }
+}
+
+void GameplayAudioRouter::SetVolumes(const float music, const float effects)
+{
+    musicVolume_ = std::max(music, 0.0F);
+    effectsVolume_ = std::max(effects, 0.0F);
+    for (const auto &[name, bus] : buses_)
+        ApplyBusVolume(name, *bus);
+}
+
+float GameplayAudioRouter::BusGain(const std::string_view busId) const noexcept
+{
+    return busId == "Music" ? musicVolume_ : effectsVolume_;
+}
+
+void GameplayAudioRouter::ApplyBusVolume(const std::string_view busId, AudioBus &bus)
+{
+    const auto applied = appliedValues_.find(std::pair{EffectCommandType::BusVolume, std::string(busId)});
+    const double automation = applied == appliedValues_.end() ? 1.0 : std::max(applied->second, 0.0);
+    std::string error;
+    if (!bus.SetVolume(static_cast<float>(automation) * BusGain(busId), error))
+        lastError_ = std::move(error);
 }
 
 void GameplayAudioRouter::Schedule(
@@ -583,7 +602,8 @@ void GameplayAudioRouter::ApplyAutomationValue(
     {
         if (AudioBus *const bus = FindBus(target); bus != nullptr)
         {
-            if (!bus->SetVolume(static_cast<float>(std::max(value.value, 0.0)), error))
+            const float automation = static_cast<float>(std::max(value.value, 0.0));
+            if (!bus->SetVolume(automation * BusGain(target), error))
                 lastError_ = std::move(error);
             else
                 appliedValues_.insert_or_assign(key, value.value);

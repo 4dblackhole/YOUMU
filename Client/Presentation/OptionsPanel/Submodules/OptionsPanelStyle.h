@@ -1,16 +1,42 @@
 #pragma once
 #include "PhantomCore.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiFonts.h"
 #include "Texts/Options/OptionTexts.h"
 #include <Windows.h>
 #include <array>
 #include <stdexcept>
 
+// Drawer geometry and styling (UI-02 options panel), in 1280x720 logical units.
+// Layout rectangles are written from the top-left of their parent and converted
+// with TopLeft, because Visual2D places children from the parent's bottom-left.
 namespace options_ui
 {
-    constexpr auto PanelColor = ui_colors::options::Background;
-    constexpr auto HeadingColor = ui_colors::Ink, LabelColor = ui_colors::options::Label;
-    constexpr auto FieldColor = ui_colors::options::Field, FieldHoverColor = ui_colors::options::Hover;
+    constexpr float PanelWidth = 432, PanelHeight = 720;
+    constexpr float RailWidth = 64, RailExpandedWidth = 184;
+    constexpr float RailButtonTop = 8, RailButtonHeight = 60, RailIconSize = 24;
+    constexpr float BodyLeft = RailWidth, BodyWidth = PanelWidth - RailWidth;
+    constexpr float HeaderHeight = 68, FooterMinimumHeight = 72;
+    constexpr float ContentLeft = 24, FieldWidth = 308, ScrollbarWidth = 12;
+    constexpr float SectionPaddingTop = 22, SectionHeaderHeight = 26, SectionPaddingBottom = 28;
+    constexpr float FieldGap = 16, LabelHeight = 18, ControlOffset = 24, ControlHeight = 40;
+    constexpr float KeyCardHeight = 64;
+
+    constexpr auto DrawerColor = ui_colors::Rgb(0xF3F8FE);
+    constexpr auto RailColor = ui_colors::theme::BrandDeep;
+    constexpr auto FieldColor = ui_colors::Rgb(0xFFFFFF, .74F), FieldHoverColor = ui_colors::Rgb(0xFFFFFF);
+    constexpr auto FieldPressedColor = ui_colors::Rgb(0xE6EEFC), FieldDisabledColor = ui_colors::Rgb(0xFFFFFF, .4F);
+    constexpr auto FieldLineColor = ui_colors::Rgb(0xB5CFF5);
+    constexpr auto RailIdleColor = ui_colors::Rgb(0xFFFFFF, .62F);
+    constexpr auto WarningColor = ui_colors::Rgb(0x6E4700);
+    constexpr auto ScrimColor = ui_colors::Rgb(0x142F5E, .42F);
+    constexpr auto ModalColor = ui_colors::Rgb(0xF0F8FF, .98F);
+    constexpr auto HeadingColor = ui_colors::theme::Ink, LabelColor = ui_colors::theme::Ink;
+
+    [[nodiscard]] constexpr PhantomCore::Rect TopLeft(const PhantomCore::Rect bounds, const float parentHeight) noexcept
+    {
+        return {bounds.x, parentHeight - bounds.y - bounds.height, bounds.width, bounds.height};
+    }
 
     template <typename Component> [[nodiscard]] Component &RequireComponent(PhantomCore::Visual2DNode &node)
     {
@@ -22,29 +48,173 @@ namespace options_ui
         return *component;
     }
 
-    inline void SetPanelColor(PhantomCore::Visual2DNode &node, const PhantomCore::Color color)
+    inline void SetColors(PhantomCore::Visual2DNode &node, const PhantomCore::Color normal,
+                          const PhantomCore::Color hovered, const PhantomCore::Color pressed,
+                          const PhantomCore::Color disabled)
     {
         PhantomCore::VisualStyle style{};
-        style.normal = style.hovered = style.pressed = style.disabled = color;
+        style.normal = normal;
+        style.hovered = hovered;
+        style.pressed = pressed;
+        style.disabled = disabled;
         RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetStyle(style);
+    }
+    inline void SetPanelColor(PhantomCore::Visual2DNode &node, const PhantomCore::Color color)
+    {
+        SetColors(node, color, color, color, color);
+    }
+    // Recolours a white skin icon and keeps its image; an icon the skin lacks stays transparent
+    // instead of becoming a square.
+    inline void TintIcon(PhantomCore::Visual2DNode &icon, const PhantomCore::Color colour)
+    {
+        auto &sprite = RequireComponent<PhantomCore::SpriteVisualComponent>(icon);
+        auto style = sprite.Style();
+        if (style.normal.alpha <= 0)
+            return;
+        style.normal = style.hovered = style.pressed = style.disabled = colour;
+        sprite.SetStyle(style);
+    }
+    // White field with the redesign's hover and press states.
+    inline void SetFieldColors(PhantomCore::Visual2DNode &node)
+    {
+        SetColors(node, FieldColor, FieldHoverColor, FieldPressedColor, FieldDisabledColor);
+    }
+
+    // Caption text: Nunito, or Noto Sans KR when the string holds Hangul/Kana/Han.
+    inline void StyleCaption(PhantomCore::TextVisualComponent &text, const float size, const std::uint16_t weight,
+                             const PhantomCore::Color color,
+                             const PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading)
+    {
+        text.SetFont(ui_fonts::Text(text.Text()));
+        text.SetFontSize(size);
+        text.SetFontWeight(weight);
+        text.SetTextColor(color);
+        text.SetHorizontalAlignment(alignment);
+    }
+    // Number text: Barlow Semi Condensed.
+    inline void StyleNumber(PhantomCore::TextVisualComponent &text, const float size, const std::uint16_t weight,
+                            const PhantomCore::Color color,
+                            const PhantomCore::TextAlignment alignment = PhantomCore::TextAlignment::Leading,
+                            const bool italic = true)
+    {
+        auto face = ui_fonts::Number(weight, italic);
+        text.SetFont(std::move(face.font));
+        text.SetFontSize(size);
+        text.SetFontWeight(face.weight);
+        text.SetTextColor(color);
+        text.SetHorizontalAlignment(alignment);
+    }
+    // Replaces caption text and re-selects the face, because the new string may need CJK glyphs.
+    inline void SetCaption(PhantomCore::Visual2DNode &node, std::wstring value)
+    {
+        auto &text = RequireComponent<PhantomCore::TextVisualComponent>(node);
+        text.SetFont(ui_fonts::Text(value));
+        text.SetText(std::move(value));
+    }
+    // The engine lays text out on one line, so notices are broken to a width here. Widths are
+    // estimates per glyph (Latin, space, CJK). Lines break after a space; Japanese kana and Han
+    // also break after any character, while Hangul words stay whole like Latin ones.
+    [[nodiscard]] inline float EstimateGlyphWidth(const wchar_t character, const float size) noexcept
+    {
+        if (character >= 0x1100)
+            return size;
+        return size * (character == L' ' ? 0.3F : 0.6F);
+    }
+    [[nodiscard]] inline bool BreaksAnywhere(const wchar_t character) noexcept
+    {
+        const bool kanaOrHan = character >= 0x3040 && character <= 0x9FFF;
+        return kanaOrHan || (character >= 0xF900 && character <= 0xFAFF);
+    }
+    [[nodiscard]] inline std::wstring WrapText(const std::wstring_view text, const float size, const float width)
+    {
+        std::wstring result, line;
+        float lineWidth = 0;
+        std::size_t breakAfter = std::wstring::npos;
+        for (const wchar_t character : text)
+        {
+            if (character == L'\n')
+            {
+                result += line + L'\n';
+                line.clear();
+                lineWidth = 0;
+                breakAfter = std::wstring::npos;
+                continue;
+            }
+            line += character;
+            lineWidth += EstimateGlyphWidth(character, size);
+            const bool breakable = character == L' ' || BreaksAnywhere(character);
+            if (breakable)
+                breakAfter = line.size();
+            if (lineWidth <= width || line.size() == 1)
+                continue;
+            // Break at the last opportunity before this glyph, or else just before it.
+            const bool earlierBreak = breakAfter != std::wstring::npos && breakAfter < line.size();
+            const std::size_t cut = earlierBreak ? breakAfter : line.size() - 1;
+            auto head = line.substr(0, cut);
+            while (!head.empty() && head.back() == L' ')
+                head.pop_back();
+            result += head + L'\n';
+            line.erase(0, cut);
+            while (!line.empty() && line.front() == L' ')
+                line.erase(0, 1);
+            lineWidth = 0;
+            for (const wchar_t rest : line)
+                lineWidth += EstimateGlyphWidth(rest, size);
+            breakAfter = std::wstring::npos;
+        }
+        return result + line;
+    }
+
+    [[nodiscard]] inline PhantomCore::Visual2DNode &CreateCaption(PhantomCore::Visual2DNode &parent,
+                                                                  const PhantomCore::Rect topLeftBounds,
+                                                                  const float size, const std::uint16_t weight,
+                                                                  const PhantomCore::Color color, std::string name)
+    {
+        auto &label = PhantomCore::CreateLabel(parent, TopLeft(topLeftBounds, parent.NodeSize().height), L"",
+                                               std::move(name));
+        StyleCaption(RequireComponent<PhantomCore::TextVisualComponent>(label), size, weight, color);
+        return label;
+    }
+    // A field caption: 13px semibold ink above its control.
+    [[nodiscard]] inline PhantomCore::Visual2DNode &CreateFieldLabel(PhantomCore::Visual2DNode &parent,
+                                                                     const float top, std::string name)
+    {
+        return CreateCaption(parent, {ContentLeft, top, FieldWidth, LabelHeight}, 13, 600, LabelColor,
+                             std::move(name));
+    }
+    // A clickable field (path or number box): text from the left edge, clipped to the box.
+    inline void StyleFieldButton(PhantomCore::Visual2DNode &node, const bool number)
+    {
+        SetFieldColors(node);
+        auto &text = RequireComponent<PhantomCore::TextVisualComponent>(node);
+        if (number)
+            StyleNumber(text, 15, 700, HeadingColor, PhantomCore::TextAlignment::Leading, false);
+        else
+            StyleCaption(text, 14, 600, HeadingColor);
+        const auto size = node.NodeSize();
+        text.SetContentBounds({12, 0, size.width - 24, size.height});
+        node.SetClipRect({0, 0, size.width, size.height});
+    }
+    // The 2px line under an input box; a sibling drawn just above the box.
+    inline void AddFieldLine(PhantomCore::Visual2DNode &parent, const PhantomCore::Visual2DNode &field,
+                             const std::string &name)
+    {
+        const auto bounds = field.Bounds();
+        auto &line = PhantomCore::CreateSprite(parent, {bounds.x, bounds.y, bounds.width, 2}, {}, name);
+        SetPanelColor(line, FieldLineColor);
+        line.SetZIndex(field.ZIndex() + 1);
     }
 
     inline void ConfigureCombo(PhantomCore::Visual2DNode &node, const std::size_t visibleItems)
     {
-        node.SetZIndex(10);
-        PhantomCore::VisualStyle style{};
-        style.normal = FieldColor;
-        style.hovered = FieldHoverColor;
-        style.pressed = ui_colors::options::Pressed;
-        style.disabled = ui_colors::options::Disabled;
-        RequireComponent<PhantomCore::SpriteVisualComponent>(node).SetStyle(style);
+        SetFieldColors(node);
         auto &combo = RequireComponent<PhantomCore::ComboBoxBehaviorComponent>(node);
         combo.SetMaxVisibleItems(visibleItems);
-        combo.SetItemHeight(42.0F);
-        combo.SetFontSize(19.0F);
+        combo.SetItemHeight(34.0F);
+        combo.SetFontSize(14.0F);
         combo.SetTextColor(HeadingColor);
-        combo.SetSelectedTextColor(ui_colors::White);
-        combo.SetPopupBackgroundColor(PanelColor);
+        combo.SetSelectedTextColor(ui_colors::theme::Brand);
+        combo.SetPopupBackgroundColor(ui_colors::theme::Surface);
     }
 
     inline std::wstring WideText(const std::string &value)
@@ -58,19 +228,8 @@ namespace options_ui
         return result;
     }
 
-    inline PhantomCore::Visual2DNode &CreateFieldLabel(PhantomCore::Visual2DNode &parent, float y, float width,
-                                                         std::string name)
-    {
-        auto &node = PhantomCore::CreateLabel(parent, {24.0F, y, width - 48.0F, 28.0F}, L"", std::move(name));
-        auto &text = RequireComponent<PhantomCore::TextVisualComponent>(node);
-        text.SetFontSize(18.0F);
-        text.SetTextColor(LabelColor);
-        return node;
-    }
-
     inline std::wstring OutputName(PhantomCore::AudioOutputBackend output, const OptionTextSet &text)
     {
-
         switch (output)
         {
         case PhantomCore::AudioOutputBackend::Automatic:

@@ -144,7 +144,7 @@ bool SongPreviewController::RestartVoice(PreviewSlot &slot)
 {
     // Rewinding or seeking reuses the channel. It resumes once the stream has reached the new position.
     AudioPlaybackSettings settings;
-    settings.volume = slot.volume;
+    settings.volume = slot.volume * volumeScale_;
     settings.startPositionMicroseconds = transport_.PositionMicroseconds();
     settings.startPaused = true;
     std::string errorMessage;
@@ -170,6 +170,11 @@ bool SongPreviewController::UpdatePreparation(PreviewSlot &slot)
     if (current && transport_.IsPlaying())
         static_cast<void>(voice->SetPaused(false, error));
     return true;
+}
+
+void SongPreviewController::SetVolumeScale(const float scale) noexcept
+{
+    volumeScale_ = std::max(scale, 0.0F);
 }
 
 void SongPreviewController::Play()
@@ -250,6 +255,8 @@ bool SongPreviewController::UpdatePreviewAudio(const double deltaSeconds, const 
     PollRetiredClips();
     PollPendingTrack();
     const float fadeStep = static_cast<float>(std::max(deltaSeconds, 0.0) / PreviewFadeSeconds);
+    const bool scaleChanged = volumeScale_ != appliedVolumeScale_;
+    appliedVolumeScale_ = volumeScale_;
 
     bool currentEnded = false;
     for (std::size_t index = 0; index < previewSlots_.size(); ++index)
@@ -290,7 +297,8 @@ bool SongPreviewController::UpdatePreviewAudio(const double deltaSeconds, const 
             slot.volume = std::max(slot.volume - fadeStep, slot.targetVolume);
 
         std::string errorMessage;
-        const bool volumeFailed = slot.volume != previousVolume && !voice->SetVolume(slot.volume, errorMessage);
+        const bool volumeChanged = scaleChanged || slot.volume != previousVolume;
+        const bool volumeFailed = volumeChanged && !voice->SetVolume(slot.volume * volumeScale_, errorMessage);
         const bool fadedOut = slot.targetVolume <= 0.0F && slot.volume <= 0.0F;
         if (volumeFailed || fadedOut)
         {

@@ -206,6 +206,7 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
         song.audioPath,      pattern.pattern.mode,
         SongTitle(song),     pattern.pattern.makers.empty() ? L"" : DecodeDisplayText(pattern.pattern.makers.front())};
     request.globalOffsetMs = options_.Values().globalOffsetMs;
+    request.volumes = options_.Values().volumes;
     request.patternTitle = PatternName(pattern);
     request.playOptions = selection_.playOptions_;
     request.songsRoot = library_->CatalogRoot();

@@ -323,11 +323,39 @@ namespace
         playback.Shutdown();
         audio.Update();
     }
+
+    // The player's volume at editor entry: music for the song voice, effects for hit sounds.
+    void TestPlayerVolumes()
+    {
+        dspClock = 0;
+        probes.clear();
+        AudioSystem audio;
+        std::string error;
+        Check(audio.Initialize({}, CreateClockBackend, CreateClip, error), "Volume probe initialization failed.");
+        EditorPlayback playback;
+        playback.Initialize(audio);
+        playback.SetVolumes(.5F, .25F);
+        const std::map<std::string, std::filesystem::path> files{{"Music", "music"}, {"Don", "don"}};
+        const std::vector<AudioMarker> cues{{0, "Don"}};
+        const auto update = [&] { playback.Update(files, 1, cues, 1, Time{3'000'000}); };
+        playback.Seek(Time{-100'000});
+        playback.Toggle();
+        update();
+        Check(probes.front()->path == "music" && probes.front()->settings.volume == .5F,
+              "The editor's song plays at the player's music volume.");
+        dspClock = 5280;
+        update();
+        Check(probes.back()->path == "don" && probes.back()->settings.volume == .25F,
+              "Editor hit sounds play at the player's effects volume.");
+        playback.Shutdown();
+        audio.Update();
+    }
 } // namespace
 
 void TestEditorPlayback()
 {
     TestPlaybackRates();
+    TestPlayerVolumes();
     TestRateChangeAcrossCueDeadline();
     dspClock = 0;
     probes.clear();

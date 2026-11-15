@@ -51,6 +51,7 @@
     <ClInclude Include="App\SkinSetSelection.h"><Filter>App</Filter></ClInclude>
     <ClCompile Include="App\OptionSettings.cpp"><Filter>App</Filter></ClCompile>
     <ClInclude Include="App\OptionSettings.h"><Filter>App</Filter></ClInclude>
+    <ClInclude Include="App\AudioVolumes.h"><Filter>App</Filter></ClInclude>
     <ClCompile Include="App\YOUMUGame.cpp"><Filter>App</Filter></ClCompile>
     <ClInclude Include="App\YOUMUGame.h"><Filter>App</Filter></ClInclude>
     <ClInclude Include="Texts\GameIdentity.h"><Filter>Texts</Filter></ClInclude>
@@ -282,7 +283,8 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\EditorTestControls.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
   </ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsTabs.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsRail.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsVolume.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Texts\Submodules\ExplanationKeys.h"><Filter>Texts\Submodules</Filter></ClInclude>
     <None Include="Texts\Languages\ja.ini"><Filter>Texts\Languages</Filter></None>

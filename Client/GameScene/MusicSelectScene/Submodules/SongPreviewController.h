@@ -54,6 +54,8 @@ class SongPreviewController final
     void TogglePlay();
     void Stop();
     void Seek(std::uint64_t positionMicroseconds);
+    // The player's music volume; voices follow it on the next update, fades included.
+    void SetVolumeScale(float scale) noexcept;
     // Advances fades and the transport. Returns true once when the current song played to its end
     // under EndBehavior::Report; Repeat starts it again instead.
     bool UpdatePreviewAudio(double deltaSeconds, EndBehavior endBehavior);
@@ -88,6 +90,7 @@ class SongPreviewController final
     std::optional<std::size_t> pendingPreviewSlot_;
     std::filesystem::path trackPath_;
     MusicPlayerState transport_;
+    float volumeScale_{1.0F}, appliedVolumeScale_{1.0F};
     // A failed file is retried on Play, another song or a scene entry, never every Update.
     bool trackFailed_{};
     std::vector<std::shared_ptr<PhantomCore::AudioClip>> retiredClips_;

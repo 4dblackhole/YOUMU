@@ -189,6 +189,9 @@ namespace
         Check(selection.Select(L"Default Skin", error), error.c_str());
         visuals.Update(0);
         static_cast<void>(logo.Update(InputState{}, 0));
+        static_cast<void>(logo.Update(InputState{}, 0));
+        Check(static_cast<bool>(Image(Find(Find(logoRoot, "Options.Rail.General"), "Icon"))),
+              "Options rail icons keep their skin image while their colour follows hover and the lit section.");
         Check(Image(start) && Image(start).value != customButton.value && Image(sheet) &&
                   Image(sheet).value != customSheet.value &&
                   Image(sheet).value == visuals.RegisterImage(selection.Image("MusicSelect", "Panels.Sheet")).value &&

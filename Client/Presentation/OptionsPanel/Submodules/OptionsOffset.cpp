@@ -7,38 +7,24 @@ using namespace PhantomCore;
 using namespace options_ui;
 void OptionsPanel::CreateOffsetControls()
 {
-    offsetLabel_ = &CreateFieldLabel(*content_, contentHeight_ - 422, PanelWidth, "Options.Offset.Label");
-    offsetField_ = &CreateButton(*content_, {24, contentHeight_ - 480, PanelWidth - 48, 46}, L"",
-                                                "Options.Offset.Field");
-    VisualStyle style{};
-    style.normal = FieldColor;
-    style.hovered = FieldHoverColor;
-    style.pressed = ui_colors::options::Pressed;
-    style.disabled = ui_colors::options::Disabled;
-    RequireComponent<SpriteVisualComponent>(*offsetField_).SetStyle(style);
-    auto &field = RequireComponent<TextVisualComponent>(*offsetField_);
-    field.SetFontSize(19);
-    field.SetTextColor(HeadingColor);
-    offsetHint_ = &CreateLabel(*content_, {24, contentHeight_ - 544, PanelWidth - 48, 54}, L"",
-                                              "Options.Offset.Hint");
-    auto &hint = RequireComponent<TextVisualComponent>(*offsetHint_);
-    hint.SetFontSize(13);
-    hint.SetTextColor(LabelColor);
+    // A short number box followed by its unit.
+    constexpr float FieldBoxWidth = 112;
+    const float top = NextField(ControlHeight);
+    offsetLabel_ = &CreateFieldLabel(*content_, top, "Options.Offset.Label");
+    offsetField_ = &CreateButton(*content_,
+                                 TopLeft({ContentLeft, top + ControlOffset, FieldBoxWidth, ControlHeight}, contentHeight_),
+                                 L"", "Options.Offset.Field");
+    StyleFieldButton(*offsetField_, true);
+    AddFieldLine(*content_, *offsetField_, "Options.Offset.Line");
+    offsetUnit_ = &CreateCaption(*content_, {ContentLeft + FieldBoxWidth + 8, top + ControlOffset, 40, ControlHeight}, 13,
+                                 400, ui_colors::theme::Caption, "Options.Offset.Unit");
 }
 void OptionsPanel::RefreshOffsetControls()
 {
-    const auto &text = Options(texts_);
-    auto &label = RequireComponent<TextVisualComponent>(*offsetLabel_);
-    label.SetText(std::wstring(text.globalOffset));
-    texts_.ApplyFont(label);
-    auto &hint = RequireComponent<TextVisualComponent>(*offsetHint_);
-    hint.SetText(std::wstring(text.offsetHint));
-    texts_.ApplyFont(hint);
-    auto &field = RequireComponent<TextVisualComponent>(*offsetField_);
-    field.SetText(editingOffset_ ? offsetDraft_ + L"_"
-                                 : std::to_wstring(options_.Values().globalOffsetMs) +
-                                       std::wstring(texts_.Get("Common.millisecondsSuffix")));
-    texts_.ApplyFont(field);
+    SetCaption(*offsetLabel_, std::wstring(Options(texts_).globalOffset));
+    SetCaption(*offsetUnit_, L"ms");
+    RequireComponent<TextVisualComponent>(*offsetField_)
+        .SetText(editingOffset_ ? offsetDraft_ + L"_" : std::to_wstring(options_.Values().globalOffsetMs));
 }
 void OptionsPanel::CancelKeyboardEdit()
 {
