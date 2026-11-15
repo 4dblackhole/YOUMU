@@ -14,6 +14,7 @@ class SongFavoriteTabs final
     [[nodiscard]] std::optional<std::uint64_t> ProcessAction(const PhantomCore::Action &action);
     [[nodiscard]] bool IsManageAction(const PhantomCore::Action &action) const noexcept;
     bool Scroll(PhantomCore::Point position, float wheel);
+    [[nodiscard]] const PhantomCore::Visual2DNode *ManageButton() const noexcept { return manage_; }
 
   private:
     struct Tab

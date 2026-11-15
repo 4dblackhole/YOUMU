@@ -121,15 +121,28 @@ void MusicSelectView::UpdateSongInformationLayout()
     selectedSongLabel_->SetClipRect({0.0F, 0.0F, textWidth, 36.0F});
     selectedCreatorLabel_->SetBounds(row(layout::CreatorTop, 20.0F));
 
-    // The note and the quill sit right before the centred artist and creator names.
-    const auto placeIcon = [&](Visual2DNode &icon, Visual2DNode &label, const float size, const float top) {
-        const float width = std::min(EstimateCaptionWidth(RequireComponent<TextVisualComponent>(label).Text(), size),
-                                     textWidth);
-        const float left = center - width * 0.5F - layout::NameIconGap - layout::NameIconSize;
-        icon.SetBounds(TopLeft({left, top, layout::NameIconSize, layout::NameIconSize}, panel.height));
+    // The note and the quill sit right before the centred artist and creator names; each name line
+    // takes the pointer over its text (and icon) for the all-names tooltip.
+    const auto captionWidth = [&](Visual2DNode &label, const float size) {
+        return std::min(EstimateCaptionWidth(RequireComponent<TextVisualComponent>(label).Text(), size), textWidth);
     };
-    placeIcon(*artistIcon_, *selectedArtistLabel_, 15.0F, layout::ArtistTop + 3.0F);
-    placeIcon(*creatorIcon_, *selectedCreatorLabel_, 14.0F, layout::CreatorTop + 2.0F);
+    const float artistWidth = captionWidth(*selectedArtistLabel_, 15.0F);
+    const float titleWidth = captionWidth(*selectedSongLabel_, 30.0F);
+    const float creatorWidth = captionWidth(*selectedCreatorLabel_, 14.0F);
+    constexpr float iconLead = layout::NameIconGap + layout::NameIconSize;
+    const auto placeIcon = [&](Visual2DNode &icon, const float width, const float top) {
+        icon.SetBounds(TopLeft({center - width * 0.5F - iconLead, top, layout::NameIconSize, layout::NameIconSize},
+                               panel.height));
+    };
+    placeIcon(*artistIcon_, artistWidth, layout::ArtistTop + 3.0F);
+    placeIcon(*creatorIcon_, creatorWidth, layout::CreatorTop + 2.0F);
+    const auto hoverArea = [&](Visual2DNode &label, const float width, const float lead, const float height) {
+        if (auto *collider = label.GetComponent<RectangleCollider2DComponent>())
+            collider->SetLocalBounds({(textWidth - width) * 0.5F - lead, 0.0F, width + lead, height});
+    };
+    hoverArea(*selectedArtistLabel_, artistWidth, iconLead, 22.0F);
+    hoverArea(*selectedSongLabel_, titleWidth, 0.0F, 36.0F);
+    hoverArea(*selectedCreatorLabel_, creatorWidth, iconLead, 20.0F);
 
     // The block grows with the chart name and keeps the value badge at its right end.
     constexpr float badgeWidth = 40.0F, badgeHeight = 22.0F, nameLeft = 16.0F, badgeGap = 8.0F, blockRight = 14.0F;

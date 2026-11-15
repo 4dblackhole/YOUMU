@@ -34,6 +34,7 @@ void LogoView::Initialize(const EngineServices &services)
     skinRevision_ = (std::numeric_limits<std::uint64_t>::max)();
     RefreshSkinImages();
     options_.Initialize(*canvas_, services.audio, services.windowControl);
+    tooltip_.Initialize(*canvas_);
     ApplyTexts();
     UpdateLayout();
 }
@@ -50,6 +51,7 @@ void LogoView::BeginScene()
 
 void LogoView::EndScene() noexcept
 {
+    tooltip_.Hide();
     static_cast<void>(canvasHandle_.SetVisible(false));
 }
 
@@ -73,6 +75,7 @@ LogoCommand LogoView::Update(const InputState &input, const double deltaSeconds)
     if (!options_.OwnsKeyboard() && controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O')))
         options_.Toggle();
     ProcessPointer(input);
+    tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !options_.IsVisible());
     if (options_.ProcessInput(input, canvasPointer_, inputRouter_.HoveredNode(), inputRouter_))
     {
         player_.CancelSeek();
@@ -113,6 +116,7 @@ void LogoView::Shutdown() noexcept
         inputRouter_.Reset(*canvas_);
     }
 
+    tooltip_.Shutdown();
     options_.Shutdown();
     player_.Reset();
     canvasPointer_.reset();

@@ -2,6 +2,7 @@
 
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/UiTooltip.h"
 #include "Texts/TextCatalog.h"
 #include "TitlePlayerView.h"
 
@@ -60,6 +61,7 @@ class LogoView final
     PhantomCore::ScreenVisual2DManager &screenVisuals_;
     TextCatalog &texts_;
     OptionsPanel options_;
+    UiTooltip tooltip_;
     std::uint64_t textRevision_{};
     std::uint64_t skinRevision_{};
     PhantomCore::ScreenCanvasHandle canvasHandle_;

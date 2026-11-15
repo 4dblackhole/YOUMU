@@ -97,6 +97,13 @@ void LogoView::RefreshSkinImages()
 void LogoView::ApplyTexts()
 {
     const auto &text = Logo(texts_);
+    const auto hint = [this](const Visual2DNode *node, TooltipText value) {
+        if (node != nullptr)
+            tooltip_.Set(*node, std::move(value));
+    };
+    hint(player_.PlayButton(), {std::wstring(texts_.Get("Tooltips.playPause")), L"Space"});
+    hint(player_.StopButton(), {std::wstring(texts_.Get("Tooltips.stop"))});
+    hint(player_.NextButton(), {std::wstring(texts_.Get("Tooltips.nextSong")), L"→"});
     for (std::size_t index = 0; index < menuButtons_.size(); ++index)
     {
         auto &component =

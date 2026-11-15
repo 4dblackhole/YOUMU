@@ -31,6 +31,7 @@ void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio, IWindo
     CreateFrame();
     CreateRail();
     CreateSections();
+    tooltip_.Initialize(canvas);
     RefreshTexts();
     panel_->SetVisible(false);
 }
@@ -187,6 +188,7 @@ void OptionsPanel::CreateAudioControls()
 
 void OptionsPanel::Shutdown() noexcept
 {
+    tooltip_.Shutdown();
     keyRows_.clear();
     keyOverlays_.clear();
     modeLabels_.clear();
@@ -238,6 +240,7 @@ void OptionsPanel::Toggle()
     if (panel_ == nullptr)
         return;
     targetOpen_ = !targetOpen_;
+    tooltip_.Hide();
     HideKeyOverlays();
     CancelKeyboardEdit();
     CollapseCombos();
@@ -268,6 +271,7 @@ void OptionsPanel::Update(const double deltaSeconds)
         return;
     if (optionRevision_ != options_.Revision())
         RefreshTexts();
+    frameSeconds_ = deltaSeconds;
     const float direction = targetOpen_ ? 1.0F : -1.0F;
     animationProgress_ = std::clamp(
         animationProgress_ + direction * static_cast<float>(deltaSeconds / AnimationSeconds), 0.0F, 1.0F);
@@ -281,6 +285,7 @@ void OptionsPanel::Update(const double deltaSeconds)
 void OptionsPanel::Close(Visual2DInputRouter *inputRouter)
 {
     CancelKeyboardEdit();
+    tooltip_.Hide();
     // Closing is idempotent: another ESC during the slide must not reopen it.
     targetOpen_ = false;
     dragging_ = false;
@@ -336,6 +341,9 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
         inputRouter.InvalidateHitTest();
         hitTestDirty_ = false;
     }
+    // Rail names matter while the rail is folded; the key modal has no hints.
+    const bool hints = targetOpen_ && VisibleKeyOverlay() == nullptr;
+    tooltip_.Update(frameSeconds_, input, hoveredNode, hints && !railExpanded_);
     if (input.WasKeyPressed(VK_ESCAPE) && HandleKey(VK_ESCAPE, inputRouter))
         return true;
     if (OwnsKeyboard())
@@ -534,7 +542,9 @@ void OptionsPanel::RefreshTexts()
         const std::wstring name(texts_.Get(SectionTextKeys[i]));
         SetCaption(*sections_[i].headerLabel, name);
         SetCaption(*sections_[i].railLabel, name);
+        tooltip_.Set(*sections_[i].railButton, {name});
     }
+    tooltip_.Set(*close_, {L"", L"Esc"});
     SetCaption(*languageLabel_, std::wstring(text.language));
     auto &combo = RequireComponent<ComboBoxBehaviorComponent>(*languageCombo_);
     texts_.ApplyFont(combo);

@@ -52,6 +52,10 @@ class TitlePlayerView final
                                                                        PhantomCore::NodeId hovered);
     void CancelSeek() noexcept;
     [[nodiscard]] bool HasSong() const noexcept { return display_.hasSong; }
+    // The transport buttons, for their tooltips.
+    [[nodiscard]] const PhantomCore::Visual2DNode *PlayButton() const noexcept { return playButton_; }
+    [[nodiscard]] const PhantomCore::Visual2DNode *StopButton() const noexcept { return stopButton_; }
+    [[nodiscard]] const PhantomCore::Visual2DNode *NextButton() const noexcept { return nextButton_; }
     [[nodiscard]] bool SeekDragging() const noexcept { return seekDrag_.has_value(); }
     void Reset() noexcept;
 

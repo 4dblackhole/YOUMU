@@ -1,6 +1,7 @@
 #pragma once
 #include "PhantomCore.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/UiTooltip.h"
 #include "Presentation/PlayOptionsPanel.h"
 #include "SongSelectionState.h"
 #include "SongFilterPanel.h"
@@ -38,7 +39,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); }
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); }
         else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -69,6 +70,7 @@ class MusicSelectView final
     void CloseAdditionMenu();
     bool ProcessAdditionMenu(const PhantomCore::InputState &input);
     void ApplyTexts();
+    void ApplyTooltips();
     void UpdateResponsiveLayout();
     void UpdateRecordPanelLayout();
     void UpdateSongInformationLayout();
@@ -110,6 +112,7 @@ class MusicSelectView final
     SongRecordView records_;
     SongFavoriteTabs favoriteTabs_;
     SongFavoritesPanel favoritesPanel_;
+    UiTooltip tooltip_;
     SongBackgroundPreview artwork_;
     SongListView songList_;
     std::uint64_t textRevision_{};

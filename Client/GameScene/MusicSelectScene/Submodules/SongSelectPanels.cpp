@@ -43,6 +43,21 @@ namespace
         return {};
     }
 
+    // Every name of a list, for the tooltip of a line that shows only the first.
+    [[nodiscard]] std::wstring AllNames(const std::vector<std::string> &values)
+    {
+        std::wstring names;
+        for (const auto &value : values)
+        {
+            if (value.empty())
+                continue;
+            if (!names.empty())
+                names += L" · ";
+            names += DecodeDisplayText(value);
+        }
+        return names;
+    }
+
     constexpr std::array<const char *, 6> StatNames{"BPM", "Length", "Notes", "JudgeLevel", "HP", "Mode"};
 } // namespace
 
@@ -98,6 +113,12 @@ void MusicSelectView::CreateSongInformationPanel()
     selectedCreatorLabel_ =
         &CreateCaption(panel, {}, L"", 14.0F, 700, theme::Ink, "SelectedCreator", TextAlignment::Center);
     creatorIcon_ = &CreateSprite(panel, {}, screenVisuals_.RegisterImage(Common(L"Icons.pencil")), "CreatorIcon");
+    // The name lines take the pointer so their tooltips can list every name.
+    for (auto *label : {selectedArtistLabel_, selectedSongLabel_, selectedCreatorLabel_})
+    {
+        label->AddComponent<RectangleCollider2DComponent>();
+        label->AddComponent<PointerReceiverComponent>();
+    }
     RequireComponent<SpriteVisualComponent>(*creatorIcon_).SetTint(theme::NameIcon);
 
     // Cobalt parallelogram with the chart name and its difficulty value.
@@ -249,9 +270,24 @@ void MusicSelectView::CreateFooter()
     goError_->SetVisible(false);
 }
 
+void MusicSelectView::ApplyTooltips()
+{
+    const auto hint = [this](const Visual2DNode *node, TooltipText text) {
+        if (node != nullptr)
+            tooltip_.Set(*node, std::move(text));
+    };
+    hint(backButton_, {L"", L"Esc"});
+    hint(goButton_, {L"", L"Enter"});
+    hint(optionButton_, {std::wstring(texts_.Get("Tooltips.options")), L"Ctrl+O"});
+    hint(modeSelector_, {std::wstring(texts_.Get("Tooltips.gameMode"))});
+    hint(records_.QueryButton(), {std::wstring(texts_.Get("Tooltips.filterRecords"))});
+    hint(favoriteTabs_.ManageButton(), {std::wstring(texts_.Get("Tooltips.favoriteFolders"))});
+}
+
 void MusicSelectView::ApplyTexts()
 {
     const auto &text = MusicSelect(texts_);
+    ApplyTooltips();
     records_.RefreshTexts();
     if (filterButton_)
         SetCaption(*filterButton_, std::wstring(texts_.Get("SongFilter.button")));
@@ -332,6 +368,7 @@ void MusicSelectView::RefreshSelectionPresentation()
         difficultyBlock_->SetVisible(false);
         SetCaption(*selectedPatternLabel_, L"");
         SetCaption(*selectedCreatorLabel_, L"");
+        tooltip_.Set(*selectedCreatorLabel_, {});
         creatorIcon_->SetVisible(false);
         for (auto *value : statValues_)
             if (value)
@@ -350,6 +387,8 @@ void MusicSelectView::RefreshSelectionPresentation()
         artwork_.SetImage({}, board_->NodeSize());
         SetCaption(*selectedSongLabel_, L"");
         SetCaption(*selectedArtistLabel_, L"");
+        tooltip_.Set(*selectedSongLabel_, {});
+        tooltip_.Set(*selectedArtistLabel_, {});
         artistIcon_->SetVisible(false);
         clearPattern();
         return;
@@ -363,6 +402,8 @@ void MusicSelectView::RefreshSelectionPresentation()
     const std::wstring artist = FirstName(song.music.artists);
     SetCaption(*selectedArtistLabel_, artist);
     artistIcon_->SetVisible(!artist.empty());
+    tooltip_.Set(*selectedSongLabel_, {AllNames(song.music.names)});
+    tooltip_.Set(*selectedArtistLabel_, {AllNames(song.music.artists)});
     if (song.patterns.empty())
     {
         artwork_.SetImage({}, board_->NodeSize());
@@ -384,6 +425,7 @@ void MusicSelectView::RefreshSelectionPresentation()
         .SetText(selected.calculatedDifficulty ? std::format(L"{:.2f}", *selected.calculatedDifficulty) : std::wstring(L"—"));
     const std::wstring creator = FirstName(selected.pattern.makers);
     SetCaption(*selectedCreatorLabel_, creator);
+    tooltip_.Set(*selectedCreatorLabel_, {AllNames(selected.pattern.makers)});
     creatorIcon_->SetVisible(!creator.empty());
     if (goButton_)
         goButton_->SetEnabled(true);

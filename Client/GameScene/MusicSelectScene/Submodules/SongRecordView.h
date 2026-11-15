@@ -28,6 +28,7 @@ public:
     void OpenFilter();
     void CloseFilter();
     [[nodiscard]] bool FilterVisible() const noexcept { return filterPanel_.IsVisible(); }
+    [[nodiscard]] const PhantomCore::Visual2DNode *QueryButton() const noexcept { return queryButton_; }
     void UpdateFilter(std::span<const PhantomCore::Action> actions, const PhantomCore::InputState& input);
     [[nodiscard]] SongRecordAction ProcessAction(const PhantomCore::Action& action);
     void Shutdown() noexcept;

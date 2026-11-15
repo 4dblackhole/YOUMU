@@ -262,6 +262,8 @@
     <ClInclude Include="Presentation\AccuracyText.h" />
     <ClInclude Include="Presentation\RankName.h" />
     <ClInclude Include="Presentation\UiFonts.h" />
+    <ClCompile Include="Presentation\UiTooltip.cpp" />
+    <ClInclude Include="Presentation\UiTooltip.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />
     <ClCompile Include="Presentation\ModePresentation.cpp" />
     <ClCompile Include="Texts\EditorScene\EditorTexts.cpp" />

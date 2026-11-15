@@ -3,6 +3,7 @@
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
 #include "Presentation/UiColors.h"
+#include "Presentation/UiTooltip.h"
 #include "YOUMUAssets.h"
 
 #include <Windows.h>
@@ -716,6 +717,63 @@ namespace
         panel.Shutdown();
     }
 
+    // The shared tooltip: delay, ancestor lookup, warm switching, dismissal and placement.
+    void TestTooltip()
+    {
+        Visual2DCanvas canvas;
+        UiTooltip tooltip;
+        tooltip.Initialize(canvas);
+        auto &button = CreateButton(canvas.Root(), {-100, -20, 80, 40}, L"", "Target");
+        auto &child = CreateSprite(button, {0, 0, 10, 10}, {}, "Child");
+        auto &other = CreateButton(canvas.Root(), {100, -20, 80, 40}, L"", "Other");
+        tooltip.Set(button, {L"Options", L"Ctrl+O"});
+        tooltip.Set(other, {L"", L"Esc / Enter"});
+        const InputState idle;
+        const auto visibleCount = [&](std::string_view name) {
+            const auto *root = &FindNode(canvas.Root(), "Tooltip");
+            std::size_t count = 0;
+            for (const auto &node : root->Children())
+                count += node->Name() == name && node->IsVisible() ? 1 : 0;
+            return count;
+        };
+        tooltip.Update(.3, idle, child.Id());
+        Check(!tooltip.IsShown(), "A tooltip waits while the pointer rests.");
+        tooltip.Update(.25, idle, child.Id());
+        Check(tooltip.IsShown() && tooltip.ShownTarget() == button.Id(),
+              "After half a second a pointed child shows its registered ancestor's hint.");
+        Check(visibleCount("KeyChip") == 2 && visibleCount("KeySeparator") == 1,
+              "Ctrl+O is two key chips joined by a plus.");
+        const auto plate = FindNode(canvas.Root(), "Plate").BoundsInCanvas();
+        const auto target = button.BoundsInCanvas();
+        Check(std::abs(plate.y + plate.height - (target.y - 8)) < .01F && plate.height == 32,
+              "The plate sits 8px under the control and grows to fit the key chips.");
+        tooltip.Update(.016, idle, other.Id());
+        Check(!tooltip.IsShown(), "Moving to another control hides the old hint first.");
+        tooltip.Update(.07, idle, other.Id());
+        Check(tooltip.ShownTarget() == other.Id() && visibleCount("KeyChip") == 2,
+              "Moving straight to the next control shows its hint almost at once.");
+        InputState press;
+        InputStateTestAccess::Press(press);
+        tooltip.Update(.016, press, other.Id());
+        tooltip.Update(1.0, idle, other.Id());
+        Check(!tooltip.IsShown(), "A press hides the hint until the pointer moves to another control.");
+        tooltip.Update(.016, idle, 0);
+        tooltip.Update(.6, idle, other.Id());
+        Check(tooltip.IsShown(), "Coming back to the control shows the hint again.");
+        tooltip.Update(.016, idle, other.Id(), false);
+        Check(!tooltip.IsShown(), "A host can rest the hints while a modal covers the controls.");
+        tooltip.Set(other, {});
+        tooltip.Update(1.0, idle, other.Id());
+        Check(!tooltip.IsShown(), "An empty hint removes the tooltip.");
+        auto &low = CreateButton(canvas.Root(), {0, -358, 80, 30}, L"", "Low");
+        tooltip.Set(low, {L"Low"});
+        tooltip.Update(.6, idle, low.Id());
+        const auto above = FindNode(canvas.Root(), "Plate").BoundsInCanvas();
+        Check(tooltip.IsShown() && std::abs(above.y - (low.BoundsInCanvas().y + 30 + 8)) < .01F && above.height == 30,
+              "Without room below, the tooltip opens above the control.");
+        tooltip.Shutdown();
+    }
+
     void TestVolumes(const std::filesystem::path &folder)
     {
         constexpr AudioVolumes half{50, 50, 100};
@@ -786,6 +844,7 @@ int main()
         TestExtraOptions(folder);
         TestSectionsAndJapanese(folder);
         TestVolumes(folder);
+        TestTooltip();
         TestActualAudio();
         std::filesystem::remove_all(folder);
         std::cout << "Options panel and persistence tests passed.\n";

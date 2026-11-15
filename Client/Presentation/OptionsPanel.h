@@ -3,6 +3,7 @@
 #include "App/OptionSettings.h"
 #include "App/SkinSetSelection.h"
 #include "PhantomCore.h"
+#include "Presentation/UiTooltip.h"
 #include "Mode/ModeInputLayout.h"
 #include "Texts/TextCatalog.h"
 
@@ -167,6 +168,9 @@ class OptionsPanel final
     std::optional<float> scrollDragOffset_;
     // Layout changes outside ProcessInput invalidate the router's hit test on its next call.
     bool hitTestDirty_{};
+    // Rail names and the close key; it runs in ProcessInput with the frame time Update saw.
+    UiTooltip tooltip_;
+    double frameSeconds_{};
 
     // Fields.
     std::vector<ModeInputLayout> inputLayouts_;

@@ -52,6 +52,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     if (!IsEditorSongSelect()) playOptionsPanel_.Initialize(*canvas_, texts_, services.windowControl);
     favoritesPanel_.Initialize(*canvas_, texts_);
     if (recordPanel_) records_.InitializeFilter(*canvas_, services.windowControl);
+    tooltip_.Initialize(*canvas_);
     ApplyTexts();
     UpdateResponsiveLayout();
     RebuildVisibleSongs();
@@ -83,6 +84,9 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         options_.Toggle();
     }
     ProcessPointer(input);
+    // Hints rest while a panel, the options drawer or the addition menu covers the screen.
+    const bool covered = IsSelectionModalVisible() || options_.IsVisible();
+    tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !covered && !IsAdditionMenuOpen());
     // Panels are processed in order; the first one that consumes input stops the rest.
     const bool panelConsumed =
         ProcessPlayOptionsPanel(input) || ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input);
@@ -125,6 +129,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 
 void MusicSelectView::Shutdown() noexcept
 {
+    tooltip_.Shutdown();
     playOptionsPanel_.Shutdown();
     records_.Shutdown();
     filterPanel_.Shutdown();
