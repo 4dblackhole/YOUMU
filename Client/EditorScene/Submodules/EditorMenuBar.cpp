@@ -86,6 +86,10 @@ void EditorMenuBar::Initialize(Visual2DNode &parent, TextCatalog &texts)
     dirtyDot_ = &CreatePanel(*bar_, {}, "Editor.Document.Unsaved");
     Tint(*dirtyDot_, theme::Sun);
     Require<SpriteVisualComponent>(*dirtyDot_).SetCornerRadius(4);
+    newBadge_ = &CreatePanel(*bar_, {}, "Editor.Document.New");
+    Tint(*newBadge_, theme::Sun);
+    newLabel_ = &CreateLabel(*newBadge_, {}, L"", "Editor.Document.NewLabel");
+    Require<TextVisualComponent>(*newLabel_).SetHorizontalAlignment(TextAlignment::Center);
     modeBadge_ = &CreatePanel(*bar_, {}, "Editor.Document.Mode");
     Tint(*modeBadge_, {1, 1, 1, .12F});
     modeLabel_ = &CreateLabel(*modeBadge_, {}, L"", "Editor.Document.ModeLabel");
@@ -143,6 +147,13 @@ void EditorMenuBar::LayoutDocument()
     place(*artist_, artist, 14);
     const auto pattern = document_.pattern.empty() ? std::wstring{} : L"[" + document_.pattern + L"]";
     place(*pattern_, pattern, 14);
+    newBadge_->SetVisible(!document_.created);
+    if (!document_.created)
+    {
+        newBadge_->SetBounds({x, (Height - 18) * .5F, 40, 18});
+        newLabel_->SetBounds({0, 1, 40, 16});
+        x += 48;
+    }
     dirtyDot_->SetBounds({x, Height * .5F - 4, 8, 8});
     modeBadge_->SetBounds({width_ - 16 - 93, 6, 93, 24});
     modeLabel_->SetBounds({0, 3, 93, 18});
@@ -164,6 +175,7 @@ void EditorMenuBar::Refresh(bool dirty)
     SetText(*pattern_, document_.pattern.empty() ? std::wstring{} : L"[" + document_.pattern + L"]", 14, 800,
             theme::Sun);
     SetText(*modeLabel_, document_.mode, 12, 800, White, true);
+    SetText(*newLabel_, std::wstring(texts_->Get("Editor.newBadge")), 12, 800, theme::BrandDeep, true);
     dirtyDot_->SetVisible(dirty);
     LayoutDocument();
     for (std::size_t i = 0; i < rows_.size(); ++i)
@@ -298,7 +310,7 @@ void EditorMenuBar::Shutdown() noexcept
     parent_ = nullptr;
     texts_ = nullptr;
     bar_ = file_ = edit_ = popup_ = nullptr;
-    title_ = artist_ = pattern_ = dirtyDot_ = modeBadge_ = modeLabel_ = nullptr;
+    title_ = artist_ = pattern_ = dirtyDot_ = modeBadge_ = modeLabel_ = newBadge_ = newLabel_ = nullptr;
     rows_ = {};
     open_ = Menu::None;
     selected_ = hovered_ = -1;

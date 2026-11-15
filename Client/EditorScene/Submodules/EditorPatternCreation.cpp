@@ -91,6 +91,10 @@ SongCatalogPattern Create(const fs::path &songsRoot, const SongCatalogEntry &son
     pattern.baseBpm = metadata.baseBpm;
     pattern.patternOffsetMilliseconds = metadata.patternOffsetMilliseconds;
     pattern.judgementLevel = metadata.judgementLevel;
+    pattern.hpLevel = metadata.hpLevel;
+    pattern.backgroundFile = metadata.backgroundFile;
+    pattern.backgroundOffsetX = metadata.backgroundOffsetX;
+    pattern.backgroundOffsetY = metadata.backgroundOffsetY;
     EffectDocument effects;
     effects.sourcePath = folder / pattern.effectFile;
     const auto patternText = ChartEditor::WritePattern(pattern);

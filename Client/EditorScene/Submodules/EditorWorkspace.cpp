@@ -9,6 +9,12 @@ void EditorWorkspace::Initialize()
 {
     if (!mode_)
         mode_ = CreateEditorMode(request_.mode);
+    if (!editor_ && request_.editorNewDifficulty)
+    {
+        editor_ = mode_->NewDocument(request_);
+        creating_ = true;
+        tab_ = EditorTab::Metadata;
+    }
     if (!editor_)
         editor_ = mode_->OpenDocument(request_);
     if (!editor_)
@@ -186,6 +192,8 @@ void EditorWorkspace::SetPreview()
 }
 void EditorWorkspace::SelectTab(EditorTab value)
 {
+    if (creating_ && value != EditorTab::Metadata)
+        return;
     tab_ = value;
     listOffset = 0;
     mode_->CloseToolMenu();
@@ -352,7 +360,30 @@ void EditorWorkspace::SelectTool(int value)
 }
 void EditorWorkspace::Save()
 {
-    editor_->Save();
+    bool write = true;
+    if (creating_)
+    {
+        // Create writes the pair, then the editor continues on the files it wrote.
+        auto hitSounds = Document().Effects().hitSounds;
+        auto opened = mode_->CreateDocument(Document(), request_);
+        auto document = mode_->OpenDocument(opened);
+        request_ = std::move(opened);
+        editor_ = std::move(document);
+        creating_ = false;
+        audioSourceRevision_ = editor_->AudioSourceRevision();
+        analysis_.Invalidate();
+        // Create takes only the metadata; a hit sound table typed before it is saved into the new YME.
+        write = !hitSounds.empty();
+        if (write)
+        {
+            auto effects = Document().Effects();
+            effects.hitSounds = std::move(hitSounds);
+            editor_->Replace(Document().Pattern(), std::move(effects));
+        }
+        DocumentChanged();
+    }
+    if (write)
+        editor_->Save();
     const auto &effectPath = Document().Effects().sourcePath;
     request_.effectPath = effectPath.empty() ? std::nullopt : std::optional{effectPath};
     SetStatus({});

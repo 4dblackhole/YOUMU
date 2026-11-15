@@ -1,21 +1,25 @@
 #include "EditorModeTests.h"
 #include "Editing/ChartEditor.h"
+#include "EditorScene/Submodules/EditorPatternCreation.h"
 #include "EditorScene/Submodules/EditorView.h"
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorMode.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorNoteInspector.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorTool.h"
+#include "Parsing/ChartParser.h"
 #include "Taiko/TaikoMode.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
 #include <array>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <limits>
 #include <iostream>
 #include <map>
 #include <ranges>
 #include <stdexcept>
 #include <thread>
+#include <Windows.h>
 
 using namespace PhantomCore;
 
@@ -1155,6 +1159,70 @@ Dip: 1-3*u*(1-u)
                   state.Document().Notes().back().note.position == MusicalPosition{4, {}},
               "Placement must snap to the uniform time grid under Whole and custom Separate effects.");
     }
+
+    // New difficulty: Metadata only until Create, which writes the pair and continues on it.
+    void TestNewDifficultyDraft()
+    {
+        namespace fs = std::filesystem;
+        const auto root = fs::temp_directory_path() / L"youmu-editor-new" / std::to_wstring(GetCurrentProcessId());
+        fs::remove_all(root);
+        const auto music = root / L"Music/음악.ymm";
+        fs::create_directories(music.parent_path());
+        std::ofstream(music, std::ios::binary) << "Version: 1\nFile: sample.wav\nMusic Name 1: Test\nArtist 1: Test\n";
+        std::ofstream(root / L"Music/sample.wav", std::ios::binary) << "fixture";
+        const auto parsedMusic = ChartParser{}.ParseMusicFile(music);
+        Check(parsedMusic.Succeeded(), "New difficulty fixture YMM must parse.");
+        GameplayLaunchRequest request;
+        request.mode = "Taiko";
+        request.songsRoot = root;
+        request.musicPath = root / L"Music/sample.wav";
+        request.editorNewDifficulty =
+            std::make_shared<const SongCatalogEntry>(SongCatalogEntry{music, request.musicPath, parsedMusic.document, {}});
+        const auto draftOf = [&](const char *name) {
+            auto state = std::make_unique<EditorWorkspace>(request);
+            state->Initialize();
+            auto pattern = state->Document().Pattern();
+            pattern.name = name;
+            pattern.makers = {"Tester"};
+            auto effects = state->Document().Effects();
+            effects.hitSounds["1"] = "custom.wav";
+            state->Replace(std::move(pattern), std::move(effects));
+            return state;
+        };
+
+        auto state = draftOf("Fresh");
+        Check(state->Creating() && state->Document().Dirty() && state->Tab() == EditorTab::Metadata,
+              "A new difficulty must open on Metadata as an uncreated draft.");
+        Check(state->Document().Pattern().musicMetadataFile == fs::path(L"Music/음악.ymm"),
+              "The draft must reference the song's YMM relative to Songs.");
+        state->SelectTab(EditorTab::Compose);
+        Check(state->Tab() == EditorTab::Metadata, "Compose and Audio must wait for Create.");
+        state->Save();
+        const auto folder = root / L"Patterns/음악/Fresh";
+        Check(!state->Creating() && !state->Document().Dirty() && state->Document().SourcePath().parent_path() == folder,
+              "Create must write the pair and continue editing the created file.");
+        const auto effects = ChartParser{}.ParseEffectFile(*state->Request().effectPath);
+        Check(effects.Succeeded() && effects.document.hitSounds.contains("1"),
+              "A hit sound table typed before Create must be saved into the new YME.");
+        state->SelectTab(EditorTab::Compose);
+        Check(state->Tab() == EditorTab::Compose, "Created difficulties must unlock every tab.");
+
+        // A refused Create leaves no files behind and keeps every typed value.
+        auto duplicate = draftOf("Fresh");
+        bool refused{};
+        try
+        {
+            duplicate->Save();
+        }
+        catch (const Error &error)
+        {
+            refused = error.reason == Failure::ExistingFolder;
+        }
+        Check(refused && duplicate->Creating() && duplicate->Document().Pattern().name == "Fresh" &&
+                  duplicate->Document().Effects().hitSounds.contains("1"),
+              "A refused Create must keep the draft unchanged.");
+        fs::remove_all(root);
+    }
     void TestTaikoToolGroups(TextCatalog &texts)
     {
         constexpr std::array keys{'W', 'E', 'R', 'T', 'Y', 'U'};
@@ -1323,6 +1391,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     TestSeekAndEffectEdits();
     TestInspectorMusicalTiming();
     TestRealtimeIgnoresScrollEffects();
+    TestNewDifficultyDraft();
     auto mode = std::make_unique<ProbeMode>();
     auto *probe = mode.get();
     EditorWorkspace state(GameplayLaunchRequest{}, std::move(mode));

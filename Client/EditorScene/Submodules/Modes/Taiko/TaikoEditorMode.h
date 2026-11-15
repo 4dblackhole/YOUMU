@@ -16,6 +16,8 @@ class TaikoEditorMode final : public IEditorMode
     }
     std::unique_ptr<IEditorDocument> OpenDocument(
         const GameplayLaunchRequest &) const override;
+    std::unique_ptr<IEditorDocument> NewDocument(const GameplayLaunchRequest &) const override;
+    GameplayLaunchRequest CreateDocument(const IEditorDocument &, const GameplayLaunchRequest &) const override;
     void SelectTool(int) override;
     void HandleToolKeys(IEditorContext &, const PhantomCore::InputState &) override;
     bool HandleToolKey(IEditorContext &, std::uint16_t);

@@ -1,5 +1,6 @@
 #include "TaikoEditorMode.h"
 #include "../../EditorSupport.h"
+#include "../../EditorPatternCreation.h"
 #include "Parsing/ChartParser.h"
 #include "TaikoEditorPlacement.h"
 #include "TaikoEditorTool.h"
@@ -29,6 +30,32 @@ std::unique_ptr<IEditorDocument> TaikoEditorMode::OpenDocument(
     return std::make_unique<ChartEditor>(
         std::move(p.document), std::move(e.document),
         RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000});
+}
+
+std::unique_ptr<IEditorDocument> TaikoEditorMode::NewDocument(const GameplayLaunchRequest &request) const
+{
+    if (!request.editorNewDifficulty)
+        throw std::invalid_argument("A new difficulty needs its song.");
+    // Taiko, 120 BPM, offset 0 and 4/4 with no notes, timing commands or effects (EditorSongSelect.md).
+    PatternDocument pattern;
+    pattern.mode = std::string(Id());
+    const auto root = std::filesystem::absolute(request.songsRoot).lexically_normal();
+    pattern.musicMetadataFile =
+        std::filesystem::absolute(request.editorNewDifficulty->metadataPath).lexically_normal().lexically_relative(root);
+    return std::make_unique<ChartEditor>(std::move(pattern), EffectDocument{},
+                                         RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000});
+}
+
+GameplayLaunchRequest TaikoEditorMode::CreateDocument(const IEditorDocument &draft, const GameplayLaunchRequest &request) const
+{
+    if (!request.editorNewDifficulty)
+        throw std::invalid_argument("A new difficulty needs its song.");
+    const auto created = Create(request.songsRoot, *request.editorNewDifficulty, draft.Pattern());
+    auto opened = request;
+    opened.patternPath = created.patternPath;
+    opened.effectPath = created.effectPath;
+    opened.editorNewDifficulty.reset();
+    return opened;
 }
 
 bool TaikoEditorMode::CancelInteraction() noexcept

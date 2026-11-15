@@ -30,6 +30,7 @@ struct EditorMenuInputResult
 struct EditorMenuDocument
 {
     std::wstring title, artist, pattern, mode;
+    // False for a new difficulty that Create has not written yet.
     bool created{true};
 };
 
@@ -62,6 +63,7 @@ class EditorMenuBar final
     TextCatalog *texts_{};
     PhantomCore::Visual2DNode *bar_{}, *file_{}, *edit_{}, *popup_{};
     PhantomCore::Visual2DNode *title_{}, *artist_{}, *pattern_{}, *dirtyDot_{}, *modeBadge_{}, *modeLabel_{};
+    PhantomCore::Visual2DNode *newBadge_{}, *newLabel_{};
     std::array<Row, 5> rows_{};
     EditorMenuDocument document_;
     float width_{1280};

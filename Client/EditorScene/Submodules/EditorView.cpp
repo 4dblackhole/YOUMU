@@ -340,7 +340,7 @@ void EditorView::Build()
         std::wstring mode = Wide(pattern.mode);
         std::ranges::transform(mode, mode.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towupper(c)); });
         menuBar_.SetDocument({request.songTitle.empty() ? state_.Document().SourcePath().stem().wstring() : request.songTitle,
-                              request.songArtist, Wide(pattern.name), std::move(mode)});
+                              request.songArtist, Wide(pattern.name), std::move(mode), !state_.Creating()});
         menuBar_.Refresh(state_.Document().Dirty());
         BuildContent();
         buildFailed_ = false;

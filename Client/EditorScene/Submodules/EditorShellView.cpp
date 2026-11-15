@@ -1,3 +1,4 @@
+#include "EditorPatternCreation.h"
 #include "EditorView.h"
 #include <algorithm>
 #include <cmath>
@@ -34,13 +35,19 @@ void EditorView::DrawTabs()
     {
         const auto tab = static_cast<EditorTab>(i);
         const bool on = state_.Tab() == tab;
+        // A new difficulty has only Metadata until it is created.
+        const bool locked = state_.Creating() && tab != EditorTab::Metadata;
         std::wstring caption(texts_.Get(TabKeys[i]));
         const float tabWidth = EstimateTextWidth(caption, 15) + 2;
         const Rect r{x, layout::TabsTop + 4, tabWidth, 40};
-        Label(r, caption, {15, on ? theme::BrandText : theme::Caption, TextAlignment::Leading, 800});
+        auto color = on ? theme::BrandText : theme::Caption;
+        if (locked)
+            color.alpha = .38F;
+        Label(r, caption, {15, color, TextAlignment::Leading, 800});
         if (on)
             Box({r.x, r.y + r.height - 3, r.width, 3}, theme::Brand);
-        Control(r, [this, tab] { state_.SelectTab(tab); });
+        if (!locked)
+            Control(r, [this, tab] { state_.SelectTab(tab); });
         x += tabWidth + layout::TabGap;
     }
     // Status and the last saved file read at the right end of the tab bar.
@@ -66,9 +73,10 @@ void EditorView::DrawFooter()
 
     const Rect save{frame_.width - layout::SaveWidth, top, layout::SaveWidth, layout::FooterHeight};
     Slanted(save, layout::Slant, 0, theme::Brand);
-    Label({save.x + 40, top, save.width - 64, layout::FooterHeight}, std::wstring(Texts().save),
+    Label({save.x + 40, top, save.width - 64, layout::FooterHeight},
+          std::wstring(state_.Creating() ? texts_.Get("Editor.create") : Texts().save),
           {22, White, TextAlignment::Center, 900});
-    Control(save, [this] { state_.Save(); });
+    Control(save, [this] { SaveDocument(); });
 
     DrawTransport({layout::BackWidth + 12, top, save.x - layout::BackWidth - 32, layout::FooterHeight});
 }
@@ -138,6 +146,26 @@ void EditorView::DrawPlaybackRateControl(float x)
     Control(slower, [this] { StepPlaybackRate(-1, shiftDown_); });
     Control(faster, [this] { StepPlaybackRate(1, shiftDown_); });
     Control(value, [this] { state_.SetPlaybackRate(1); });
+}
+
+void EditorView::SaveDocument()
+{
+    if (!state_.Creating())
+    {
+        state_.Save();
+        return;
+    }
+    try
+    {
+        state_.Save();
+    }
+    catch (const Error &error)
+    {
+        const auto key = error.reason == Failure::ExistingFolder ? "MusicSelect.createDifficultyExists"
+                         : error.reason == Failure::InvalidName  ? "MusicSelect.createDifficultyNameError"
+                                                                 : "MusicSelect.createDifficultyError";
+        state_.SetStatus(Utf8(std::wstring(texts_.Get(key))) + " (" + error.what() + ")");
+    }
 }
 
 void EditorView::StepPlaybackRate(int direction, bool coarse)

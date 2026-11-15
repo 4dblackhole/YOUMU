@@ -233,7 +233,7 @@ void EditorView::ExecuteMenuAction(EditorMenuAction action)
 {
     switch (action)
     {
-    case EditorMenuAction::Save: state_.Save(); break;
+    case EditorMenuAction::Save: SaveDocument(); break;
     case EditorMenuAction::Undo: state_.Undo(); break;
     case EditorMenuAction::Redo: state_.Redo(); break;
     case EditorMenuAction::Copy: state_.CopySelection(); break;

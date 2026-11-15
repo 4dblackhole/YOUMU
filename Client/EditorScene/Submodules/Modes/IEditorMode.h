@@ -71,6 +71,16 @@ class IEditorMode : public IEditorAudioSource
     virtual std::string_view Id() const noexcept = 0;
     virtual std::unique_ptr<IEditorDocument> OpenDocument(
         const GameplayLaunchRequest &) const = 0;
+    // New difficulty: an unsaved draft for the request's song, then Create writes its files and
+    // returns the request that opens them. Modes without creation reject both.
+    virtual std::unique_ptr<IEditorDocument> NewDocument(const GameplayLaunchRequest &) const
+    {
+        throw std::logic_error("This editor mode cannot create a difficulty.");
+    }
+    virtual GameplayLaunchRequest CreateDocument(const IEditorDocument &, const GameplayLaunchRequest &) const
+    {
+        throw std::logic_error("This editor mode cannot create a difficulty.");
+    }
     virtual void SelectTool(int) = 0;
     virtual void HandleToolKeys(IEditorContext &, const PhantomCore::InputState &)
     {

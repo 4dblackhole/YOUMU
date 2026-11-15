@@ -61,6 +61,11 @@ class EditorWorkspace final : public IEditorContext
     void SetRealtimeZoom(double factor);
     void SelectTool(int value) override;
     void Save();
+    // New difficulty: Metadata only until Create writes the files.
+    bool Creating() const noexcept
+    {
+        return creating_;
+    }
     GameplayLaunchRequest TestLaunchRequest() const;
     std::filesystem::path MusicMetadataPath() const;
     const GameplayLaunchRequest &Request() const noexcept
@@ -231,4 +236,5 @@ class EditorWorkspace final : public IEditorContext
     bool nextZToZero_{};
     bool nextXToMusicEnd_{};
     std::uint64_t audioSourceRevision_{};
+    bool creating_{};
 };

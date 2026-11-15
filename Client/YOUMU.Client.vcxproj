@@ -344,12 +344,10 @@
     <ClInclude Include="EditorScene\Submodules\EditorMetronome.h" />
     <ClCompile Include="EditorScene\Submodules\EditorMetronome.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorAudioControls.cpp" />
-    <ClInclude Include="GameScene\MusicSelectScene\Submodules\EditorPatternCreation.h" />
-    <ClCompile Include="GameScene\MusicSelectScene\Submodules\EditorPatternCreation.cpp" />
+    <ClInclude Include="EditorScene\Submodules\EditorPatternCreation.h" />
+    <ClCompile Include="EditorScene\Submodules\EditorPatternCreation.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GameScene\MusicSelectScene\Submodules\NewDifficultyDialog.h" />
-    <ClCompile Include="GameScene\MusicSelectScene\Submodules\NewDifficultyDialog.cpp" />
   </ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorSelection.cpp" /></ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorClipboard.cpp" /></ItemGroup>

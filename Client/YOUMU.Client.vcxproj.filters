@@ -253,12 +253,10 @@
     <ClInclude Include="EditorScene\Submodules\EditorMetronome.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorMetronome.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorAudioControls.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
-    <ClInclude Include="GameScene\MusicSelectScene\Submodules\EditorPatternCreation.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
-    <ClCompile Include="GameScene\MusicSelectScene\Submodules\EditorPatternCreation.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
+    <ClInclude Include="EditorScene\Submodules\EditorPatternCreation.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
+    <ClCompile Include="EditorScene\Submodules\EditorPatternCreation.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GameScene\MusicSelectScene\Submodules\NewDifficultyDialog.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
-    <ClCompile Include="GameScene\MusicSelectScene\Submodules\NewDifficultyDialog.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorSelection.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorClipboard.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile></ItemGroup>

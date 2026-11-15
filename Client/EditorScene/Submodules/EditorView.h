@@ -143,6 +143,8 @@ class EditorView final : public IEditorModeCanvas
     bool UpdateKeyboard(const PhantomCore::InputState &);
     void UpdatePointer(const PhantomCore::UpdateContext &);
     void StepPlaybackRate(int direction, bool coarse);
+    // Save, or Create for a new difficulty (its failures are explained in the selected language).
+    void SaveDocument();
     void StepSpacing(int direction);
 
     // IEditorModeCanvas
