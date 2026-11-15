@@ -52,11 +52,12 @@ void EditorWorkspace::SelectNoteRange(MusicalPosition begin, MusicalPosition end
 
 void EditorWorkspace::SelectListRow(std::size_t row, bool toggle, bool range)
 {
-    if (tab_ != EditorTab::Timing && tab_ != EditorTab::Effects)
+    const auto focus = Focus();
+    if (focus == EditorFocus::Notes)
         return;
-    auto &selected = tab_ == EditorTab::Timing ? selectedTiming_ : selectedEffects_;
-    auto &anchor = tab_ == EditorTab::Timing ? timingSelectionAnchor_ : effectSelectionAnchor_;
-    const auto count = tab_ == EditorTab::Timing
+    auto &selected = focus == EditorFocus::Timing ? selectedTiming_ : selectedEffects_;
+    auto &anchor = focus == EditorFocus::Timing ? timingSelectionAnchor_ : effectSelectionAnchor_;
+    const auto count = focus == EditorFocus::Timing
                            ? Document().Timing().size()
                            : Document().Effects().commands.size() + Document().Effects().hitSoundChanges.size();
     if (row >= count)
@@ -83,8 +84,9 @@ void EditorWorkspace::SelectListRow(std::size_t row, bool toggle, bool range)
 
 bool EditorWorkspace::IsListRowSelected(std::size_t row) const noexcept
 {
-    return tab_ == EditorTab::Timing ? selectedTiming_.contains(row)
-                                     : tab_ == EditorTab::Effects && selectedEffects_.contains(row);
+    const auto focus = Focus();
+    return focus == EditorFocus::Timing ? selectedTiming_.contains(row)
+                                        : focus == EditorFocus::Effects && selectedEffects_.contains(row);
 }
 
 void EditorWorkspace::ClearEditSelection()
@@ -119,7 +121,8 @@ void EditorWorkspace::Redo()
 void EditorWorkspace::CopySelection()
 {
     Clipboard result;
-    result.tab = tab_;
+    const auto focus = Focus();
+    result.focus = focus;
     std::optional<std::pair<MusicalPosition, MusicalPosition>> bounds;
     const auto extend = [&bounds](auto first, auto last)
     {
@@ -131,7 +134,7 @@ void EditorWorkspace::CopySelection()
             bounds->second = std::max(bounds->second, last);
         }
     };
-    if (tab_ == EditorTab::Pattern)
+    if (focus == EditorFocus::Notes)
     {
         if (noteSelectionRange_)
             bounds = noteSelectionRange_;
@@ -144,14 +147,14 @@ void EditorWorkspace::CopySelection()
                 extend(note->head.note.position, note->tail ? note->tail->note.position : note->head.note.position);
             }
     }
-    else if (tab_ == EditorTab::Timing)
+    else if (focus == EditorFocus::Timing)
         for (auto row : selectedTiming_)
         {
             const auto &event = Document().Timing().at(row);
             result.timing.push_back({event, {}});
             extend(event.position, event.position);
         }
-    else if (tab_ == EditorTab::Effects)
+    else
         for (auto row : selectedEffects_)
         {
             const auto &effects = Document().Effects();
@@ -195,8 +198,9 @@ void EditorWorkspace::PasteSelection(bool includeBlanks)
 {
     if (!clipboard_)
         return;
-    if (clipboard_->tab != tab_)
-        throw std::invalid_argument("Paste into the same editor tab as the copied items.");
+    const auto focus = Focus();
+    if (clipboard_->focus != focus)
+        throw std::invalid_argument("Paste into the same kind of list as the copied items.");
     const bool noNotesOrTiming = clipboard_->notes.empty() && clipboard_->timing.empty();
     const bool noEffectsOrSounds = clipboard_->effects.empty() && clipboard_->sounds.empty();
     if (!includeBlanks && noNotesOrTiming && noEffectsOrSounds)
@@ -208,11 +212,11 @@ void EditorWorkspace::PasteSelection(bool includeBlanks)
     if (!std::isfinite(value) || value >= std::numeric_limits<std::int64_t>::max())
         throw std::out_of_range("Paste position exceeds the supported musical range.");
     const auto anchor = timeline.PositionAtWholeNotes({static_cast<std::int64_t>(value), divisions});
-    if (tab_ == EditorTab::Pattern)
+    if (focus == EditorFocus::Notes)
         PasteNotes(*clipboard_, anchor, includeBlanks);
-    else if (tab_ == EditorTab::Timing)
+    else if (focus == EditorFocus::Timing)
         PasteTiming(*clipboard_, anchor, includeBlanks);
-    else if (tab_ == EditorTab::Effects)
+    else
         PasteEffects(*clipboard_, anchor, includeBlanks);
     ClearEditSelection();
 }
@@ -221,20 +225,21 @@ void EditorWorkspace::DeleteSelection()
 {
     auto pattern = Document().Pattern();
     auto effects = Document().Effects();
-    if (tab_ == EditorTab::Pattern)
+    const auto focus = Focus();
+    if (focus == EditorFocus::Notes)
     {
         if (selectedNotes_.empty())
             return;
         std::erase_if(pattern.notes, [this](const auto &note) { return selectedNotes_.contains(note.sourceOrder); });
     }
-    else if (tab_ == EditorTab::Timing)
+    else if (focus == EditorFocus::Timing)
     {
         if (selectedTiming_.empty())
             return;
         std::size_t row = 0;
         std::erase_if(pattern.timing, [this, &row](const auto &) { return selectedTiming_.contains(row++); });
     }
-    else if (tab_ == EditorTab::Effects)
+    else
     {
         if (selectedEffects_.empty())
             return;
@@ -242,8 +247,6 @@ void EditorWorkspace::DeleteSelection()
         std::erase_if(effects.commands, [this, &row](const auto &) { return selectedEffects_.contains(row++); });
         std::erase_if(effects.hitSoundChanges, [this, &row](const auto &) { return selectedEffects_.contains(row++); });
     }
-    else
-        return;
     Replace(std::move(pattern), std::move(effects));
     ClearEditSelection();
 }

@@ -41,17 +41,6 @@ bool TaikoEditorMode::CancelInteraction() noexcept
     popup_ = -1;
     return hadInteraction;
 }
-bool TaikoEditorMode::OpenToolMenu(Point point)
-{
-    const bool outsideToolColumn = point.x < 24 || point.x >= 94;
-    const bool outsideToolRows = point.y < 202 || point.y >= 682;
-    if (outsideToolColumn || outsideToolRows)
-        return false;
-    popup_ = static_cast<int>((point.y - 202) / 80);
-    pending_.reset();
-    return true;
-}
-
 void TaikoEditorMode::SelectTool(int value)
 {
     selectionAnchor_.reset();
@@ -72,12 +61,6 @@ void TaikoEditorMode::PlaceNote(IEditorContext &state, MusicalPosition p)
         state.Seek(state.Document().Timeline().Compile(p).count() / 1000.0);
     if (tool_ == 0)
     {
-        state.RequestRebuild();
-        return;
-    }
-    if (tool_ < 0)
-    {
-        state.SelectTimingPosition(p);
         state.RequestRebuild();
         return;
     }

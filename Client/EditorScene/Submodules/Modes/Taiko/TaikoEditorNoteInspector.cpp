@@ -88,8 +88,8 @@ void TaikoEditorNoteInspector::Field(IEditorModeCanvas &canvas, IEditorContext &
                                      const TextCatalog &catalog, float y, std::wstring_view label,
                                      std::string &value, float x, float width)
 {
-    canvas.Text({x, y, width, 24}, std::wstring(label), 17);
-    canvas.Button({x, y + 26, width, 34}, Wide(value),
+    canvas.Text({x, y, width, 18}, std::wstring(label), 12, ui_colors::theme::Caption);
+    canvas.Button({x, y + 20, width, 32}, Wide(value),
                   [this, &state, &catalog, label = std::wstring(label), &value]
                   {
                       if (const auto edited = EditText(std::wstring(label), value, Editor(catalog)))
@@ -105,22 +105,26 @@ void TaikoEditorNoteInspector::PositionFields(IEditorModeCanvas &canvas, IEditor
                                               std::wstring_view label, std::string &measure, std::string &beat)
 {
     const auto &text = TaikoEditor(catalog);
-    Field(canvas, state, catalog, y, std::wstring(label) + L" " + std::wstring(text.measure), measure, 1530, 110);
-    Field(canvas, state, catalog, y, text.beatPosition, beat, 1658, 212);
+    const auto body = canvas.Areas().inspector;
+    const float half = (body.width - 8) * .5F;
+    Field(canvas, state, catalog, y, std::wstring(label) + L" " + std::wstring(text.measure), measure, body.x, half);
+    Field(canvas, state, catalog, y, text.beatPosition, beat, body.x + half + 8, half);
 }
 void TaikoEditorNoteInspector::Draw(IEditorModeCanvas &canvas, IEditorContext &state,
                                     const TextCatalog &catalog)
 {
     Refresh(state.Document());
     const auto &text = TaikoEditor(catalog);
-    canvas.Box({1510, 116, 386, 678}, Pale, 8);
-    canvas.Text({1530, 136, 340, 28}, std::wstring(text.noteInfo), 22);
+    const auto body = canvas.Areas().inspector;
     if (!selected_)
     {
-        canvas.Text({1530, 184, 340, 100}, std::wstring(text.selectNoteHelp), 18);
+        canvas.Text({body.x, body.y, body.width, 40}, std::wstring(text.selectNoteHelp), 13, ui_colors::theme::Caption);
         return;
     }
-    canvas.Button({1530, 182, 340, 38}, std::wstring(Name(draft_.tool, text.toolVariants)),
+    const auto millisecondsText = [&catalog](double milliseconds) {
+        return std::vformat(catalog.Get("Result.millisecondsFormat"), std::make_wformat_args(milliseconds));
+    };
+    canvas.Button({body.x, body.y, body.width, 30}, std::wstring(Name(draft_.tool, text.toolVariants)),
                   [this, &state]
                   {
                       draft_.tool = NextInGroup(draft_.tool);
@@ -128,27 +132,29 @@ void TaikoEditorNoteInspector::Draw(IEditorModeCanvas &canvas, IEditorContext &s
                       state.RequestRebuild();
                   });
     const auto &head = selected_->head;
-    PositionFields(canvas, state, catalog, 238, text.startPosition, draft_.startMeasure, draft_.startBeat);
-    const double headMilliseconds = head.timing.count() / 1000.0;
-    canvas.Text({1530, 302, 340, 24},
-                std::vformat(catalog.Get("Result.millisecondsFormat"), std::make_wformat_args(headMilliseconds)), 16);
+    float y = body.y + 42;
+    PositionFields(canvas, state, catalog, y, text.startPosition, draft_.startMeasure, draft_.startBeat);
+    canvas.Text({body.x, y + 56, body.width, 18}, millisecondsText(head.timing.count() / 1000.0), 13,
+                ui_colors::theme::InkSoft);
+    y += 80;
     const auto *tool = Find(draft_.tool);
     if (tool && FindTaikoNote(static_cast<int>(tool->note))->longNote)
     {
-        PositionFields(canvas, state, catalog, 332, text.endPosition, draft_.endMeasure, draft_.endBeat);
+        PositionFields(canvas, state, catalog, y, text.endPosition, draft_.endMeasure, draft_.endBeat);
         if (selected_->tail)
-        {
-            const double tailMilliseconds = selected_->tail->timing.count() / 1000.0;
-            canvas.Text(
-                {1530, 396, 340, 24},
-                std::vformat(catalog.Get("Result.millisecondsFormat"), std::make_wformat_args(tailMilliseconds)), 16);
-        }
+            canvas.Text({body.x, y + 56, body.width, 18}, millisecondsText(selected_->tail->timing.count() / 1000.0),
+                        13, ui_colors::theme::InkSoft);
+        y += 80;
     }
+    const float half = (body.width - 8) * .5F;
     if (UsesHitCount(draft_.tool))
-        Field(canvas, state, catalog, 430, text.hitCount, draft_.hitCount);
+        Field(canvas, state, catalog, y, text.hitCount, draft_.hitCount, body.x, half);
     if (UsesTickDivision(draft_.tool))
-        Field(canvas, state, catalog, 430, text.tickDivision, draft_.tickDivision);
-    Field(canvas, state, catalog, 508, text.hitSound, draft_.hitSound);
+        Field(canvas, state, catalog, y, text.tickDivision, draft_.tickDivision, body.x, half);
+    const bool counted = UsesHitCount(draft_.tool) || UsesTickDivision(draft_.tool);
+    Field(canvas, state, catalog, y, text.hitSound, draft_.hitSound, counted ? body.x + half + 8 : body.x,
+          counted ? half : body.width);
+    y += 60;
     if (selected_->tail && UsesTickDivision(head.note.keyType))
     {
         std::vector<Diagnostic> diagnostics;
@@ -159,11 +165,14 @@ void TaikoEditorNoteInspector::Draw(IEditorModeCanvas &canvas, IEditorContext &s
                                                                        selected_->tail->note.position, *division);
             if (head.note.keyType == 17 && count != 0)
                 --count;
-            canvas.Text({1530, 586, 340, 30}, std::wstring(text.tickCount) + L" " + std::to_wstring(count), 17);
+            canvas.Text({body.x, y, body.width, 20}, std::wstring(text.tickCount) + L" " + std::to_wstring(count), 13,
+                        ui_colors::theme::InkSoft);
         }
     }
-    canvas.Button({1530, 716, 160, 40}, std::wstring(text.apply), [this, &state] { Apply(state); }, true);
-    canvas.Button({1710, 716, 160, 40}, std::wstring(text.resetDraft),
+    const float actions = body.y + body.height - 32;
+    canvas.Button({body.x + body.width - 96, actions, 96, 32}, std::wstring(text.apply), [this, &state] { Apply(state); },
+                  true);
+    canvas.Button({body.x + body.width - 96 - 8 - 96, actions, 96, 32}, std::wstring(text.resetDraft),
                   [this, &state]
                   {
                       Select(state.Document(), selected_->head.note.sourceOrder);

@@ -1,16 +1,56 @@
 #pragma once
+#include "EditorLayout.h"
 #include "Model/Submodules/EffectDocument.h"
 #include <array>
 #include <variant>
 
 enum class EditorTab
 {
-    Pattern,
-    Timing,
-    Metadata,
-    Effects,
-    Audio
+    Compose,
+    Audio,
+    Metadata
 };
+
+// The right panel edits one Compose channel; the channel decides which
+// document list Copy, Paste and Delete act on.
+using EditorPanel = editor_layout::Channel;
+enum class EditorFocus
+{
+    Notes,
+    Timing,
+    Effects
+};
+[[nodiscard]] constexpr EditorFocus FocusOf(EditorPanel panel) noexcept
+{
+    if (panel == EditorPanel::Timing)
+        return EditorFocus::Timing;
+    if (panel == EditorPanel::Notes || panel == EditorPanel::Music)
+        return EditorFocus::Notes;
+    return EditorFocus::Effects;
+}
+// The Compose channel that draws and edits an automation type; Custom commands have none.
+[[nodiscard]] constexpr std::optional<EditorPanel> ChannelOf(EffectCommandType type) noexcept
+{
+    switch (type)
+    {
+    case EffectCommandType::ScrollSpeed:
+    case EffectCommandType::NoteSpeed:
+        return EditorPanel::ScrollSpeed;
+    case EffectCommandType::BusVolume:
+        return EditorPanel::Volume;
+    case EffectCommandType::ReverbSend:
+    case EffectCommandType::LowPassCutoff:
+    case EffectCommandType::HighPassCutoff:
+        return EditorPanel::AudioEffects;
+    case EffectCommandType::SyncopationZone:
+    case EffectCommandType::Kiai:
+    case EffectCommandType::MeasureLineVisible:
+        return EditorPanel::Zones;
+    case EffectCommandType::Custom:
+        break;
+    }
+    return std::nullopt;
+}
 
 struct EditorTimingForm
 {

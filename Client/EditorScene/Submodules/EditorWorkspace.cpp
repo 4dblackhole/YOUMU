@@ -183,11 +183,26 @@ void EditorWorkspace::SelectTab(EditorTab value)
     mode_->CloseToolMenu();
     RequestRebuild();
 }
+void EditorWorkspace::OpenPanel(EditorPanel panel)
+{
+    if (panel_ != panel)
+        listOffset = 0;
+    panel_ = panel;
+    tab_ = EditorTab::Compose;
+    mode_->CloseToolMenu();
+    RequestRebuild();
+}
+void EditorWorkspace::ClosePanel()
+{
+    panel_.reset();
+    listOffset = 0;
+    RequestRebuild();
+}
 void EditorWorkspace::SelectTimingPosition(MusicalPosition p)
 {
     timingForm.measure = std::to_string(p.measure + 1);
     timingForm.fraction = Fraction(p.fraction);
-    SelectTab(EditorTab::Timing);
+    OpenPanel(EditorPanel::Timing);
 }
 void EditorWorkspace::RemoveTiming(std::size_t row)
 {

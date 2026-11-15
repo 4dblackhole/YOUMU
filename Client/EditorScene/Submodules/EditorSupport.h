@@ -33,6 +33,16 @@ namespace editor_ui
         return s;
     }
 
+    // The engine lays text out on one line without reporting its width before
+    // rendering; inline captions are placed with this per-glyph estimate.
+    [[nodiscard]] inline float EstimateTextWidth(std::wstring_view text, float size) noexcept
+    {
+        float width = 0;
+        for (const wchar_t character : text)
+            width += character >= 0x1100 ? size : size * (character == L' ' ? .3F : .6F);
+        return width;
+    }
+
 } // namespace editor_ui
 
 namespace editor_ui

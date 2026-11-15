@@ -127,6 +127,8 @@
     <ClInclude Include="EditorScene\Submodules\Modes\IEditorAudioSource.h" />
     <ClInclude Include="EditorScene\Submodules\Modes\IEditorContext.h" />
     <ClInclude Include="EditorScene\Submodules\EditorTime.h" />
+    <ClInclude Include="EditorScene\Submodules\EditorTimeAxis.h" />
+    <ClInclude Include="EditorScene\Submodules\EditorLayout.h" />
     <ClInclude Include="EditorScene\Submodules\EditorForms.h" />
     <ClInclude Include="App\AssetPaths.h" />
     <ClCompile Include="EditorScene\Submodules\EditorForms.cpp" />
@@ -152,15 +154,14 @@
     <ClInclude Include="EditorScene\Submodules\EditorAnalysisController.h" />
     <ClCompile Include="EditorScene\Submodules\EditorAudioView.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorAudioSelection.cpp" />
-    <ClCompile Include="EditorScene\Submodules\EditorTimelineView.cpp" />
-    <ClCompile Include="EditorScene\Submodules\EditorEffectsView.cpp" />
+    <ClCompile Include="EditorScene\Submodules\EditorShellView.cpp" />
+    <ClCompile Include="EditorScene\Submodules\EditorPanelView.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorInput.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorMenuBar.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorMenuBar.h" />
-    <ClCompile Include="EditorScene\Submodules\EditorScoreView.cpp" />
+    <ClCompile Include="EditorScene\Submodules\EditorComposeView.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorSupport.h" />
     <ClCompile Include="EditorScene\Submodules\EditorTextDialog.cpp" />
-    <ClCompile Include="EditorScene\Submodules\EditorTimingView.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorView.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorView.h" />
     <ClInclude Include="EditorScene\Submodules\EditorVisual.h" />

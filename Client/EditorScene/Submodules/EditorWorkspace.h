@@ -33,6 +33,10 @@ class EditorWorkspace final : public IEditorContext
     void ShutdownPlayback() noexcept { playback_.Shutdown(); }
     void UpdatePlayback();
     void TogglePlayback();
+    bool Playing() const noexcept
+    {
+        return playback_.Active();
+    }
     void SetPlaybackRate(double rate);
     double PlaybackRate() const noexcept { return playback_.Rate(); }
     void SelectAudioRange(RhythmTime anchor, RhythmTime end)
@@ -59,6 +63,10 @@ class EditorWorkspace final : public IEditorContext
     void Save();
     GameplayLaunchRequest TestLaunchRequest() const;
     std::filesystem::path MusicMetadataPath() const;
+    const GameplayLaunchRequest &Request() const noexcept
+    {
+        return request_;
+    }
     void PlaceNote(MusicalPosition position);
     [[nodiscard]] std::pair<double, double> TimelineRangeMilliseconds() const;
     void Seek(double milliseconds) override;
@@ -116,6 +124,17 @@ class EditorWorkspace final : public IEditorContext
         RequestRebuild();
     }
     void SelectTab(EditorTab value);
+    // The right panel of Compose. Opening one moves Copy/Paste/Delete to its list.
+    const std::optional<EditorPanel> &Panel() const noexcept
+    {
+        return panel_;
+    }
+    void OpenPanel(EditorPanel panel);
+    void ClosePanel();
+    EditorFocus Focus() const noexcept
+    {
+        return panel_ ? FocusOf(*panel_) : EditorFocus::Notes;
+    }
     void SelectTimingPosition(MusicalPosition) override;
     void Replace(PatternDocument, EffectDocument) override;
     void AddNote(MusicalPosition, int keyType,
@@ -168,7 +187,7 @@ class EditorWorkspace final : public IEditorContext
     };
     struct Clipboard
     {
-        EditorTab tab{EditorTab::Pattern};
+        EditorFocus focus{EditorFocus::Notes};
         Rational length;
         std::vector<ClipboardNote> notes;
         std::vector<ClipboardEvent<TimingDirective>> timing;
@@ -185,7 +204,8 @@ class EditorWorkspace final : public IEditorContext
     std::optional<std::size_t> timingSelectionAnchor_, effectSelectionAnchor_;
     std::optional<Clipboard> clipboard_;
     void DocumentChanged();
-    EditorTab tab_{EditorTab::Pattern};
+    EditorTab tab_{EditorTab::Compose};
+    std::optional<EditorPanel> panel_;
     bool rebuild_{true};
     std::string status_;
     std::filesystem::path savedPath_;

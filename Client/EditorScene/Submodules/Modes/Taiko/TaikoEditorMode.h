@@ -35,6 +35,10 @@ class TaikoEditorMode final : public IEditorMode
     void DrawTools(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     void DrawChart(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     void DrawToolMenu(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
+    void DrawNotePanel(IEditorModeCanvas &canvas, IEditorContext &state, const TextCatalog &catalog) override
+    {
+        inspector_.Draw(canvas, state, catalog);
+    }
     void EditScore(IEditorContext &, PhantomCore::Point, bool erase) override;
     void ScrollScore(IEditorContext &, int direction) override;
     bool BeginScoreSelection(IEditorContext &, PhantomCore::Point) override;
@@ -48,6 +52,8 @@ class TaikoEditorMode final : public IEditorMode
 
   private:
     std::optional<MusicalPosition> SnapPosition(IEditorContext &, PhantomCore::Point) const;
+    // Areas lent by the last build; input hit-tests against what was drawn.
+    EditorModeAreas areas_;
     std::optional<MusicalPosition> selectionAnchor_;
     PhantomCore::Point selectionStart_{};
     bool selecting_{};

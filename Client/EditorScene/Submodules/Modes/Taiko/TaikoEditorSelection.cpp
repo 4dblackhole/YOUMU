@@ -19,11 +19,12 @@ std::optional<MusicalPosition> TaikoEditorMode::SnapPosition(IEditorContext &sta
     }
     if (overviewGrid_.empty())
         return {};
-    const auto x = std::clamp(point.x, ScoreLeft, ScoreRight - .01F);
-    const auto y = std::clamp(point.y, RowTop, RowTop + RowHeight * VisibleRows - .01F);
+    const auto grid = ScoreGridFor(areas_.score);
+    const auto x = std::clamp(point.x, grid.left, grid.Right() - .01F);
+    const auto y = std::clamp(point.y, grid.rowTop, grid.rowTop + grid.rowHeight * VisibleRows - .01F);
     const auto measure = state.Score().firstMeasure +
-                         static_cast<std::int64_t>((y - RowTop) / RowHeight) * MeasuresPerRow +
-                         static_cast<std::int64_t>((x - ScoreLeft) / MeasureWidth);
+                         static_cast<std::int64_t>((y - grid.rowTop) / grid.rowHeight) * MeasuresPerRow +
+                         static_cast<std::int64_t>((x - grid.left) / grid.measureWidth);
     const auto begin =
         std::ranges::lower_bound(overviewGrid_, measure, {}, [](const auto &g) { return g.second.measure; });
     const auto end =
@@ -37,7 +38,7 @@ std::optional<MusicalPosition> TaikoEditorMode::SnapPosition(IEditorContext &sta
 
 bool TaikoEditorMode::BeginScoreSelection(IEditorContext &state, Point point)
 {
-    if (tool_ != 0 || !(state.Score().realtime ? RealtimeLane : OverviewBounds).Contains(point))
+    if (tool_ != 0 || !(state.Score().realtime ? areas_.lane : ScoreGridFor(areas_.score).Bounds()).Contains(point))
         return false;
     const auto position = SnapPosition(state, point);
     if (!position)

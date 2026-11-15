@@ -26,13 +26,22 @@ struct EditorMenuInputResult
     bool consumeKeyboard{}, consumePointer{};
 };
 
-// Owns menu state and Canvas observers; the editor executes returned actions.
+// The document the menu bar names: representative title, artist and [difficulty].
+struct EditorMenuDocument
+{
+    std::wstring title, artist, pattern, mode;
+    bool created{true};
+};
+
+// Owns the navy menu bar, its menus and Canvas observers; the editor executes returned actions.
 class EditorMenuBar final
 {
   public:
-    static constexpr float Height = 28.0F;
-    void Initialize(PhantomCore::Visual2DCanvas &, TextCatalog &);
-    void Resize();
+    static constexpr float Height = 36.0F;
+    // The bar spans the top of the editor frame under `parent` (the frame's centred node).
+    void Initialize(PhantomCore::Visual2DNode &parent, TextCatalog &);
+    void Resize(float frameWidth);
+    void SetDocument(EditorMenuDocument);
     void Refresh(bool dirty);
     EditorMenuInputResult Update(const EditorMenuInput &, bool dirty);
     void Shutdown() noexcept;
@@ -47,11 +56,15 @@ class EditorMenuBar final
     void UpdatePointer(const EditorMenuInput &, EditorMenuInputResult &);
     void SetOpen(Menu, bool keyboardSelection);
     void RefreshHighlight();
+    void LayoutDocument();
 
-    PhantomCore::Visual2DCanvas *canvas_{};
+    PhantomCore::Visual2DNode *parent_{};
     TextCatalog *texts_{};
     PhantomCore::Visual2DNode *bar_{}, *file_{}, *edit_{}, *popup_{};
+    PhantomCore::Visual2DNode *title_{}, *artist_{}, *pattern_{}, *dirtyDot_{}, *modeBadge_{}, *modeLabel_{};
     std::array<Row, 5> rows_{};
+    EditorMenuDocument document_;
+    float width_{1280};
     Menu open_{Menu::None};
     int selected_{-1}, hovered_{-1};
     bool hoverFile_{}, hoverEdit_{}, labelsInitialized_{}, dirty_{};

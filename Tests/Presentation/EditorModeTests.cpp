@@ -4,6 +4,7 @@
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorMode.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorNoteInspector.h"
+#include "EditorScene/Submodules/Modes/Taiko/TaikoEditorTool.h"
 #include "Taiko/TaikoMode.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
 #include <array>
@@ -11,6 +12,7 @@
 #include <filesystem>
 #include <limits>
 #include <map>
+#include <ranges>
 #include <stdexcept>
 #include <thread>
 
@@ -34,6 +36,11 @@ namespace
 } // namespace
 namespace
 {
+    // Default areas lent to a mode: lane at y 160..312 with the judgement line at
+    // 184 + 152 * .62; score rows from x 24, 308 wide, the first row's notes at y 192.
+    constexpr float JudgeX = 184 + 152 * .62F, LaneY = 236, ScoreLeft = 24, MeasureWidth = 308, ScoreY = 192;
+    // At spacing 1 a whole note at Base BPM spans 16 sixteenths of 85% of the 128 * 152 / 228 head.
+    constexpr float WholeNotePixels = 128 * (152 / 228.0F) * 16 * .85F;
 
     void Check(bool value, const char *message)
     {
@@ -344,24 +351,24 @@ namespace
         state.SelectTool(1);
         RecordingCanvas canvas;
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        state.Mode().EditScore(state, {283.75F, 174}, false);
+        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth * .25F, ScoreY}, false);
         Check(state.Document().Notes().front().note.position.fraction == Rational{1, 4},
               "Score click no longer snaps using quarter-note division.");
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        state.Mode().EditScore(state, {283.75F, 174}, true);
+        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth * .25F, ScoreY}, true);
         Check(state.Document().Notes().empty(), "Mode-owned note hit testing did not delete the note.");
         state.SetRealtime(true);
         state.SelectTool(1);
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        for (const Point outside : {Point{120, 465}, {1849, 465}, {230, 350}, {230, 580}})
+        for (const Point outside : {Point{120, LaneY}, {1290, LaneY}, {JudgeX, 150}, {JudgeX, 320}})
             state.Mode().EditScore(state, outside, false);
         Check(state.Document().Notes().empty(), "Clicks outside the realtime lane must not place notes.");
-        state.Mode().EditScore(state, {230, 465}, false);
+        state.Mode().EditScore(state, {JudgeX, LaneY}, false);
         Check(state.Document().Notes().size() == 1, "A realtime lane click must still place a snapped note.");
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        state.Mode().EditScore(state, {120, 465}, true);
+        state.Mode().EditScore(state, {120, LaneY}, true);
         Check(state.Document().Notes().size() == 1, "Outside-lane deletion must not affect nearby notes.");
-        state.Mode().EditScore(state, {230, 465}, true);
+        state.Mode().EditScore(state, {JudgeX, LaneY}, true);
         Check(state.Document().Notes().empty(), "In-lane realtime deletion stopped working.");
         state.Seek(123);
         state.SelectTool(11);
@@ -372,7 +379,7 @@ namespace
         state.Mode().DrawTools(canvas, state, TestCatalog(Language::English));
         canvas.actions.front()();
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::English));
-        state.Mode().EditScore(state, {700, 465}, false);
+        state.Mode().EditScore(state, {700, LaneY}, false);
         Check(state.Document().Notes().empty() && state.TimeMilliseconds() == 123,
               "Clicking empty realtime space with the selection tool must preserve the cursor and place no note.");
     }
@@ -452,15 +459,17 @@ namespace
                   std::ranges::find(overview.labels, L"2  3/4") != overview.labels.end() &&
                   std::ranges::none_of(overview.labels, [](const auto &label) { return label.starts_with(L"BPM"); }),
               "Overview must show effective bar lengths, exclude overwritten taps/BPM, and retain the new endpoint.");
-        state.Mode().EditScore(state, {520, 174}, false);
+        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth, ScoreY}, false);
         RecordingCanvas selected;
-        state.Mode().DrawChart(selected, state, TestCatalog(Language::English));
+        state.Mode().DrawNotePanel(selected, state, TestCatalog(Language::English));
         Check(std::ranges::find(selected.labels, L"1/4") != selected.labels.end(),
               "A note at the shortened measure start must select its unchanged source fraction.");
         state.Mode().CancelInteraction();
-        state.SelectTool(-1);
-        state.Mode().EditScore(state, {520, 174}, false);
-        Check(state.TimeMilliseconds() == 1000 && state.timingForm.measure == "2" && state.timingForm.fraction == "1/4",
+        state.SelectNotes({});
+        state.DeleteNote(state.Document().Pattern().notes.back().sourceOrder);
+        state.Mode().DrawChart(selected, state, TestCatalog(Language::English));
+        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth, ScoreY}, false);
+        Check(state.TimeMilliseconds() == 1000,
               "Overview snapping must use the visible delayed grid rather than the original uniform source spacing.");
         state.SetRealtime(true);
         EffectDocument effects;
@@ -470,10 +479,14 @@ namespace
         RecordingCanvas realtime;
         state.Mode().DrawChart(realtime, state, TestCatalog(Language::English));
         Check(std::ranges::any_of(realtime.rectangles, [](const auto &rect)
-                                  { return std::abs(rect.x - 230) < .01F && rect.y == 361 && rect.width == 5; }),
+                                  { return std::abs(rect.x + rect.width * .5F - JudgeX) < .01F && rect.y == 160 &&
+                                           rect.width == 5; }),
               "Realtime must draw the clipped measure start at the judgement line.");
-        state.Mode().EditScore(state, {230, 465}, false);
-        Check(state.timingForm.measure == "2" && state.timingForm.fraction == "1/4" && state.TimeMilliseconds() == 1000,
+        state.SelectTool(1);
+        state.Mode().EditScore(state, {JudgeX, LaneY}, false);
+        Check(std::ranges::any_of(state.Document().Pattern().notes, [](const auto &note) {
+                  return note.position == MusicalPosition{1, {1, 4}};
+              }) && state.TimeMilliseconds() == 1000,
               "Realtime and overview must select the same surviving beat at the clipped bar boundary.");
     }
 
@@ -488,7 +501,12 @@ namespace
               "A new editor must select/seek without placing a note.");
         RecordingCanvas tools;
         state.Mode().DrawTools(tools, state, TestCatalog(Language::English));
-        Check(!tools.selectedButtons.empty() && tools.selectedButtons.front() &&
+        const bool selectLit = std::ranges::any_of(std::views::iota(std::size_t{}, tools.rectangles.size()), [&](auto i) {
+            const auto &rect = tools.rectangles[i];
+            const auto &color = tools.rectangleColors[i];
+            return rect.x >= 238 && rect.x < 286 && rect.height == 3 && color.red > .9F && color.blue < .3F;
+        });
+        Check(selectLit && !tools.actions.empty() &&
                   std::ranges::any_of(tools.images, [](const auto &path) {
                       return path.filename() == L"SelectionTool.png" && std::filesystem::is_regular_file(path);
                   }), "Selection must start active and display the cursor/eraser icon.");
@@ -505,18 +523,21 @@ namespace
             RecordingCanvas grid;
             grid.deviceScale = .5F;
             state.Mode().DrawChart(grid, state, TestCatalog(Language::English));
-            const float tickX = 230 + 979.2F / static_cast<float>(division * 4);
+            // Default spacing is 50%.
+            const float tickX = JudgeX + WholeNotePixels * .5F / static_cast<float>(division * 4);
             bool foundTick = false, foundBar = false;
             for (std::size_t i = 0; i < grid.rectangles.size(); ++i)
             {
                 const auto &rect = grid.rectangles[i];
-                if (rect.y != 361 || rect.height != 202) continue;
-                foundBar |= std::abs(rect.x - 230) < .01F && rect.width * grid.deviceScale >= 5;
-                if (std::abs(rect.x - tickX) >= .01F || std::abs(rect.width * grid.deviceScale - 2) >= .01F) continue;
+                const float center = rect.x + rect.width * .5F;
+                if (rect.y == 160 && rect.height == 152)
+                    foundBar |= std::abs(center - JudgeX) < .01F && rect.width * grid.deviceScale >= 5;
+                if (std::abs(rect.y - (160 + 152 * .18F)) >= .01F || std::abs(center - tickX) >= .02F) continue;
+                if (std::abs(rect.width * grid.deviceScale - 2) >= .01F) continue;
                 const auto &color = grid.rectangleColors[i];
                 foundTick = std::abs(color.red - expected.red) < .001F &&
                             std::abs(color.green - expected.green) < .001F &&
-                            std::abs(color.blue - expected.blue) < .001F && color.alpha == 1;
+                            std::abs(color.blue - expected.blue) < .001F && std::abs(color.alpha - .55F) < .001F;
             }
             Check(foundTick && foundBar, "Realtime grid must use the requested colors and device-pixel widths.");
         }
@@ -536,31 +557,34 @@ namespace
             state.Mode().DrawChart(empty, state, TestCatalog(Language::English));
             Check(std::ranges::any_of(
                       empty.rectangles, [](const auto &rect)
-                      { return rect.x == 164 && rect.y == 351 && rect.width == 1324 && rect.height == 228; }),
-                  "Time zoom must not resize the realtime lane.");
-            const float x = 230 + 244.8F * static_cast<float>(zoom);
-            state.Mode().EditScore(state, {x, 465}, false);
+                      { return rect.x == 184 && rect.y == 160 && rect.width == 1096 && rect.height == 152; }),
+                  "Spacing must not resize the realtime lane.");
+            // An eighth note stays inside the lane even at 400%.
+            const float x = JudgeX + WholeNotePixels / 8 * static_cast<float>(zoom);
+            state.Mode().EditScore(state, {x, LaneY}, false);
             Check(state.Document().Notes().size() == 1 &&
-                      state.Document().Notes().front().note.position.fraction == Rational{1, 4},
+                      state.Document().Notes().front().note.position.fraction == Rational{1, 8},
                   "Realtime snapping must use the same zoomed time coordinates as drawing.");
             RecordingCanvas notes;
             state.Mode().DrawChart(notes, state, TestCatalog(Language::English));
-            Check(!notes.imageRectangles.empty() && std::abs(notes.imageRectangles.front().x + 36 - x) < .1F &&
-                      notes.imageRectangles.front().width == 72,
-                  "Zoom must scale note spacing without scaling the selected skin head.");
+            const float head = 128 * (152 / 228.0F);
+            Check(std::ranges::any_of(notes.imageRectangles, [&](const auto &rect) {
+                      return std::abs(rect.x + head * .5F - x) < .1F && std::abs(rect.width - head) < .01F;
+                  }),
+                  "Spacing must scale note distance without scaling the game-sized skin head.");
             const auto revision = state.Document().Revision();
             state.SetRealtimeZoom(1);
-            Check(state.Document().Revision() == revision && state.Document().Notes().front().timing.count() == 500'000,
-                  "Zoom must not edit source beats or compiled note times.");
+            Check(state.Document().Revision() == revision && state.Document().Notes().front().timing.count() == 250'000,
+                  "Spacing must not edit source beats or compiled note times.");
             state.SeekFirstNote();
-            Check(state.TimeMilliseconds() == 500, "First Z must seek to the first note.");
+            Check(state.TimeMilliseconds() == 250, "First Z must seek to the first note.");
             state.SeekFirstNote();
             Check(state.TimeMilliseconds() == 0, "Second Z must seek to zero.");
             state.SeekFirstNote();
-            Check(state.TimeMilliseconds() == 500, "Subsequent Z must return to the first note.");
+            Check(state.TimeMilliseconds() == 250, "Subsequent Z must return to the first note.");
             state.Seek(100);
             state.SeekFirstNote();
-            Check(state.TimeMilliseconds() == 500, "A manual seek must reset the consecutive-Z toggle.");
+            Check(state.TimeMilliseconds() == 250, "A manual seek must reset the consecutive-Z toggle.");
             state.Seek(0);
             state.Mode().ScrollScore(state, 1);
             Check(state.TimeMilliseconds() == 125,
@@ -591,8 +615,8 @@ namespace
         state.SelectTool(0);
         RecordingCanvas canvas;
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::English));
-        Check(state.Mode().BeginScoreSelection(state, {205, 174}), "Q must enable beat-range dragging.");
-        Check(state.Mode().UpdateScoreSelection(state, {205 + 315 * .25F, 174}, true),
+        Check(state.Mode().BeginScoreSelection(state, {ScoreLeft, ScoreY}), "Q must enable beat-range dragging.");
+        Check(state.Mode().UpdateScoreSelection(state, {ScoreLeft + MeasureWidth * .25F, ScoreY}, true),
               "Dragging must complete on release.");
         Check(state.SelectedNoteIds().size() == 2 &&
                   state.NoteSelectionRange()->second.fraction == Rational{1, 4},
@@ -638,7 +662,7 @@ namespace
         Check(ChartEditor::WritePattern(state.Document().Pattern()) == before,
               "Blank paste must be fully reversible.");
 
-        state.SelectTab(EditorTab::Timing);
+        state.OpenPanel(EditorPanel::Timing);
         state.timingForm.measure = "1";
         state.timingForm.fraction = "0/1";
         state.timingForm.bpm = "180";
@@ -667,7 +691,7 @@ namespace
         point.position = {0, {1, 4}};
         effects.commands.push_back(point);
         state.Replace(state.Document().Pattern(), effects);
-        state.SelectTab(EditorTab::Effects);
+        state.OpenPanel(EditorPanel::Volume);
         state.SelectListRow(0, false, false);
         state.SelectListRow(1, true, false);
         state.CopySelection();
@@ -1006,12 +1030,12 @@ Dip: 1-3*u*(1-u)
         state.SelectTool(1);
         RecordingCanvas canvas;
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        state.Mode().EditScore(state, {719.6F, 465}, true);
+        state.Mode().EditScore(state, {JudgeX + WholeNotePixels / 2, LaneY}, true);
         Check(state.Document().Notes().size() == 3,
               "Deleting at the uniform time coordinate must find the note despite its speed effects.");
         canvas.rectangles.clear();
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
-        state.Mode().EditScore(state, {719.6F, 465}, false);
+        state.Mode().EditScore(state, {JudgeX + WholeNotePixels / 2, LaneY}, false);
         Check(state.Document().Notes().size() == 4 &&
                   state.Document().Notes().back().note.position == MusicalPosition{4, {}},
               "Placement must snap to the uniform time grid under Whole and custom Separate effects.");
@@ -1121,15 +1145,13 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
         state.SelectTool(0);
         RecordingCanvas score;
         state.Mode().DrawChart(score, state, TestCatalog(Language::Korean));
-        state.Mode().EditScore(state, {205, 174}, false);
+        state.Mode().EditScore(state, {ScoreLeft, ScoreY}, false);
         score.labels.clear();
         state.Mode().DrawChart(score, state, TestCatalog(Language::Korean));
-        Check(std::ranges::find(
-                  score.labels,
-                  std::wstring(
-                      TaikoEditor(TestCatalog(Language::Korean)).noteInfo)) !=
+        state.Mode().DrawNotePanel(score, state, TestCatalog(Language::Korean));
+        Check(std::ranges::find(score.labels, std::wstring(Name(16, TaikoEditor(TestCatalog(Language::Korean)).toolVariants))) !=
                   score.labels.end(),
-              "Selecting a note must expose the note inspector.");
+              "Selecting a note must expose the note panel.");
         Check(std::ranges::any_of(score.images, [](const auto &path) { return path.filename() == L"DengDeng.png"; }),
               "Score must draw the focus-note skin sprite.");
         state.SetRealtime(true);
@@ -1159,17 +1181,17 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
         state.SetFirstMeasure(4);
         RecordingCanvas score;
         state.Mode().DrawChart(score, state, TestCatalog(Language::English));
-        state.Mode().EditScore(state, {800, 174}, false);
+        state.Mode().EditScore(state, {800, ScoreY}, false);
         score.labels.clear();
-        state.Mode().DrawChart(score, state, TestCatalog(Language::English));
+        state.Mode().DrawNotePanel(score, state, TestCatalog(Language::English));
         Check(std::ranges::find(score.labels, L"6") != score.labels.end() && state.TimeMilliseconds() == 0,
               "A long body spanning the viewport must select its source without moving the cursor.");
         state.SetRealtime(true);
         state.Seek(8000);
         state.Mode().DrawChart(score, state, TestCatalog(Language::English));
-        state.Mode().EditScore(state, {800, 465}, false);
+        state.Mode().EditScore(state, {800, LaneY}, false);
         score.labels.clear();
-        state.Mode().DrawChart(score, state, TestCatalog(Language::English));
+        state.Mode().DrawNotePanel(score, state, TestCatalog(Language::English));
         Check(std::ranges::find(score.labels, L"6") != score.labels.end() && state.TimeMilliseconds() == 8000,
               "Realtime body selection must preserve the audio cursor and resolve the head.");
     }
@@ -1215,14 +1237,15 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     state.SelectTab(EditorTab::Metadata);
     view.Build();
     visuals.Render({});
-    Check(hasText(L"PROBE FORMAT METADATA") && !hasText(L"YMM RELATIVE PATH"),
+    Check(hasText(L"PROBE FORMAT METADATA") && !hasText(L"Chart by"),
           "Metadata view is still tied to YMP/YMM.");
-    state.SelectTab(EditorTab::Effects);
     state.effectForm.selection = EditorHitSoundTarget{42};
+    state.OpenPanel(EditorPanel::HitSounds);
     view.Build();
     visuals.Render({});
     Check(hasText(L"PROBE SOUND"), "Effects view still assumes exactly Don/Kat sound choices.");
-    state.SelectTab(EditorTab::Pattern);
+    state.ClosePanel();
+    state.SelectTab(EditorTab::Compose);
     probe->failDrawing = true;
     const auto oldCalls = probe->chartCalls;
     InputState input;
