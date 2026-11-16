@@ -224,24 +224,23 @@ int main(int argc, char** argv)
         Check(range.TimelineRangeMilliseconds() == std::pair{-500.0, 1500.0},
               "Timeline must include negative notes and the last note.");
 
-        const auto bundledSongs = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() /
-                                  "YOUMU.Assets/Assets/Songs";
-        RunEditorAudioAnalysisIntegrationTests(bundledSongs);
-        // Default regressions use a fixed shipped catalog. An arbitrary first
-        // user song can exceed the analysis budget in an unoptimized build.
-        // An explicit filter still exercises the requested user song.
-        const auto songsRoot = argc > 1 ? UserSongs() : bundledSongs;
+        // The tracked built-in song shares the development Songs folder with local songs.
+        const auto repo = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+        const auto songsRoot = repo / "Client/Assets/Songs";
+        constexpr std::u8string_view BuiltInSong = u8"Takahashi yoko - Angel Dream Handshaking";
+        RunEditorAudioAnalysisIntegrationTests(
+            songsRoot / BuiltInSong / "Music/angel dream hand shaking.mp3",
+            repo / "YOUMU.Assets/Assets/Skins/Default Skin");
+        // Default regressions use the built-in song. An arbitrary local song
+        // can exceed the analysis budget in an unoptimized build.
+        // An explicit filter still exercises the requested local song.
         const auto songs = SongCatalog{}.Load(songsRoot);
-        Check(!songs.songs.empty() && !songs.songs.front().patterns.empty(), "Real catalog missing");
-        auto songIt = songs.songs.begin();
-        if (argc > 1)
-        {
-            const std::u8string_view filter{reinterpret_cast<const char8_t*>(argv[1])};
-            songIt = std::ranges::find_if(songs.songs, [&](const auto& item) {
-                return item.metadataPath.generic_u8string().find(filter) != std::u8string::npos;
-            });
-            Check(songIt != songs.songs.end(), "Requested timing song is missing.");
-        }
+        const std::u8string_view filter =
+            argc > 1 ? std::u8string_view{reinterpret_cast<const char8_t *>(argv[1])} : BuiltInSong;
+        const auto songIt = std::ranges::find_if(songs.songs, [&](const auto &item) {
+            return item.metadataPath.generic_u8string().find(filter) != std::u8string::npos;
+        });
+        Check(songIt != songs.songs.end() && !songIt->patterns.empty(), "Requested timing song is missing.");
         const auto &song = *songIt;
         TestEditorPlaybackWithFmod(song.audioPath);
         const auto &selected = song.patterns.front();

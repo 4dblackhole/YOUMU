@@ -54,5 +54,5 @@ jobs:
       - name: Run logic and catalog tests
         shell: pwsh
         run: |
-          & './bin/x64/${{ matrix.configuration }}/YOUMU.Rhythm.Tests.exe' --catalog-root YOUMU.Assets/Assets/Songs
+          & './bin/x64/${{ matrix.configuration }}/YOUMU.Rhythm.Tests.exe' --catalog-root Client/Assets/Songs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

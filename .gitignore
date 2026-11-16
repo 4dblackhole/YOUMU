@@ -15,8 +15,9 @@ ThirdParty/
 *.lib
 
 # Development Songs and skins are user-added local content.
-# Redistributed fallback content is tracked by YOUMU.Assets instead.
-Client/Assets/Songs/
+# The one built-in song is tracked in place; every other song folder stays local.
+Client/Assets/Songs/*
+!Client/Assets/Songs/Takahashi yoko - Angel Dream Handshaking/
 Client/Assets/Skins/
 Client/Assets/Languages/
 TODOLIST.txt

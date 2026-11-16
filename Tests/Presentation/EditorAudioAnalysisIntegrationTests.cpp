@@ -117,13 +117,13 @@ namespace
     }
 } // namespace
 
-void RunEditorAudioAnalysisIntegrationTests(const std::filesystem::path &songsRoot)
+void RunEditorAudioAnalysisIntegrationTests(const std::filesystem::path &shippedAudio,
+                                            const std::filesystem::path &defaultSkin)
 {
     TestStereoSpectrumFrequencyAndLevel();
     TestVorbisAnalysis();
-    const auto catalog = SongCatalog{}.Load(songsRoot);
-    Require(!catalog.songs.empty(), "Audio analysis requires the shipped catalog.");
-    const auto analysis = AnalyzeAudio(catalog.songs.front().audioPath, {}, DecodeAudioPcm);
+    Require(std::filesystem::is_regular_file(shippedAudio), "Audio analysis requires the shipped song audio.");
+    const auto analysis = AnalyzeAudio(shippedAudio, {}, DecodeAudioPcm);
     Require(analysis.durationSeconds > 1 && analysis.frames.size() > 100 &&
                 std::ranges::any_of(analysis.frames, [](const auto &f) { return f.peak > 0.01F; }),
             "The shipped MP3 must decode into real waveform/spectrum data.");
@@ -131,7 +131,7 @@ void RunEditorAudioAnalysisIntegrationTests(const std::filesystem::path &songsRo
                 analysis.frames, [](const auto &frame)
                 { return std::ranges::any_of(frame.bands, [](const float level) { return level > .06F; }); }),
             "The shipped MP3 must produce visible music spectrum bands.");
-    const auto soundsRoot = songsRoot.parent_path() / "Skins/Default Skin/HitSounds/TaikoMode";
+    const auto soundsRoot = defaultSkin / "HitSounds/TaikoMode";
     if (std::filesystem::is_directory(soundsRoot))
         for (const auto *name : {"don.wav", "kat.wav", "bigdon.wav", "bigkat.wav"})
         {

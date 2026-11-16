@@ -1286,7 +1286,7 @@ namespace
         GameplayAudioRouter router(playback);
         Check(router.Initialize(audio, error), error.c_str());
         const auto path =
-            std::filesystem::path("YOUMU.Assets/Assets/Songs/Takahashi yoko - Angel Dream Handshaking/Music/angel dream hand shaking.mp3");
+            std::filesystem::path("Client/Assets/Songs/Takahashi yoko - Angel Dream Handshaking/Music/angel dream hand shaking.mp3");
         Check(router.RegisterSound("Music.Track", path, AudioLoadMode::StreamAsyncAccurate, error), error.c_str());
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
         while (router.PrepareResources() == AudioPreparationState::Loading && std::chrono::steady_clock::now() < deadline)
