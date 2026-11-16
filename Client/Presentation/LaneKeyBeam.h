@@ -19,6 +19,8 @@ class LaneKeyBeam final
         const NoteProcessResult &result) noexcept;
     [[nodiscard]] static PhantomCore::Color GradeColor(
         JudgementGrade grade) noexcept;
+    // POOR (wrong-colour input) beam colour.
+    [[nodiscard]] static PhantomCore::Color WrongInputColor() noexcept;
     [[nodiscard]] static bool IsWrongInput(const NoteEvent &event) noexcept;
     // Returned observer is valid only while result is alive and unchanged.
     [[nodiscard]] static const NoteEvent *InputResponse(

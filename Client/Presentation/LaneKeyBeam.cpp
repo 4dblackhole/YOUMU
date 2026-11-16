@@ -61,6 +61,11 @@ Color LaneKeyBeam::GradeColor(const JudgementGrade grade) noexcept
     return index < Colors.size() ? Colors[index] : White;
 }
 
+Color LaneKeyBeam::WrongInputColor() noexcept
+{
+    return WrongInput;
+}
+
 bool LaneKeyBeam::IsWrongInput(const NoteEvent &event) noexcept
 {
     return event.type == NoteEventType::TickRejected ||

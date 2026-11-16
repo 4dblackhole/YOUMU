@@ -25,7 +25,6 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
     {
         GameplayNoteView::AppendImagePaths(preparingImages_);
         for (const auto file : {L"Gear.Band",
-                                L"Hud.TimingPanel",
                                 L"Hud.ScorePanel",
                                 L"Hud.JudgeCountsPanel",
                                 L"InputPanel",

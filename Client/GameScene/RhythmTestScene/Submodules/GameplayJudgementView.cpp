@@ -17,8 +17,14 @@ namespace
     // The default JudgeLevel 50 guide (BAD +/-90ms plus a 10ms margin each side) is 420 wide.
     constexpr float ReferencePixelsPerMicrosecond = 420.0F / 200'000.0F;
     constexpr float BarHeight = 12.0F;
-    // Panel behind the guide: 490x48, 16 below the gear; the bar's bottom is 10 above its bottom.
-    constexpr float PanelWidth = 490.0F, PanelHeight = 48.0F, PanelGap = 16.0F, BarBottomInset = 10.0F;
+    // The bar's bottom is 54 below the gear, where it sat on the former 490x48 timing panel.
+    constexpr float BarBelowGear = 54.0F;
+    // Hit lines follow osu!'s bar hit error meter defaults: 4 thick, 0.6 peak alpha,
+    // 100ms OutQuint fade-in, 5s fade-out, at most 50 live lines (older ones fade in 100ms).
+    constexpr float LineThickness = 4.0F, LineHeight = 24.0F, LinePeakAlpha = 0.6F;
+    constexpr double LineFadeInSeconds = 0.1, LineFadeOutSeconds = 5.0, LineQuickFadeSeconds = 0.1;
+    constexpr std::size_t MaxLiveLines = 50;
+    constexpr float CaptionBottom = BarHeight * 0.5F + LineHeight * 0.5F + 4.0F;
     constexpr std::array<std::string_view, 8> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
                                                          "BAD", "MISS",    "POOR",  "OK"};
     constexpr std::size_t PoorImageIndex = 6, OkImageIndex = 7;
@@ -29,13 +35,18 @@ namespace
         node.GetComponent<SpriteVisualComponent>()->SetTint(color);
     }
 
-    // Only real timing judgements get a marker. Roll/count-only ticks have no
+    // Only real timing judgements get a hit line. Roll/count-only ticks have no
     // grade; an automatic miss does not represent a player's input timestamp.
     bool HasInputTiming(const NoteEvent &event) noexcept
     {
         return (event.type == NoteEventType::HitAccepted || event.type == NoteEventType::HoldStarted ||
                 event.type == NoteEventType::TickAccepted || event.type == NoteEventType::InputRejected) &&
                IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Bad);
+    }
+
+    double OutQuint(const double progress) noexcept
+    {
+        return 1.0 - std::pow(1.0 - progress, 5.0);
     }
 } // namespace
 
@@ -58,14 +69,11 @@ void GameplayJudgementView::Initialize(ScreenVisual2DManager &visuals, Visual2DC
 void GameplayJudgementView::CreateTimingGuide(Visual2DNode &root, TextCatalog &texts)
 {
     guide_ = &root.CreateChild("Hud.JudgementGuide");
-    guide_->SetPosition({0.0F, -342.0F});
+    guide_->SetPosition({0.0F, -BarBelowGear});
     guide_->SetZIndex(5);
-    panel_ = &CreateSprite(*guide_, {-PanelWidth * 0.5F, -BarBottomInset, PanelWidth, PanelHeight},
-                           visuals_->RegisterImage(InGame(L"Hud.TimingPanel")), "Judgement.Panel");
-    panel_->SetZIndex(-1);
     CreateTimingBands();
     CreateTimingCaptions(texts);
-    CreateTimingMarker();
+    CreateHitLines();
 }
 
 void GameplayJudgementView::CreateTimingBands()
@@ -103,23 +111,19 @@ void GameplayJudgementView::CreateTimingCaptions(TextCatalog &texts)
     }
 }
 
-void GameplayJudgementView::CreateTimingMarker()
+void GameplayJudgementView::CreateHitLines()
 {
     auto &zero = CreatePanel(*guide_, {-0.5F, -1.0F, 1.0F, BarHeight + 2.0F}, "Judgement.Zero");
     zero.SetZIndex(6);
     Tint(zero, Ink);
-    const auto create = [this](TimingMarker &marker, std::string name)
+    for (std::size_t i = 0; i < hitLines_.size(); ++i)
     {
-        marker.node = &CreatePanel(*guide_, {-2.0F, -3.0F, 4.0F, BarHeight + 6.0F}, std::move(name));
-        marker.node->SetPivot({0.5F, 0.5F});
-        marker.node->SetZIndex(7);
-        marker.fill = &CreatePanel(*marker.node, {1.0F, 1.0F, 2.0F, BarHeight + 4.0F}, "Judgement.MarkerFill");
-        TintMarker(marker, 1);
-    };
-    for (std::size_t i = 0; i < markers_.size(); ++i)
-        create(markers_[i], i == 0 ? "Judgement.Marker" : "Judgement.Marker." + std::to_string(i));
-    for (std::size_t i = 0; i < retiringMarkers_.size(); ++i)
-        create(retiringMarkers_[i], "Judgement.RetiringMarker." + std::to_string(i));
+        auto &line = hitLines_[i];
+        line.node = &CreatePanel(*guide_, {-LineThickness * 0.5F, 0.0F, LineThickness, LineHeight},
+                                 "Judgement.HitLine." + std::to_string(i));
+        line.node->SetPivot({0.5F, 0.5F});
+        line.node->SetZIndex(7);
+    }
 }
 
 void GameplayJudgementView::CreateJudgementImages(ScreenVisual2DManager &visuals, Visual2DNode &judgementCircle)
@@ -159,66 +163,103 @@ void GameplayJudgementView::OnResize(const float logicalWidth)
         const float width = static_cast<float>(halfWindows_[index].count()) * pixelsPerMicrosecond_ * 2.0F;
         bands_[index]->SetBounds({-width * 0.5F, 0.0F, width, BarHeight});
     }
-    labels_[0]->SetBounds({-halfWidth, BarHeight + 4.0F, 80.0F, 16.0F});
-    labels_[1]->SetBounds({-20.0F, BarHeight + 4.0F, 40.0F, 16.0F});
-    labels_[2]->SetBounds({halfWidth - 80.0F, BarHeight + 4.0F, 80.0F, 16.0F});
-    UpdateMarkerPositions();
+    labels_[0]->SetBounds({-halfWidth, CaptionBottom, 80.0F, 16.0F});
+    labels_[1]->SetBounds({-20.0F, CaptionBottom, 40.0F, 16.0F});
+    labels_[2]->SetBounds({halfWidth - 80.0F, CaptionBottom, 80.0F, 16.0F});
+    for (auto &line : hitLines_)
+        PositionLine(line);
 }
 
-void GameplayJudgementView::SetGuidePlacement(float zeroX, float gearBottom, float screenLeft)
+void GameplayJudgementView::SetGuidePlacement(const float gearBottom)
 {
-    if (guide_ == nullptr)
-        return;
-    const float panelBottom = gearBottom - PanelGap - PanelHeight;
-    guide_->SetPosition({zeroX, panelBottom + BarBottomInset});
-    panel_->SetBounds({screenLeft - zeroX, -BarBottomInset, PanelWidth, PanelHeight});
+    if (guide_ != nullptr)
+        guide_->SetPosition({0.0F, gearBottom - BarBelowGear});
 }
 
-void GameplayJudgementView::PositionMarker(TimingMarker &marker)
+void GameplayJudgementView::PositionLine(HitLine &line)
 {
-    const auto error = std::clamp(marker.error, -displayHalfWindow_, displayHalfWindow_);
-    marker.node->SetPosition({static_cast<float>(error.count()) * pixelsPerMicrosecond_, BarHeight * 0.5F});
+    const auto error = std::clamp(line.error, -displayHalfWindow_, displayHalfWindow_);
+    line.node->SetPosition({static_cast<float>(error.count()) * pixelsPerMicrosecond_, BarHeight * 0.5F});
 }
 
-void GameplayJudgementView::TintMarker(TimingMarker &marker, const float alpha)
+// Fade in (alpha and width, OutQuint) for 100ms, then fade out linearly over 5s while
+// the width shrinks (InQuint). A displaced line instead fades to zero in 100ms.
+void GameplayJudgementView::AnimateLine(HitLine &line, const double delta)
 {
-    auto outline = Ink;
-    outline.alpha = alpha;
-    Tint(*marker.node, outline);
-    Tint(*marker.fill, {1, 1, 1, alpha});
-}
-
-void GameplayJudgementView::UpdateMarkerPositions()
-{
-    for (auto &marker : markers_)
-        PositionMarker(marker);
-    for (auto &marker : retiringMarkers_)
-        PositionMarker(marker);
-}
-
-void GameplayJudgementView::AddMarker(const RhythmDuration error)
-{
-    auto &marker = markers_[nextMarker_];
-    if (markerCount_ == markers_.size())
+    line.age += delta;
+    double alpha = 0.0, width = 0.0;
+    if (line.age < LineFadeInSeconds)
     {
-        auto &retiring = retiringMarkers_[nextRetiring_];
-        retiring.error = marker.error;
-        retiring.fadeElapsed = 0;
-        PositionMarker(retiring);
-        TintMarker(retiring, 1);
-        retiring.node->SetVisible(true);
-        nextRetiring_ = (nextRetiring_ + 1) % retiringMarkers_.size();
+        const double eased = OutQuint(line.age / LineFadeInSeconds);
+        alpha = LinePeakAlpha * eased;
+        width = LineThickness * eased;
     }
     else
-        ++markerCount_;
-    marker.error = error;
-    PositionMarker(marker);
-    marker.node->SetVisible(true);
-    nextMarker_ = (nextMarker_ + 1) % markers_.size();
-    // Draw newer retained hits above older hits even after the ring wraps.
-    for (std::size_t i = 0; i < markerCount_; ++i)
-        markers_[(nextMarker_ + markers_.size() - markerCount_ + i) % markers_.size()].node->SetZIndex(
-            8 + static_cast<int>(i));
+    {
+        const double progress = std::min((line.age - LineFadeInSeconds) / LineFadeOutSeconds, 1.0);
+        alpha = LinePeakAlpha * (1.0 - progress);
+        width = LineThickness * (1.0 - std::pow(progress, 5.0));
+        line.alive = progress < 1.0;
+    }
+    if (line.quickFadeAge >= 0.0)
+    {
+        line.quickFadeAge += delta;
+        const double remaining = std::max(1.0 - line.quickFadeAge / LineQuickFadeSeconds, 0.0);
+        alpha = std::min(alpha, static_cast<double>(line.quickFadeFrom) * remaining);
+        line.alive = line.alive && remaining > 0.0;
+    }
+    auto color = line.color;
+    color.alpha = static_cast<float>(alpha);
+    Tint(*line.node, color);
+    line.node->SetSize({static_cast<float>(width), LineHeight});
+    line.node->SetVisible(line.alive);
+}
+
+void GameplayJudgementView::RetireOldestLiveLine()
+{
+    HitLine *oldest = nullptr;
+    std::size_t live = 0;
+    for (auto &line : hitLines_)
+    {
+        if (!line.alive || line.quickFadeAge >= 0.0)
+            continue;
+        ++live;
+        if (oldest == nullptr || line.order < oldest->order)
+            oldest = &line;
+    }
+    if (live < MaxLiveLines || oldest == nullptr)
+        return;
+    oldest->quickFadeFrom = oldest->node->GetComponent<SpriteVisualComponent>()->Style().normal.alpha;
+    oldest->quickFadeAge = 0.0;
+}
+
+GameplayJudgementView::HitLine &GameplayJudgementView::FreeOrOldestLine()
+{
+    HitLine *oldest = &hitLines_.front();
+    for (auto &line : hitLines_)
+    {
+        if (!line.alive)
+            return line;
+        if (line.order < oldest->order)
+            oldest = &line;
+    }
+    return *oldest;
+}
+
+void GameplayJudgementView::AddHitLine(const RhythmDuration error, const Color color)
+{
+    RetireOldestLiveLine();
+    auto &line = FreeOrOldestLine();
+    line.color = color;
+    line.error = error;
+    line.order = nextLineOrder_++;
+    line.age = 0.0;
+    line.quickFadeAge = -1.0;
+    line.alive = true;
+    // Newer lines draw above older ones.
+    line.node->SetZIndex(7 + static_cast<int>(std::min<std::uint64_t>(line.order, 1'000'000'000)));
+    PositionLine(line);
+    AnimateLine(line, 0.0);
 }
 
 void GameplayJudgementView::Present(const NoteEvent &event)
@@ -238,7 +279,8 @@ void GameplayJudgementView::Present(const NoteEvent &event)
     ShowImage(index);
     if (hasTiming)
     {
-        AddMarker(event.judgement.signedError);
+        const auto color = poor ? LaneKeyBeam::WrongInputColor() : LaneKeyBeam::GradeColor(event.judgement.grade);
+        AddHitLine(event.judgement.signedError, color);
     }
 }
 
@@ -263,14 +305,9 @@ void GameplayJudgementView::Update(const double deltaSeconds)
     if (guide_ == nullptr || !std::isfinite(deltaSeconds))
         return;
     const double delta = std::max(deltaSeconds, 0.0);
-    for (auto &marker : retiringMarkers_)
-    {
-        if (marker.fadeElapsed >= FeedbackSeconds)
-            continue;
-        marker.fadeElapsed = std::min(FeedbackSeconds, marker.fadeElapsed + delta);
-        TintMarker(marker, static_cast<float>(1 - marker.fadeElapsed / FeedbackSeconds));
-        marker.node->SetVisible(marker.fadeElapsed < FeedbackSeconds);
-    }
+    for (auto &line : hitLines_)
+        if (line.alive)
+            AnimateLine(line, delta);
     if (activeJudgement_ != nullptr)
     {
         judgementElapsedSeconds_ = std::min(FeedbackSeconds, judgementElapsedSeconds_ + delta);
@@ -283,19 +320,15 @@ void GameplayJudgementView::Update(const double deltaSeconds)
 void GameplayJudgementView::Reset() noexcept
 {
     judgementElapsedSeconds_ = FeedbackSeconds;
-    nextMarker_ = markerCount_ = nextRetiring_ = 0;
-    const auto reset = [](auto &markers)
+    nextLineOrder_ = 0;
+    for (auto &line : hitLines_)
     {
-        for (auto &marker : markers)
-        {
-            marker.error = {};
-            marker.fadeElapsed = FeedbackSeconds;
-            if (marker.node)
-                marker.node->SetVisible(false);
-        }
-    };
-    reset(markers_);
-    reset(retiringMarkers_);
+        line.error = {};
+        line.alive = false;
+        line.quickFadeAge = -1.0;
+        if (line.node != nullptr)
+            line.node->SetVisible(false);
+    }
     for (auto *node : judgementImages_)
         if (node != nullptr)
             node->SetVisible(false);
@@ -311,7 +344,6 @@ void GameplayJudgementView::Shutdown() noexcept
     margin_ = nullptr;
     bands_.fill(nullptr);
     labels_.fill(nullptr);
-    markers_ = {};
-    retiringMarkers_ = {};
+    hitLines_ = {};
     judgementImages_.fill(nullptr);
 }
