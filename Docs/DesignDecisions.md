@@ -115,16 +115,23 @@
 
 - 변환기는 파일 포맷과 Taiko 노트 계약만으로 동작해야 합니다. Client 전체·Scene·엔진·
   실제 플레이 세션을 변환기의 의존성으로 추가하지 않습니다. 구현은 기존 전용 채팅/독립 저장소가 담당합니다.
-- 변환기는 입력/시간 계산·직렬화 왕복·경로/저장 안전성을, Client OsuImportValidation은 실제 저장
-  결과의 참조·노트 행/원본 객체 수·모드 세션 생성·누락 여부를 검증합니다.
+- 변환기는 `.osu` 하나를 같은 이름의 YMM·YMP·YME 세 파일로 바꾸는 일만 합니다(사용자 확정). `.osu` 옆이나
+  지정한 폴더에 쓰고 기존 파일은 덮어쓰지 않으며, 음원·배경은 열지도 복사하지도 않고 `SongLayout`을 쓰지 않습니다.
+- Client의 입력은 osu! 곡 폴더입니다(사용자 확정). 변환은 임시 폴더에서 하고, 가져올 난이도는 목록 창에서
+  사용자가 고르며, 고른 것만 이름을 바꿔 Songs의 곡 폴더에 배치합니다. 음원·배경 복사, 같은 음원 재사용,
+  Songs 잠금, 게시·되돌리기는 Client(`OsuSongPlacement`)가 맡습니다.
+- 변환기는 직접 고칠 수 있는 외부 라이브러리처럼 다룹니다(사용자 확정): 독립 저장소로 두되 Client 솔루션이
+  함께 빌드하고 EXE를 게임 옆에 복사합니다.
+- 변환기는 입력/시간 계산·직렬화 왕복·참조 경로의 안전성을, Client OsuImportValidation은 변환 결과의
+  참조·노트 행/원본 객체 수·모드 세션 생성·누락 여부를 Songs에 배치하기 전에 검증합니다.
 - osu! 100/OK 폭과 YOUMU GOOD 폭을 맞추되 JudgeLevel은 0.01 정밀도를 유지하고 가장 가까운 값을
   선택합니다. 이 정밀도 때문에 생기는 오차를 없애려고 포맷 정밀도를 임의로 바꾸지 않습니다.
-- 배경은 가져온 곡 폴더의 `BG`로 가져와 선곡/로딩/플레이에서 사용합니다. 기존/공유 파일의 충돌은 보존합니다.
-  변환 결과는 [FMT-01](#fmt-01-파일-형식과-편집-원본)의 곡 폴더 배치를 따릅니다.
+- 배경은 Client가 가져온 곡 폴더의 `BG`로 복사해 선곡/로딩/플레이에서 사용합니다. 기존/공유 파일의 충돌은 보존합니다.
+  배치 결과는 [FMT-01](#fmt-01-파일-형식과-편집-원본)의 곡 폴더 배치를 따릅니다.
   +25ms 보정·격자·BG 좌표·지원 범위는 변환 문서의 현재 계약을 따릅니다.
 
 상세: [OsuTaikoConverter](OsuTaikoConverter.md), [EditorSongSelect](EditorSongSelect.md).
-검증: 변환기 단위/CLI + Client OsuImportValidationTests/실제 모드 세션.
+검증: 변환기 단위/CLI + Client OsuImportValidationTests(결과 검사·배치·잠금·되돌리기)/MusicSelectViewTests(실제 변환기 프로세스·난이도 목록).
 
 ## GAME-01 RPG 포커스
 
@@ -459,12 +466,12 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
     위로 열기, 바깥 누르기·Esc·Tab 닫기, 열린 동안 키 가로채기). 키보드로 열기와 목록 안 이동은 키보드 포커스와 함께 구현합니다.
     곡 선택의 영어 항목명은 첫 글자만 대문자로 바꿨습니다.
   - 공용 부품 중 경고 대화상자: 심각도 띠·아이콘, 영어 제목과 선택 언어 설명, 고정폭 진단 상자(휠 스크롤, Ctrl+C 복사),
-    오른쪽 끝 주 버튼(Enter)·왼쪽 끝 되돌릴 수 없는 동작·Esc 취소. 결과 기록 저장 실패, .osu 변환 실패,
+    오른쪽 끝 주 버튼(Enter)·왼쪽 끝 되돌릴 수 없는 동작·Esc 취소. 결과 기록 저장 실패, osu! 가져오기 실패,
     에디터의 미저장 확인(Discard·Cancel·Save)·저장/Create 실패·붙여넣기 실패에 씁니다.
   - 차트 에디터: 1280×720 배치(메뉴 줄·밑줄 탭 Compose·Audio·Metadata·아래 띠의 Back/재생/시각/재생 속도/타임라인/Save),
     Compose의 Realtime(채널 Music·Timing·Scroll speed·Volume·Audio FX·Hit sounds·Zones, 음수 delay 빗금, 구간 선택)·Score(4마디 줄)·
     Preview, 채널별 오른쪽 편집 패널(Delete·Add·Apply, Delay·Kiai·Syncopation Exclude·Audio FX), 곡선 편집 창, Metadata 여러 제작자,
-    화면 위 입력칸. 새 난이도는 입력 창 없이 Metadata의 만들기 전 상태로 열고, .osu 변환 완료 안내와 Test 플레이 화면은 없앴습니다.
+    화면 위 입력칸. 새 난이도는 입력 창 없이 Metadata의 만들기 전 상태로 열고, osu! 가져오기 완료 안내와 Test 플레이 화면은 없앴습니다.
 - 구현되면 대체하는 현재 계약(미구현 묶음):
   - UI-01: 옵션 네 탭 전환은 분류 막대와 이어진 섹션으로, 타이틀의 YOUMU 로고 띠는 하늘·메뉴로 대체했습니다(캐러셀 폐기는 유지).
     선곡 패널 바탕 90%·복수 이름 여러 줄 표시·상단 `ALL` 바는 곡 선택 묶음으로 대체했습니다.

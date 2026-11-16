@@ -16,5 +16,5 @@ MusicSelectTextSet MusicSelect(const TextCatalog &texts)
             texts.Get("MusicSelect.unsupportedModePrefix"),
             texts.Get("MusicSelect.patternErrorPrefix"),
             texts.Get("MusicSelect.unknownChartError"), texts.Get("MusicSelect.newDifficulty"),
-            texts.Get("MusicSelect.convertOsu"), texts.Get("MusicSelect.osuFileFilter")};
+            texts.Get("MusicSelect.convertOsu")};
 }

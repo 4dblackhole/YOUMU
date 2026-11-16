@@ -46,4 +46,6 @@ struct SongLayout final
     // pattern name. Characters a filename cannot hold become '_' and an empty part "Unknown".
     // The layout only needs the folder levels, so these names are a convention for people.
     [[nodiscard]] static std::filesystem::path FolderName(std::string_view first, std::string_view second);
+    // One part of such a name, as UTF-8 text: the same replacements, without the outer spaces.
+    [[nodiscard]] static std::string NamePart(std::string_view text);
 };

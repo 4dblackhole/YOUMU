@@ -1,11 +1,8 @@
 # osu!taiko 변환기
 
-General의 SampleVolume은 TimingPoints에 볼륨이 생략된 경우의
-기본값이며 명시된 TimingPoints 값이 우선합니다. 스피너 요구 횟수는 원작의 연산
-순서와 `1.65f` 정밀도를 보존합니다(OD 5·4초는 32회). 같은 Songs 폴더의 import는
-패키지/라이브러리 배치 모두 전체 저장·rollback 동안 배타 잠금을 유지합니다.
-중복 실행은 기다리지 않고 출력 오류(code 5)로 거부하며 다른 Songs 루트는 독립적으로
-진행합니다. 임의로 기존 파일을 덮어쓰지 않는 충돌 정책은 유지합니다.
+변환기는 `.osu` 파일 하나를 같은 이름의 YMM·YMP·YME 세 파일로 바꾸는 일만 합니다(사용자 확정).
+음원·배경 복사, 곡 폴더 이름과 배치, 같은 음원 재사용, Songs 잠금, 게시·되돌리기, 플레이 검증은 모두
+Client가 맡습니다([책임 경계](#책임-경계)).
 
 `OsuTaikoConverter`는 Client와 같은 부모 폴더에 두는 별도 C++20 저장소입니다.
 원격: <https://github.com/4dblackhole/OsuTaikoConverter> (비공개).
@@ -23,7 +20,22 @@ git clone https://github.com/4dblackhole/OsuTaikoConverter.git ../OsuTaikoConver
 ```
 
 이미 준비한 작업 폴더는 Client와 변환기 양쪽 `main`을 갱신한 뒤 빌드합니다.
-에디터 가져오기는 변환기 EXE의 `--layout library` 지원이 필요합니다.
+에디터 가져오기는 변환기 EXE의 `--output-dir` 지원이 필요하므로 두 저장소를 함께 갱신합니다.
+
+## 책임 경계
+
+| 일 | 변환기 | Client |
+| --- | --- | --- |
+| `.osu` → YMM·YMP·YME 내용 변환, 격자·시간·직렬화 왕복 검사 | ○ | |
+| 세 파일 쓰기(`.osu` 옆 또는 `--output-dir`), 기존 파일을 덮어쓰지 않기 | ○ | |
+| osu! 곡 폴더 고르기, 폴더 안 `.osu`마다 변환기 실행(임시 폴더) | | ○ `EditorOsuImport` |
+| JSON v1·파일 참조·행 수·실제 모드 세션의 노트 수 검사 | | ○ `OsuImportValidation` |
+| 가져올 난이도 고르기 | | ○ `OsuImportPanel` |
+| 곡 폴더·파일 이름, 같은 음원 재사용, 음원·배경 복사, Songs 잠금, 게시·되돌리기 | | ○ `OsuSongPlacement` |
+
+변환기는 음원과 배경 파일을 열지도 복사하지도 않고, Songs 폴더와 곡 폴더 배치(`SongLayout`)를 모릅니다.
+변환기는 직접 고칠 수 있는 외부 라이브러리처럼 다룹니다(사용자 확정): 독립 저장소로 두되 Client 솔루션이
+함께 빌드하고 EXE를 게임 옆에 복사합니다.
 
 ## 빌드와 책임
 
@@ -35,7 +47,7 @@ Client 솔루션은 변환기의 Core 정적 라이브러리, 콘솔 EXE, 테스
 도메인 라이브러리가 변환기나 Client 실행 프로젝트를 역참조하지 않습니다.
 공통 YMP writer를 사용해 `[Difficulty]`의 JudgeLevel 바로 아래 `HP: 9.00`을 출력합니다.
 osu! HPDrainRate는 매핑하지 않으며 JudgeLevel 변환 규칙은 유지합니다. 에디터 곡 카드 +의
-Convert .osu는 Client의 EditorOsuImport가 EXE를 백그라운드에서 실행합니다.
+Import osu! folder는 Client의 EditorOsuImport가 EXE를 백그라운드에서 실행합니다.
 선택/완료 UI는 [EditorSongSelect](EditorSongSelect.md)가 설명합니다.
 
 - `Core/Submodules/OsuDocument`: 원본 문법, 수치·모드 검증.
@@ -43,11 +55,9 @@ Convert .osu는 Client의 EditorOsuImport가 EXE를 백그라운드에서 실행
 - `Core/Submodules/OutputWriting`: BPM·속도 반올림과 소수점 셋째 자리까지의 파일 출력.
 - `Core/Converter`: 노트/효과 대응, 파서 저장 왕복과 선택한 틱의 시간 정밀도 검증.
   실제 Taiko 세션 생성·노트 수·판정 범위 검증은 Client가 담당합니다.
-- `Core/ConversionFiles`: 음원 복사, [곡 폴더 배치](BuiltInAssets.md#곡-폴더-배치), 임시 출력 후 디렉터리 확정.
-- 배경 이미지는 가져온 곡 폴더의 `BG/<원본 파일명>`에 복사합니다.
-  YMP의 `BG:`는 그 BG 폴더 기준 파일명이며 `offset:`은 osu!의 `(x, y)`를
-  1280×720/엔진 2D 좌표의 `(1.5*x, -1.5*y)`로 변환합니다. 같은 대상의 바이트가
-  같으면 재사용하고 다르면 기존 파일을 보존한 채 충돌 오류를 반환합니다.
+- `Core/ConversionFiles`: `.osu` 읽기와 YMM·YMP·YME 쓰기.
+- 배경 이미지는 복사하지 않습니다. YMP의 `BG:`에는 `.osu`가 적은 상대 경로를 그대로 적고,
+  `offset:`은 osu!의 `(x, y)`를 1280×720/엔진 2D 좌표의 `(1.5*x, -1.5*y)`로 변환합니다.
 - `App/Main`: UTF-16 Windows 인자, UTF-8 JSON stdout, stderr/종료 코드.
 
 ## OD와 JudgeLevel
@@ -69,25 +79,23 @@ OD는 스피너를 DengDeng으로 바꿀 때의 요구 타격 횟수 계산에�
 ## 실행 계약
 
 ```powershell
-.\bin\x64\Release\OsuTaikoConverter.exe `
-  --input "D:\Maps\song.osu" `
-  --songs-root "D:\Game\Asset\Songs" `
-  --output-dir "D:\Game\Asset\Songs\Artist - Title" `
-  --extra-divisors "40,48"
+.\bin\x64\Release\OsuTaikoConverter.exe --input "D:\Maps\song\map [Oni].osu"
+.\bin\x64\Release\OsuTaikoConverter.exe --input "D:\Maps\song\map [Oni].osu" --output-dir "D:\Out" --extra-divisors "40,48"
 ```
 
-기본 출력의 필수 인자는 `--input`, `--songs-root`, `--output-dir`입니다. 상대 경로는 프로세스의
-작업 폴더 기준입니다. 출력은 Songs 루트 **바로 아래의 존재하지 않는 새 폴더**여야 하며 이 폴더가
-곡 폴더 하나가 됩니다. 원본 `.osu`와 음원은 변경하지 않으며, 음원은 출력 폴더로 복사합니다.
-`Music/music.ymm`, `Music/audio.<원본 확장자>`, `Chart/<Creator - Version>/pattern.ymp`와 `effects.yme`,
-배경이 있으면 `BG/<원본 파일명>`을 생성합니다.
+필수 인자는 `--input` 하나입니다. 출력은 입력과 같은 이름의 `map [Oni].ymm`, `map [Oni].ymp`,
+`map [Oni].yme` 세 파일이며, `--output-dir`가 없으면 `.osu` 옆에, 있으면 그 폴더에 씁니다(없으면 만듭니다).
+상대 경로는 프로세스의 작업 폴더 기준입니다. 이 세 파일 말고는 아무것도 만들거나 바꾸지 않습니다.
 
-YMP에는 YMM 참조를 적지 않습니다(곡 폴더 위치로 결정). `Effect file`은 YMP 폴더 기준,
-YMM의 `File`은 YMM 폴더 기준으로 기록합니다. 성공 전 파일은 Songs 밖의 같은
-볼륨에 임시 저장하며, 검사 후 디렉터리 이름 변경으로 공개합니다.
-출력 폴더가 이미 존재하면 실패하며 덮어쓰기 옵션은 없습니다.
+세 파일 중 하나라도 이미 있으면 아무것도 쓰지 않고 실패하며(종료 코드 5) 덮어쓰기 옵션은 없습니다.
+그 밖의 실패에서는 이번 실행이 쓴 파일을 지워 일부만 남기지 않습니다.
 
-stdout은 JSON 객체 한 개입니다(`version: 1`, `success`, 생성 경로, 원본 노트 수,
+YMM의 `File`과 YMP의 `BG`에는 `.osu`가 적은 경로(`AudioFilename`, 배경 이벤트)를 `.osu` 폴더 기준 그대로
+적습니다. 출력 폴더가 달라도 같습니다. 변환기는 그 파일을 열지 않으므로 없어도 변환됩니다. 다만 두 경로는
+맵 폴더 안의 안전한 상대 경로여야 하며 아니면 종료 코드 4입니다. YMP의 `Effect file`은 같은 폴더의 YME입니다.
+YMP에는 YMM 참조를 적지 않습니다(곡 폴더 위치로 결정).
+
+stdout은 JSON 객체 한 개입니다(`version: 1`, `success`, 생성 경로 `files.ymm/ymp/yme`, 원본 노트 수,
 출력 행 수, 격자 분모, 보정 이벤트 수/최대 이동 ms, 경고). 실패 시에는
 `code`, `line`(원본 행, 해당하면), `error`가 들어갑니다. 사람이 읽는 오류는 stderr에도
 출력합니다. `--help`는 예외적으로 도움말 텍스트를 출력합니다.
@@ -95,37 +103,22 @@ stdout은 JSON 객체 한 개입니다(`version: 1`, `success`, 생성 경로, �
 | 종료 코드 | 의미 |
 | --- | --- |
 | 0 | 변환 완료 |
-| 2 | 인자/격자/출력 범위 오류 |
+| 2 | 인자/격자 오류 |
 | 3 | 미지원 모드·데이터·범위 |
-| 4 | 원본 파일/문법/음원 오류 |
+| 4 | 원본 파일/문법/참조 경로 오류 |
 | 5 | 출력 충돌·파일 시스템 오류 |
-| 6 | 저장 왕복·시간·세션 검증 실패 |
+| 6 | 저장 왕복·시간 검증 실패 |
 
-Client에서 사용할 때 EXE 경로를 직접 지정하고 Windows 인자 인용 규칙에 따라
-경로를 전달합니다. 렌더 스레드에서 종료를 기다리지 말고 stdout/stderr를 함께
-소비하며, exit 0과 JSON success를 확인한 뒤 Songs catalog를 다시 읽습니다.
-
-### 게임 라이브러리에 가져오기
-
-```powershell
-.\OsuTaikoConverter.exe --input "D:\Maps\song.osu" --songs-root "D:\Game\Asset\Songs" --layout library
-```
-
-`--layout library`에서는 `--output-dir`를 사용하지 않습니다. 로마자 Artist/Title로 곡 폴더와 YMM 이름을,
-Creator와 난이도 Version으로 차트 세트 폴더를 만듭니다. 구체적인 트리와
-파일명 정리는 [에디터 가져오기](EditorSongSelect.md#osutaiko-가져오기)를 참고합니다.
-어느 곡 폴더의 YMM이든 음원 바이트가 같으면 음원/YMM을 재사용하고 난이도와 배경을 그 곡 폴더에 넣습니다.
-같은 이름 곡 폴더인데 음원이 다르거나 기존 차트 세트 폴더가 있으면 종료 코드 5이며 기존 파일은 보존합니다.
-YME는 같은 차트 세트 폴더 기준으로 참조합니다.
-이 모드도 JSON 계약은 같으며 변환 경고를 stderr에도 출력합니다.
-`--output-dir` 패키지 출력도 같은 곡 폴더 구조이며 파일 이름만 고정입니다.
+Client는 EXE 경로를 직접 지정하고 Windows 인자 인용 규칙에 따라 경로를 전달합니다. 렌더 스레드에서
+종료를 기다리지 않고 stdout/stderr를 함께 소비하며, exit 0과 JSON success를 확인한 뒤 결과를 검사합니다.
+Client가 osu! 곡 폴더를 받아 Songs에 넣는 과정은 [에디터 가져오기](EditorSongSelect.md#osutaiko-가져오기)가 설명합니다.
 
 ## 확정된 변환 규칙
 
 - `Mode: 1`인 native Taiko만 지원합니다. 현재 입력 형식 범위는 osu! v5~v14입니다.
 - 출력 `Pattern Offset`은 **첫 빨간 타이밍포인트 ms + 25ms**입니다. 원본 시각으로
   격자·마디를 계산한 뒤 한 번만 적용하여 노트·롱노트 끝점·BPM·효과가 함께 뒤로 이동합니다.
-  음수/소수 오프셋, 모든 지원 음원 형식, 두 출력 배치에 동일하게 적용하며 음원은 변경하지
+  음수/소수 오프셋과 모든 지원 음원 형식에 동일하게 적용하며 음원은 읽지도 바꾸지도
   않습니다. 박자 위치·길이·스냅 통계는 유지합니다. 예: 727 → 752ms, -500 → -475ms.
   기존 변환 파일은 자동 수정하지 않습니다.
 - 격자 `1/N`은 **4분음표 한 박을 N등분**합니다. 기본 분모는 1~32의 모든 정수이고,
@@ -176,7 +169,7 @@ Taiko lane이 노트를 누락시킬 겹침은 실패합니다. 첫 빨간 포�
 빨간 기준점은 온음표 `1e-9` 단위로 수치 표현합니다(음악 격자 보정과 별개).
 선택된 틱과 기존 MusicalTimeline이 복원한 시각의 차이는 최대 2µs여야 합니다.
 변환기는 저장 왕복과 파서 진단까지 확인합니다. 실제 Taiko 세션의 생성과 원본 객체 대비
-플레이 노트 개수 검증은 Client의 OsuImportValidation이 저장된 결과를 받아 수행합니다.
+플레이 노트 개수 검증은 Client의 OsuImportValidation이 변환 결과 폴더에서, Songs에 배치하기 전에 수행합니다.
 변환기 테스트는 `..\OsuTaikoConverter\bin\x64\<구성>\OsuTaikoConverter.Tests.exe`입니다.
 전체 Client 검증 명령은 [Verification](Verification.md)을 사용합니다.
 

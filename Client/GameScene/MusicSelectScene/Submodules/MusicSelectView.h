@@ -10,6 +10,7 @@
 #include "SongRecordView.h"
 #include "SongFavoriteTabs.h"
 #include "SongFavoritesPanel.h"
+#include "OsuImportPanel.h"
 #include "SongSelectPurpose.h"
 #include "SongBackgroundPreview.h"
 #include "SongListView.h"
@@ -41,7 +42,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
+        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); osuImportPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
         else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -56,6 +57,10 @@ class MusicSelectView final
     // Opens the shared alert above song select. Panels with text boxes close first, and until the
     // alert is answered no key or pointer reaches song select.
     void ShowAlert(AlertContent content);
+    // Editor song select: lists the difficulties of a scanned osu! song folder. The answer
+    // (Import with the checked ones, or Cancel) is taken once with TakeOsuImportChoice.
+    void OpenOsuImportPanel(std::wstring folder, std::vector<OsuImportDifficulty> difficulties);
+    [[nodiscard]] std::optional<OsuImportChoice> TakeOsuImportChoice() { return osuImportPanel_.TakeChoice(); }
     // The scene reports whether the focused song is the one being heard.
     void SetNowPlaying(const bool playing) { songList_.SetNowPlaying(playing); }
 
@@ -94,8 +99,12 @@ class MusicSelectView final
     bool ProcessFilterPanel(const PhantomCore::InputState &input);
     bool ProcessFavoritesPanel(const PhantomCore::InputState &input);
     void OpenFavoritesPanel();
+    bool ProcessOsuImportPanel(const PhantomCore::InputState &input);
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
-    { return filterPanel_.IsVisible() || favoritesPanel_.IsVisible() || records_.FilterVisible() || playOptionsPanel_.IsVisible(); }
+    {
+        const bool listPanel = favoritesPanel_.IsVisible() || osuImportPanel_.IsVisible();
+        return listPanel || filterPanel_.IsVisible() || records_.FilterVisible() || playOptionsPanel_.IsVisible();
+    }
     [[nodiscard]] bool IsAdditionMenuOpen() const { return additionMenu_ && additionMenu_->IsVisible(); }
     void RefreshFilterButton();
     bool ProcessKeyboard(const PhantomCore::InputState &input);
@@ -122,6 +131,7 @@ class MusicSelectView final
     SongRecordView records_;
     SongFavoriteTabs favoriteTabs_;
     SongFavoritesPanel favoritesPanel_;
+    OsuImportPanel osuImportPanel_;
     UiTooltip tooltip_;
     UiAlert alert_;
     SongBackgroundPreview artwork_;

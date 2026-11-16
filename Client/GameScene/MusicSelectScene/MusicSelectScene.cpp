@@ -111,9 +111,11 @@ void MusicSelectScene::ConvertOsu()
     library_->ReleaseAudio();
     try
     {
-        if (auto input = SelectOsuFile(texts_))
+        if (auto folder = SelectOsuFolder(texts_))
         {
-            osuImport_.Start(*input, library_->CatalogRoot());
+            osuImportFolder_ = folder->filename().native();
+            // The scan converts into a temporary folder; Songs changes only after the user chose.
+            osuImport_.StartScan(*folder, library_->CatalogRoot());
             selection_.catalogLoading_ = true;
             selection_.ClearLaunchError();
             view_->RebuildVisibleSongs();
@@ -127,20 +129,57 @@ void MusicSelectScene::ConvertOsu()
 }
 void MusicSelectScene::PollOsuImport()
 {
-    const auto result = osuImport_.Poll();
-    if (!result) return;
-    // A finished conversion only refreshes the list; there is no completion message.
-    if (result->success)
+    if (auto scan = osuImport_.PollScan())
+        ShowOsuScan(std::move(*scan));
+    if (const auto choice = view_->TakeOsuImportChoice())
+        AnswerOsuImport(*choice);
+    if (const auto result = osuImport_.PollPlacement())
+        FinishOsuImport(*result);
+}
+void MusicSelectScene::ShowImportAlert(const char *messageKey, const std::string &detail)
+{
+    view_->ShowAlert({AlertKind::Error, std::wstring(texts_.Get("MusicSelect.importFailedTitle")),
+                      std::wstring(texts_.Get(messageKey)), DecodeDisplayText(detail),
+                      {{std::wstring(texts_.Get("Alert.ok")), true}}});
+}
+void MusicSelectScene::ShowOsuScan(OsuImportScan scan)
+{
+    // Nothing reached Songs yet, so the song cards only unlock again.
+    selection_.catalogLoading_ = false;
+    view_->RebuildVisibleSongs();
+    if (scan.success)
+    {
+        view_->OpenOsuImportPanel(osuImportFolder_, std::move(scan.difficulties));
+        return;
+    }
+    osuImport_.Discard();
+    ShowImportAlert("MusicSelect.importFailedMessage", scan.message);
+}
+void MusicSelectScene::AnswerOsuImport(const OsuImportChoice &choice)
+{
+    if (!choice.import)
+    {
+        osuImport_.Discard();
+        return;
+    }
+    osuImport_.StartPlacement(choice.indices);
+    selection_.catalogLoading_ = true;
+    view_->RebuildVisibleSongs();
+}
+void MusicSelectScene::FinishOsuImport(const EditorOsuImportResult &result)
+{
+    // Imported difficulties appear in the list without a completion message.
+    if (result.changed)
         RefreshCatalog();
     else
     {
-        // The song list is unchanged; the alert carries the converter's own output.
         selection_.catalogLoading_ = false;
         view_->RebuildVisibleSongs();
-        view_->ShowAlert({AlertKind::Error, std::wstring(texts_.Get("MusicSelect.importFailedTitle")),
-                          std::wstring(texts_.Get("MusicSelect.importFailedMessage")),
-                          DecodeDisplayText(result->message), {{std::wstring(texts_.Get("Alert.ok")), true}}});
     }
+    // The alert carries one line per difficulty that failed.
+    if (!result.success)
+        ShowImportAlert(result.changed ? "MusicSelect.importPartialMessage" : "MusicSelect.importFailedMessage",
+                        result.message);
 }
 void MusicSelectScene::CreateDifficulty(SceneManager &scenes)
 {

@@ -192,6 +192,10 @@
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\OsuImportValidation.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.h" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\OsuImportValidation.h" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\OsuSongPlacement.cpp" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\OsuSongPlacement.h" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\OsuImportPanel.cpp" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\OsuImportPanel.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectInput.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectSearch.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongSelectionState.h" />
