@@ -634,8 +634,12 @@ namespace
                 sent_ = true;
             }
             scene_->Update({ctx.deltaSeconds, ctx.totalSeconds, ctx.updateIndex, input_, ctx.audio, ctx.performance}, scenes_);
+            ObserveLoadingBar();
             if (sent_)
             {
+                // A machine too slow to update twice within the cold-sample delay proves nothing either way.
+                Check(coldEnd_ - coldBegin_ < std::chrono::milliseconds{50} || barSwept_,
+                      "The loading bar must keep sweeping while cold samples are still being prepared.");
                 Check(intro_, "The loading introduction is visible before gameplay.");
                 Check(introImage_, "The loading introduction displays the selected background.");
                 Check(sampleStarts == before + 2, "The first visible-frame Don and Kat must both request a sample.");
@@ -659,9 +663,30 @@ namespace
             scene_.reset(); playback_.StopAll(); visuals_.Shutdown(); rendering_.reset();
         }
       private:
+        // The scene cannot be ready while the cold samples load, so movement seen before
+        // samplesReadyAt belongs to the preparation wait, not to the final scheduling frames.
+        void ObserveLoadingBar()
+        {
+            const auto now = std::chrono::steady_clock::now();
+            const auto *loading = visuals_.FindCanvas(1);
+            const auto *piece = loading ? Find(loading->Root(), "Loading.BarPiece") : nullptr;
+            if (!piece || now >= samplesReadyAt)
+                return;
+            const float x = piece->Position().x;
+            if (!barStart_)
+            {
+                barStart_ = x;
+                coldBegin_ = now;
+            }
+            coldEnd_ = now;
+            barSwept_ = barSwept_ || x != *barStart_;
+        }
         bool &verified_;
         bool accelerated_{};
         bool shown_{}, sent_{}, intro_{}, introImage_{};
+        std::optional<float> barStart_;
+        bool barSwept_{};
+        std::chrono::steady_clock::time_point coldBegin_{}, coldEnd_{};
         InputState input_;
         ScreenVisual2DManager visuals_;
         AudioPlaybackManager playback_;
