@@ -58,8 +58,8 @@ flowchart TD
 스킨은 선택한 외부 자산 루트의 `Skins/<선택한 스킨 폴더>`에서 같은 상대 경로 파일을
 먼저 사용하고, 파일이 없을 때만 캐시의 내장 파일로 돌아갑니다. 곡 카탈로그는
 선택한 루트의 `Songs`를 읽습니다. 개발 실행은 `Client/Assets`, 배포는 EXE 옆 `Asset`을
-사용합니다. 기본 AngelDream 및 효과 테스트 파일은 외부 파일로 배포하며 빌드는
-개발 폴더에 이미 존재하는 편집본을 덮어쓰지 않습니다.
+사용합니다. 기본 AngelDream 및 효과 테스트 파일은 외부 파일로 배포하며, 개발 폴더의
+`Songs` 안에서 Git이 직접 추적합니다.
 세부 계약은 [내장 자산](BuiltInAssets.md)에 있습니다.
 
 `SceneGameClient`는 SceneManager, 공통 AudioPlaybackManager와 화면

@@ -159,7 +159,7 @@ namespace
         Check(backgroundStyle.normal.red == 1 && backgroundStyle.normal.green == 1 && backgroundStyle.normal.blue == 1,
               "A custom logo background must retain its authored RGB.");
         SongSelectionState songs;
-        songs.catalog_ = SongCatalog{}.Load(repo / "YOUMU.Assets/Assets/Songs");
+        songs.catalog_ = SongCatalog{}.Load(repo / "Client/Assets/Songs");
         Check(!songs.catalog_.songs.empty(), "The skin integration test needs the real bundled song catalog.");
         MusicSelectView music(visuals, songs, SongSelectPurpose::Gameplay, texts, options);
         music.Initialize(services);

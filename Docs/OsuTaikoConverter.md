@@ -72,7 +72,7 @@ OD는 스피너를 DengDeng으로 바꿀 때의 요구 타격 횟수 계산에�
 .\bin\x64\Release\OsuTaikoConverter.exe `
   --input "D:\Maps\song.osu" `
   --songs-root "D:\Game\Asset\Songs" `
-  --output-dir "D:\Game\Asset\Songs\Imported\song" `
+  --output-dir "D:\Game\Asset\Songs\Artist - Title" `
   --extra-divisors "40,48"
 ```
 
