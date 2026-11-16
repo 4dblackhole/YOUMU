@@ -76,9 +76,9 @@ demo/
   Asset/                     Assets가 아닌 단수 Asset
     Languages/en.ini
     Languages/ko.ini
-    Songs/Music/             음원과 YMM
-    Songs/Patterns/           곡/난이도별 YMP·YME 쌍
-    Songs/BG/                 YMP가 참조하는 공유 배경 이미지
+    Songs/<곡 폴더>/Music/     YMM 하나와 음원
+    Songs/<곡 폴더>/Chart/     차트 세트 폴더별 YMP·YME 쌍
+    Songs/<곡 폴더>/BG/        그 곡의 YMP가 참조하는 배경 이미지
     Skins/                   사용자 스킨셋
   Prerequisites/VC_redist.x64.exe
   Licenses/                  배포 폰트 고지
@@ -91,8 +91,8 @@ FMOD SDK/런타임 버전이 같으면 기존 fmod.dll을 유지할 수 있으�
 
 언어파일은 Client/Texts/Languages의 원본 두 개를 복사합니다. 개발 PC의 Option.ini는 장치명/키 등
 개인 설정일 수 있으므로 그대로 배포하지 말고 새 기본 설정을 사용합니다. 기본 스킨/글꼴의 외부
-복사본은 필요하지 않습니다. 배포할 곡이 생기면 Songs-relative YMM 참조와 YMP-relative YME 참조를
-유지한 채 Asset/Songs에 추가합니다. 음악·이미지의 배포/사용 권한은 해당 계약으로 확인합니다.
+복사본은 필요하지 않습니다. 배포할 곡이 생기면 [곡 폴더](#곡-폴더-배치)째 Asset/Songs에 추가합니다.
+음악·이미지의 배포/사용 권한은 해당 계약으로 확인합니다.
 
 MSVCP140/VCRUNTIME 런타임 의존성은 [Microsoft 공식 x64 재배포 패키지](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)로 설치합니다.
 빌드 도구 이상 버전의 런타임이 필요하며 OS DLL을 임의로 복사하지 않습니다.
@@ -178,7 +178,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | 섹션 | 이미지 항목 |
 | --- | --- |
 | `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
-| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
+| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
@@ -252,30 +252,57 @@ Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54,
 히트사운드 표의 경로는 YME 폴더 기준입니다. 내장 글꼴은 캐시 경로에서
 직접 읽으며 라이선스도 같은 팩에 보존됩니다.
 
-## 난이도별 파일 배치
+## 곡 폴더 배치
 
-`Songs/Patterns/<곡 폴더>/<난이도 이름>`마다 YMP와 YME 한 쌍을 둡니다.
-두 파일은 같은 이름에 확장자만 다르게 작성하고, 효과가 없는 난이도에도 빈
-YME를 둡니다. YMP의 `Effect file`에는 같은 폴더의 YME 파일명을 적습니다.
-효과 전용 사운드는 그 난이도 폴더의 `Sounds`에 두고 YME 기준으로 참조합니다.
+Songs의 바로 아래 폴더 하나가 곡 하나입니다([FMT-01](DesignDecisions.md#fmt-01-파일-형식과-편집-원본)).
+코드: `YOUMU.Chart/Catalog/SongLayout`, `SongCatalog`.
 
 ```text
 Songs/
-  Music/Angeldream/angel dream hand shaking.ymm
-  Patterns/angeldream/
-    Dream/angeldream.ymp
-          angeldream.yme
-    All Notes Verification/angeldream [all notes test].ymp
-                           angeldream [all notes test].yme
-    YME Effects Verification/angeldream [effects test].ymp
-                             angeldream [effects test].yme
-                             Sounds/don.wav
-                             Sounds/kat.wav
+  <첫 아티스트> - <첫 곡명>/            곡 폴더
+    Music/
+      <첫 아티스트> - <첫 곡명>.ymm    YMM은 하나만 둡니다
+      <음원 파일>                      YMM의 File:은 YMM 폴더 기준
+    Chart/
+      <첫 제작자> - <난이도명>/        차트 세트 폴더
+        <이름>.ymp, <이름>.yme         같은 이름에 확장자만 다른 한 쌍
+        Sounds/...                     YME 히트사운드(YME 폴더 기준)
+    BG/
+      bg1.png                          YMP의 BG: bg1.png
 ```
 
-YMP의 `Music metadata`는 계속 Songs 기준으로 공유 YMM을 참조합니다.
-카탈로그는 하위 폴더를 재귀 검색하므로 이 정리 때문에 파일 문법이나
-플레이 타이밍 규칙을 바꾸지는 않습니다. 에디터는 선택한 쌍을 같은 위치에 저장합니다.
+- YMP는 자기 폴더에서 두 단계 위 곡 폴더의 `Music`에 있는 YMM 하나에 속합니다. YMP 안에는 YMM을 가리키는
+  항목이 없고, 카탈로그는 Songs 전체를 검색해 연결하지 않습니다. 폴더 이름 `Music`·`Chart`·`BG`는 고정이며
+  대소문자는 구분하지 않습니다.
+- `Music`에 YMM이 없거나 둘 이상이면 그 곡은 오류와 함께 목록에서 빠지고 그 곡의 YMP도 읽지 않습니다.
+- YMP는 `Chart/<차트 세트>/` 바로 아래에서만 읽습니다. `Chart` 바로 아래의 YMP와, `Music`·`Chart`가 모두 없는
+  폴더(예전 `Songs/Music`·`Songs/Patterns`·`Songs/BG` 포함)는 경고만 남기고 건너뜁니다.
+- 한 차트 세트 폴더에 YMP 여러 개를 둘 수 있습니다. 효과가 없는 난이도에도 빈 YME를 두고 YMP의
+  `Effect file`에 같은 폴더의 YME 파일명을 적습니다.
+- 곡 폴더·YMM·차트 세트 이름은 사람이 찾기 쉽게 하는 관례이며 프로그램은 뜻을 해석하지 않습니다. 에디터의
+  새 난이도와 변환기가 이 규칙으로 이름을 만듭니다. 제작자가 없으면 `Unknown`, 파일명에 쓸 수 없는 문자는
+  `_`입니다. 변환기는 곡 폴더와 YMM 이름에 osu!의 로마자 `Artist - Title`을 씁니다.
+- 곡·YMM·YMP·YME 파일에는 해시나 곡 ID를 적지 않습니다.
+
+내장 AngelDream은 아래와 같습니다. 제작자가 없는 검증 채보는 `Unknown`을 씁니다.
+
+```text
+Songs/
+  Takahashi yoko - Angel Dream Handshaking/
+    Music/Takahashi yoko - Angel Dream Handshaking.ymm
+          angel dream hand shaking.mp3
+    Chart/
+      Konpaku Sariel - Dream/angeldream.ymp, angeldream.yme
+      Konpaku Sariel - measure test/angeldream [measure test].ymp, .yme
+      Konpaku Sariel - test/angeldream [test].ymp, .yme
+      Unknown - All Notes Verification/angeldream [all notes test].ymp, .yme
+      Unknown - YME Effects Verification/angeldream [effects test].ymp, .yme
+                                         Sounds/don.wav, Sounds/kat.wav
+```
+
+예전 배치(`Songs/Music`, `Songs/Patterns`, `Songs/BG`)의 곡은 읽지 않으며 자동으로 옮기지도 않습니다.
+옮기는 도구와, YMP 절대 경로로 이어진 기록·즐겨찾기를 유지하는 방법은 아직 정하지 않았습니다
+([PLAN-01](DesignDecisions.md#plan-01-제안과-미구현-범위)). 에디터는 선택한 쌍을 같은 위치에 저장합니다.
 
 ## 자산 변경
 
