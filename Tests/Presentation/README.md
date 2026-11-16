@@ -544,3 +544,33 @@ the player's volume. No production audio backend is added.
 enumeration and checks correction of invalid metadata while the dialog is hidden
 and inactive. It does not depend on the desktop active window. Timers are matched
 to their probe, and a missing/timed-out dialog terminates the test with failure.
+
+## Gameplay timing probe
+
+`RunGameplayTimingProbe.ps1` is a measurement, not a pass/fail test, and it is not part of
+`VerifyAll`. It plays one chart through the real `RhythmTestScene`, FMOD output and a visible
+1600×900 window, so run it alone: concurrent builds or engine checks change what it measures.
+The game never sets the probe; the harness passes `GameplayLaunchRequest::timingProbe`
+(`Client/GameFlow/GameplayTimingProbe.h`), which only observes the clock anchors, every running
+gameplay clock read and the immediate cues around `PlayNow`.
+
+```powershell
+./Tests/Presentation/RunGameplayTimingProbe.ps1 -Configuration Release --pattern "all notes test" --replay --label buzz
+./Tests/Presentation/RunGameplayTimingProbe.ps1 -Configuration Release --songs-root <Songs> --pattern "<chart path part>" --pause-every 4 --pause-count 30 --max-seconds 150 --label pause
+```
+
+Other options: `--accelerate <0.5..2>`, `--keep-pitch 0|1`, `--minimize-at <s> --minimize-for <s>`,
+`--max-seconds <s>`, `--out <folder>` (default `build/timing-probe`). `--replay` presses every note on
+time and holds each Buzz from its head to its end.
+
+The summary (`<out>/<label>/summary.txt`, with CSV files beside it) reports:
+
+- Clock offset d: chart time from QPC minus chart time of the DSP clock read in the same
+  snapshot, in wall milliseconds, using the first read of each mixer block. It is given per
+  anchor (start, Resume, Rewind, Retry), with the start/middle/end medians and slope for
+  segments of 20 s or longer.
+- Per Buzz and per window: tick-sound request lateness against the tick's chart time, audio
+  routing time, Update rate and duration, main-loop iteration time, FPS, Render duration and
+  the longest gap between rendered frames.
+- Main-loop stalls of 5 ms or more, split into Update, the engine phase before Render
+  (FMOD service, BeginFrame wait), Render, and the phase after it (Present, messages).
