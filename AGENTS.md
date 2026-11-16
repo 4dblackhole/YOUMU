@@ -37,9 +37,11 @@ Applies to this repository; `Dependencies/PhantomCore` follows its own agreement
   collision-avoiding UI constants and third-party namespaces where needed.
   Engine names belong to PhantomCore. Qualify them in headers; implementation
   files may use using namespace PhantomCore only after their includes.
-- Converter implementation belongs to the independent OsuTaikoConverter repository
-  and its existing dedicated chat. It uses file formats and Taiko note contracts;
-  Client `OsuImportValidation` validates converted files with actual play sessions.
+- Converter implementation belongs to the independent OsuTaikoConverter repository;
+  treat it as an external library that may be edited directly. It uses file formats
+  and Taiko note contracts and only turns one `.osu` file into YMM/YMP/YME. The Client
+  owns the rest of an import: `OsuImportValidation` checks the result with actual play
+  sessions and `OsuSongPlacement` names, copies, locks and publishes into Songs.
 - Keep Scene IDs in `Client/GameFlow/YOUMUSceneIds.h`. Register factories with
   explicit retention and use deferred `ChangeScene`. Gameplay Scenes use
   `DestroyOnExit`; only result data leaves a play session.

@@ -32,7 +32,7 @@
 | YOUMU.Editor | 주입받은 PCM의 파형·FFT 분석 | 엔진 디코더·Scene·UI를 직접 소유하지 않음 |
 | Client | App·Scene·Controller·Presenter·전역/플레이 옵션·기록·자산 연결 | 엔진은 PhantomCore.h/PhantomCore.vcxproj로 사용 |
 | YOUMU.Assets | 기본 스킨·글꼴·라이선스·기본 제공곡 | 사용자 편집본·개인 곡·설정·기록과 분리 |
-| OsuTaikoConverter | osu 입력·파일 변환·저장/경로 검사 | 공통 포맷/노트 계약만 사용. 실제 플레이 결과 검증은 Client |
+| OsuTaikoConverter | `.osu` 하나를 YMM·YMP·YME 세 파일로 변환 | 공통 포맷/노트 계약만 사용. Songs 배치·음원/배경 복사·플레이 검증은 Client |
 
 구체 의존성·소스/필터 검사는 [ChangeImpactMap](ChangeImpactMap.md), 실행 소유권은
 [ExecutionFlow](ExecutionFlow.md), 변환 경계는 [OsuTaikoConverter](OsuTaikoConverter.md)가 기준입니다.
@@ -61,7 +61,7 @@
 | TIME-01 | 단일 시계·Raw Input·DSP·판정 순서 | [시간](DesignDecisions.md#time-01-시간과-입력) |
 | FMT-01 | 포맷 분리·원본 좌표·자동화·문법 변경 | [포맷](DesignDecisions.md#fmt-01-파일-형식과-편집-원본) |
 | LOAD-01 | 비동기 목록/세션·자원 준비·캐시 무효화 | [로딩](DesignDecisions.md#load-01-로딩과-캐시) |
-| CONV-01 | 변환기의 독립성·Client 검증·OD 대응 | [변환](DesignDecisions.md#conv-01-변환과-검증) |
+| CONV-01 | 변환기의 독립성·Client의 배치와 검증·OD 대응 | [변환](DesignDecisions.md#conv-01-변환과-검증) |
 | GAME-01 | RPG의 입력 없는 GOOD 우선 포커스 | [포커스](DesignDecisions.md#game-01-rpg-포커스) |
 | GAME-02 | 판정 범위·논리 노트 정확도·정밀도 | [정확도](DesignDecisions.md#game-02-판정과-정확도) |
 | GAME-03 | POOR 거부와 최종 0점 패널티 | [POOR](DesignDecisions.md#game-03-poor) |

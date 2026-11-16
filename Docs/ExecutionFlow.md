@@ -91,10 +91,10 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 - Logo에서 Editor를 누르면 기록 패널이 없는 EditorSongSelect로 이동합니다.
   이 Scene은 Lobby와 같은 카탈로그·미리듣기·검색·정렬·곡/난이도 탐색 코드를 쓰되 자기 `SongLibrary`를 가지며,
   난이도를 확정하면 선택 경로를 기록하고 Editor Scene으로 이동합니다.
-  카드의 +는 New Difficulty/Convert .osu 팝업을 엽니다. 전자는 곡 항목을 진입 snapshot의
+  카드의 +는 New Difficulty/Import osu! folder 팝업을 엽니다. 전자는 곡 항목을 진입 snapshot의
   `editorNewDifficulty`에 넣어 같은 Editor 전환 경로를 쓰고, 에디터가 Metadata의 만들기 전 상태에서
-  Create로 새 YMP/YME를 씁니다(EditorPatternCreation). 후자는 EditorOsuImport가 파일을 선택받아 변환기를
-  백그라운드에서 실행하고 완료 시 카탈로그를 갱신합니다. worker는 Scene/엔진을 참조하지
+  Create로 새 YMP/YME를 씁니다(EditorPatternCreation). 후자는 EditorOsuImport가 osu! 곡 폴더를 선택받아
+  백그라운드에서 `.osu`마다 변환기를 실행·검사하고, 난이도 목록에서 고른 것만 Songs에 배치한 뒤 카탈로그를 갱신합니다. worker는 Scene/엔진을 참조하지
   않으며 KeepAlive Scene이 future를 소유합니다. 취소 시에는 선택 화면에 남습니다.
 - EditorWorkspace는 진입 요청의 모드에 따라 `IEditorMode`를 조립하고,
   모드의 `OpenDocument`에서 `IEditorDocument`를 받습니다. 현재 Taiko 구현은

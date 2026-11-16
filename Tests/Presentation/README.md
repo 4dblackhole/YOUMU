@@ -518,14 +518,19 @@ timestamped test inputs, a visible D3D12 window and real FMOD output. The produc
 result view then displays the actual collected result for 60 seconds. This mode does
 not write a personal play record or add autoplay to the game executable.
 
-## Client-owned osu! import validation
+## Client-owned osu! import validation and placement
 
 Run `RunOsuImportValidationTests.ps1 -Configuration Debug` and Release from an x64
-VS developer shell. The test links the Client-owned OsuImportValidation object and
-shared domain libraries, checks JSON/file references and actual session note counts,
-and verifies existing files survive rejection. For an actual converter output, run
-`OsuImportValidationTests.exe <result.json> <Songs>`; playability verification belongs
-to the Client rather than the converter project.
+VS developer shell. The test links the Client-owned OsuImportValidation and
+OsuSongPlacement objects and shared domain libraries. It checks JSON/file references
+and actual session note counts in the converter's output folder, then the placement
+into Songs: names, the three rewritten reference lines, reuse of byte-identical audio
+and backgrounds, conflicts that must preserve existing files, the import lock and the
+rollback of a publication that fails half way. For an actual converter output, run
+`OsuImportValidationTests.exe <result.json> <output folder>`; playability verification
+and placement belong to the Client rather than the converter project.
+`RunMusicSelectViewTests.ps1` runs the real converter process on an osu! song folder
+(scan, choice, placement) and drives the difficulty list.
 
 ## Gameplay audio retirement
 

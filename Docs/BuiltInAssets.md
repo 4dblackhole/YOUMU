@@ -63,7 +63,7 @@ msbuild YOUMU.sln /m /p:Configuration=Release /p:Platform=x64
 
 게임 실행에 필요한 직접 배포 파일은 bin/x64/Release의 Y's Orchestral Unison - Melodic Ultimatum.exe와 fmod.dll입니다.
 PhantomCore 등 정적 라이브러리는 이미 EXE에 링크되므로 .lib/.pdb/테스트 EXE/fmodL.dll은 제외합니다.
-에디터의 Convert .osu 기능을 제공하려면 같은 빌드의 OsuTaikoConverter.exe도 게임 EXE 옆에
+에디터의 Import osu! folder 기능을 제공하려면 같은 빌드의 OsuTaikoConverter.exe도 게임 EXE 옆에
 동봉합니다. 기본 플레이 실행에는 필요하지 않지만 가져오기 버튼은 이 파일을 실행합니다.
 
 곡 없는 기본본의 배치는 다음과 같습니다. 사용자 파일 폴더는 비워 둬도 됩니다.
@@ -71,7 +71,7 @@ PhantomCore 등 정적 라이브러리는 이미 EXE에 링크되므로 .lib/.pd
 ```text
 demo/
   Y's Orchestral Unison - Melodic Ultimatum.exe
-  OsuTaikoConverter.exe       에디터의 Convert .osu에 필요
+  OsuTaikoConverter.exe       에디터의 Import osu! folder에 필요
   fmod.dll
   Option.ini                 처음 실행 시 기본값으로 자동 생성 가능
   README.txt
@@ -282,8 +282,8 @@ Songs/
 - 한 차트 세트 폴더에 YMP 여러 개를 둘 수 있습니다. 효과가 없는 난이도에도 빈 YME를 두고 YMP의
   `Effect file`에 같은 폴더의 YME 파일명을 적습니다.
 - 곡 폴더·YMM·차트 세트 이름은 사람이 찾기 쉽게 하는 관례이며 프로그램은 뜻을 해석하지 않습니다. 에디터의
-  새 난이도와 변환기가 이 규칙으로 이름을 만듭니다. 제작자가 없으면 `Unknown`, 파일명에 쓸 수 없는 문자는
-  `_`입니다. 변환기는 곡 폴더와 YMM 이름에 osu!의 로마자 `Artist - Title`을 씁니다.
+  새 난이도와 osu! 가져오기가 이 규칙으로 이름을 만듭니다. 제작자가 없으면 `Unknown`, 파일명에 쓸 수 없는 문자는
+  `_`입니다. osu! 가져오기는 곡 폴더와 YMM 이름에 로마자 `Artist - Title`(YMM의 첫 ASCII 표기, 없으면 첫 표기)을 씁니다.
 - 곡·YMM·YMP·YME 파일에는 해시나 곡 ID를 적지 않습니다.
 
 내장 AngelDream은 아래와 같습니다. 제작자가 없는 검증 채보는 `Unknown`을 씁니다.
