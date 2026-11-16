@@ -195,7 +195,7 @@ const bool escapesBackgroundFolder =
     background.has_root_path() || std::ranges::find(background, std::filesystem::path{".."}) != background.end();
 if (escapesBackgroundFolder || !IsUsableBackgroundOffset(pattern.backgroundOffsetX) ||
     !IsUsableBackgroundOffset(pattern.backgroundOffsetY))
-    throw std::invalid_argument("Background requires a Songs/BG relative path and finite 2D offsets.");
+    throw std::invalid_argument("Background requires a path relative to the song folder's BG folder and finite 2D offsets.");
 const auto validPosition = [&timeline](MusicalPosition p) {
     return IsValidPosition(p, timeline);
 };
@@ -511,8 +511,7 @@ PublishReplacement(std::move(replacement));
 
 void ChartEditor::PublishReplacement(ChartEditor &&replacement)
 {
-const bool sourcesChanged = replacement.pattern_.musicMetadataFile != pattern_.musicMetadataFile ||
-    replacement.pattern_.sourcePath != pattern_.sourcePath ||
+const bool sourcesChanged = replacement.pattern_.sourcePath != pattern_.sourcePath ||
     replacement.effects_.sourcePath != effects_.sourcePath || replacement.effects_.hitSounds != effects_.hitSounds;
 replacement.audioSourceRevision_ = audioSourceRevision_ + sourcesChanged;
 replacement.nextNoteId_ = std::max(nextNoteId_, replacement.nextNoteId_);
@@ -843,7 +842,6 @@ std::string ChartEditor::WritePattern(const PatternDocument &pattern)
 std::ostringstream out;
 out.imbue(std::locale::classic());
 out << std::setprecision(17) << "Version: " << pattern.version << "\n[Metadata]\n"
-    << "Music metadata: " << Utf8(pattern.musicMetadataFile) << '\n'
     << "Effect file: " << Utf8(pattern.effectFile) << '\n'
     << "BG: " << Utf8(pattern.backgroundFile) << '\n'
     << "offset: " << pattern.backgroundOffsetX << ", " << pattern.backgroundOffsetY << '\n'

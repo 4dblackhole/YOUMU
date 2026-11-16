@@ -148,8 +148,10 @@ void TaikoEditorMode::DrawMetadata(IEditorModeCanvas &canvas, IEditorContext &st
 
     const float x1 = lefts[1], w1 = widths[1];
     y = top + 36;
-    field({x1, y, w1, 52}, std::wstring(text.ymmRelativePath), Utf8(p.musicMetadataFile.wstring()),
-          [](auto &d, const auto &value) { d.musicMetadataFile = std::filesystem::path(Wide(value)); });
+    // The song's YMM is decided by the song folder, so it is shown, not edited here.
+    const auto ymm = canvas.Areas().musicMetadata.filename();
+    canvas.Text({x1, y, w1, 18}, std::wstring(text.ymmFile), 12, ui_colors::theme::Caption);
+    canvas.Text({x1, y + 26, w1, 22}, ymm.empty() ? std::wstring(L"—") : ymm.wstring(), 14, ui_colors::theme::InkSoft);
     y += 62;
     // The effect file is chosen by the first save; it is shown, not edited here.
     canvas.Text({x1, y, w1, 18}, std::wstring(catalog.Get("Editor.effectFile")), 12, ui_colors::theme::Caption);

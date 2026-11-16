@@ -12,8 +12,10 @@
     <Filter Include="Utility" />
     <ClCompile Include="Catalog\SongCatalog.cpp"><Filter>Catalog</Filter></ClCompile>
     <ClCompile Include="Catalog\SongCatalogIndex.cpp"><Filter>Catalog</Filter></ClCompile>
+    <ClCompile Include="Catalog\SongLayout.cpp"><Filter>Catalog</Filter></ClCompile>
     <ClInclude Include="Catalog\SongCatalogCacheVersion.h"><Filter>Catalog</Filter></ClInclude>
     <ClInclude Include="Catalog\SongCatalog.h"><Filter>Catalog</Filter></ClInclude>
+    <ClInclude Include="Catalog\SongLayout.h"><Filter>Catalog</Filter></ClInclude>
     <ClCompile Include="Editing\ChartEditor.cpp"><Filter>Editing</Filter></ClCompile>
     <ClInclude Include="Editing\ChartEditor.h"><Filter>Editing</Filter></ClInclude>
     <ClInclude Include="Model\Submodules\ChartTypes.h"><Filter>Model\Submodules</Filter></ClInclude>

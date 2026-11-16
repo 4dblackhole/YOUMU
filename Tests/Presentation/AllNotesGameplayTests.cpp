@@ -36,7 +36,7 @@ namespace
     bool MatchesSongFilter(const std::filesystem::path &metadataPath, const std::string &songFilter)
     {
         if (songFilter.empty())
-            return metadataPath.filename() == "angel dream hand shaking.ymm";
+            return metadataPath.filename() == "Takahashi yoko - Angel Dream Handshaking.ymm";
         return metadataPath.generic_u8string().find(
                    std::u8string_view{reinterpret_cast<const char8_t*>(songFilter.c_str())}) != std::u8string::npos;
     }
@@ -77,9 +77,10 @@ namespace
             if (!song->music.artists.empty()) resultContext_.songArtist = Utf8ToWide(song->music.artists.front(), L"");
             if (!song->patterns.empty() && !song->patterns.front().pattern.makers.empty())
                 resultContext_.patternCreator = Utf8ToWide(song->patterns.front().pattern.makers.front(), L"");
-            auto loaded = TaikoMode{}.LoadSession(!songFilter_.empty() ? song->patterns.front().patternPath : root / (effects_
-                ? "Patterns/angeldream/YME Effects Verification/angeldream [effects test].ymp"
-                : "Patterns/angeldream/All Notes Verification/angeldream [all notes test].ymp"));
+            const auto charts = root / "Takahashi yoko - Angel Dream Handshaking/Chart";
+            auto loaded = TaikoMode{}.LoadSession(!songFilter_.empty() ? song->patterns.front().patternPath : charts / (effects_
+                ? "Unknown - YME Effects Verification/angeldream [effects test].ymp"
+                : "Unknown - All Notes Verification/angeldream [all notes test].ymp"));
             Require(loaded.Succeeded(), "All-notes gameplay chart must load.");
             session_ = std::move(loaded.session);
             Require(!effects_ || session_->Gear().Lanes().front()->Notes().size() == 15,

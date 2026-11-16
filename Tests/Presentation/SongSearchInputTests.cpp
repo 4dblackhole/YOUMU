@@ -50,6 +50,8 @@ namespace
             song.patterns[0].noteCount = 100;
             song.patterns[0].pattern.baseBpm = 150;
             song.patterns[0].pattern.mode = "Taiko";
+            // An absolute path replaces the song folder's BG folder, so the test can show a bundled image.
+            song.patterns[0].patternPath = L"Songs/Angel Dream/Chart/Set/dream.ymp";
             song.patterns[0].pattern.backgroundFile = ResolveDefaultSkinAsset(L"Result/Background/Sky.png");
             other.music.names = {"Other song"};
             other.patterns.resize(1);

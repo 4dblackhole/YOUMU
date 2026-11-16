@@ -161,7 +161,6 @@ namespace tests
         {
             PatternDocument pattern;
             pattern.mode = "Taiko";
-            pattern.musicMetadataFile = "fixture.ymm";
             pattern.notes = {{{0, {}}, 11, 1, {}, {"HitCount=3", "Custom=keep"}, {}, 10},
                              {{0, {1, 2}}, 11, 2, {}, {}, {}, 11},
                              {{2, {}}, 1, 0, {}, {}, {}, 12}};
@@ -280,7 +279,6 @@ namespace tests
 
         PatternDocument p;
         p.baseBpm = 120;
-        p.musicMetadataFile = "../Music/test.ymm";
         p.makers = {"테스트"};
         p.tags = {"editor"};
         ChartEditor editor(p);

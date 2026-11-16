@@ -126,8 +126,10 @@ void GameplaySessionFactory::PrepareDebugLaunchRequest(GameplayLaunchRequest &re
     const std::filesystem::path songs =
         request.songsRoot.empty() ? UserSongs() : request.songsRoot;
     const std::filesystem::path patternPath =
-        songs / L"Patterns\\angeldream\\Long Notes Debug\\angeldream [long notes test].ymp";
-    const std::filesystem::path musicPath = songs / L"Music\\Angeldream\\angel dream hand shaking.mp3";
+        songs / L"Takahashi yoko - Angel Dream Handshaking\\Chart\\Unknown - Long Notes Debug\\"
+                L"angeldream [long notes test].ymp";
+    const std::filesystem::path musicPath =
+        songs / L"Takahashi yoko - Angel Dream Handshaking\\Music\\angel dream hand shaking.mp3";
     if (!std::filesystem::is_regular_file(patternPath) || !std::filesystem::is_regular_file(musicPath))
     {
         return;

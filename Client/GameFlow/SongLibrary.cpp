@@ -1,4 +1,5 @@
 #include "SongLibrary.h"
+#include "Catalog/SongLayout.h"
 
 using namespace PhantomCore;
 
@@ -146,8 +147,6 @@ std::filesystem::path SongLibrary::FocusedArtwork() const
     if (song == nullptr || song->patterns.empty())
         return {};
     const auto index = selection_.selectedPatternIndex_ < song->patterns.size() ? selection_.selectedPatternIndex_ : 0;
-    const auto &background = song->patterns[index].pattern.backgroundFile;
-    if (background.empty())
-        return {};
-    return catalogRoot_ / L"BG" / background;
+    const auto &pattern = song->patterns[index];
+    return SongLayout::BackgroundPathOfPattern(pattern.patternPath, pattern.pattern.backgroundFile);
 }

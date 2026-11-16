@@ -1,4 +1,5 @@
 #include "OsuImportValidation.h"
+#include "Catalog/SongLayout.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Parsing/ChartParser.h"
 #include <Windows.h>
@@ -254,8 +255,11 @@ void ValidateConvertedOsuResult(std::string_view output, const std::filesystem::
     CheckImportDiagnostics(pattern.diagnostics);
     CheckImportDiagnostics(effects.diagnostics);
     (void)ImportedPath(musicFile.parent_path() / music.document.audioFile, root);
-    if (!std::filesystem::equivalent(root / pattern.document.musicMetadataFile, musicFile) ||
-        !std::filesystem::equivalent(patternFile.parent_path() / pattern.document.effectFile, effectFile) ||
+    // The pattern must sit in the song folder whose single YMM is the reported one.
+    const auto songMusic = SongLayout::FindMusicMetadataOfPattern(patternFile);
+    if (songMusic.status != SongLayout::MetadataStatus::Found || !std::filesystem::equivalent(songMusic.path, musicFile))
+        throw std::runtime_error("Converted pattern is not in the reported song's Chart folder.");
+    if (!std::filesystem::equivalent(patternFile.parent_path() / pattern.document.effectFile, effectFile) ||
         pattern.document.notes.size() != *files.noteRows)
         throw std::runtime_error("Converted file references or note rows do not match the result.");
 

@@ -343,6 +343,7 @@ namespace
             song.music.names = {"Panel regression"};
             song.patterns.resize(1);
             song.patterns[0].pattern.backgroundFile = image;
+            song.patterns[0].patternPath = options.SongsRoot() / L"Panel regression/Chart/Set/panel.ymp";
             selection.catalog_.songs.push_back(std::move(song));
         }
         MusicSelectView view(visuals,selection,purpose,texts,options);
@@ -916,6 +917,7 @@ namespace
         {
             SongCatalogPattern pattern;
             pattern.pattern.backgroundFile = file;
+            pattern.patternPath = options.SongsRoot() / L"Background test/Chart/Set/background.ymp";
             song.patterns.push_back(std::move(pattern));
         }
         song.patterns.front().pattern.judgementLevel = JudgeLevel{40.37};
@@ -1001,14 +1003,15 @@ namespace
             selection.selectedPatternIndex_ = index;
             view.RefreshSelectionPresentation();
         };
-        Check(renderer.loaded.size() == 1 && renderer.loaded.back() == options.SongsRoot() / L"BG" / L"preview-wide.jpg",
-              "Artwork must load from the selected Songs/BG.");
+        const auto songBackgrounds = options.SongsRoot() / L"Background test/BG";
+        Check(renderer.loaded.size() == 1 && renderer.loaded.back() == songBackgrounds / L"preview-wide.jpg",
+              "Artwork must load from the BG folder of the selected pattern's song folder.");
         Check(pageBackground->IsVisible() && pageSprite->Style().normalImage.value == sprite->Style().normalImage.value,
               "The selected pattern image is shared by the full-screen background and existing preview.");
         select(1);
         tick();
-        Check(renderer.loaded.size() == 2 && renderer.loaded.back() == options.SongsRoot() / L"BG" / L"preview-portrait.jpg",
-              "Changing a difficulty must load the selected pattern from Songs/BG.");
+        Check(renderer.loaded.size() == 2 && renderer.loaded.back() == songBackgrounds / L"preview-portrait.jpg",
+              "Changing a difficulty must load the selected pattern from its song folder's BG.");
         Check(image->IsVisible() && sprite->Style().normalImage.value,
               "Ready artwork fills the jacket.");
         Check(std::abs(sprite->UvScale().x - 1) < .001F && std::abs(sprite->UvScale().y - .5625F) < .001F &&

@@ -116,7 +116,7 @@ namespace
     }
     void Write(Writer &out, const PatternDocument &doc)
     {
-        out.Number(doc.version); out.Path(doc.musicMetadataFile); out.Path(doc.effectFile);
+        out.Number(doc.version); out.Path(doc.effectFile);
         out.Path(doc.backgroundFile); out.Number(doc.backgroundOffsetX); out.Number(doc.backgroundOffsetY);
         out.Strings(doc.makers); out.Strings(doc.tags); out.Text(doc.name); out.Text(doc.mode);
         out.Number(doc.patternOffsetMilliseconds); out.Number(doc.baseBpm); out.Number(doc.judgementLevel.Value());
@@ -124,7 +124,7 @@ namespace
     }
     void Read(Reader &in, PatternDocument &doc)
     {
-        doc.version = in.Number<int>(); doc.musicMetadataFile = in.Path(); doc.effectFile = in.Path();
+        doc.version = in.Number<int>(); doc.effectFile = in.Path();
         doc.backgroundFile = in.Path(); doc.backgroundOffsetX = in.Number<double>(); doc.backgroundOffsetY = in.Number<double>();
         doc.makers = in.Strings(); doc.tags = in.Strings(); doc.name = in.Text(); doc.mode = in.Text();
         doc.patternOffsetMilliseconds = in.Number<double>(); doc.baseBpm = in.Number<double>();

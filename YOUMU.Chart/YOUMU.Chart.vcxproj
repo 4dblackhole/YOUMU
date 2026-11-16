@@ -15,8 +15,10 @@
   <ItemGroup>
     <ClCompile Include="Catalog\SongCatalog.cpp" />
     <ClCompile Include="Catalog\SongCatalogIndex.cpp" />
+    <ClCompile Include="Catalog\SongLayout.cpp" />
     <ClInclude Include="Catalog\SongCatalogCacheVersion.h" />
     <ClInclude Include="Catalog\SongCatalog.h" />
+    <ClInclude Include="Catalog\SongLayout.h" />
     <ClCompile Include="Editing\ChartEditor.cpp" />
     <ClInclude Include="Editing\ChartEditor.h" />
     <ClInclude Include="Model\Submodules\ChartTypes.h" />

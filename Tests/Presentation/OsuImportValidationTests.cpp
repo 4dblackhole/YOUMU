@@ -40,8 +40,9 @@ namespace
     }
     std::string Manifest(const fs::path &root, std::string_view objects = "1", std::string_view rows = "2")
     {
-        return "{\"version\":1,\"success\":true,\"files\":{\"ymm\":" + JsonPath(root / L"Music/음악.ymm") +
-               ",\"ymp\":" + JsonPath(root / "Patterns/score.ymp") + ",\"yme\":" + JsonPath(root / "Patterns/score.yme") +
+        return "{\"version\":1,\"success\":true,\"files\":{\"ymm\":" + JsonPath(root / L"곡/Music/음악.ymm") +
+               ",\"ymp\":" + JsonPath(root / L"곡/Chart/Set/score.ymp") + ",\"yme\":" +
+               JsonPath(root / L"곡/Chart/Set/score.yme") +
                "},\"sourceObjects\":" + std::string(objects) + ",\"noteRows\":" + std::string(rows) +
                ",\"warnings\":[{\"extra\":[true,false,null,-0.5e2]}]}";
     }
@@ -67,19 +68,23 @@ int wmain(int count, wchar_t *arguments[])
         const auto root = fs::absolute(fs::path("build/osu-import-validation") / std::to_string(GetCurrentProcessId()) /
                                        L"한글 ' Songs");
         Check(!fs::exists(root), "Fixture must be new.");
-        Write(root / L"Music/음악.ymm", "File: audio.wav\nMusic Name Count: 1\nMusic Name 1: Fixture\nArtist Count: 1\nArtist Composer: Test\n");
-        Write(root / "Music/audio.wav", "fixture");
+        Write(root / L"곡/Music/음악.ymm", "File: audio.wav\nMusic Name Count: 1\nMusic Name 1: Fixture\nArtist Count: 1\nArtist Composer: Test\n");
+        Write(root / L"곡/Music/audio.wav", "fixture");
         PatternDocument pattern;
         pattern.mode = "Taiko";
         pattern.name = "Fixture";
-        pattern.musicMetadataFile = L"Music/음악.ymm";
         pattern.effectFile = "score.yme";
         pattern.notes.push_back({.position = {0, {0, 1}}, .keyType = 12, .actionType = 1});
         pattern.notes.push_back({.position = {0, {1, 4}}, .keyType = 12, .actionType = 2});
-        const auto patternFile = root / "Patterns/score.ymp";
+        const auto patternFile = root / L"곡/Chart/Set/score.ymp";
         Write(patternFile, ChartEditor::WritePattern(pattern));
-        Write(root / "Patterns/score.yme", ChartEditor::WriteEffects({}));
+        Write(root / L"곡/Chart/Set/score.yme", ChartEditor::WriteEffects({}));
         const auto valid = Manifest(root);
+        ValidateConvertedOsuResult(valid, root);
+        // The pattern's song is the folder it is stored in, so a second YMM there is ambiguous.
+        Write(root / L"곡/Music/other.ymm", "File: audio.wav\n");
+        Rejected(valid, root);
+        fs::remove(root / L"곡/Music/other.ymm");
         ValidateConvertedOsuResult(valid, root);
         // One long note has two serialized rows, but one playable/source object.
         Rejected(Manifest(root, "2"), root);
@@ -99,7 +104,7 @@ int wmain(int count, wchar_t *arguments[])
         auto duplicate = valid;
         duplicate.insert(1, "\"sourceObjects\":1,");
         Rejected(duplicate, root);
-        Rejected(valid, root / "Patterns");
+        Rejected(valid, root / L"곡/Chart");
         auto unsupported = pattern;
         unsupported.mode = "Unsupported";
         Write(patternFile, ChartEditor::WritePattern(unsupported));
@@ -107,7 +112,7 @@ int wmain(int count, wchar_t *arguments[])
         pattern.notes[0].keyType = pattern.notes[1].keyType = 999;
         Write(patternFile, ChartEditor::WritePattern(pattern));
         Rejected(valid, root);
-        Check(fs::exists(root / L"Music/음악.ymm") && Read(root / "Music/audio.wav") == "fixture",
+        Check(fs::exists(root / L"곡/Music/음악.ymm") && Read(root / L"곡/Music/audio.wav") == "fixture",
               "Validation must preserve existing/shared files.");
         std::cout << "Osu import validation: Unicode paths, long-note counts, malformed results, mode rejection and file preservation passed.\n";
         return 0;

@@ -34,9 +34,9 @@ struct PatternDocument
 {
     int version{1};
     std::filesystem::path sourcePath;
-    std::filesystem::path musicMetadataFile;
+    // The song is not named here: a YMP belongs to the song folder it is stored in (SongLayout).
     std::filesystem::path effectFile;
-    // Relative to <selected Songs>/BG, independently of the YMP folder.
+    // Relative to the song folder's BG folder, independently of the YMP folder.
     std::filesystem::path backgroundFile;
     double backgroundOffsetX{}, backgroundOffsetY{}; // 1280x720 logical space, +Y up.
     std::vector<std::string> makers;

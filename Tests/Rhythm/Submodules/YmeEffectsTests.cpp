@@ -466,7 +466,8 @@ Bad: From+(To-From)*Bezier(u,-1,0,1,1)
 
 void TestYmeEffects(const std::filesystem::path &songsRoot)
 {
-    const auto path = songsRoot / "Patterns/angeldream/YME Effects Verification/angeldream [effects test].ymp";
+    const auto path = songsRoot / "Takahashi yoko - Angel Dream Handshaking/Chart/Unknown - YME Effects Verification" /
+                      "angeldream [effects test].ymp";
     ChartParser parser;
     const auto pattern = parser.ParsePatternFile(path);
     const auto effectPath = path.parent_path() / pattern.document.effectFile;

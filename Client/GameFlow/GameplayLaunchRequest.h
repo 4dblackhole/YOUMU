@@ -1,6 +1,8 @@
 #pragma once
 
 #include "App/AudioVolumes.h"
+#include "Catalog/SongCatalog.h"
+#include "Catalog/SongLayout.h"
 #include "Mode/PlayOptions.h"
 #include "Common/RhythmTypes.h"
 #include <cstdint>
@@ -10,8 +12,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-struct SongCatalogEntry;
 
 // Value snapshot for one scene entry. Shared transfer is encapsulated by
 // GameplayLaunchStore; an active session owns its copy.
@@ -38,6 +38,14 @@ struct GameplayLaunchRequest
     std::wstring patternTitle;
     // Editor only: create a difficulty for this song; patternPath stays empty until Create.
     std::shared_ptr<const SongCatalogEntry> editorNewDifficulty;
+
+    // The song folder this request works in (SongLayout): the pattern's own, or the song a
+    // new difficulty will be created in. Empty when the files are outside a song folder.
+    [[nodiscard]] std::filesystem::path SongFolder() const
+    {
+        return editorNewDifficulty ? SongLayout::SongFolderOfMusic(editorNewDifficulty->metadataPath)
+                                   : SongLayout::SongFolderOfPattern(patternPath);
+    }
 
     [[nodiscard]] bool IsValid() const noexcept
     {

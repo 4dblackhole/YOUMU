@@ -35,7 +35,7 @@ struct EditorTextSet
     std::wstring_view timingHelp;
 
     std::wstring_view metadataTitle;
-    std::wstring_view ymmRelativePath;
+    std::wstring_view ymmFile;
     std::wstring_view patternName;
     std::wstring_view makers;
     std::wstring_view tags;

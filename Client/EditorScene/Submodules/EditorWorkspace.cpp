@@ -1,5 +1,6 @@
 #include "EditorWorkspace.h"
 #include "App/AssetPaths.h"
+#include "Catalog/SongLayout.h"
 #include "EditorTime.h"
 #include "EditorValueParsing.h"
 #include "EditorSupport.h"
@@ -397,8 +398,5 @@ void EditorWorkspace::PlaceNote(MusicalPosition position)
 
 std::filesystem::path EditorWorkspace::MusicMetadataPath() const
 {
-    const auto &relative = Document().Pattern().musicMetadataFile;
-    if (relative.empty())
-        return {};
-    return ((request_.songsRoot.empty() ? UserSongs() : request_.songsRoot) / relative).lexically_normal();
+    return SongLayout::FindMusicMetadata(request_.SongFolder()).path;
 }

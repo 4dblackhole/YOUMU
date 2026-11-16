@@ -76,10 +76,12 @@ namespace tests
 
     void TestAngelDreamAllNotesReplay(const std::filesystem::path &songsRoot)
     {
-        auto loaded = TaikoMode{}.LoadSession(songsRoot / "Patterns/angeldream/All Notes Verification/angeldream [all notes test].ymp");
+        const auto allNotes = songsRoot / "Takahashi yoko - Angel Dream Handshaking/Chart/Unknown - All Notes Verification" /
+                              "angeldream [all notes test].ymp";
+        auto loaded = TaikoMode{}.LoadSession(allNotes);
         Require(loaded.Succeeded(), "Real AngelDream all-notes YMP must load.");
         const auto parsed =
-            ChartParser{}.ParsePatternFile(songsRoot / "Patterns/angeldream/All Notes Verification/angeldream [all notes test].ymp");
+            ChartParser{}.ParsePatternFile(allNotes);
         std::set<int> types;
         for (const auto &note : parsed.document.notes)
             types.insert(note.keyType);
