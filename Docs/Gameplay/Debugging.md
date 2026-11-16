@@ -21,7 +21,8 @@ Raw Input 순서에 따라 Space 이전에는 원래 시각, 이후에는 정지
 
 ## 롱노트 확인용 채보와 디버그 실행
 
-외부 자산 루트의 `Songs/Patterns/angeldream/Long Notes Debug/angeldream [long notes test].ymp`는
+외부 자산 루트의 AngelDream 곡 폴더(`Songs/Takahashi yoko - Angel Dream Handshaking`)에 둔
+`Chart/Unknown - Long Notes Debug/angeldream [long notes test].ymp`는
 엔젤드림 핸드셰이크 음원을 참조합니다. Roll, BigRoll, TickRoll, BigTickRoll,
 Balloon, DengDeng, Don Buzz, Kat Buzz의 시작점을 2박 간격으로 배치했습니다.
 사용자 추가 곡·YMM·YMP·YME는 Git 제외 대상이므로 이 테스트 파일은 작업 PC에만 남습니다.
@@ -61,7 +62,7 @@ Debug 빌드에서는 실행 인자와 무관하게 좌측 상단에 현재 타�
 
 ## 전체 노트와 짧은 Buzz 틱 재현
 
-`YOUMU.Assets/Assets/Songs/Patterns/angeldream/All Notes Verification/angeldream [all notes test].ymp`는
+`YOUMU.Assets/Assets/Songs/Takahashi yoko - Angel Dream Handshaking/Chart/Unknown - All Notes Verification/angeldream [all notes test].ymp`는
 기존 AngelDream Handshaking 음원을 참조하는 180 BPM, JudgeLevel 50 테스트 채보입니다.
 빌드 시 개발용 `Client/Assets/Songs`에 파일이 없을 때 복사되며 기존 사용자 파일은 덮어쓰지 않습니다.
 곡 선택에서 AngelDream의 `All Notes Verification` 패턴을 선택해 플레이합니다.

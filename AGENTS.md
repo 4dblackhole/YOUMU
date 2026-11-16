@@ -49,8 +49,9 @@ Applies to this repository; `Dependencies/PhantomCore` follows its own agreement
   microseconds at load time, not through per-frame tempo integration.
 - Notes emit backend-neutral `NoteEvent`/`AudioCueRequest`; Client audio routing
   maps them to clips, buses and effects. Game-specific UI stays in Client.
-- Song selection uses `SongCatalog`, preserves YMM/YMP relative paths and title/
-  artist list rows, and passes a copied `GameplayLaunchRequest` on entry.
+- Song selection uses `SongCatalog`, preserves the song-folder layout (`SongLayout`:
+  a YMP belongs to the YMM of the song folder it is stored in) and title/artist list
+  rows, and passes a copied `GameplayLaunchRequest` on entry.
 - Keep lane elements under one parent, authored in its default local direction;
   rotate the parent for a mode rather than positioning each child in screen space.
 - Scenes compose responsibility-owning classes through small calls. Keep feature

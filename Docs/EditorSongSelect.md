@@ -39,10 +39,11 @@ Metadata에서 난이도명, 제작자, 태그, Accuracy Difficulty(JudgeLevel 1
 offset, BG를 입력하고 Create를 누르면 파일을 만든 뒤 같은 에디터에서 이어서 편집합니다. 곡 자체의 YMM과 음원은
 공유하고 수정하지 않습니다. Create 전에 나가면 파일을 만들지 않습니다.
 
-기존 난이도가 있는 곡은 그 난이도들의 곡 폴더를 재사용하고, 없는 곡은 YMM 파일명으로
-`Songs/Patterns/<YMM 이름>/<난이도명>/<YMM 이름> [<난이도명>].ymp/.yme`를 만듭니다.
-YMP의 YMM 참조는 Songs 기준, YME 참조는 같은 난이도 폴더 기준입니다.
-파일명 예약문자·경로·빈 이름은 거부하며 기존 난이도 폴더는 빈 폴더여도 덮어쓰지 않습니다.
+파일은 고른 곡의 [곡 폴더](BuiltInAssets.md#곡-폴더-배치)에
+`Chart/<첫 제작자> - <난이도명>/<YMM 이름> [<난이도명>].ymp/.yme`로 만듭니다. 제작자를 비워 두면
+`Unknown`이고 제작자 이름의 파일명에 쓸 수 없는 문자는 `_`입니다. YMP에는 YMM 참조를 적지 않으며
+YME 참조는 같은 폴더 기준입니다. YMM이 곡 폴더의 `Music`에 있지 않은 곡에는 만들 수 없습니다.
+난이도명의 파일명 예약문자·경로·빈 이름은 거부하며 기존 차트 세트 폴더는 빈 폴더여도 덮어쓰지 않습니다.
 이름·폴더 문제는 에디터 상태 문구에 이유를 두고, 그 밖의 쓰기 실패는 `Create failed` 경고 대화상자로 알립니다.
 어느 쪽이든 입력한 값은 그대로입니다.
 
@@ -62,20 +63,22 @@ deferred Editor 전환을 수행합니다. 모드의 `NewDocument`·`CreateDocum
 
 ```text
 Songs/
-  Music/<Artist - Title>/
-    <Artist - Title>.mp3
-    <Artist - Title>.ymm
-  Patterns/<Artist - Title>/<Version>/
-    <Artist - Title> [<Version>].ymp
-    <Artist - Title> [<Version>].yme
+  <Artist - Title>/
+    Music/
+      <Artist - Title>.mp3
+      <Artist - Title>.ymm
+    Chart/<Creator - Version>/
+      <Artist - Title> [<Version>].ymp
+      <Artist - Title> [<Version>].yme
+    BG/<원본 배경 파일명>
 ```
 
-Songs의 기존 YMM이 참조하는 음원을 크기와 실제 바이트로 비교합니다. 내용이 같으면
-기존 음원/YMM을 재사용하고 그 경로와 메타데이터는 변경하지 않습니다. 파일명/태그가
-같아도 내용이 다르면 재사용하지 않습니다. 같은 곡 이름의 기존 YMM이 다른 음원을
-참조하거나 난이도 폴더가 이미 있으면 오류를 표시하며 덮어쓰지 않습니다.
+각 곡 폴더의 YMM이 참조하는 음원을 크기와 실제 바이트로 비교합니다. 내용이 같으면
+기존 음원/YMM을 재사용하고 그 경로와 메타데이터는 변경하지 않으며, 새 난이도와 배경은 그 곡 폴더에
+넣습니다. 파일명/태그가 같아도 내용이 다르면 재사용하지 않습니다. 같은 이름 곡 폴더의 YMM이 다른 음원을
+참조하거나 차트 세트 폴더가 이미 있으면 오류를 표시하며 덮어쓰지 않습니다.
 변환기는 임시 폴더에서 포맷·저장 검사를 수행한 뒤 음악과 완성된 YMP/YME 쌍을 공개합니다.
-Client의 OsuImportValidation이 반환 JSON v1과 저장 파일의 참조·행 수를 확인하고 실제 모드 세션을
+Client의 OsuImportValidation이 반환 JSON v1과 저장 파일의 곡 폴더 위치·참조·행 수를 확인하고 실제 모드 세션을
 구성하여 원본 객체 수와 생성된 플레이 노트 수를 비교합니다. 실패는 공용 [경고 대화상자](TextManagement.md#경고-대화상자)
 (`Conversion failed`, 진단 상자에 변환기 출력, OK)로 표시하며
 기존/공유 Songs 파일은 삭제하지 않습니다. 성공한 결과만 목록을 갱신합니다.

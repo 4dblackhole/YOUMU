@@ -43,9 +43,9 @@ Convert .osu는 Client의 EditorOsuImport가 EXE를 백그라운드에서 실행
 - `Core/Submodules/OutputWriting`: BPM·속도 반올림과 소수점 셋째 자리까지의 파일 출력.
 - `Core/Converter`: 노트/효과 대응, 파서 저장 왕복과 선택한 틱의 시간 정밀도 검증.
   실제 Taiko 세션 생성·노트 수·판정 범위 검증은 Client가 담당합니다.
-- `Core/ConversionFiles`: 음원 복사, 상대 경로, 임시 출력 후 디렉터리 확정.
-- 배경 이미지는 선택한 Songs 루트의 `BG/<로마자 Artist - Title>/<원본 파일명>`에 복사합니다.
-  YMP의 `BG:`는 BG 기준 상대경로이며 `offset:`은 osu!의 `(x, y)`를
+- `Core/ConversionFiles`: 음원 복사, [곡 폴더 배치](BuiltInAssets.md#곡-폴더-배치), 임시 출력 후 디렉터리 확정.
+- 배경 이미지는 가져온 곡 폴더의 `BG/<원본 파일명>`에 복사합니다.
+  YMP의 `BG:`는 그 BG 폴더 기준 파일명이며 `offset:`은 osu!의 `(x, y)`를
   1280×720/엔진 2D 좌표의 `(1.5*x, -1.5*y)`로 변환합니다. 같은 대상의 바이트가
   같으면 재사용하고 다르면 기존 파일을 보존한 채 충돌 오류를 반환합니다.
 - `App/Main`: UTF-16 Windows 인자, UTF-8 JSON stdout, stderr/종료 코드.
@@ -77,11 +77,12 @@ OD는 스피너를 DengDeng으로 바꿀 때의 요구 타격 횟수 계산에�
 ```
 
 기본 출력의 필수 인자는 `--input`, `--songs-root`, `--output-dir`입니다. 상대 경로는 프로세스의
-작업 폴더 기준입니다. 출력은 Songs 루트 아래 **존재하지 않는 새 폴더**여야 합니다.
-원본 `.osu`와 음원은 변경하지 않으며, 음원은 출력 폴더로 복사합니다.
-`music.ymm`, `pattern.ymp`, `effects.yme`, `audio.<원본 확장자>`를 생성합니다.
+작업 폴더 기준입니다. 출력은 Songs 루트 **바로 아래의 존재하지 않는 새 폴더**여야 하며 이 폴더가
+곡 폴더 하나가 됩니다. 원본 `.osu`와 음원은 변경하지 않으며, 음원은 출력 폴더로 복사합니다.
+`Music/music.ymm`, `Music/audio.<원본 확장자>`, `Chart/<Creator - Version>/pattern.ymp`와 `effects.yme`,
+배경이 있으면 `BG/<원본 파일명>`을 생성합니다.
 
-YMP의 `Music metadata`는 Songs 루트 기준, `Effect file`은 YMP 폴더 기준,
+YMP에는 YMM 참조를 적지 않습니다(곡 폴더 위치로 결정). `Effect file`은 YMP 폴더 기준,
 YMM의 `File`은 YMM 폴더 기준으로 기록합니다. 성공 전 파일은 Songs 밖의 같은
 볼륨에 임시 저장하며, 검사 후 디렉터리 이름 변경으로 공개합니다.
 출력 폴더가 이미 존재하면 실패하며 덮어쓰기 옵션은 없습니다.
@@ -110,14 +111,14 @@ Client에서 사용할 때 EXE 경로를 직접 지정하고 Windows 인자 인�
 .\OsuTaikoConverter.exe --input "D:\Maps\song.osu" --songs-root "D:\Game\Asset\Songs" --layout library
 ```
 
-`--layout library`에서는 `--output-dir`를 사용하지 않습니다. 로마자 Artist/Title과
-난이도 Version으로 Music/Patterns의 기존 게임 배치를 사용합니다. 구체적인 트리와
+`--layout library`에서는 `--output-dir`를 사용하지 않습니다. 로마자 Artist/Title로 곡 폴더와 YMM 이름을,
+Creator와 난이도 Version으로 차트 세트 폴더를 만듭니다. 구체적인 트리와
 파일명 정리는 [에디터 가져오기](EditorSongSelect.md#osutaiko-가져오기)를 참고합니다.
-등록된 YMM의 음원과 바이트가 같으면 음원/YMM을 재사용합니다. 같은 곡 이름인데
-음원이 다르거나 기존 난이도 폴더가 있으면 종료 코드 5이며 기존 파일은 보존합니다.
-YMP는 최종 YMM을 Songs 기준으로, YME는 같은 난이도 폴더 기준으로 참조합니다.
+어느 곡 폴더의 YMM이든 음원 바이트가 같으면 음원/YMM을 재사용하고 난이도와 배경을 그 곡 폴더에 넣습니다.
+같은 이름 곡 폴더인데 음원이 다르거나 기존 차트 세트 폴더가 있으면 종료 코드 5이며 기존 파일은 보존합니다.
+YME는 같은 차트 세트 폴더 기준으로 참조합니다.
 이 모드도 JSON 계약은 같으며 변환 경고를 stderr에도 출력합니다.
-기존 `--output-dir` 패키지 출력은 기존 배치/계약을 유지합니다.
+`--output-dir` 패키지 출력도 같은 곡 폴더 구조이며 파일 이름만 고정입니다.
 
 ## 확정된 변환 규칙
 

@@ -106,8 +106,8 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
   Scene 종료 시 worker 완료를 기다리지 않고 취소를 요청합니다. worker 자체는 프로세스 수명입니다.
   Ctrl+S는 같은 폴더에 저장하며 Escape는 미저장 변경을 확인한 뒤 돌아갑니다.
 - Lobby는 [곡 선택](SongSelect.md) 화면(UI-02 설계)을 Visual2D 트리로 구성합니다.
-  `SongCatalog`가 외부 Songs의 AngelDream YMM과 YMP 5개 및 사용자 곡·패턴을
-  연결해 표시합니다.
+  `SongCatalog`가 외부 Songs의 곡 폴더마다 YMM과 그 폴더의 YMP(AngelDream은 5개)를
+  묶어 표시합니다.
   포커스된 곡 카드만 난이도 목록을 펼치며 좌우키는 곡, 상하키는 난이도를
   이동합니다. 하단 BACK 버튼이나 Escape로 Logo에 돌아갑니다.
 - Lobby의 GO/Enter는 선택 경로로 `PlaySessionLoader` worker에 검증/세션 구성을 요청합니다.

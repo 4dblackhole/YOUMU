@@ -68,14 +68,21 @@
 
 - YMM은 음악 정보, YMP는 플레이 노트/타이밍, YME는 이펙트/히트사운드 표를 소유합니다.
   YMP의 Effect file과 각 상대경로 기준을 유지하며 효과 명령을 YMP에 섞지 않습니다.
+- Songs는 곡 폴더 단위입니다(사용자 확정). `Songs/<곡 폴더>/Music`에 YMM 하나와 음원,
+  `Chart/<차트 세트>`에 YMP/YME, `BG`에 배경을 둡니다. YMP는 YMM을 가리키는 항목을 갖지 않고
+  자기가 놓인 곡 폴더의 `Music`에서 YMM을 찾으며, Songs 전체를 검색해 연결하지 않습니다.
+  `BG:`는 그 곡 폴더의 `BG` 기준입니다. 예전 `Songs/Music`·`Songs/Patterns`·`Songs/BG` 배치는 읽지 않습니다.
+- 곡·YMM·YMP·YME 파일에 해시나 곡 ID를 적지 않습니다(사용자 확정). 폴더 이름은 뜻을 해석하지 않는
+  관례이며 곡 폴더와 YMM은 `<첫 아티스트> - <첫 곡명>`, 차트 세트는 `<첫 제작자> - <난이도명>`으로 만듭니다.
 - 원본 마디/박자는 정확한 유리수와 안정 ID로 보존하고 실행용 시간/구간/스크롤은 파생 데이터입니다.
   음수 delay로 무효화된 구간도 원본을 삭제하거나 끝점을 잘린 경계로 옮기지 않습니다.
 - 파서·직접 DTO·편집 저장은 같은 의미 검증을 사용합니다. 실패한 수정/저장은 원본과 이력을 보존합니다.
 - 원본 Version, 목록 parser revision, 캐시 schema, 기록 DB schema는 별도 계약입니다.
   문법/기본값/진단/목록 해석 변경은 parser revision, 캐시 배치 변경은 cache schema를 갱신합니다.
 
-상세: [ChartFormats](ChartFormats.md), [Timing](Formats/Timing.md), [ResourceLoading](ResourceLoading.md).
-검증: ChartParserTests, YmeEffectsTests, ChartReviewRegressionTests, SongCatalogTests.
+상세: [ChartFormats](ChartFormats.md), [Timing](Formats/Timing.md), [ResourceLoading](ResourceLoading.md),
+[곡 폴더 배치](BuiltInAssets.md#곡-폴더-배치).
+검증: ChartParserTests, YmeEffectsTests, ChartReviewRegressionTests, SongCatalogTests(TestSongLayout 포함).
 
 ## LOAD-01 로딩과 캐시
 
@@ -109,7 +116,8 @@
   결과의 참조·노트 행/원본 객체 수·모드 세션 생성·누락 여부를 검증합니다.
 - osu! 100/OK 폭과 YOUMU GOOD 폭을 맞추되 JudgeLevel은 0.01 정밀도를 유지하고 가장 가까운 값을
   선택합니다. 이 정밀도 때문에 생기는 오차를 없애려고 포맷 정밀도를 임의로 바꾸지 않습니다.
-- 배경은 Songs/BG로 가져와 선곡/로딩/플레이에서 사용합니다. 기존/공유 파일의 충돌은 보존합니다.
+- 배경은 가져온 곡 폴더의 `BG`로 가져와 선곡/로딩/플레이에서 사용합니다. 기존/공유 파일의 충돌은 보존합니다.
+  변환 결과는 [FMT-01](#fmt-01-파일-형식과-편집-원본)의 곡 폴더 배치를 따릅니다.
   +25ms 보정·격자·BG 좌표·지원 범위는 변환 문서의 현재 계약을 따릅니다.
 
 상세: [OsuTaikoConverter](OsuTaikoConverter.md), [EditorSongSelect](EditorSongSelect.md).
@@ -294,6 +302,7 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
   모든 탭에 공통이며 일반 Accelerate 범위와 YMP 형식은 그대로입니다.
 - 실시간 레인의 Spacing은 25~400%의 노트 간격(처음 50%, 100%는 게임과 같은 간격)이며 그리드·스냅·채널이 함께 따릅니다.
 - 새 난이도는 파일 없는 초안으로 에디터 Metadata에서 시작하고 Create가 처음 파일을 씁니다.
+  파일은 고른 곡 폴더의 `Chart/<첫 제작자> - <난이도명>`에 만듭니다([FMT-01](#fmt-01-파일-형식과-편집-원본)).
 
 상세: [ChartEditor](ChartEditor.md). 검증: ChartEditorTests, ChartReviewRegressionTests, EditorModeTests.
 
@@ -547,7 +556,9 @@ SceneStateTests(↑ 이동), SkinTests(스킨 그림 교체와 복귀)와 화면
 | HP 구조 | Scene 소유·세션 판정 전달·상태/이력 조회와 결과 곡선 구현. 일시정지/Rewind는 비활성화, 추가 게이지는 미정 |
 | SCORE 계산 규칙 | 구현. 인게임 정확도 × 100,000,000 × 처리한 논리 노트 비율, 종료 점수를 리절트에 전달 |
 | 리플레이 재생/파일 저장 | 미구현. 기존 메모리 입력/제어 로그와 영속 성적 DB는 구현 |
-| 랭크 콘텐츠·서버/라이선스 인증·공용 미디어 ID/BGA | RankedContentProposal의 검토 제안, 미구현 |
+| 랭크 콘텐츠·서버/라이선스 인증·공용 미디어 ID/BGA | RankedContentProposal의 검토 제안, 미구현. 곡 파일 배치는 FMT-01의 곡 폴더가 확정이며 제안의 공용 미디어 저장소는 채택하지 않음 |
+| 예전 배치 Songs의 이전 도구, 기록·즐겨찾기 연결 유지 | 미정(사용자 보류). 예전 배치 곡은 목록에 나오지 않고, 기록·즐겨찾기는 YMP 절대 경로로 이어짐 |
+| 음원·채보 해시 검증 | 미구현. 곡 파일에는 적지 않기로 확정했고 저장 위치(로컬 DB·서버)는 미정 |
 | 현재 등록 모드/편집 형식 | Taiko와 YMP/YME. 확장 인터페이스가 있다는 이유로 다른 모드 구현을 추정하지 않음 |
 | Penpot의 나머지 시안 요소 | 시안 상태. 해당 기능 요청·구현 여부는 기능 문서로 확인 |
 | UI 리디자인(UI-02) | 사용자 확정 설계, 일부 구현(표시 규칙·결과 화면·플레이 HUD·일시정지·로딩·곡 선택·타이틀). 나머지 화면은 묶음 순서대로 구현하며 리플레이 재생은 제외 |
