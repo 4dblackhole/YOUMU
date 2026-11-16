@@ -1,5 +1,6 @@
 #include "Catalog/SongCatalog.h"
 
+#include "Catalog/SongLayout.h"
 #include "Parsing/ChartParser.h"
 #include "Timing/MusicalTimeline.h"
 
@@ -100,11 +101,20 @@ namespace
         return extension;
     }
 
+    struct SongFolderFiles final
+    {
+        std::filesystem::path folder;
+        // Set only when the Music folder holds exactly one YMM.
+        std::optional<std::filesystem::directory_entry> music;
+        std::vector<std::filesystem::directory_entry> patterns;
+    };
+
     struct CatalogFiles final
     {
-        std::vector<std::filesystem::directory_entry> music;
-        std::vector<std::filesystem::directory_entry> patterns;
+        std::vector<SongFolderFiles> songs;
         std::map<std::filesystem::path, std::filesystem::directory_entry> metadata;
+        std::size_t musicCount{};
+        std::size_t patternCount{};
     };
 
     template <class Cache, class Parser>
@@ -188,75 +198,118 @@ namespace
         if (error || size != cached->second.size) patterns.erase(previous);
     }
 
+    // One directory level in path order. A folder that cannot be read reports one catalog error.
+    [[nodiscard]] std::vector<std::filesystem::directory_entry> ListDirectory(
+        const std::filesystem::path& folder, SongCatalogLoadResult& result, std::stop_token stop)
+    {
+        std::vector<std::filesystem::directory_entry> entries;
+        std::error_code error;
+        std::filesystem::directory_iterator iterator(
+            folder, std::filesystem::directory_options::skip_permission_denied, error);
+        for (const std::filesystem::directory_iterator end; !error && iterator != end; iterator.increment(error))
+        {
+            CheckChartLoadCancellation(stop);
+            entries.push_back(*iterator);
+        }
+        if (error)
+            AddCatalogError(result, folder, "Unable to scan a catalog directory: " + error.message());
+        std::ranges::sort(entries, {},
+            [](const auto& entry) -> const std::filesystem::path& { return entry.path(); });
+        return entries;
+    }
+
+    // Lowercase extension of a regular file; empty for anything else.
+    [[nodiscard]] std::wstring CatalogFileExtension(
+        const std::filesystem::directory_entry& entry, SongCatalogLoadResult& result)
+    {
+        std::error_code error;
+        if (entry.is_regular_file(error))
+            return LowercaseExtension(entry.path());
+        if (error)
+            AddCatalogError(result, entry.path(), "Unable to inspect a catalog entry: " + error.message());
+        return {};
+    }
+
+    [[nodiscard]] bool IsDirectory(const std::filesystem::path& path)
+    {
+        std::error_code error;
+        return std::filesystem::is_directory(path, error);
+    }
+
+    // Music holds the song's single YMM; a second YMM would make the song ambiguous.
+    void DiscoverMusic(SongFolderFiles& song, CatalogFiles& files, SongCatalogLoadResult& result,
+        std::stop_token stop)
+    {
+        const auto musicFolder = song.folder / SongLayout::MusicFolder;
+        std::size_t count{};
+        if (IsDirectory(musicFolder))
+            for (const auto& entry : ListDirectory(musicFolder, result, stop))
+            {
+                if (CatalogFileExtension(entry, result) != L".ymm")
+                    continue;
+                ++count;
+                song.music = entry;
+                files.metadata.emplace(entry.path(), entry);
+            }
+        files.musicCount += count;
+        if (count == 1)
+            return;
+        song.music.reset();
+        AddCatalogError(result, musicFolder, count == 0
+            ? "The song folder needs one YMM file in its Music folder."
+            : "The song folder's Music folder holds more than one YMM file.");
+    }
+
+    // Patterns are read from Chart/<chart set>/ only; the set folder's name carries no meaning.
+    void DiscoverCharts(SongFolderFiles& song, CatalogFiles& files, SongCatalogLoadResult& result,
+        std::stop_token stop)
+    {
+        for (const auto& set : ListDirectory(song.folder / SongLayout::ChartFolder, result, stop))
+        {
+            if (!IsDirectory(set.path()))
+            {
+                if (CatalogFileExtension(set, result) == L".ymp")
+                    result.diagnostics.push_back({DiagnosticSeverity::Warning, {set.path(), 1, 1},
+                        "Skipped a YMP outside a chart set folder; it belongs in Chart/<chart set>/."});
+                continue;
+            }
+            for (const auto& entry : ListDirectory(set.path(), result, stop))
+            {
+                const std::wstring extension = CatalogFileExtension(entry, result);
+                if (extension == L".ymp")
+                    song.patterns.push_back(entry);
+                if (extension == L".ymp" || extension == L".yme")
+                    files.metadata.emplace(entry.path(), entry);
+            }
+        }
+        files.patternCount += song.patterns.size();
+    }
+
+    // Every direct child of Songs is one song folder (SongLayout). Nothing is searched recursively,
+    // so a pattern's song is decided by where the file is, not by a reference inside it.
     [[nodiscard]] CatalogFiles DiscoverCatalogFiles(
         const std::filesystem::path& songsRoot,
         SongCatalogLoadResult& result, std::stop_token stop)
     {
         CheckChartLoadCancellation(stop);
         CatalogFiles files;
-        std::error_code error;
-        std::filesystem::recursive_directory_iterator iterator(
-            songsRoot,
-            std::filesystem::directory_options::skip_permission_denied,
-            error);
-        const std::filesystem::recursive_directory_iterator end;
-        if (error)
+        for (const auto& entry : ListDirectory(songsRoot, result, stop))
         {
-            AddCatalogError(
-                result,
-                songsRoot,
-                "Unable to scan the Songs catalog: " + error.message());
-            return files;
+            if (!IsDirectory(entry.path()))
+                continue;
+            SongFolderFiles song{entry.path()};
+            const bool hasChart = IsDirectory(song.folder / SongLayout::ChartFolder);
+            if (!hasChart && !IsDirectory(song.folder / SongLayout::MusicFolder))
+            {
+                result.diagnostics.push_back({DiagnosticSeverity::Warning, {song.folder, 1, 1},
+                    "Skipped a folder that is not a song folder: it has no Music or Chart folder."});
+                continue;
+            }
+            DiscoverMusic(song, files, result, stop);
+            if (hasChart)
+                DiscoverCharts(song, files, result, stop);
+            files.songs.push_back(std::move(song));
         }
-
-        while (iterator != end)
-        {
-            CheckChartLoadCancellation(stop);
-            const std::filesystem::path path = iterator->path();
-            std::error_code typeError;
-            if (iterator->is_regular_file(typeError))
-            {
-                const std::wstring extension = LowercaseExtension(path);
-                if (extension == L".ymm")
-                {
-                    files.music.push_back(*iterator);
-                }
-                else if (extension == L".ymp")
-                {
-                    files.patterns.push_back(*iterator);
-                }
-                if (extension == L".ymm" || extension == L".ymp" || extension == L".yme")
-                    files.metadata.emplace(path, *iterator);
-            }
-            else if (typeError)
-            {
-                AddCatalogError(
-                    result,
-                    path,
-                    "Unable to inspect a catalog entry: " +
-                        typeError.message());
-            }
-
-            iterator.increment(error);
-            if (error)
-            {
-                AddCatalogError(
-                    result,
-                    path,
-                    "Unable to continue scanning a catalog directory: " +
-                        error.message());
-                error.clear();
-            }
-        }
-
-        const auto byPath = [](const auto &entry) -> const std::filesystem::path & { return entry.path(); };
-        const auto less = [stop](const auto& left, const auto& right)
-        {
-            CheckChartLoadCancellation(stop);
-            return left < right;
-        };
-        std::ranges::sort(files.music, less, byPath);
-        std::ranges::sort(files.patterns, less, byPath);
         return files;
     }
 }
@@ -309,7 +362,6 @@ SongCatalogLoadResult SongCatalog::Load(
     }
 
     ChartParser parser(stop);
-    std::map<std::string, std::size_t, std::less<>> songByMetadataPath;
     CatalogFiles files = DiscoverCatalogFiles(songsRoot, result, stop);
     const auto deleted = [&files, stop](const auto &entry)
     {
@@ -322,13 +374,18 @@ SongCatalogLoadResult SongCatalog::Load(
     cacheDirty_ |= std::erase_if(musicCache_, deleted) != 0;
     cacheDirty_ |= std::erase_if(patternCache_, deleted) != 0;
     cacheDirty_ |= std::erase_if(effectCache_, deleted) != 0;
-    result.discoveredMusicFiles = files.music.size();
-    result.discoveredPatternFiles = files.patterns.size();
+    result.discoveredMusicFiles = files.musicCount;
+    result.discoveredPatternFiles = files.patternCount;
 
-    // Load music first so pattern references can be joined in one pass.
-    for (const auto &file : files.music)
+    // Load every song's YMM first so list rows appear before their patterns. A song folder
+    // whose YMM is unusable has already reported why, so its patterns are not read.
+    std::vector<std::pair<const std::filesystem::directory_entry*, std::size_t>> patterns;
+    for (const auto &folder : files.songs)
     {
         CheckChartLoadCancellation(stop);
+        if (!folder.music)
+            continue;
+        const auto &file = *folder.music;
         const auto &path = file.path();
         std::shared_ptr<const ParseResult<MusicDocument>> parsed;
         try
@@ -382,15 +439,16 @@ SongCatalogLoadResult SongCatalog::Load(
             continue;
         }
         song.music = parsed->document;
-        const std::size_t index = result.songs.size();
-        songByMetadataPath.emplace(PathKey(path), index);
+        for (const auto &pattern : folder.patterns)
+            patterns.emplace_back(&pattern, result.songs.size());
         result.songs.push_back(std::move(song));
         if (progress) progress(result.songs.back());
     }
 
-    for (const auto &file : files.patterns)
+    for (const auto &[patternFile, songIndex] : patterns)
     {
         CheckChartLoadCancellation(stop);
+        const auto &file = *patternFile;
         const auto &path = file.path();
         std::shared_ptr<const ParseResult<PatternDocument>> parsed;
         std::optional<std::size_t> noteCount;
@@ -430,19 +488,6 @@ SongCatalogLoadResult SongCatalog::Load(
         AppendDiagnostics(result.diagnostics, parsed->diagnostics);
         if (!valid)
         {
-            continue;
-        }
-
-        const std::filesystem::path referencedMetadata =
-            songsRoot / parsed->document.musicMetadataFile;
-        const auto target = songByMetadataPath.find(
-            PathKey(referencedMetadata));
-        if (target == songByMetadataPath.end())
-        {
-            result.diagnostics.push_back({
-                DiagnosticSeverity::Error,
-                {path, 1, 1},
-                "The pattern references a Music metadata file that was not found."});
             continue;
         }
 
@@ -514,7 +559,7 @@ SongCatalogLoadResult SongCatalog::Load(
         pattern.noteCount = noteCount;
         pattern.bpmRange = bpmRange;
         pattern.chartLengthSeconds = chartLength;
-        auto& song = result.songs[target->second];
+        auto& song = result.songs[songIndex];
         song.patterns.push_back(std::move(pattern));
         if (progress)
         {

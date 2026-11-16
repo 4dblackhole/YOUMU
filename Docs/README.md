@@ -25,7 +25,7 @@
 | 정확도 랭크·통계·그래프·입력 로그·Retry | [Results](Gameplay/Results.md) |
 | Debug 타이머 표시·정지·탐색·전체 노트/Buzz 재현 | [Debugging](Gameplay/Debugging.md) |
 | 표시 이름·번역·글꼴·옵션·Taiko 키·Option.ini | [TextManagement](TextManagement.md) |
-| 스킨·Songs/BG·내장 자산·배포 | [BuiltInAssets](BuiltInAssets.md) |
+| 스킨·Songs 곡 폴더 배치·내장 자산·배포 | [BuiltInAssets](BuiltInAssets.md) |
 | 로고·타이틀 | [YOUMU](YOUMU.md) |
 | Canvas·PNG·입력·Z-order | [Visual2DGuide](Visual2DGuide.md) |
 | Penpot 페이지·보드·자산 제작 | [DesignReferences](DesignReferences.md) |

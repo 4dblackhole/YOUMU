@@ -1,4 +1,5 @@
 #include "MusicSelectView.h"
+#include "Catalog/SongLayout.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
@@ -396,9 +397,7 @@ void MusicSelectView::RefreshSelectionPresentation()
     selection_.selectedPatternIndex_ =
         std::min(selection_.selectedPatternIndex_, song.patterns.size() - 1);
     const auto &selected = song.patterns[selection_.selectedPatternIndex_];
-    artwork_.SetImage(selected.pattern.backgroundFile.empty()
-                          ? std::filesystem::path{}
-                          : settings_.SongsRoot() / L"BG" / selected.pattern.backgroundFile,
+    artwork_.SetImage(SongLayout::BackgroundPathOfPattern(selected.patternPath, selected.pattern.backgroundFile),
                       board_->NodeSize(), selected.pattern.backgroundOffsetX,
                       selected.pattern.backgroundOffsetY);
     difficultyBlock_->SetVisible(true);

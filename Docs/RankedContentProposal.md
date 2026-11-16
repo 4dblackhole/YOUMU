@@ -12,7 +12,12 @@
 
 개념상 Media/Music/<asset-id>, Media/Images/<asset-id>, Media/Video/<asset-id>와
 채보별 Patterns/<곡>/<난이도>를 분리할 수 있습니다. 이 경로는 확정된 새 문법이 아닙니다.
-현재 배포본은 기존 Asset/Songs/Music, Asset/Songs/Patterns, Asset/Skins 계약을 유지합니다.
+
+현재 확정된 배치는 이 제안과 방향이 다릅니다. Songs는 곡마다 음원·YMM·차트·배경을 한 폴더에 모으는
+[곡 폴더 배치](BuiltInAssets.md#곡-폴더-배치)이고, YMP는 자산 ID가 아니라 놓인 위치로 곡에 속하며, 곡 파일에
+해시나 ID를 적지 않습니다([FMT-01](DesignDecisions.md#fmt-01-파일-형식과-편집-원본)). 따라서 위의 공용 미디어
+저장소와 채보의 자산 ID 참조는 채택하지 않은 제안이며, 다시 검토한다면 곡 폴더 배치를 바꾸는 별도 결정이 필요합니다.
+같은 음원을 쓰는 곡의 중복 제거와 다운로드 검증용 해시는 곡 파일 밖(로컬 DB나 서버)에 두는 방향만 정해져 있습니다.
 
 | 정보 | 책임 |
 | --- | --- |

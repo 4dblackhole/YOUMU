@@ -226,9 +226,10 @@ PCM/FFT 자체는 `YOUMU.Editor/Audio/EditorAudioAnalysis`만 읽으면 됩니�
 - Timing 패널에서 마디/위치의 BPM·마디 길이·delay를 편집합니다. 마디 밖으로 넘친 노트는 초과분을
   다음 마디로 이월합니다. 마디 밖 BPM/이펙트가 생기는 변경은 데이터 손실 대신 오류를 표시합니다.
   롱노트 시작과 끝이 역전되거나 같은 위치가 되는 변경도 전체 취소하고 원본을 보존합니다.
-- Metadata에서 YMM 상대경로, 이름, 제작자(여러 줄, 첫 줄이 대표), 태그, offset, 기본 BPM,
+- Metadata에서 이름, 제작자(여러 줄, 첫 줄이 대표), 태그, offset, 기본 BPM,
   Accuracy Difficulty(JudgeLevel 1.00~100.00, 0.01 단위), HP(1.00~100.00), BG와 x·y, 히트사운드 표를 편집합니다.
-  Effect file은 표시만 합니다. 새 난이도의 Create는 고른 곡의 YMM을 씁니다.
+  YMM 파일과 Effect file은 표시만 합니다. YMM은 편집 중인 [곡 폴더](BuiltInAssets.md#곡-폴더-배치)의 것이며
+  BG는 그 곡 폴더의 `BG` 기준입니다. 새 난이도의 Create는 고른 곡의 곡 폴더에 파일을 만듭니다.
   표의 소유 파일은 YME이며 사운드 상대경로도 YME 폴더 기준입니다.
 - 효과 패널의 목록에서 행을 골라 Apply로 바꾸거나 Delete로 지웁니다. 동/캇 변경은 각각
   독립 지시문입니다. 입력칸은 Unicode를 지원하는 화면 위 Windows 입력칸입니다([입력칸](#입력칸과-대화상자)).
@@ -405,7 +406,7 @@ Info/LAME 패딩 처리를 적용하며 Vorbis/Windows 코덱은 기존 경로�
 `EditorVisual`은 연속 사각형을 불변 `RectangleBatch`에 담습니다. 매 프레임 수집할 때는
 geometry 전체 대신 공유 handle을 복사하고 text와 geometry의 그리기 순서를 유지합니다.
 이 묶음은 CPU 명령 복사를 줄이며 GPU에 그리는 사각형 수까지 줄이는 기능은 아닙니다.
-YMP의 `Music metadata`는 Songs 루트 기준으로 해석한 뒤 YMM이 가리키는 음원을 분석합니다.
+편집 중인 곡 폴더의 `Music`에 있는 YMM이 가리키는 음원을 분석합니다.
 음악 파형은 녹색이고 음악/히트사운드 스펙트럼은 각각 검정·보라·적색·황색 강도 팔레트를
 사용합니다. 예상 노트 시작과 TickRoll/Buzz 틱은 실제 컴파일 시각에 배치합니다.
 세 트랙에서 왼쪽 버튼을 드래그하면 동일한 선택 영역을 표시하고 파형 아래에 시작·끝·길이를

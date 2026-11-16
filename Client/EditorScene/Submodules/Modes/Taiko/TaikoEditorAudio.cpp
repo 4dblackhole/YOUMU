@@ -1,5 +1,6 @@
 #include "../../EditorSupport.h"
 #include "TaikoEditorMode.h"
+#include "Catalog/SongLayout.h"
 #include "Parsing/ChartParser.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
 #include <algorithm>
@@ -13,9 +14,8 @@ using namespace editor_ui;
 std::map<std::string, std::filesystem::path> TaikoEditorMode::AudioFiles(
     const IEditorDocument &document, const GameplayLaunchRequest &request) const
 {
-    // YMP metadata references are relative to Songs, not the YMP folder.
-    const auto root = request.songsRoot.empty() ? UserSongs() : request.songsRoot;
-    const auto metadataPath = root / document.Pattern().musicMetadataFile;
+    // The song's YMM is the one in the Music folder of the song folder being edited.
+    const auto metadataPath = SongLayout::FindMusicMetadata(request.SongFolder()).path;
     const auto music = ChartParser{}.ParseMusicFile(metadataPath);
     if (!music.Succeeded())
         throw std::runtime_error("Audio analysis: the selected YMM could not be parsed.");

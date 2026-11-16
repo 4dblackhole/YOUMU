@@ -1,5 +1,6 @@
 #include "EditorView.h"
 #include "App/AssetPaths.h"
+#include "Catalog/SongLayout.h"
 #include "Presentation/UiFonts.h"
 #include <algorithm>
 #include <format>
@@ -291,18 +292,15 @@ EditorModeAreas EditorView::Areas() const noexcept
     areas.judgeX = layout::HeadWidth + layout::JudgeOffset;
     areas.score = {0, layout::TrackTop, right, layout::FooterTop - layout::TrackTop};
     areas.body = {0, layout::BodyTop, frame_.width, layout::BodyHeight};
-    // The chart's BG for Preview and the Metadata thumbnail.
+    // The chart's BG for Preview and the Metadata thumbnail, from the song folder's BG folder.
     {
-        const auto &pattern = state_.Document().Pattern();
-        const auto &root = state_.Request().songsRoot;
-        if (!pattern.backgroundFile.empty() && !root.empty())
-        {
-            std::error_code error;
-            auto path = root / L"BG" / pattern.backgroundFile;
-            if (std::filesystem::is_regular_file(path, error))
-                areas.background = std::move(path);
-        }
+        std::error_code error;
+        auto path =
+            SongLayout::BackgroundPath(state_.Request().SongFolder(), state_.Document().Pattern().backgroundFile);
+        if (std::filesystem::is_regular_file(path, error))
+            areas.background = std::move(path);
     }
+    areas.musicMetadata = state_.MusicMetadataPath();
     areas.tools.y = layout::BodyTop;
     if (state_.Panel() == EditorPanel::Notes)
         areas.inspector = PanelBody();

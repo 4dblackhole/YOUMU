@@ -150,8 +150,8 @@ Kiai는 `PlaySession::IsKiaiActive`로 상태만 조회하며 표시·점수·�
 
 ## 테스트 채보
 
-`Assets/Songs/Pattern/angeldream/angeldream [effects test].ymp`가
-`Effects/angeldream-effects.yme`를 명시적으로 참조합니다. 기존 실제 음원/YMM을 사용하며
+내장 AngelDream 곡 폴더의 `Chart/Unknown - YME Effects Verification/angeldream [effects test].ymp`가
+같은 폴더의 `angeldream [effects test].yme`를 명시적으로 참조합니다. 기존 실제 음원/YMM을 사용하며
 15개 논리 노트, BPM 변경, Whole/Separate, 세 기본 보간·사용자 식·베지어,
 히트사운드 교체/볼륨, 싱코페이션 제외와 Kiai 상태를 검사합니다.
 YME와 YMP의 폴더를 달리해 히트사운드 기준 경로도 검사합니다.

@@ -47,8 +47,8 @@ struct SongCatalogLoadResult
     [[nodiscard]] bool Succeeded() const noexcept;
 };
 
-// Scans the runtime Songs root and joins YMP patterns to the YMM path
-// referenced by their `Music metadata` field. The catalog owns the parsed
+// Scans the song folders of the runtime Songs root (SongLayout) and attaches each
+// YMP to the YMM of the song folder it is stored in. The catalog owns the parsed
 // documents, so Scenes can safely retain selections after scanning ends.
 class SongCatalog final
 {

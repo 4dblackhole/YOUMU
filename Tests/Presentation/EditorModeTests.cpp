@@ -1166,16 +1166,17 @@ Dip: 1-3*u*(1-u)
         namespace fs = std::filesystem;
         const auto root = fs::temp_directory_path() / L"youmu-editor-new" / std::to_wstring(GetCurrentProcessId());
         fs::remove_all(root);
-        const auto music = root / L"Music/음악.ymm";
+        const auto songFolder = root / L"가수 - 음악";
+        const auto music = songFolder / L"Music/음악.ymm";
         fs::create_directories(music.parent_path());
         std::ofstream(music, std::ios::binary) << "Version: 1\nFile: sample.wav\nMusic Name 1: Test\nArtist 1: Test\n";
-        std::ofstream(root / L"Music/sample.wav", std::ios::binary) << "fixture";
+        std::ofstream(songFolder / L"Music/sample.wav", std::ios::binary) << "fixture";
         const auto parsedMusic = ChartParser{}.ParseMusicFile(music);
         Check(parsedMusic.Succeeded(), "New difficulty fixture YMM must parse.");
         GameplayLaunchRequest request;
         request.mode = "Taiko";
         request.songsRoot = root;
-        request.musicPath = root / L"Music/sample.wav";
+        request.musicPath = songFolder / L"Music/sample.wav";
         request.editorNewDifficulty =
             std::make_shared<const SongCatalogEntry>(SongCatalogEntry{music, request.musicPath, parsedMusic.document, {}});
         const auto draftOf = [&](const char *name) {
@@ -1193,14 +1194,14 @@ Dip: 1-3*u*(1-u)
         auto state = draftOf("Fresh");
         Check(state->Creating() && state->Document().Dirty() && state->Tab() == EditorTab::Metadata,
               "A new difficulty must open on Metadata as an uncreated draft.");
-        Check(state->Document().Pattern().musicMetadataFile == fs::path(L"Music/음악.ymm"),
-              "The draft must reference the song's YMM relative to Songs.");
+        Check(state->MusicMetadataPath() == music, "The draft must use the YMM of the song it will be created in.");
         state->SelectTab(EditorTab::Compose);
         Check(state->Tab() == EditorTab::Metadata, "Compose and Audio must wait for Create.");
         state->Save();
-        const auto folder = root / L"Patterns/음악/Fresh";
+        const auto folder = songFolder / L"Chart/Tester - Fresh";
         Check(!state->Creating() && !state->Document().Dirty() && state->Document().SourcePath().parent_path() == folder,
               "Create must write the pair and continue editing the created file.");
+        Check(state->MusicMetadataPath() == music, "The created difficulty must find its YMM from its own folder.");
         const auto effects = ChartParser{}.ParseEffectFile(*state->Request().effectPath);
         Check(effects.Succeeded() && effects.document.hitSounds.contains("1"),
               "A hit sound table typed before Create must be saved into the new YME.");

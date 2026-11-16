@@ -81,8 +81,7 @@
     <None Include="Assets\Skins\Default Skin\Result\Panels\*.*"><Filter>Assets\Skins\Default Skin\Result\Panels</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Rank\*.*"><Filter>Assets\Skins\Default Skin\Result\Rank</Filter></None>
     <None Include="Assets\Skins\Default Skin\TitleImage\Widget\*.*"><Filter>Assets\Skins\Default Skin\TitleImage\Widget</Filter></None>
-    <None Include="Assets\Songs\Music\Angeldream\*.*"><Filter>Assets</Filter></None>
-    <None Include="Assets\Songs\Patterns\angeldream\**\*.*"><Filter>Assets</Filter></None>
+    <None Include="Assets\Songs\**\*.*"><Filter>Assets</Filter></None>
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Skins\Default Skin\Editor\*.*"><Filter>Assets\Skins\Default Skin\Editor</Filter></None>

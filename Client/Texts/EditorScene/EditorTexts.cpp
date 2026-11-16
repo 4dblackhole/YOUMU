@@ -27,7 +27,7 @@ EditorTextSet Editor(const TextCatalog &texts)
             texts.Get("Editor.applyMeasureLength"),
             texts.Get("Editor.timingHelp"),
             texts.Get("Editor.metadataTitle"),
-            texts.Get("Editor.ymmRelativePath"),
+            texts.Get("Editor.ymmFile"),
             texts.Get("Editor.patternName"),
             texts.Get("Editor.makers"),
             texts.Get("Editor.tags"),

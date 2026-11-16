@@ -24,6 +24,8 @@ struct EditorModeAreas
     PhantomCore::Rect body{0, editor_layout::BodyTop, editor_layout::BaseWidth, editor_layout::BodyHeight};
     // The chart's BG image for Preview and Metadata; empty when it has none.
     std::filesystem::path background;
+    // The YMM of the song folder being edited; empty when it has none.
+    std::filesystem::path musicMetadata;
     // Body of the open note panel; empty while it is closed.
     PhantomCore::Rect inspector{};
 };

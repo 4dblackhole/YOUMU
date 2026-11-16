@@ -48,9 +48,9 @@ namespace tests
 
         TemporaryDirectory fixture("YOUMUCatalogProgress");
         const auto root = fixture.Path() / "Songs";
-        WriteTextFile(root / "song.ymm", "Version: 1\nFile: song.mp3\nMusic Name 1: Song\n");
-        WriteTextFile(root / "song.mp3", "audio-placeholder");
-        WriteTextFile(root / "chart.ymp", "Version: 1\nMusic metadata: song.ymm\nPattern Name: Chart\n"
+        WriteTextFile(root / "Song/Music/song.ymm", "Version: 1\nFile: song.mp3\nMusic Name 1: Song\n");
+        WriteTextFile(root / "Song/Music/song.mp3", "audio-placeholder");
+        WriteTextFile(root / "Song/Chart/Set/chart.ymp", "Version: 1\nPattern Name: Chart\n"
             "Mode: Taiko\nBase BPM: 120\n[Pattern]\n0/1,1,0\n");
         const auto cache = fixture.Path() / "index.bin";
         std::vector<SongCatalogEntry> progress;

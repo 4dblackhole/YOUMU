@@ -67,7 +67,7 @@ GPU 등록과 Canvas 조립은 Scene 스레드에서 수행합니다. 메인 Upd
 수정 시각/크기가 바뀐 문서와 YMM/YME 의존성만 다시 확인하며, 플레이는 항상 원본으로
 검증합니다. 수정 시각과 크기를 모두 강제로 보존한 외부 수정은 목록 갱신에서 누락될 수 있습니다.
 포맷 수정에는 parser revision 증가와 캐시 재구축 회귀를 포함합니다.
-논리 노트 집계와 집계 가능 여부 저장으로 parser revision과 cache schema는 모두 4입니다.
+곡 폴더 배치로 바꾸며(YMP의 `Music metadata` 제거) parser revision은 5, cache schema는 6입니다.
 명시된 HP와 누락 시 기본 9.00도 보존하며 이전 캐시는 원본에서 재구축합니다.
 
 로컬 기록 DB는 재생성 캐시가 아니므로 삭제/재구축하지 않습니다.

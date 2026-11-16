@@ -34,10 +34,11 @@ int main()
     {
         const auto root = fs::absolute(fs::path("build/new-difficulty-tests") / std::to_string(GetCurrentProcessId()));
         Check(!fs::exists(root), "Use a fresh fixture root.");
-        const auto music = root / L"Music/음악.ymm";
+        const auto songFolder = root / L"가수 - 음악";
+        const auto music = songFolder / L"Music/음악.ymm";
         Write(music, "Version: 1\nFile: sample.wav\nMusic Name 1: Test\nArtist 1: Test\n");
         // Catalog discovery needs a file; this test does not decode audio.
-        const auto sample = root / L"Music/sample.wav";
+        const auto sample = songFolder / L"Music/sample.wav";
         Write(sample, "fixture");
         auto parsedMusic = ChartParser{}.ParseMusicFile(music);
         Check(parsedMusic.Succeeded(), "YMM fixture must parse.");
@@ -47,10 +48,11 @@ int main()
         draft.makers = {"Tester"};
         draft.tags = {"new", "chart"};
         const auto created = Create(root, song, draft);
-        Check(created.patternPath.parent_path() == root / L"Patterns/음악/Beginner", "Difficulty directory layout.");
-        Check(created.pattern.musicMetadataFile == fs::path(L"Music/음악.ymm") &&
-                  created.pattern.effectFile == L"음악 [Beginner].yme",
-              "YMM root and sibling YME paths.");
+        Check(created.patternPath == songFolder / L"Chart/Tester - Beginner/음악 [Beginner].ymp",
+              "A new difficulty goes into Chart/<first maker - difficulty> of the song folder.");
+        Check(created.pattern.effectFile == L"음악 [Beginner].yme" &&
+                  Read(created.patternPath).find("Music metadata") == std::string::npos,
+              "The YMP names its sibling YME and carries no YMM reference.");
         const auto parsed = ChartParser{}.ParsePatternFile(created.patternPath);
         const auto effects = ChartParser{}.ParseEffectFile(*created.effectPath);
         Check(parsed.Succeeded() && effects.Succeeded(), "New pair must parse.");
@@ -95,13 +97,27 @@ int main()
         {
             refused = true;
         }
-        Check(refused && !fs::exists(root / L"Patterns/음악/Invalid"), "Invalid metadata leaves no folder.");
+        Check(refused && !fs::exists(songFolder / L"Chart/Tester - Invalid"), "Invalid metadata leaves no folder.");
         draft.baseBpm = 120;
         draft.name = "Another";
         song.patterns.push_back(created);
         auto another = Create(root, song, draft);
-        Check(another.patternPath.parent_path().parent_path() == created.patternPath.parent_path().parent_path(),
-              "Reuse the song's actual pattern parent.");
+        Check(another.patternPath.parent_path() == songFolder / L"Chart/Tester - Another",
+              "Every difficulty of a song shares its Chart folder.");
+        draft.makers.clear();
+        draft.name = "No maker";
+        Check(Create(root, song, draft).patternPath.parent_path() == songFolder / L"Chart/Unknown - No maker",
+              "A chart without a maker uses Unknown in its chart set folder name.");
+        bool outsideRefused{};
+        try
+        {
+            static_cast<void>(Create(root, SongCatalogEntry{root / L"loose.ymm", sample, parsedMusic.document, {}}, draft));
+        }
+        catch (const std::exception &)
+        {
+            outsideRefused = true;
+        }
+        Check(outsideRefused, "A YMM outside a song folder's Music folder cannot receive a difficulty.");
         // Metadata typed before Create, including fields the former dialog did not ask for.
         draft.name = "Metadata";
         draft.makers = {"Tester", "테스터"};
@@ -118,7 +134,7 @@ int main()
                   reread.document.backgroundOffsetY == -4 && reread.document.makers.size() == 2,
               "Create keeps the BG file, its offset and every maker.");
         const auto catalog = SongCatalog{}.Load(root);
-        Check(catalog.songs.size() == 1 && catalog.PatternCount() == 3, "New difficulties reload into the catalog.");
+        Check(catalog.songs.size() == 1 && catalog.PatternCount() == 4, "New difficulties reload into the catalog.");
         Check(Read(music) == "Version: 1\nFile: sample.wav\nMusic Name 1: Test\nArtist 1: Test\n",
               "The shared YMM must remain untouched.");
         std::cout << "Difficulty creation tests passed.\n";

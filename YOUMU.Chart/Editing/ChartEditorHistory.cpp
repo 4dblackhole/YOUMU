@@ -11,7 +11,6 @@ namespace
         PatternDocument result;
         result.version = source.version;
         result.sourcePath = source.sourcePath;
-        result.musicMetadataFile = source.musicMetadataFile;
         result.effectFile = source.effectFile;
         result.backgroundFile = source.backgroundFile;
         result.backgroundOffsetX = source.backgroundOffsetX;

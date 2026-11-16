@@ -112,15 +112,13 @@ ParseResult<PatternDocument> ChartParser::ParsePattern(const std::string_view ut
                               "Version must be an integer.");
             }
         }
-        else if (key == "Music metadata")
-            result.document.musicMetadataFile = PathFromUtf8(value);
         else if (key == "Effect file")
             result.document.effectFile = PathFromUtf8(value);
         else if (key == "BG")
         {
             const auto path = PathFromUtf8(value).lexically_normal();
             if (path.has_root_path() || std::ranges::find(path, std::filesystem::path{".."}) != path.end())
-                AddDiagnostic(result.diagnostics, sourcePath, lineNumber, "BG must be relative to Songs/BG.");
+                AddDiagnostic(result.diagnostics, sourcePath, lineNumber, "BG must be relative to the song folder's BG folder.");
             else
                 result.document.backgroundFile = path;
         }

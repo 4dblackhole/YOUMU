@@ -177,9 +177,12 @@ namespace tests
         Require(!missingPattern.Succeeded() && missingPattern.diagnostics.front().location.file == missing &&
                     !parser.ParseMusicFile(missing).Succeeded() && !parser.ParseEffectFile(missing).Succeeded(),
                 "Missing Unicode files must return diagnostics without throwing ANSI conversion errors.");
-        WriteTextFile(folder.Path() / L"이름 없는 곡.ymm", "File: music.wav\n");
-        WriteTextFile(folder.Path() / L"다른 곡.ymm", "File: music.wav\n");
-        WriteTextFile(folder.Path() / "music.wav", "test-only file existence fixture");
+        for (const auto *name : {L"이름 없는 곡", L"다른 곡"})
+        {
+            const auto musicFolder = folder.Path() / name / "Music";
+            WriteTextFile(musicFolder / (std::wstring(name) + L".ymm"), "File: music.wav\n");
+            WriteTextFile(musicFolder / "music.wav", "test-only file existence fixture");
+        }
         Require(SongCatalog{}.Load(folder.Path()).songs.size() == 2,
                 "Catalog sorting must support Unicode filename fallbacks without a title.");
 

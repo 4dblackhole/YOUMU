@@ -123,12 +123,14 @@ namespace
     void TestSavePublishesEffectPath()
     {
         const auto root = std::filesystem::absolute("build/fixtures/EditorSaveEffectPath");
-        std::filesystem::create_directories(root);
-        std::ofstream(root / "Song.ymm") << "Version: 1\nFile: Music.wav\nMusic Name 1: Editor Test\n";
-        std::ofstream(root / "Pattern.ymp") <<
-            "Version: 1\nMusic metadata: Song.ymm\nPattern Name: Editor Test\nMode: Taiko\n"
+        const auto music = root / "Song/Music", set = root / "Song/Chart/Set";
+        std::filesystem::create_directories(music);
+        std::filesystem::create_directories(set);
+        std::ofstream(music / "Song.ymm") << "Version: 1\nFile: Music.wav\nMusic Name 1: Editor Test\n";
+        std::ofstream(set / "Pattern.ymp") <<
+            "Version: 1\nPattern Name: Editor Test\nMode: Taiko\n"
             "Base BPM: 120\nJudgeLevel: 50\nHP: 9\n[Pattern]\n0/1,1,0\n1/2,2,0\n";
-        GameplayLaunchRequest request{root / "Pattern.ymp", {}, root / "Music.wav", "Taiko"};
+        GameplayLaunchRequest request{set / "Pattern.ymp", {}, music / "Music.wav", "Taiko"};
         request.songsRoot = root;
         auto workspace = std::make_unique<EditorWorkspace>(request);
         workspace->Initialize();

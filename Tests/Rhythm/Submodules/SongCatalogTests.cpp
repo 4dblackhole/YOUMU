@@ -1,5 +1,6 @@
 #include "TestSupport.h"
 #include "Catalog/SongCatalogCacheVersion.h"
+#include "Catalog/SongLayout.h"
 #include "Mode/PlayGameModeFactory.h"
 #include <cmath>
 #include <map>
@@ -54,7 +55,8 @@ namespace tests
         {
             Require(std::filesystem::is_regular_file(song.audioPath),
                     "Every YMM entry must resolve its music file.");
-            if (song.metadataPath.filename() == "angel dream hand shaking.ymm")
+            const bool angelDream = song.metadataPath.filename() == "Takahashi yoko - Angel Dream Handshaking.ymm";
+            if (angelDream)
             {
                 constexpr std::array RequiredPatterns{"angeldream [measure test].ymp",
                                                       "angeldream [test].ymp", "angeldream.ymp",
@@ -72,13 +74,16 @@ namespace tests
             }
             for (const SongCatalogPattern &pattern : song.patterns)
             {
-                if (song.metadataPath.filename() == "angel dream hand shaking.ymm")
+                if (angelDream)
                 {
+                    const std::string_view maker =
+                        pattern.pattern.makers.empty() ? std::string_view{} : pattern.pattern.makers.front();
                     Require(pattern.effectPath.has_value() &&
                                 pattern.effectPath->parent_path() == pattern.patternPath.parent_path() &&
                                 pattern.effectPath->stem() == pattern.patternPath.stem() &&
-                                pattern.patternPath.parent_path().filename() == pattern.pattern.name,
-                            "Each AngelDream difficulty must own a same-directory YMP/YME pair.");
+                                pattern.patternPath.parent_path().filename() ==
+                                    SongLayout::FolderName(maker, pattern.pattern.name),
+                            "Each AngelDream difficulty must own a YMP/YME pair in a Maker - Difficulty chart set.");
                 }
                 TemporaryDirectory saved("youmu-catalog-save");
                 auto copy = pattern.pattern;
@@ -129,28 +134,89 @@ namespace tests
     void TestSongCatalogIsolatesInvalidFiles()
     {
         TemporaryDirectory fixture("YOUMUCatalogValidation");
-        const std::filesystem::path music = fixture.Path() / "Music";
-        const std::filesystem::path patterns = fixture.Path() / "Pattern";
-        WriteTextFile(music / "valid.ymm", "Version: 1\nFile: valid.mp3\nMusic Name 1: Valid\n");
-        WriteTextFile(music / "valid.mp3", "audio-placeholder");
-        WriteTextFile(music / "invalid.ymm", "Version: nope\nMusic Name 1: Invalid\n");
-        WriteTextFile(patterns / "valid.ymp", "Version: 1\nMusic metadata: Music/valid.ymm\n"
-                                              "Pattern Name: Valid\nMode: Taiko\nBase BPM: 120\n"
-                                              "[Pattern]\n0/1,1,0\n");
-        WriteTextFile(patterns / "invalid.ymp",
-                      "Version: nope\nMusic metadata: Music/valid.ymm\n"
-                      "Pattern Name: Invalid\nMode: Taiko\nBase BPM: 120\n"
-                      "[Pattern]\n0/1,1,0\n");
+        const std::filesystem::path valid = fixture.Path() / "Valid";
+        const std::string chart = "Pattern Name: Valid\nMode: Taiko\nBase BPM: 120\n[Pattern]\n0/1,1,0\n";
+        WriteTextFile(valid / "Music/valid.ymm", "Version: 1\nFile: valid.mp3\nMusic Name 1: Valid\n");
+        WriteTextFile(valid / "Music/valid.mp3", "audio-placeholder");
+        // A leftover reference line from the old layout is an unknown field, not a link.
+        WriteTextFile(valid / "Chart/Set/valid.ymp", "Version: 1\nMusic metadata: Music/other.ymm\n" + chart);
+        WriteTextFile(valid / "Chart/Set/invalid.ymp", "Version: nope\n" + chart);
+        WriteTextFile(valid / "Chart/loose.ymp", "Version: 1\n" + chart);
+        WriteTextFile(fixture.Path() / "Invalid/Music/invalid.ymm", "Version: nope\nMusic Name 1: Invalid\n");
+        WriteTextFile(fixture.Path() / "Invalid/Chart/Set/orphan.ymp", "Version: 1\n" + chart);
+        WriteTextFile(fixture.Path() / "Double/Music/a.ymm", "Version: 1\nFile: a.mp3\nMusic Name 1: A\n");
+        WriteTextFile(fixture.Path() / "Double/Music/b.ymm", "Version: 1\nFile: a.mp3\nMusic Name 1: B\n");
+        WriteTextFile(fixture.Path() / "Double/Music/a.mp3", "audio-placeholder");
+        WriteTextFile(fixture.Path() / "Empty/Chart/Set/orphan.ymp", "Version: 1\n" + chart);
+        WriteTextFile(fixture.Path() / "Patterns/old/old.ymp", "Version: 1\nMusic metadata: Music/valid.ymm\n" + chart);
+        WriteTextFile(fixture.Path() / "loose.ymm", "Version: 1\nFile: valid.mp3\nMusic Name 1: Loose\n");
 
         const SongCatalogLoadResult catalog = SongCatalog{CountPlayableNotes}.Load(fixture.Path());
-        Require(!catalog.Succeeded() && catalog.discoveredMusicFiles == 2 &&
-                    catalog.discoveredPatternFiles == 2,
+        Require(!catalog.Succeeded() && catalog.discoveredMusicFiles == 4 &&
+                    catalog.discoveredPatternFiles == 4,
                 "Catalog discovery must retain diagnostics and source counts for invalid files.");
-        Require(catalog.songs.size() == 1 && catalog.PatternCount() == 1,
+        Require(catalog.songs.size() == 1 && catalog.PatternCount() == 1 &&
+                    catalog.songs.front().patterns.front().patternPath == valid / "Chart/Set/valid.ymp",
                 "Invalid YMM/YMP files must be isolated from otherwise playable catalog entries "
                 "(songs=" +
                     std::to_string(catalog.songs.size()) +
                     ", patterns=" + std::to_string(catalog.PatternCount()) + ").");
+        const auto reported = [&catalog](DiagnosticSeverity severity, const std::filesystem::path &file,
+                                         std::string_view text)
+        {
+            return std::ranges::any_of(catalog.diagnostics, [&](const Diagnostic &diagnostic) {
+                return diagnostic.severity == severity && diagnostic.location.file == file &&
+                       diagnostic.message.find(text) != std::string::npos;
+            });
+        };
+        Require(reported(DiagnosticSeverity::Error, fixture.Path() / "Double/Music", "more than one YMM") &&
+                    reported(DiagnosticSeverity::Error, fixture.Path() / "Empty/Music", "needs one YMM"),
+                "A song folder must hold exactly one YMM in its Music folder.");
+        Require(reported(DiagnosticSeverity::Warning, fixture.Path() / "Patterns", "not a song folder") &&
+                    reported(DiagnosticSeverity::Warning, valid / "Chart/loose.ymp", "outside a chart set folder") &&
+                    reported(DiagnosticSeverity::Warning, valid / "Chart/Set/valid.ymp", "Unknown pattern field"),
+                "Files outside the song folder layout are skipped with a warning, never joined by reference.");
+    }
+
+    void TestSongLayout()
+    {
+        const std::filesystem::path song = std::filesystem::path("Songs") / "Artist - Title";
+        Require(SongLayout::SongFolderOfPattern(song / "Chart/Maker - Oni/a.ymp") == song &&
+                    SongLayout::SongFolderOfPattern(song / "chart/Maker - Oni/a.ymp") == song &&
+                    SongLayout::SongFolderOfPattern(song / "Patterns/Maker - Oni/a.ymp").empty() &&
+                    SongLayout::SongFolderOfPattern(song / "Chart/a.ymp").empty() &&
+                    SongLayout::SongFolderOfPattern({}).empty(),
+                "A pattern belongs to the song folder two levels above its chart set folder.");
+        Require(SongLayout::SongFolderOfMusic(song / "Music/a.ymm") == song &&
+                    SongLayout::SongFolderOfMusic(song / "a.ymm").empty(),
+                "A YMM belongs to the song folder that holds its Music folder.");
+        Require(SongLayout::BackgroundPathOfPattern(song / "Chart/Set/a.ymp", "bg1.png") == song / "BG/bg1.png" &&
+                    SongLayout::BackgroundPathOfPattern(song / "Chart/Set/a.ymp", {}).empty() &&
+                    SongLayout::BackgroundPathOfPattern("a.ymp", "bg1.png").empty(),
+                "Backgrounds resolve inside the song folder's BG folder.");
+        Require(SongLayout::FolderName("Konpaku Sariel", "Dream") == "Konpaku Sariel - Dream" &&
+                    SongLayout::FolderName("", " Oni ") == "Unknown - Oni" &&
+                    SongLayout::FolderName("A/B", "C:D?.") == "A_B - C_D_" &&
+                    SongLayout::FolderName("\xEC\x95\x84", "\xEA\xB3\xA1") == std::filesystem::path(L"\uC544 - \uACE1"),
+                "Folder names join the first two labels and replace characters a filename cannot hold.");
+
+        TemporaryDirectory fixture("YOUMUSongLayout");
+        const auto folder = fixture.Path() / "Song";
+        Require(SongLayout::FindMusicMetadata(folder).status == SongLayout::MetadataStatus::Missing &&
+                    SongLayout::FindMusicMetadata({}).status == SongLayout::MetadataStatus::Missing,
+                "A folder without a Music folder has no YMM.");
+        WriteTextFile(folder / "Music/audio.mp3", "audio-placeholder");
+        WriteTextFile(folder / "Music/Nested/other.ymm", "Version: 1\n");
+        Require(SongLayout::FindMusicMetadata(folder).status == SongLayout::MetadataStatus::Missing,
+                "Only a YMM directly inside Music counts.");
+        WriteTextFile(folder / "Music/Song.YMM", "Version: 1\n");
+        const auto found = SongLayout::FindMusicMetadataOfPattern(folder / "Chart/Set/a.ymp");
+        Require(found.status == SongLayout::MetadataStatus::Found && found.path == folder / "Music/Song.YMM",
+                "A pattern finds its song's YMM from its own path.");
+        WriteTextFile(folder / "Music/second.ymm", "Version: 1\n");
+        Require(SongLayout::FindMusicMetadata(folder).status == SongLayout::MetadataStatus::Multiple &&
+                    SongLayout::FindMusicMetadata(folder).path.empty(),
+                "Two YMM files make the song ambiguous.");
     }
     // Song filter Length: the span from the first note to the last note entry, kept in the list index.
     void TestSongCatalogChartLength()
@@ -158,12 +224,13 @@ namespace tests
         TemporaryDirectory fixture("YOUMUChartLength");
         const auto root = fixture.Path() / "Songs";
         const auto cache = fixture.Path() / "Cache" / "index.bin";
-        WriteTextFile(root / "song.ymm", "Version: 1\nFile: song.mp3\nMusic Name 1: Title\n");
-        WriteTextFile(root / "song.mp3", "audio-placeholder");
-        WriteTextFile(root / "long.ymp", "Version: 1\nMusic metadata: song.ymm\nPattern Name: Long\nMode: Taiko\n"
-                                         "Base BPM: 120\n[Pattern]\n1/4,1,0\n--\n2/4,1,0\n");
-        WriteTextFile(root / "empty.ymp", "Version: 1\nMusic metadata: song.ymm\nPattern Name: Empty\nMode: Taiko\n"
-                                          "Base BPM: 120\n[Pattern]\n");
+        const auto set = root / "Song/Chart/Set";
+        WriteTextFile(root / "Song/Music/song.ymm", "Version: 1\nFile: song.mp3\nMusic Name 1: Title\n");
+        WriteTextFile(root / "Song/Music/song.mp3", "audio-placeholder");
+        WriteTextFile(set / "long.ymp", "Version: 1\nPattern Name: Long\nMode: Taiko\n"
+                                        "Base BPM: 120\n[Pattern]\n1/4,1,0\n--\n2/4,1,0\n");
+        WriteTextFile(set / "empty.ymp", "Version: 1\nPattern Name: Empty\nMode: Taiko\n"
+                                         "Base BPM: 120\n[Pattern]\n");
         const auto lengths = [](const SongCatalogLoadResult &result)
         {
             std::map<std::string, std::optional<double>> found;
@@ -186,11 +253,12 @@ namespace tests
         TemporaryDirectory fixture("YOUMUIndex");
         const auto root = fixture.Path() / L"Songs-한글";
         const auto cache = fixture.Path() / "Cache" / "index.bin";
-        const auto pattern = root / "valid.ymp", effect = root / "valid.yme";
-        WriteTextFile(root / "valid.ymm", "Version: 1\nFile: valid.mp3\nMusic Name 1: Title\n");
-        WriteTextFile(root / "valid.mp3", "audio-placeholder");
+        const auto song = root / L"\uACE1 \uD3F4\uB354";
+        const auto pattern = song / "Chart/Set/valid.ymp", effect = song / "Chart/Set/valid.yme";
+        WriteTextFile(song / "Music/valid.ymm", "Version: 1\nFile: valid.mp3\nMusic Name 1: Title\n");
+        WriteTextFile(song / "Music/valid.mp3", "audio-placeholder");
         WriteTextFile(effect, "Version: 1\n");
-        std::string source = "Version: 1\nMusic metadata: valid.ymm\nEffect file: valid.yme\n"
+        std::string source = "Version: 1\nEffect file: valid.yme\n"
             "Pattern Name: Valid\nMode: Taiko\nBase BPM: 120\nJudgeLevel: 40.37\nHP: 17.25\n[Time Signature]\n1/4,#bpm 250\n1/4,#bpm 180\n[Pattern]\n0/1,1,0\n";
         WriteTextFile(pattern, source);
         std::size_t countCalculations{};

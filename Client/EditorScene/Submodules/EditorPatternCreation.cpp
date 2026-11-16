@@ -1,4 +1,5 @@
 #include "EditorPatternCreation.h"
+#include "Catalog/SongLayout.h"
 #include "Editing/ChartEditor.h"
 #include "Parsing/ChartParser.h"
 #include <Windows.h>
@@ -34,17 +35,14 @@ namespace
             throw Error(Failure::InvalidName, "Difficulty name must not be a path.");
         return path;
     }
-    fs::path SongFolder(const fs::path &root, const SongCatalogEntry &song)
+    // Chart/<first maker - difficulty name>/ of the song folder that holds the YMM.
+    fs::path ChartSetFolder(const fs::path &music, const PatternDocument &metadata)
     {
-        const auto patterns = root / L"Patterns";
-        for (const auto &pattern : song.patterns)
-        {
-            const auto folder = fs::absolute(pattern.patternPath).parent_path().parent_path().lexically_normal();
-            if (folder != patterns && Within(folder, patterns))
-                return folder;
-        }
-        // Songs without a pattern have no prior chart directory to reuse.
-        return patterns / song.metadataPath.stem();
+        const auto song = SongLayout::SongFolderOfMusic(music);
+        if (song.empty())
+            throw Error(Failure::InvalidMetadata, "The selected song's YMM is not in a song folder's Music folder.");
+        const std::string_view maker = metadata.makers.empty() ? std::string_view{} : metadata.makers.front();
+        return song / SongLayout::ChartFolder / SongLayout::FolderName(maker, metadata.name);
     }
     void WriteNewFile(const fs::path &path, const std::string &bytes)
     {
@@ -78,11 +76,10 @@ SongCatalogPattern Create(const fs::path &songsRoot, const SongCatalogEntry &son
     const auto name = DifficultyName(metadata.name);
     if (!Within(music, root) || !ChartParser{}.ParseMusicFile(music).Succeeded())
         throw Error(Failure::InvalidMetadata, "The selected song's YMM is unavailable.");
-    const auto folder = SongFolder(root, song) / name;
+    const auto folder = ChartSetFolder(music, metadata);
     const auto filename = music.stem().wstring() + L" [" + name.wstring() + L"]";
     PatternDocument pattern;
     pattern.sourcePath = folder / (filename + L".ymp");
-    pattern.musicMetadataFile = music.lexically_relative(root);
     pattern.effectFile = filename + L".yme";
     pattern.name = metadata.name;
     pattern.makers = metadata.makers;
@@ -111,7 +108,7 @@ SongCatalogPattern Create(const fs::path &songsRoot, const SongCatalogEntry &son
         fs::create_directories(folder.parent_path());
         directoryCreated = fs::create_directory(folder);
         if (!directoryCreated)
-            throw Error(Failure::ExistingFolder, "The difficulty folder already exists.");
+            throw Error(Failure::ExistingFolder, "The chart set folder already exists.");
         WriteNewFile(pattern.sourcePath, patternText);
         patternWritten = true;
         WriteNewFile(effects.sourcePath, effectText);

@@ -1,5 +1,6 @@
 #include "MusicSelectScene.h"
 #include "App/AssetPaths.h"
+#include "Catalog/SongLayout.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Submodules/MusicSelectView.h"
@@ -209,8 +210,8 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
     request.patternTitle = PatternName(pattern);
     request.playOptions = selection_.playOptions_;
     request.songsRoot = library_->CatalogRoot();
-    if (!pattern.pattern.backgroundFile.empty())
-        request.backgroundPath = library_->CatalogRoot() / L"BG" / pattern.pattern.backgroundFile;
+    request.backgroundPath =
+        SongLayout::BackgroundPathOfPattern(pattern.patternPath, pattern.pattern.backgroundFile);
     request.backgroundOffsetX = pattern.pattern.backgroundOffsetX;
     request.backgroundOffsetY = pattern.pattern.backgroundOffsetY;
     request.songArtist = SongArtist(song);
