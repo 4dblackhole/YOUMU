@@ -52,6 +52,8 @@ void MusicSelectView::Initialize(const EngineServices &services)
     if (!IsEditorSongSelect())
         playOptionsPanel_.Initialize(*canvas_, texts_, services.windowControl, &screenVisuals_);
     favoritesPanel_.Initialize(*canvas_, texts_);
+    if (IsEditorSongSelect())
+        osuImportPanel_.Initialize(*canvas_, texts_);
     if (recordPanel_) records_.InitializeFilter(*canvas_, services.windowControl);
     tooltip_.Initialize(*canvas_);
     alert_.Initialize(*canvas_, &screenVisuals_);
@@ -100,6 +102,11 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     songList_.RefreshNameHints();
     tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !covered && !IsAdditionMenuOpen(), canvasPointer_);
     // Panels are processed in order; the first one that consumes input stops the rest.
+    if (ProcessOsuImportPanel(input))
+    {
+        UpdateSearchInputVisibility();
+        return command_;
+    }
     const bool panelConsumed =
         ProcessPlayOptionsPanel(input) || ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input);
     if (panelConsumed || ProcessFilterPanel(input))
@@ -147,6 +154,7 @@ void MusicSelectView::Shutdown() noexcept
     records_.Shutdown();
     filterPanel_.Shutdown();
     favoritesPanel_.Shutdown();
+    osuImportPanel_.Shutdown();
     favoriteTabs_.Shutdown();
     searchInput_.reset();
     searchFocused_ = false;
@@ -206,6 +214,7 @@ void MusicSelectView::ShowAlert(AlertContent content)
     CloseAdditionMenu();
     filterPanel_.Close();
     favoritesPanel_.Close();
+    osuImportPanel_.Close();
     records_.CloseFilter();
     playOptionsPanel_.Dismiss();
     tooltip_.Hide();

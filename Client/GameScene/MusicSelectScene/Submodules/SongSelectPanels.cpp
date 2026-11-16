@@ -322,6 +322,7 @@ void MusicSelectView::ApplyTexts()
     filterPanel_.SetViewport(width_, height_);
     favoriteTabs_.Refresh(selection_.favorites_, selection_.favoriteFolder_);
     favoritesPanel_.RefreshTexts();
+    osuImportPanel_.RefreshTexts();
     RefreshSelectionPresentation();
     RefreshSearchPresentation();
     textRevision_ = texts_.Revision();

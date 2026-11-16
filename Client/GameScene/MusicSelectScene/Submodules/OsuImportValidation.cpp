@@ -1,5 +1,4 @@
 #include "OsuImportValidation.h"
-#include "Catalog/SongLayout.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Parsing/ChartParser.h"
 #include <Windows.h>
@@ -228,7 +227,7 @@ namespace
         auto parent = root.begin(), child = file.begin();
         for (; parent != root.end(); ++parent, ++child)
             if (child == file.end() || CompareStringOrdinal(parent->c_str(), -1, child->c_str(), -1, TRUE) != CSTR_EQUAL)
-                throw std::runtime_error("Converted file is outside the selected Songs folder.");
+                throw std::runtime_error("Converted file is outside the conversion folder.");
         if (!std::filesystem::is_regular_file(file)) throw std::runtime_error("Converted file is missing.");
         return file;
     }
@@ -238,28 +237,28 @@ namespace
     }
 }
 
-void ValidateConvertedOsuResult(std::string_view output, const std::filesystem::path &songsRoot)
+ConvertedOsuChart ValidateConvertedOsuResult(std::string_view output, const std::filesystem::path &outputFolder)
 {
     // Validate the producer result and saved references before constructing any
     // play session. All objects remain local to the import worker.
     const auto files = ConverterResultReader(output).Read();
-    const auto root = std::filesystem::canonical(songsRoot);
-    const auto musicFile = ImportedPath(files.music, root);
-    const auto patternFile = ImportedPath(files.pattern, root);
-    const auto effectFile = ImportedPath(files.effects, root);
+    const auto root = std::filesystem::canonical(outputFolder);
+    ConvertedOsuChart chart;
+    chart.musicFile = ImportedPath(files.music, root);
+    chart.patternFile = ImportedPath(files.pattern, root);
+    chart.effectFile = ImportedPath(files.effects, root);
     ChartParser parser;
-    const auto music = parser.ParseMusicFile(musicFile);
-    const auto pattern = parser.ParsePatternFile(patternFile);
-    const auto effects = parser.ParseEffectFile(effectFile);
+    auto music = parser.ParseMusicFile(chart.musicFile);
+    auto pattern = parser.ParsePatternFile(chart.patternFile);
+    const auto effects = parser.ParseEffectFile(chart.effectFile);
     CheckImportDiagnostics(music.diagnostics);
     CheckImportDiagnostics(pattern.diagnostics);
     CheckImportDiagnostics(effects.diagnostics);
-    (void)ImportedPath(musicFile.parent_path() / music.document.audioFile, root);
-    // The pattern must sit in the song folder whose single YMM is the reported one.
-    const auto songMusic = SongLayout::FindMusicMetadataOfPattern(patternFile);
-    if (songMusic.status != SongLayout::MetadataStatus::Found || !std::filesystem::equivalent(songMusic.path, musicFile))
-        throw std::runtime_error("Converted pattern is not in the reported song's Chart folder.");
-    if (!std::filesystem::equivalent(patternFile.parent_path() / pattern.document.effectFile, effectFile) ||
+    // The audio and the background are still where the osu! file names them; placing the
+    // chart into a song folder checks and copies them.
+    if (music.document.audioFile.empty())
+        throw std::runtime_error("Converted music metadata names no audio file.");
+    if (!std::filesystem::equivalent(chart.patternFile.parent_path() / pattern.document.effectFile, chart.effectFile) ||
         pattern.document.notes.size() != *files.noteRows)
         throw std::runtime_error("Converted file references or note rows do not match the result.");
 
@@ -273,4 +272,7 @@ void ValidateConvertedOsuResult(std::string_view output, const std::filesystem::
     std::size_t notes{};
     for (const auto &lane : session.session->Gear().Lanes()) notes += lane->Notes().size();
     if (notes != *files.sourceObjects) throw std::runtime_error("YOUMU discarded one or more converted hit objects.");
+    chart.music = std::move(music.document);
+    chart.pattern = std::move(pattern.document);
+    return chart;
 }

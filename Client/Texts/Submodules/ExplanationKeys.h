@@ -10,7 +10,7 @@ inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "Editor.audioHelp", "Editor.analyzingAudio", "Editor.excludeHelp", "Editor.delayCutFormat", "Editor.selectedCountFormat", "Editor.curveValid", "Editor.curveNameError", "Editor.curvePositionFormat", "Editor.audioSelectionHelp", "Editor.discardChanges", "Editor.saveFailedMessage", "Editor.pasteFailedMessage", "Editor.savedFormat",
     "TaikoEditor.effectsHelp", "TaikoEditor.selectNoteHelp",
     "MusicSelect.createDifficultyError", "MusicSelect.createDifficultyExists",
-    "MusicSelect.createDifficultyNameError", "MusicSelect.importFailedMessage", "MusicSelect.noSongsAvailable", "MusicSelect.noDifficulties", "MusicSelect.catalogErrorPrefix", "MusicSelect.unsupportedModePrefix",
+    "MusicSelect.createDifficultyNameError", "MusicSelect.importFailedMessage", "MusicSelect.importPartialMessage", "MusicSelect.noSongsAvailable", "MusicSelect.noDifficulties", "MusicSelect.catalogErrorPrefix", "MusicSelect.unsupportedModePrefix",
     "MusicSelect.patternErrorPrefix", "MusicSelect.unknownChartError",
     "Result.pauseUsed", "Result.rewindUsed", "Result.noHpData", "Result.noTimingData",
     "Gameplay.audioInitializationFailed", "Pause.preparing", "Pause.retryDescription", "Pause.retireDescription",
@@ -21,5 +21,6 @@ inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "SongFilter.invalidNotes", "SongFilter.invalidBpm", "SongFilter.invalidJudgeLevel",
     "SongFilter.invalidDifficulty", "SongFilter.invalidHp", "SongFilter.invalidLength", "SongFilter.reversedRange",
     "Favorites.noPattern", "Favorites.hint", "Favorites.empty", "Favorites.error", "RecordFilter.error",
+    "OsuImport.hint", "OsuImport.none", "OsuImport.exists", "OsuImport.failed",
     "PlayOptions.invalidValue"
 });

@@ -63,3 +63,24 @@ bool MusicSelectView::ProcessAdditionMenu(const InputState &input)
         CloseAdditionMenu();
     return true; // An open menu consumes input, including clicks which dismiss it.
 }
+void MusicSelectView::OpenOsuImportPanel(std::wstring folder, std::vector<OsuImportDifficulty> difficulties)
+{
+    SetSearchFocus(false);
+    CloseAdditionMenu();
+    osuImportPanel_.Open(std::move(folder), std::move(difficulties));
+    inputRouter_.Reset(*canvas_);
+    UpdateSearchInputVisibility();
+}
+bool MusicSelectView::ProcessOsuImportPanel(const InputState &input)
+{
+    if (!osuImportPanel_.IsVisible())
+        return false;
+    for (const auto &action : canvas_->TakeActions())
+        if (osuImportPanel_.ProcessAction(action))
+            inputRouter_.Reset(*canvas_);
+    osuImportPanel_.ProcessInput(input, canvasPointer_);
+    inputRouter_.InvalidateHitTest();
+    if (!osuImportPanel_.IsVisible())
+        inputRouter_.Reset(*canvas_);
+    return true;
+}

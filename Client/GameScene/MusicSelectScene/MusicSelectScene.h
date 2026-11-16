@@ -5,6 +5,7 @@
 #include "Texts/TextCatalog.h"
 #include "App/OptionSettings.h"
 #include "Submodules/EditorOsuImport.h"
+#include "Submodules/OsuImportPanel.h"
 #include "GameFlow/PlaySessionLoader.h"
 #include <memory>
 
@@ -37,6 +38,10 @@ class MusicSelectScene final : public PhantomCore::GameScene
     void CreateDifficulty(PhantomCore::SceneManager &scenes);
     void ConvertOsu();
     void PollOsuImport();
+    void ShowOsuScan(OsuImportScan scan);
+    void AnswerOsuImport(const OsuImportChoice &choice);
+    void FinishOsuImport(const EditorOsuImportResult &result);
+    void ShowImportAlert(const char *messageKey, const std::string &detail);
     void RefreshCatalog();
     void PollPatternLoad(PhantomCore::SceneManager &scenes);
     std::shared_ptr<GameplayLaunchStore> launchRequest_;
@@ -52,6 +57,7 @@ class MusicSelectScene final : public PhantomCore::GameScene
     // Returning to the title keeps the song playing; every other exit silences it.
     bool keepPlaybackOnExit_{};
     EditorOsuImport osuImport_;
+    std::wstring osuImportFolder_; // Name of the osu! song folder being imported, for the list's heading.
     PlaySessionLoader patternLoader_;
     std::optional<GameplayLaunchRequest> pendingLaunch_;
 };

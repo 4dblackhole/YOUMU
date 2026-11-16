@@ -49,6 +49,7 @@ void MusicSelectView::UpdateResponsiveLayout()
     playOptionsPanel_.SetViewport(height_);
     records_.SetViewport(height_);
     favoritesPanel_.SetViewport();
+    osuImportPanel_.SetViewport();
 }
 
 void MusicSelectView::UpdateSheetLayout(const SongSelectFrame &frame)

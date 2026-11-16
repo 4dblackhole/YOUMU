@@ -14,22 +14,22 @@ namespace
             return std::towlower(static_cast<wint_t>(left)) == std::towlower(static_cast<wint_t>(right));
         });
     }
-
-    [[nodiscard]] std::string NamePart(const std::string_view text)
-    {
-        std::string part(text);
-        for (auto &character : part)
-        {
-            const bool control = static_cast<unsigned char>(character) < 32;
-            if (control || std::string_view{"<>:\"/\\|?*"}.find(character) != std::string_view::npos)
-                character = '_';
-        }
-        const auto first = part.find_first_not_of(' ');
-        if (first == std::string::npos)
-            return "Unknown";
-        return part.substr(first, part.find_last_not_of(' ') - first + 1);
-    }
 } // namespace
+
+std::string SongLayout::NamePart(const std::string_view text)
+{
+    std::string part(text);
+    for (auto &character : part)
+    {
+        const bool control = static_cast<unsigned char>(character) < 32;
+        if (control || std::string_view{"<>:\"/\\|?*"}.find(character) != std::string_view::npos)
+            character = '_';
+    }
+    const auto first = part.find_first_not_of(' ');
+    if (first == std::string::npos)
+        return "Unknown";
+    return part.substr(first, part.find_last_not_of(' ') - first + 1);
+}
 
 std::filesystem::path SongLayout::SongFolderOfPattern(const std::filesystem::path &patternPath)
 {

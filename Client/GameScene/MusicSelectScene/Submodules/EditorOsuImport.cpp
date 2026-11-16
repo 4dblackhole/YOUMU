@@ -3,11 +3,13 @@
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 #include <Windows.h>
+#include <algorithm>
 #include <chrono>
-#include <commdlg.h>
 #include <cstddef>
+#include <cwctype>
 #include <fstream>
 #include <memory>
+#include <shobjidl.h>
 #include <stdexcept>
 #include <system_error>
 #include <vector>
@@ -142,70 +144,226 @@ namespace
             throw std::system_error(static_cast<int>(GetLastError()), std::system_category());
         return code;
     }
-    EditorOsuImportResult Import(const fs::path &input, const fs::path &root)
+    std::string Utf8(const fs::path &path)
+    {
+        const auto text = path.generic_u8string();
+        return {reinterpret_cast<const char *>(text.data()), text.size()};
+    }
+    // The .osu files directly inside the folder, in name order.
+    std::vector<fs::path> OsuFiles(const fs::path &folder)
+    {
+        std::vector<fs::path> files;
+        for (const auto &entry : fs::directory_iterator(folder))
+        {
+            auto extension = entry.path().extension().native();
+            std::ranges::transform(extension, extension.begin(),
+                                   [](const wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
+            if (entry.is_regular_file() && extension == L".osu")
+                files.push_back(entry.path());
+        }
+        std::ranges::sort(files);
+        return files;
+    }
+    // COM for the folder dialog. A thread that already uses another apartment model keeps its own.
+    class ComApartment final
+    {
+      public:
+        ComApartment() : initialized_(SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED))) {}
+        ~ComApartment()
+        {
+            if (initialized_)
+                CoUninitialize();
+        }
+        ComApartment(const ComApartment &) = delete;
+        ComApartment &operator=(const ComApartment &) = delete;
+
+      private:
+        bool initialized_;
+    };
+    template <typename Interface> struct ComRelease
+    {
+        void operator()(Interface *pointer) const noexcept
+        {
+            pointer->Release();
+        }
+    };
+    template <typename Interface> using ComPointer = std::unique_ptr<Interface, ComRelease<Interface>>;
+    void RequireDialog(const HRESULT result)
+    {
+        if (FAILED(result))
+            throw std::runtime_error("Cannot open the osu! folder dialog (" + std::to_string(result) + ").");
+    }
+} // namespace
+
+// Shared by the object and its worker. The worker fills `charts` and the object reads it only
+// after that worker's future is ready, so no lock is needed.
+struct EditorOsuImport::Session
+{
+    Capture stage; // Every converter output of this import; deleted with the session.
+    fs::path songsRoot;
+    // Parallel to the scan's difficulties; a failed difficulty keeps an empty chart.
+    std::vector<ConvertedOsuChart> charts;
+    std::vector<std::string> labels;
+};
+
+namespace
+{
+    using Difficulty = OsuImportDifficulty;
+    // Converts one .osu into its own subfolder of the session and checks the result. The
+    // converter writes three files there and nothing into the osu! folder.
+    Difficulty ConvertDifficulty(EditorOsuImport::Session &session, const fs::path &exe, const fs::path &map)
+    {
+        Difficulty row;
+        row.source = map;
+        const auto index = session.charts.size();
+        session.charts.emplace_back();
+        session.labels.push_back(Utf8(map.filename()));
+        try
+        {
+            const auto work = session.stage.path / std::to_wstring(index);
+            const auto output = work / L"files";
+            fs::create_directories(output);
+            const auto command = Quote(exe.native()) + L" --input " + Quote(map.native()) + L" --output-dir " +
+                                 Quote(output.native());
+            const auto code = Run(exe, command, work);
+            if (code != 0)
+            {
+                row.problem = ReadCapture(work / L"stderr");
+                if (row.problem.empty())
+                    row.problem = "Converter failed (exit " + std::to_string(code) + ").";
+                return row;
+            }
+            auto chart = ValidateConvertedOsuResult(ReadCapture(work / L"stdout"), output);
+            chart.sourceFolder = map.parent_path();
+            row.name = chart.pattern.name;
+            row.maker = chart.pattern.makers.empty() ? std::string{} : chart.pattern.makers.front();
+            const auto plan = PlanOsuPlacement(session.songsRoot, chart);
+            row.problem = plan.problem;
+            if (plan.problem.empty())
+                row.state = plan.chartExists ? Difficulty::State::AlreadyImported : Difficulty::State::Ready;
+            session.labels.back() = row.name;
+            session.charts.back() = std::move(chart);
+        }
+        catch (const std::exception &error)
+        {
+            row.problem = error.what();
+        }
+        return row;
+    }
+    OsuImportScan Scan(EditorOsuImport::Session &session, const fs::path &folder)
     {
         try
         {
             const auto exe = ConverterPath();
-            Capture capture;
-            const auto command = Quote(exe.native()) + L" --input " + Quote(input.native()) + L" --songs-root " +
-                                 Quote(root.native()) + L" --layout library";
-            const auto code = Run(exe, command, capture.path);
-            const auto output = ReadCapture(capture.path / L"stdout");
-            auto diagnostics = ReadCapture(capture.path / L"stderr");
-            const bool success = code == 0;
-            if (success) ValidateConvertedOsuResult(output, root);
-            if (!success && diagnostics.empty())
-                diagnostics = "Converter failed (exit " + std::to_string(code) + ").";
-            return {success, std::move(diagnostics)};
+            const auto maps = OsuFiles(folder);
+            if (maps.empty())
+                return {false, "The folder holds no .osu file: " + Utf8(folder), {}};
+            OsuImportScan scan{true, {}, {}};
+            for (const auto &map : maps)
+                scan.difficulties.push_back(ConvertDifficulty(session, exe, map));
+            return scan;
         }
         catch (const std::exception &error)
         {
-            return {false, error.what()};
+            return {false, error.what(), {}};
         }
     }
+    EditorOsuImportResult Place(const EditorOsuImport::Session &session, const std::vector<std::size_t> &chosen)
+    {
+        EditorOsuImportResult result{true, false, {}};
+        for (const auto index : chosen)
+        {
+            try
+            {
+                (void)PlaceConvertedOsuChart(session.songsRoot, session.charts.at(index));
+                result.changed = true;
+            }
+            catch (const std::exception &error)
+            {
+                result.success = false;
+                const auto label = index < session.labels.size() ? session.labels[index] : std::string{"?"};
+                result.message += label + ": " + error.what() + "\n";
+            }
+        }
+        return result;
+    }
 } // namespace
-std::optional<std::filesystem::path> SelectOsuFile(const TextCatalog &texts)
+
+std::optional<std::filesystem::path> SelectOsuFolder(const TextCatalog &texts)
 {
-    std::vector<wchar_t> path(32768);
-    const auto title = std::wstring(MusicSelect(texts).convertOsu);
-    auto filter = std::wstring(MusicSelect(texts).osuFileFilter);
-    filter.push_back(L'\0');
-    filter.append(L"*.osu");
-    filter.push_back(L'\0');
-    filter.push_back(L'\0');
-    OPENFILENAMEW dialog{};
-    dialog.lStructSize = sizeof(dialog);
-    dialog.hwndOwner = GetActiveWindow();
-    dialog.lpstrFilter = filter.c_str();
-    dialog.lpstrFile = path.data();
-    dialog.nMaxFile = static_cast<DWORD>(path.size());
-    dialog.lpstrTitle = title.c_str();
-    dialog.lpstrDefExt = L"osu";
-    dialog.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
-    if (GetOpenFileNameW(&dialog))
-        return fs::path(path.data());
-    if (const auto error = CommDlgExtendedError())
-        throw std::runtime_error("Cannot open osu! file dialog (" + std::to_string(error) + ").");
-    return {};
+    const ComApartment apartment;
+    IFileOpenDialog *created{};
+    RequireDialog(CoCreateInstance(__uuidof(FileOpenDialog), nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&created)));
+    const ComPointer<IFileOpenDialog> dialog(created);
+    DWORD options{};
+    RequireDialog(dialog->GetOptions(&options));
+    RequireDialog(dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST |
+                                     FOS_NOCHANGEDIR));
+    RequireDialog(dialog->SetTitle(std::wstring(MusicSelect(texts).convertOsu).c_str()));
+    const auto shown = dialog->Show(GetActiveWindow());
+    if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+        return {};
+    RequireDialog(shown);
+    IShellItem *chosen{};
+    RequireDialog(dialog->GetResult(&chosen));
+    const ComPointer<IShellItem> item(chosen);
+    PWSTR text{};
+    RequireDialog(item->GetDisplayName(SIGDN_FILESYSPATH, &text));
+    const fs::path folder(text);
+    CoTaskMemFree(text);
+    return folder;
 }
-void EditorOsuImport::Start(std::filesystem::path input, std::filesystem::path songsRoot)
+
+EditorOsuImport::EditorOsuImport() = default;
+EditorOsuImport::~EditorOsuImport() = default;
+
+void EditorOsuImport::StartScan(std::filesystem::path folder, std::filesystem::path songsRoot)
 {
     if (Busy())
         throw std::logic_error("An osu! import is already running.");
-    job_ = std::async(std::launch::async,
-                      [input = std::move(input), root = std::move(songsRoot)] { return Import(input, root); });
+    session_ = std::make_shared<Session>();
+    session_->songsRoot = std::move(songsRoot);
+    scan_ = std::async(std::launch::async,
+                       [session = session_, folder = std::move(folder)] { return Scan(*session, folder); });
 }
-std::optional<EditorOsuImportResult> EditorOsuImport::Poll()
+std::optional<OsuImportScan> EditorOsuImport::PollScan()
 {
-    if (!job_.valid() || job_.wait_for(std::chrono::seconds{0}) != std::future_status::ready)
+    if (!scan_.valid() || scan_.wait_for(std::chrono::seconds{0}) != std::future_status::ready)
         return {};
     try
     {
-        return job_.get();
+        return scan_.get();
     }
     catch (const std::exception &error)
     {
-        return EditorOsuImportResult{false, error.what()};
+        return OsuImportScan{false, error.what(), {}};
     }
+}
+void EditorOsuImport::StartPlacement(std::vector<std::size_t> chosen)
+{
+    if (Busy() || !session_)
+        throw std::logic_error("An osu! import can place difficulties only after its scan finished.");
+    placement_ = std::async(std::launch::async,
+                            [session = session_, chosen = std::move(chosen)] { return Place(*session, chosen); });
+}
+std::optional<EditorOsuImportResult> EditorOsuImport::PollPlacement()
+{
+    if (!placement_.valid() || placement_.wait_for(std::chrono::seconds{0}) != std::future_status::ready)
+        return {};
+    EditorOsuImportResult result;
+    try
+    {
+        result = placement_.get();
+    }
+    catch (const std::exception &error)
+    {
+        result = {false, false, error.what()};
+    }
+    session_.reset(); // The converter outputs are no longer needed.
+    return result;
+}
+void EditorOsuImport::Discard() noexcept
+{
+    if (!Busy())
+        session_.reset();
 }

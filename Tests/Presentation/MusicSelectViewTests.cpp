@@ -429,6 +429,8 @@ namespace
         } while (std::chrono::steady_clock::now() < deadline);
         throw std::runtime_error("Catalog worker timed out.");
     }
+    // The real converter process: an osu! song folder is scanned into a temporary folder, the
+    // user's choice is placed into Songs, and the osu! folder itself is never written to.
     void TestConverterProcess()
     {
         namespace fs = std::filesystem;
@@ -443,30 +445,63 @@ namespace
             delete path;
         };
         const auto guard = std::unique_ptr<fs::path, decltype(cleanup)>(new fs::path(directory), cleanup);
-        const auto input = directory / L"map.osu", root = directory / L"Songs";
-        std::ofstream(input) << "osu file format v14\n[General]\nAudioFilename: audio.mp3\nMode: 1\n"
-                                "[Metadata]\nTitle:Song\nArtist:Artist\nCreator:Author\nVersion:Oni\n"
-                                "[Difficulty]\nSliderMultiplier:1.4\nSliderTickRate:1\nOverallDifficulty:5\n"
-                                "[TimingPoints]\n0,500,4,1,0,100,1,0\n[HitObjects]\n0,0,0,1,0\n";
-        std::ofstream(directory / "audio.mp3", std::ios::binary) << "audio fixture";
+        const auto source = directory / L"123 Artist - Song", root = directory / L"Songs";
+        fs::create_directory(source);
+        const auto map = [&](const char *file, const char *version, const int mode)
+        {
+            std::ofstream(source / file) << "osu file format v14\n[General]\nAudioFilename: audio.mp3\nMode: " << mode
+                                         << "\n[Metadata]\nTitle:Song\nArtist:Artist\nCreator:Author\nVersion:" << version
+                                         << "\n[Difficulty]\nSliderMultiplier:1.4\nSliderTickRate:1\nOverallDifficulty:5\n"
+                                            "[Events]\n0,0,\"bg.png\",0,0\n"
+                                            "[TimingPoints]\n0,500,4,1,0,100,1,0\n[HitObjects]\n0,0,0,1,0\n";
+        };
+        map("a [Oni].osu", "Oni", 1);
+        map("b [Hard].osu", "Hard", 1);
+        map("c [Standard].osu", "Standard", 0);
+        std::ofstream(source / "audio.mp3", std::ios::binary) << "audio fixture";
+        std::ofstream(source / "bg.png", std::ios::binary) << "image fixture";
+        const auto sourceFiles = [&]
+        {
+            return static_cast<std::size_t>(std::distance(fs::recursive_directory_iterator(source), {}));
+        };
+        Check(sourceFiles() == 5, "Fixture folder holds three maps, the audio and the image.");
         EditorOsuImport importer;
-        const auto await = [&]
+        const auto await = [&](const auto &poll)
         {
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{30};
             while (std::chrono::steady_clock::now() < deadline)
             {
-                if (auto result = importer.Poll())
+                if (auto result = poll())
                     return *result;
                 std::this_thread::sleep_for(std::chrono::milliseconds{1});
             }
             throw std::runtime_error("Converter process did not finish.");
         };
-        importer.Start(input, root);
-        const auto result = await();
-        Check(result.success, result.message.c_str());
+        using State = OsuImportDifficulty::State;
+        importer.StartScan(source, root);
+        const auto scan = await([&] { return importer.PollScan(); });
+        Check(scan.success && scan.difficulties.size() == 3, scan.message.c_str());
+        Check(scan.difficulties[0].state == State::Ready && scan.difficulties[0].name == "Oni" &&
+                  scan.difficulties[0].maker == "Author" && scan.difficulties[1].state == State::Ready,
+              "Taiko difficulties are converted, checked and offered with their own names.");
+        Check(scan.difficulties[2].state == State::Failed && !scan.difficulties[2].problem.empty() &&
+                  scan.difficulties[2].name.empty(),
+              "A difficulty the converter rejects is listed with the converter's reason.");
+        Check(!fs::exists(root) && sourceFiles() == 5,
+              "A scan writes neither into Songs nor into the osu! song folder.");
+        importer.StartPlacement({0});
+        const auto first = await([&] { return importer.PollPlacement(); });
+        Check(first.success && first.changed, first.message.c_str());
+        const auto song = root / "Artist - Song";
+        Check(fs::exists(song / "Music/Artist - Song.ymm") && fs::exists(song / "Music/Artist - Song.mp3") &&
+                  fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].ymp") &&
+                  fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].yme") && fs::exists(song / "BG/bg.png"),
+              "The Client names and places the music, the chart pair and the background.");
+        Check(!fs::exists(song / "Chart/Author - Hard") && sourceFiles() == 5,
+              "Only the chosen difficulty is placed, and the osu! song folder stays as it was.");
         const auto catalog = SongCatalog{}.Load(root);
         Check(catalog.Succeeded() && catalog.songs.size() == 1 && catalog.PatternCount() == 1,
-              "The bundled converter process must produce a complete catalog entry.");
+              "The bundled converter process and the Client placement must produce a complete catalog entry.");
         const auto &convertedPattern = catalog.songs.front().patterns.front().pattern;
         Check(convertedPattern.judgementLevel == JudgeLevel{34.28},
               "An OD 5 import must retain hundredth precision and select the nearest GOOD window.");
@@ -476,12 +511,104 @@ namespace
         Check(convertedRange.Evaluate({}, RhythmTime{79'492}).grade == JudgementGrade::Good &&
                   convertedRange.Evaluate({}, RhythmTime{79'493}).grade == JudgementGrade::Bad,
               "The saved level must control the Client's actual GOOD boundary.");
-        importer.Start(input, root);
-        const auto collision = await();
-        Check(!collision.success && !collision.message.empty(),
-              "Converter collisions must report failure through Poll.");
-        Check(SongCatalog{}.Load(root).PatternCount() == 1,
-              "A failed process must preserve the existing pattern.");
+        // A second scan sees the placed difficulty; the other one joins the same song folder.
+        importer.StartScan(source, root);
+        const auto again = await([&] { return importer.PollScan(); });
+        Check(again.success && again.difficulties[0].state == State::AlreadyImported &&
+                  again.difficulties[1].state == State::Ready,
+              "A difficulty whose chart set exists is reported instead of offered.");
+        importer.StartPlacement({0, 1});
+        const auto second = await([&] { return importer.PollPlacement(); });
+        Check(!second.success && second.changed && !second.message.empty(),
+              "Placing an existing chart set fails for that difficulty only and says so.");
+        const auto merged = SongCatalog{}.Load(root);
+        Check(merged.Succeeded() && merged.songs.size() == 1 && merged.PatternCount() == 2,
+              "Another difficulty with the same audio joins the existing song.");
+        importer.StartScan(directory / "missing", root);
+        const auto missing = await([&] { return importer.PollScan(); });
+        Check(!missing.success && !missing.message.empty(), "An unreadable folder fails the scan with a reason.");
+        importer.Discard();
+        Check(!importer.Busy(), "A finished import holds no job.");
+    }
+    // The difficulty list: only convertible difficulties can be checked, a selected failure
+    // explains itself, and the answer is delivered exactly once.
+    void TestOsuImportPanel()
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts("Client/Texts/Languages");
+        OptionSettings options("build/osu-import-panel-unused.ini");
+        SongSelectionState state;
+        MusicSelectView view(visuals, state, SongSelectPurpose::Editor, texts, options);
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas) throw std::runtime_error("Import list Canvas missing.");
+        using State = OsuImportDifficulty::State;
+        const auto difficulties = [] {
+            std::vector<OsuImportDifficulty> rows(3);
+            rows[0] = {"a.osu", "Oni", "Author", State::Ready, {}};
+            rows[1] = {"b.osu", "Hard", "Author", State::AlreadyImported, {}};
+            rows[2] = {L"c [표준].osu", {}, {}, State::Failed, "Unsupported mode"};
+            return rows;
+        };
+        InputState none;
+        const auto node = [&](const std::string &name) -> Visual2DNode &
+        {
+            auto *found = Find(canvas->Root(), name);
+            if (!found) throw std::runtime_error("Import list control missing: " + name);
+            return *found;
+        };
+        const auto click = [&](const std::string &name)
+        {
+            Click(*canvas, node(name));
+            Check(view.Update(none, 0) == SongSelectCommand::None, "The import list consumes its own actions.");
+        };
+        const auto label = [&](const std::string &name) { return node(name).GetComponent<TextVisualComponent>()->Text(); };
+        view.OpenOsuImportPanel(L"123 Artist - Song", difficulties());
+        Check(node("OsuImport.Overlay").IsVisible() && label("OsuImport.Folder") == L"123 Artist - Song",
+              "The list opens over song select and names the osu! song folder.");
+        Check(label("OsuImport.Check.0") == L"✓" && node("OsuImport.Check.0").IsEnabled() &&
+                  !node("OsuImport.Check.1").IsEnabled() && !node("OsuImport.Check.2").IsEnabled(),
+              "Difficulties that can be imported start checked; the others cannot be checked.");
+        Check(label("OsuImport.Difficulty.0").starts_with(L"Oni") &&
+                  label("OsuImport.Difficulty.1").find(texts.Get("OsuImport.exists")) != std::wstring::npos &&
+                  label("OsuImport.Difficulty.2").starts_with(L"c [표준].osu"),
+              "Rows show the chart's own name, or the file name when nothing was converted.");
+        click("OsuImport.Difficulty.2");
+        Check(label("OsuImport.Status") == L"Unsupported mode", "A selected failure shows the converter's reason.");
+        click("OsuImport.Check.0");
+        Check(label("OsuImport.Check.0").empty() && !node("OsuImport.Import").IsEnabled(),
+              "Import needs at least one checked difficulty.");
+        click("OsuImport.Check.0");
+        Check(!view.TakeOsuImportChoice(), "Editing the checks is not an answer.");
+        click("OsuImport.Import");
+        const auto imported = view.TakeOsuImportChoice();
+        Check(imported && imported->import && imported->indices == std::vector<std::size_t>{0} &&
+                  !node("OsuImport.Overlay").IsVisible(),
+              "Import answers with the checked difficulties and closes the list.");
+        Check(!view.TakeOsuImportChoice(), "The answer is delivered once.");
+        // Esc cancels, but only after the keys that were down when the list opened are released.
+        view.OpenOsuImportPanel(L"folder", difficulties());
+        InputState escape;
+        InputStateTestAccess::Key(escape, VK_ESCAPE, true);
+        Check(view.Update(escape, 0) == SongSelectCommand::None && node("OsuImport.Overlay").IsVisible(),
+              "A key held while the list opens does not answer it.");
+        static_cast<void>(view.Update(none, 0));
+        Check(view.Update(escape, 0) == SongSelectCommand::None && !node("OsuImport.Overlay").IsVisible(),
+              "Esc cancels the list without reaching song select.");
+        const auto cancelled = view.TakeOsuImportChoice();
+        Check(cancelled && !cancelled->import && cancelled->indices.empty(), "Cancel imports nothing.");
+        // Hiding song select with the list open also ends the import.
+        view.OpenOsuImportPanel(L"folder", difficulties());
+        view.SetVisible(false);
+        const auto hidden = view.TakeOsuImportChoice();
+        Check(hidden && !hidden->import, "A list closed with its screen counts as Cancel.");
+        view.Shutdown();
+        Check(visuals.CanvasCount() == 0, "The import list releases the view Canvas.");
     }
     void TestDifficultyClick(ScreenVisual2DManager &visuals, SongSelectionState &selection,
                              TextCatalog &texts, OptionSettings &options,
@@ -1286,6 +1413,7 @@ int main()
         TestHpInformation();
         TestRecordHistoryView();
         TestAlertHoldsKeys();
+        TestOsuImportPanel();
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);
         TestSongPanelTransparency(SongSelectPurpose::Gameplay);
