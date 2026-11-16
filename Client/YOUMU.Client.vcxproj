@@ -219,6 +219,7 @@
     <ClCompile Include="GameFlow\Submodules\GameplayAudioSession.cpp" />
     <ClInclude Include="GameFlow\Submodules\GameplayAudioSession.h" />
     <ClInclude Include="GameFlow\GameplayFeedback.h" />
+    <ClInclude Include="GameFlow\GameplayTimingProbe.h" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayFeedbackVisuals.cpp" />
     <ClCompile Include="GameFlow\Submodules\GameplayInput.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayInputView.cpp" />
