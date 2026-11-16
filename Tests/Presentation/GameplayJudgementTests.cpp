@@ -44,6 +44,22 @@ namespace
         Check(node != nullptr, "Expected judgement node missing.");
         return *node;
     }
+    // Visible timing-guide hit lines (Judgement.HitLine.<n>).
+    std::size_t VisibleHitLines(Visual2DNode &root)
+    {
+        std::size_t count = 0;
+        for (std::size_t i = 0; auto *line = Find(root, "Judgement.HitLine." + std::to_string(i)); ++i)
+            count += line->IsVisible() ? 1 : 0;
+        return count;
+    }
+    Color Tint(Visual2DNode &node)
+    {
+        return node.GetComponent<SpriteVisualComponent>()->Style().normal;
+    }
+    bool SameRgb(const Color left, const Color right)
+    {
+        return Near(left.red, right.red) && Near(left.green, right.green) && Near(left.blue, right.blue);
+    }
     std::size_t NodeCount(const Visual2DNode &root)
     {
         std::size_t count = 1;
@@ -129,7 +145,7 @@ namespace
         const AccuracyRange base;
         view.Initialize(visuals, canvas, circle, base, texts);
         auto &root = canvas.Root();
-        auto &marker = Node(root, "Judgement.Marker");
+        auto &marker = Node(root, "Judgement.HitLine.0");
         auto &bad = Node(root, "Judgement.Band.4");
         auto &margin = Node(root, "Judgement.Margin");
         Check(!marker.IsVisible() && Near(bad.NodeSize().width, 378.0F), "Initial guide uses base BAD +/-90ms.");
@@ -151,7 +167,9 @@ namespace
             const auto type = index == 4 ? NoteEventType::InputRejected : NoteEventType::HitAccepted;
             view.Present(Event(type, static_cast<JudgementGrade>(index), -base.Bands()[index].halfWindow));
             CheckOverlay(root, words[index]);
-            Check(marker.IsVisible() && marker.Bounds().x < 0.0F, "Early input must place marker to the left.");
+            Check(marker.IsVisible() && marker.Bounds().x < 0.0F, "Early input must place the hit line to the left.");
+            Check(SameRgb(Tint(marker), LaneKeyBeam::GradeColor(static_cast<JudgementGrade>(index))),
+                  "A hit line takes its judgement's band colour.");
             const auto overlay = Node(root, "Lane.Judgement." + std::string(words[index])).BoundsInCanvas();
             const auto target = circle.BoundsInCanvas();
             Check(Near(overlay.x + overlay.width * 0.5F, target.x + target.width * 0.5F) &&
@@ -164,28 +182,39 @@ namespace
         }
         view.Reset();
         view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Good, RhythmDuration{54'500}));
-        Check(marker.Bounds().x > 0.0F, "Late input must place marker to the right.");
+        Check(marker.Bounds().x > 0.0F, "Late input must place the hit line to the right.");
+        Check(Near(Tint(marker).alpha, 0.0F) && Near(marker.NodeSize().width, 0.0F),
+              "A hit line starts transparent and zero wide.");
+        Check(Near(marker.NodeSize().height, 24.0F), "A hit line is taller than the 12px colour bar.");
         view.Update(0.1);
         Check(Near(Node(root, "Lane.Judgement.GOOD").GetComponent<SpriteVisualComponent>()->Style().normal.alpha,
                    0.5F),
               "Judgement overlay must fade over 200ms.");
+        Check(Near(Tint(marker).alpha, 0.6F) && Near(marker.NodeSize().width, 4.0F),
+              "A hit line reaches 0.6 alpha and 4px after its 100ms fade-in.");
         view.Update(0.1);
         CheckOverlay(root, "");
-        Check(marker.IsVisible(), "Recent hits remain visible until displaced from the 32-hit ring.");
+        view.Update(2.4);
+        Check(marker.IsVisible() && Near(Tint(marker).alpha, 0.3F), "A hit line fades out linearly over 5s.");
+        view.Update(2.49);
+        Check(marker.IsVisible(), "A hit line remains until its 5s fade-out ends.");
+        view.Update(0.02);
+        Check(!marker.IsVisible(), "A hit line disappears after its fade-out.");
 
         view.Reset();
         view.Present(Event(NoteEventType::InputRejected, JudgementGrade::Max));
         CheckOverlay(root, "POOR");
         Check(Near(marker.Bounds().x, 0.0F), "Zero-error POOR keeps the actual input timing.");
+        Check(SameRgb(Tint(marker), LaneKeyBeam::WrongInputColor()), "A POOR hit line uses the POOR beam colour.");
         view.Reset();
         view.Present(Event(NoteEventType::InputRejected, JudgementGrade::Miss));
         CheckOverlay(root, "");
-        Check(!marker.IsVisible(), "Empty/out-of-range input must not show POOR or a marker.");
+        Check(VisibleHitLines(root) == 0, "Empty/out-of-range input must not show POOR or a hit line.");
         view.Present(Event(NoteEventType::TickAccepted, JudgementGrade::Unjudged));
         CheckOverlay(root, "");
         view.Present(Event(NoteEventType::TickRejected, JudgementGrade::Unjudged));
         CheckOverlay(root, "POOR");
-        Check(!marker.IsVisible(), "A wrong-color tick must show POOR without a head timing marker.");
+        Check(VisibleHitLines(root) == 0, "A wrong-color tick must show POOR without a head timing line.");
         NoteProcessResult rejectedTick;
         rejectedTick.events.push_back(Event(NoteEventType::TickRejected, JudgementGrade::Unjudged));
         const auto rejectedColor = LaneKeyBeam::InputColor(rejectedTick);
@@ -193,7 +222,7 @@ namespace
               "A wrong-color tick triggered by a press must use the POOR beam color.");
         view.Present(Event(NoteEventType::Missed, JudgementGrade::Miss, RhythmDuration{500'000}));
         CheckOverlay(root, "MISS");
-        Check(!marker.IsVisible(), "Automatic MISS must not invent an input marker.");
+        Check(VisibleHitLines(root) == 0, "Automatic MISS must not invent an input hit line.");
 
         const auto count = NodeCount(root);
         const auto loads = renderer.loads;
@@ -205,7 +234,7 @@ namespace
         Check(Near(bad.NodeSize().width, 378.0F), "Syncopation must not resize the base guide.");
         view.Reset();
         view.Present(Event(NoteEventType::InputRejected, JudgementGrade::Bad, RhythmDuration{500'000}));
-        Check(Near(marker.Bounds().x, margin.NodeSize().width * 0.5F), "Marker must be clamped to the visible guide.");
+        Check(Near(marker.Bounds().x, margin.NodeSize().width * 0.5F), "Hit lines are clamped to the visible guide.");
         view.OnResize(200.0F);
         Check(Near(margin.NodeSize().width, 160.0F), "Wide ranges must fit a narrow viewport.");
         Check(Near(marker.Bounds().x, 80.0F), "Resize must preserve the timing position.");
@@ -213,24 +242,23 @@ namespace
         Check(Near(bad.NodeSize().width, 378.0F), "Resize restores the fixed time scale.");
         Check(NodeCount(root) == count && renderer.loads == loads, "Repeated hits/resize must reuse nodes and images.");
         view.Reset();
-        for (int i = 0; i < 32; ++i)
+        for (int i = 0; i < 50; ++i)
             view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Perfect, RhythmDuration{i * 1000}));
         view.Update(1);
-        Check(marker.IsVisible() && !Node(root, "Judgement.RetiringMarker.0").IsVisible(),
-              "All 32 retained hits persist without retiring a slot early.");
-        for (int i = 32; i < 41; ++i)
-            view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Great, RhythmDuration{i * 1000}));
-        Check(Near(marker.Bounds().x, 32 * 1000 * 420.0F / 200'000), "Ring wrap must replace the oldest hit.");
-        for (int i = 0; i < 8; ++i)
-            Check(Node(root, "Judgement.RetiringMarker." + std::to_string(i)).IsVisible(),
-                  "At most eight displaced hits have reusable fade slots.");
+        Check(VisibleHitLines(root) == 50 && Near(Tint(marker).alpha, 0.6F * (1.0F - 0.9F / 5.0F)),
+              "Up to 50 hit lines stay live together.");
+        view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Great, RhythmDuration{50'000}));
+        Check(VisibleHitLines(root) == 51, "The oldest line fades out instead of vanishing at once.");
+        view.Update(.05);
+        Check(marker.IsVisible() && Tint(marker).alpha < 0.3F, "The displaced oldest line fades out quickly.");
+        view.Update(.05);
+        Check(!marker.IsVisible() && VisibleHitLines(root) == 50, "The displaced line expires after 100ms.");
+        for (int i = 0; i < 100; ++i)
+            view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Good, RhythmDuration{-i * 100}));
+        Check(VisibleHitLines(root) <= 64, "A burst of hits reuses the fixed line pool.");
         view.Update(.1);
-        auto &retiring = Node(root, "Judgement.RetiringMarker.0");
-        Check(Near(retiring.GetComponent<SpriteVisualComponent>()->Style().normal.alpha, .5F) && marker.IsVisible(),
-              "Only displaced hits fade over 200ms.");
-        view.Update(.1);
-        Check(!retiring.IsVisible() && marker.IsVisible(), "Retiring hits expire while the recent 32 remain.");
-        Check(NodeCount(root) == count && renderer.loads == loads, "The hit rings allocate no per-hit nodes/images.");
+        Check(VisibleHitLines(root) == 50, "At most 50 lines remain once displaced lines have faded.");
+        Check(NodeCount(root) == count && renderer.loads == loads, "Hit lines allocate no per-hit nodes/images.");
         view.Shutdown();
         view.Update(1.0);
         view.OnResize(100.0F);
@@ -595,7 +623,7 @@ namespace
                                              key, InputEdge::Pressed, RhythmTime{900'000 + index * 100'000})});
                 if (index < 2 || type == 11 || type == 13)
                     CheckOverlay(root, "");
-                Check(!Node(root, "Judgement.Marker").IsVisible(), "Count-only hits must not create a timing marker.");
+                Check(VisibleHitLines(root) == 0, "Count-only hits must not create a timing hit line.");
                 const auto beam = Node(root, "Lane.KeyBeam").GetComponent<SpriteVisualComponent>()->Style().normal;
                 Check(Near(beam.red, 1) && Near(beam.green, 1) && Near(beam.blue, 1),
                       "Count-only hits must use the ungraded white key beam.");
@@ -664,8 +692,7 @@ namespace
                      .result = loaded.session->ProcessInput(keys[index], InputEdge::Pressed,
                                                             RhythmTime{10'000 * static_cast<std::int64_t>(index)})});
                 CheckOverlay(root, index == 4 ? "OK" : "");
-                Check(!Node(root, "Judgement.Marker").IsVisible(),
-                      "Wrong-order presses must not display a timing marker.");
+                Check(VisibleHitLines(root) == 0, "Wrong-order presses must not display a timing hit line.");
                 const auto beam = Node(root, "Lane.KeyBeam").GetComponent<SpriteVisualComponent>()->Style().normal;
                 Check(Near(beam.red, 1) && Near(beam.green, 1) && Near(beam.blue, 1),
                       "Wrong-order DengDeng input must remain white, never POOR/red.");

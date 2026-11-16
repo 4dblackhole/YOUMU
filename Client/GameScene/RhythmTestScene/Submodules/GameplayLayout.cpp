@@ -214,9 +214,8 @@ void GameplayPresenter::UpdatePresentationLayout()
     // The progress strip spans the bottom edge of the screen.
     progressView_.SetLayout(
         {-logicalWidth * 0.5F, -CanvasReferenceHeight * 0.5F, std::max(logicalWidth, 1.0F), progressView_.Height()});
-    // Zero of the timing guide is the judgement circle's screen x, directly below it.
-    judgementView_.SetGuidePlacement(-logicalWidth * 0.5F + laneScreenLeft + judgementLocalY_, 0.0F,
-                                     -logicalWidth * 0.5F);
+    // The timing guide is centred on the screen below the gear, whose bottom is the screen's centre line.
+    judgementView_.SetGuidePlacement(0.0F);
     hpView_.SetLayout(logicalWidth, gearHeight + GearPadding * 2.0F);
     statisticsView_.SetLayout(logicalWidth, inputPanelSize_);
     if (accuracyIndicator_ != nullptr)
