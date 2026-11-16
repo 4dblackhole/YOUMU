@@ -132,6 +132,8 @@ void GameplaySessionController::UpdateGameplay(const UpdateContext &context)
         return;
     }
     time_ = timer_.Now(exitTicks.value_or(clock.performanceCounterTicks));
+    if (launchRequest_.timingProbe != nullptr && !exitTicks)
+        launchRequest_.timingProbe->OnGameplayClock(clock, time_);
     UpdateSession(context.input, time_, exitTicks.has_value());
     audio_.ApplyAutomation(session_->EvaluateAutomation(time_));
     if (!exitTicks && timer_.CurrentState() == RhythmTimer::State::Running)
@@ -209,6 +211,11 @@ bool GameplaySessionController::IsPatternComplete() const noexcept
 
 void GameplaySessionController::ConsumeResult(NoteProcessResult result, bool pressed)
 {
+    auto *const probe = launchRequest_.timingProbe;
+    if (probe != nullptr)
+        probe->BeforeImmediateCues(result.audioCues);
     audio_.PlayNow(result.audioCues);
+    if (probe != nullptr)
+        probe->AfterImmediateCues(result.audioCues);
     feedback_.push_back({false, pressed, std::move(result)});
 }

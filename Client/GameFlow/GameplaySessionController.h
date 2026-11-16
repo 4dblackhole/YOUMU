@@ -2,6 +2,7 @@
 #include "GameFlow/Submodules/GameplayAudioSession.h"
 #include "GameFlow/GameplayLaunchRequest.h"
 #include "GameFlow/GameplayFeedback.h"
+#include "GameFlow/GameplayTimingProbe.h"
 #include "Mode/Submodules/PlaySession.h"
 #include "GameFlow/Submodules/GameplaySessionFactory.h"
 #include "PhantomCore.h"

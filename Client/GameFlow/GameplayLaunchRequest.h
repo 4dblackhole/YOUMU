@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+class IGameplayTimingProbe;
+
 // Value snapshot for one scene entry. Shared transfer is encapsulated by
 // GameplayLaunchStore; an active session owns its copy.
 struct GameplayLaunchRequest
@@ -38,6 +40,9 @@ struct GameplayLaunchRequest
     std::wstring patternTitle;
     // Editor only: create a difficulty for this song; patternPath stays empty until Create.
     std::shared_ptr<const SongCatalogEntry> editorNewDifficulty;
+    // Measurement only (Tests/Presentation/GameplayTimingProbe.cpp): a non-owning observer of
+    // the clock anchors, clock reads and immediate cues. The game never sets it.
+    IGameplayTimingProbe *timingProbe{};
 
     // The song folder this request works in (SongLayout): the pattern's own, or the song a
     // new difficulty will be created in. Empty when the files are outside a song folder.
@@ -62,6 +67,7 @@ struct GameplayLaunchRequest
         patternCreator.clear();
         patternTitle.clear();
         editorNewDifficulty.reset();
+        timingProbe = nullptr;
         globalOffsetMs = 0;
         volumes = {};
         playOptions = {};

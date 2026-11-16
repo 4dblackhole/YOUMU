@@ -110,6 +110,8 @@ void GameplaySessionController::ScheduleGameplay(const UpdateContext &context)
     timer_.Start(start.performanceCounterTicks, start.performanceCounterFrequency, time_, playbackRate_);
     timer_.Pause(start.performanceCounterTicks);
     timer_.AnchorDspClock(time_, start.dspClock, start.sampleRate);
+    if (launchRequest_.timingProbe != nullptr)
+        launchRequest_.timingProbe->OnClockAnchored(start, time_, playbackRate_);
     audio_.SeekMetronome(session_->metronomeBeats, time_);
     audio_.ScheduleMetronome(session_->metronomeBeats, time_, playbackRate_, timer_);
     if (!debugMode_ && !audio_.StartPreparedMusic(time_, timer_))
