@@ -29,7 +29,7 @@ msbuild YOUMU.sln /m /t:Rebuild /p:Configuration=Release /p:Platform=x64
 
 ```powershell
 foreach ($configuration in 'Debug', 'Release') {
-    & "./bin/x64/$configuration/YOUMU.Rhythm.Tests.exe" --catalog-root YOUMU.Assets/Assets/Songs
+    & "./bin/x64/$configuration/YOUMU.Rhythm.Tests.exe" --catalog-root Client/Assets/Songs
     if ($LASTEXITCODE -ne 0) { throw "$configuration logic tests failed" }
     $exe = (Resolve-Path "./bin/x64/$configuration/Y's Orchestral Unison - Melodic Ultimatum.exe").Path
     foreach ($route in '--smoke-test', '--smoke-lobby', '--smoke-gameplay', '--smoke-editor') {

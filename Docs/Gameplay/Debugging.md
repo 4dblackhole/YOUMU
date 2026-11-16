@@ -26,7 +26,7 @@ Raw Input 순서에 따라 Space 이전에는 원래 시각, 이후에는 정지
 엔젤드림 핸드셰이크 음원을 참조합니다. Roll, BigRoll, TickRoll, BigTickRoll,
 Balloon, DengDeng, Don Buzz, Kat Buzz의 시작점을 2박 간격으로 배치했습니다.
 사용자 추가 곡·YMM·YMP·YME는 Git 제외 대상이므로 이 테스트 파일은 작업 PC에만 남습니다.
-예외로 `YOUMU.Assets/Assets/Songs`의 기본 AngelDream 음원·YMM·YMP/YME 5쌍은 Git에서 추적합니다. 파일이
+예외로 `Client/Assets/Songs/Takahashi yoko - Angel Dream Handshaking`의 기본 AngelDream 음원·YMM·YMP/YME 5쌍은 Git에서 추적합니다. 파일이
 없는 clean clone에서는 디버그 실행이 같은 배열의 내장 패턴을 사용합니다.
 
 ```powershell
@@ -56,15 +56,15 @@ Debug 빌드에서는 실행 인자와 무관하게 좌측 상단에 현재 타�
 
 순수 로직 회귀 테스트는 `YOUMU.Rhythm.Tests.exe`이며 판정 scaling,
 보간 점수, Lane focus, 큰 노트 사운드, tick 중복 방지, YMP 타이밍과 YME를
-검증합니다. `--catalog-root <Songs 경로>`를 붙이면 번들된 AngelDream YMM/YMP와
-선택적 로컬 곡·패턴의 연관,
+검증합니다. `--catalog-root <Songs 경로>`를 붙이면 내장 AngelDream YMM/YMP와
+그 폴더에 함께 있는 로컬 곡·패턴의 연관,
 음악 파일 존재 여부와 모든 패턴의 단일-Lane 세션 생성까지 검증합니다.
 
 ## 전체 노트와 짧은 Buzz 틱 재현
 
-`YOUMU.Assets/Assets/Songs/Takahashi yoko - Angel Dream Handshaking/Chart/Unknown - All Notes Verification/angeldream [all notes test].ymp`는
+`Client/Assets/Songs/Takahashi yoko - Angel Dream Handshaking/Chart/Unknown - All Notes Verification/angeldream [all notes test].ymp`는
 기존 AngelDream Handshaking 음원을 참조하는 180 BPM, JudgeLevel 50 테스트 채보입니다.
-빌드 시 개발용 `Client/Assets/Songs`에 파일이 없을 때 복사되며 기존 사용자 파일은 덮어쓰지 않습니다.
+Git이 추적하는 파일이며 빌드가 따로 복사하지 않습니다.
 곡 선택에서 AngelDream의 `All Notes Verification` 패턴을 선택해 플레이합니다.
 
 앞의 빈 두 마디 이후 Don, Kat, BigDon, BigKat, Purple, Roll, BigRoll,

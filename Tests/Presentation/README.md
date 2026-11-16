@@ -473,7 +473,7 @@ Links production SkinManifest/selection/binding and Logo/MusicSelect views in an
 deployment directory, without writing user skins or Option.ini. Checks UTF-8/BOM/CRLF/Unicode paths,
 scene-folder/image relativity, invalid paths/encoding/duplicates, per-component embedded fallback,
 partial skins, cache/reload, button states, full-screen logo replacement, song-select sheet/button
-replacement and restoration, virtualized song-card bindings using the real bundled catalog, and that
+replacement and restoration, virtualized song-card bindings using the real development Songs catalog, and that
 options rail icons keep their skin image while their colour follows the lit section.
 The test source uses MSVC Code Analysis. Native captures/manual input are reported separately.
 
@@ -492,9 +492,10 @@ separation of playback clicks from the original hit-sound analysis markers.
 
 ## Canonical PCM timing check for an existing song
 
-The editor regression uses the shipped song catalog by default, keeping its
-analysis deadline independent of the user's imported music library. An explicit
-`-SongFilter` selects from the user Songs directory instead.
+The editor regression picks the tracked built-in song from the development Songs
+directory by default, keeping its analysis deadline independent of the user's
+imported music library. An explicit `-SongFilter` selects another song from the
+same directory instead.
 
 After building both configurations, the editor and actual gameplay regression runners
 accept `-SongFilter <substring of the catalog metadata path>`. This is a test-only

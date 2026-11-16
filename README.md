@@ -36,7 +36,7 @@ Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Verificatio
 | `YOUMU.Chart/` | YMM/YMP/YME, 타이밍, 곡 카탈로그·캐시, 문서 편집·저장 |
 | `YOUMU.Modes/` | PlaySession, Taiko 노트 구성·사운드·결과 정책 |
 | `YOUMU.Editor/` | 주입받은 PCM의 파형·스펙트럼 분석 |
-| `YOUMU.Assets/` | 내장 기본 스킨·글꼴·기본 제공곡 |
+| `YOUMU.Assets/` | 내장 기본 스킨·글꼴 |
 | `Dependencies/PhantomCore/` | Win32·D3D12·Raw Input·오디오 엔진 |
 | `../OsuTaikoConverter/` | 파일 형식과 Taiko 노트 계약을 사용하는 독립 변환기 |
 
@@ -59,5 +59,5 @@ Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Verificatio
 오디오 장치·해상도·Taiko 키 설정은 [TextManagement](Docs/TextManagement.md),
 음악 재생과 PCM 시간축은 [Audio](Docs/Gameplay/Audio.md)를 참고합니다.
 개발 자산은 `Client/Assets`, 배포 자산은 EXE 옆 `Asset`을 사용하며 Songs 루트는
-옵션에서 변경할 수 있습니다. 스킨·기본본 대체·라이선스·배포 절차는
+옵션에서 변경할 수 있습니다. 기본 제공곡은 `Client/Assets/Songs` 안에서 추적합니다. 스킨·기본본 대체·라이선스·배포 절차는
 [BuiltInAssets](Docs/BuiltInAssets.md), 파일 문법은 [ChartFormats](Docs/ChartFormats.md)가 기준입니다.

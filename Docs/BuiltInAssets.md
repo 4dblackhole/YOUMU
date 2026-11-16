@@ -15,9 +15,11 @@
 
 AngelDream Handshaking MP3 1개·YMM 1개·YMP/YME 5쌍과 이펙트 테스트 WAV 2개는
 EXE에 넣지 않습니다. 추가 WAV는 기본 스킨의 Don/Kat 원본을 재사용한 테스트 파일입니다.
-Git에서 추적하는 `YOUMU.Assets/Assets/Songs` 원본을 Client 빌드 시
-개발용 `Client/Assets/Songs`에 복사합니다. 이미 존재하는 파일은 편집본일 수
-있으므로 덮어쓰지 않습니다. 곡은 개발·배포 모두 외부 파일입니다.
+저장소의 Songs 폴더는 `Client/Assets/Songs` 하나이며, 이 곡은 그 안의 `Takahashi yoko - Angel Dream Handshaking`에서
+Git이 직접 추적합니다. 빌드는 곡을 복사하지 않고 `YOUMU.Assets`에는 곡이 없습니다.
+`.gitignore`가 `Client/Assets/Songs`의 다른 곡 폴더를 모두 제외하므로 사용자가 추가한 곡은
+추적되지 않습니다. 내장 곡 폴더 안에서 고친 파일과 새로 만든 차트 세트는 Git 변경으로 보이므로
+커밋할 것만 고릅니다. 곡은 개발·배포 모두 외부 파일입니다.
 
 ## 외부 자산 루트
 
@@ -301,8 +303,8 @@ Songs/
 ```
 
 예전 배치(`Songs/Music`, `Songs/Patterns`, `Songs/BG`)의 곡은 읽지 않으며 자동으로 옮기지도 않습니다.
-옮기는 도구와, YMP 절대 경로로 이어진 기록·즐겨찾기를 유지하는 방법은 아직 정하지 않았습니다
-([PLAN-01](DesignDecisions.md#plan-01-제안과-미구현-범위)). 에디터는 선택한 쌍을 같은 위치에 저장합니다.
+옮기는 도구는 없습니다. 기록·즐겨찾기는 YMP 절대 경로로 이어지므로 곡 폴더를 옮기거나 이름을 바꾸면
+끊깁니다([PLAN-01](DesignDecisions.md#plan-01-제안과-미구현-범위)). 에디터는 선택한 쌍을 같은 위치에 저장합니다.
 
 ## 자산 변경
 
