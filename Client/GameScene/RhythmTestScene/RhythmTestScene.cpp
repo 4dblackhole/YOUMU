@@ -30,6 +30,16 @@ namespace
         }
         throw std::invalid_argument("Unknown HP gauge.");
     }
+
+    // Preparation has no measurable fraction, so the piece crosses the bar every 1.4 s.
+    void SweepLoadingBar(Visual2DNode *piece, const double totalSeconds)
+    {
+        if (!piece)
+            return;
+        const double cycle = totalSeconds / 1.4;
+        const auto phase = static_cast<float>(cycle - std::floor(cycle));
+        piece->SetPosition({-150.0F + 570.0F * phase, 0.0F});
+    }
 } // namespace
 
 RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
@@ -179,6 +189,10 @@ void RhythmTestScene::EndScene() noexcept
 void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
 {
     PrepareLoadingBackground();
+    // Sweep before the preparation branch: the long waits (chart, images, audio conversion)
+    // all end in its early return, and a still bar there reads as a stalled screen.
+    if (controller_->CurrentState() == PlayState::Loading)
+        SweepLoadingBar(loadingBarPiece_, context.totalSeconds);
     if (!presentationReady_ && (context.totalSeconds < nextPreparationPoll_ || !PreparePresentation()))
     {
         if (context.totalSeconds >= nextPreparationPoll_)
@@ -192,12 +206,6 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
     }
     controller_->Update(context);
     PresentLoadingScreen();
-    if (loadingBarPiece_ && controller_->CurrentState() == PlayState::Loading)
-    {
-        const double cycle = context.totalSeconds / 1.4;
-        const auto phase = static_cast<float>(cycle - std::floor(cycle));
-        loadingBarPiece_->SetPosition({-150.0F + 570.0F * phase, 0.0F});
-    }
     UpdatePauseMenu(context, scenes);
     if (controller_->CurrentState() == PlayState::Gameplay)
         view_->AdvanceEffects(context.deltaSeconds);
