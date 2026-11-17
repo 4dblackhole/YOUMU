@@ -52,7 +52,9 @@ namespace tests
                     ++accepted;
             }
             Require(index == view.tickTimes.size() && note.ProcessedTickCount() == index &&
-                        note.Accuracy().acceptedTicks == accepted && log.finalizedAccuracies.size() == 1,
+                    note.Accuracy().acceptedTicks == accepted,
+                    "Buzz must finalize every tick and its accuracy exactly once.");
+            Require(log.finalizedAccuracies.size() == 1,
                     "Buzz must finalize every tick and its accuracy exactly once.");
             const auto tickCues =
                 std::ranges::count_if(log.audioCues, [](const auto &cue) { return cue.bus == "TickSound"; });

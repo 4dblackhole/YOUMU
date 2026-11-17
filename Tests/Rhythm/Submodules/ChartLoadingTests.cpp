@@ -59,9 +59,10 @@ namespace tests
         {
             progress.push_back(std::move(entry));
         });
-        Require(complete.PatternCount() == 1 && progress.size() == 2 && progress[0].patterns.empty() &&
-            progress[1].patterns.size() == 1 && progress[1].patterns[0].noteCount == 1,
-            "Publish metadata first and only validated, counted patterns afterward.");
+        Require(complete.PatternCount() == 1 && progress.size() == 2 && progress[0].patterns.empty(),
+                "Publish metadata first and only validated, counted patterns afterward.");
+        Require(progress[1].patterns.size() == 1 && progress[1].patterns[0].noteCount == 1,
+                "Publish metadata first and only validated, counted patterns afterward.");
         std::ifstream beforeFile(cache, std::ios::binary);
         const std::string before{std::istreambuf_iterator<char>{beforeFile}, {}};
         beforeFile.close();
@@ -151,8 +152,10 @@ namespace tests
         other.metadataPath = "other.ymm";
         other.music.names = {"Other"};
         state.MergeCatalogProgress({other, song});
-        Require(state.catalogLoading_ && state.catalog_.PatternCount() == 2 && state.selectedPatternIndex_ == 1 &&
-            state.launchErrorDetail_ == "retained error", "Progress must preserve selection/errors and deduplicate patterns.");
+        Require(state.catalogLoading_ && state.catalog_.PatternCount() == 2 && state.selectedPatternIndex_ == 1,
+                "Progress must preserve selection/errors and deduplicate patterns.");
+        Require(state.launchErrorDetail_ == "retained error",
+                "Progress must preserve selection/errors and deduplicate patterns.");
         SongCatalogLoadResult finished;
         song.patterns = {second, first};
         finished.songs = {other, song};

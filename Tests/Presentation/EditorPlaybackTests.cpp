@@ -252,7 +252,9 @@ namespace
         const auto queued = probes.back();
         playback.SetRate(2);
         Check(playback.Position() == Time{-5'000} && music->settings.startDspClock == 10200 &&
-                  music->settings.pitch == 2 && music->restarts == 0 && !queued->playing,
+              music->settings.pitch == 2,
+              "Live rate changes must keep source position, retime pre-roll and cancel only the pending cue.");
+        Check(music->restarts == 0 && !queued->playing,
               "Live rate changes must keep source position, retime pre-roll and cancel only the pending cue.");
         update();
         Check(probes.back()->settings.startDspClock == 10200 && probes.back()->settings.pitch == 2 && loads == 2,
@@ -267,8 +269,9 @@ namespace
         const auto playedCount = audible->deadlines.size();
         playback.SetRate(.25);
         update();
-        Check(audible->playing && audible->settings.pitch == .25F && audible->deadlines.size() == playedCount &&
-                  music->restarts == 0 && playback.Position() == Time{10'000},
+        Check(audible->playing && audible->settings.pitch == .25F && audible->deadlines.size() == playedCount,
+              "Changing rate during an audible sample must preserve its tail and never repeat its attack.");
+        Check(music->restarts == 0 && playback.Position() == Time{10'000},
               "Changing rate during an audible sample must preserve its tail and never repeat its attack.");
         dspClock += 48000;
         update();
@@ -444,13 +447,15 @@ void TestEditorPlayback()
     playback.Toggle();
     loadState = AudioClipLoadState::Loading;
     update();
-    Check(playback.Active() && probes.empty() && loads == 2 && playback.Position() == Time{},
+    Check(playback.Active() && probes.empty() && loads == 2,
+          "Loading must not advance time or allocate a voice; aliases must share a clip.");
+    Check(playback.Position() == Time{},
           "Loading must not advance time or allocate a voice; aliases must share a clip.");
     loadState = AudioClipLoadState::Ready;
     update();
-    Check(probes.size() == 2 && probes[0]->settings.startDspClock == 960 && !probes[0]->paused &&
-              probes[1]->deadlines == std::vector<std::uint64_t>{960},
+    Check(probes.size() == 2 && probes[0]->settings.startDspClock == 960 && !probes[0]->paused,
           "Music and first hit must share the DSP anchor.");
+    Check(probes[1]->deadlines == std::vector<std::uint64_t>{960}, "Music and first hit must share the DSP anchor.");
     const auto musicProbe = probes[0];
     for (int i = 0; i < 1000; ++i)
         update();
@@ -468,8 +473,9 @@ void TestEditorPlayback()
     playback.Pause();
     dspClock += 48000;
     update();
-    Check(!playback.Active() && playback.Position() == Time{500'000} && musicProbe->playing && musicProbe->paused &&
-              !probes[1]->playing,
+    Check(!playback.Active() && playback.Position() == Time{500'000} && musicProbe->playing,
+          "Pause must retain paused music while stopping transient samples.");
+    Check(musicProbe->paused && !probes[1]->playing,
           "Pause must retain paused music while stopping transient samples.");
     playback.Toggle();
     update();

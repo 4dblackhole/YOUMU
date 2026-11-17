@@ -87,7 +87,8 @@ namespace
     }
     bool IsBig(int keyType)
     {
-        return (keyType >= 3 && keyType <= 5) || keyType == 13 || keyType == 14;
+        const bool bigDonKat = keyType >= 3 && keyType <= 5;
+        return bigDonKat || keyType == 13 || keyType == 14;
     }
 } // namespace
 
@@ -542,7 +543,7 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
     for (const auto &[source, x] : heads)
     {
         const auto &n = *source;
-        const bool big = (n.note.keyType >= 3 && n.note.keyType <= 5) || n.note.keyType == 13 || n.note.keyType == 14;
+        const bool big = IsBig(n.note.keyType);
         const float radius = big ? bigRadius : normalRadius;
         if (x < lane.x + radius || x > right - radius)
             continue;
@@ -675,7 +676,7 @@ const std::filesystem::path &TaikoEditorMode::SkinImage(std::wstring_view file)
 void TaikoEditorMode::Circle(IEditorModeCanvas &canvas, float x, float y, int type, float radius)
 {
     const bool custom = type == 15 || type == 16;
-    const bool big = (type >= 3 && type <= 5) || type == 13 || type == 14;
+    const bool big = IsBig(type);
     const auto color = type == 2 || type == 4 || type == 18 ? Kat
                        : type == 5                          ? Color{.65F, .30F, .85F, 1}
                        : type > 5 && type < 17              ? Gold

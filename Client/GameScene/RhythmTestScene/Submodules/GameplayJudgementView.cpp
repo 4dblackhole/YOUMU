@@ -39,9 +39,11 @@ namespace
     // grade; an automatic miss does not represent a player's input timestamp.
     bool HasInputTiming(const NoteEvent &event) noexcept
     {
-        return (event.type == NoteEventType::HitAccepted || event.type == NoteEventType::HoldStarted ||
-                event.type == NoteEventType::TickAccepted || event.type == NoteEventType::InputRejected) &&
-               IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Bad);
+        const bool acceptedInput = event.type == NoteEventType::HitAccepted ||
+                                   event.type == NoteEventType::HoldStarted ||
+                                   event.type == NoteEventType::TickAccepted;
+        const bool hasInput = acceptedInput || event.type == NoteEventType::InputRejected;
+        return hasInput && IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Bad);
     }
 
     double OutQuint(const double progress) noexcept

@@ -70,8 +70,9 @@ namespace
         Window window;
         PlayOptionsPanel panel; panel.Initialize(canvas, texts, &window); panel.SetViewport(720);
         panel.Open({});
-        Check(window.edits.size() == 5 && window.edits[0]->visible && window.edits[1]->visible &&
-                  !window.edits[2]->visible && !window.edits[3]->visible, "Only active fields appear after opening.");
+        Check(window.edits.size() == 5 && window.edits[0]->visible && window.edits[1]->visible,
+              "Only active fields appear after opening.");
+        Check(!window.edits[2]->visible && !window.edits[3]->visible, "Only active fields appear after opening.");
         const auto panelBounds = Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas();
         Check(std::abs(panelBounds.width - 960) < .5F && panelBounds.x > -640 && panelBounds.x + panelBounds.width < 640,
               "The flat modal is 960 wide and centred.");
@@ -95,11 +96,16 @@ namespace
         panel.ProcessInput({});
         Check(panel.ProcessAction(ActionFor(canvas, "PlayOptions.Apply")) && !panel.IsVisible(), "Done applies immediately.");
         auto applied = panel.TakeApplied();
-        Check(applied && applied->scrollUnit == PlayOptions::ScrollUnit::Bpm && applied->scrollSpeed == 240 &&
-                  applied->random && applied->mirror && applied->metronome && applied->ignoreScrollEffects &&
-                  applied->randomSeed == UINT64_MAX && applied->randomAttemptProbability == .35 &&
-                  applied->accelerate == 1.5 && !applied->preserveMusicPitch && applied->preserveHitSoundPitch &&
-                  applied->judgeLevel == JudgeLevel{60} && applied->hpGauge == HpGaugeKind::Default,
+        Check(applied && applied->scrollUnit == PlayOptions::ScrollUnit::Bpm && applied->scrollSpeed == 240,
+              "Done preserves every independent existing option and uint64 precision.");
+        Check(applied->random && applied->mirror && applied->metronome,
+              "Done preserves every independent existing option and uint64 precision.");
+        Check(applied->ignoreScrollEffects && applied->randomSeed == UINT64_MAX &&
+              applied->randomAttemptProbability == .35,
+              "Done preserves every independent existing option and uint64 precision.");
+        Check(applied->accelerate == 1.5 && !applied->preserveMusicPitch && applied->preserveHitSoundPitch,
+              "Done preserves every independent existing option and uint64 precision.");
+        Check(applied->judgeLevel == JudgeLevel{60} && applied->hpGauge == HpGaugeKind::Default,
               "Done preserves every independent existing option and uint64 precision.");
         Check(ChangedPlayOptionCount(*applied) == 8 && ChangedPlayOptionCount({}) == 0,
               "The Play options badge counts changed option groups; a plain play shows none.");
@@ -117,7 +123,9 @@ namespace
         Check(panel.IsVisible(), "JudgeLevel still requires exact hundredths.");
         window.edits[2]->UserText(L"60.00"); window.edits[3]->UserText(L"-1");
         click("PlayOptions.random"); panel.Close();
-        Check(panel.IsVisible() && !panel.TakeApplied() && window.edits[3]->visible && !SwitchOn(canvas, "PlayOptions.random"),
+        Check(panel.IsVisible() && !panel.TakeApplied() && window.edits[3]->visible,
+              "Invalid hidden Random input is repairable without silently enabling Random.");
+        Check(!SwitchOn(canvas, "PlayOptions.random"),
               "Invalid hidden Random input is repairable without silently enabling Random.");
         window.edits[3]->UserText(L"18446744073709551616"); panel.Close();
         Check(panel.IsVisible(), "Seed overflow is rejected.");
@@ -130,10 +138,16 @@ namespace
               "Reset restores the draft; it is applied on close.");
         window.edits[0]->cancel = true; panel.ProcessInput({});
         const auto defaults = panel.TakeApplied();
-        Check(defaults && defaults->scrollUnit == PlayOptions::ScrollUnit::Multiplier && defaults->scrollSpeed == 1 &&
-                  defaults->accelerate == 1 && !defaults->random && !defaults->mirror && !defaults->metronome &&
-                  !defaults->ignoreScrollEffects && defaults->randomSeed == 0 && defaults->randomAttemptProbability == 1 &&
-                  defaults->preserveMusicPitch && defaults->preserveHitSoundPitch && !defaults->judgeLevel,
+        Check(defaults && defaults->scrollUnit == PlayOptions::ScrollUnit::Multiplier && defaults->scrollSpeed == 1,
+              "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
+        Check(defaults->accelerate == 1 && !defaults->random && !defaults->mirror,
+              "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
+        Check(!defaults->metronome && !defaults->ignoreScrollEffects && defaults->randomSeed == 0,
+              "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
+        Check(defaults->randomAttemptProbability == 1 && defaults->preserveMusicPitch &&
+              defaults->preserveHitSoundPitch,
+              "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
+        Check(!defaults->judgeLevel,
               "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
         open();
         Check(!panel.ProcessAction(ActionFor(canvas, "PlayOptions.hitPitch")), "Hidden pitch controls reject stale actions.");
@@ -265,7 +279,8 @@ void TestPlayOptionsPanel()
     if (result != 0 || !nativeChecksPassed)
         std::cerr << "Native Play options result/tested/rendered/cleaned: " << result << '/' << report.tested
                   << '/' << report.rendered << '/' << report.cleaned << '\n';
-    Check(result == 0 && report.tested && report.rendered && report.cleaned,
+    Check(result == 0 && report.tested && report.rendered,
           "Native play option editing, rendering and cleanup must pass.");
+    Check(report.cleaned, "Native play option editing, rendering and cleanup must pass.");
     std::cout << "Play options Done/apply, Reset, validation, expansion, HP gauge, scaling and native isolation passed.\n";
 }

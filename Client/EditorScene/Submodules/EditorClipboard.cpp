@@ -58,8 +58,8 @@ void EditorWorkspace::PasteNotes(const Clipboard &copied, MusicalPosition anchor
         const auto end = note && note->tail ? note->tail->note.position : begin;
         const auto next = std::ranges::upper_bound(intervals, end, {}, &decltype(intervals)::value_type::first);
         const auto count = static_cast<std::size_t>(next - intervals.begin());
-        const bool replaced = (includeBlanks && Intersects(begin, end, anchor, pasteEnd)) ||
-                              (count != 0 && maximumEnds[count - 1] >= begin);
+        const bool overlapsBlanks = includeBlanks && Intersects(begin, end, anchor, pasteEnd);
+        const bool replaced = overlapsBlanks || (count != 0 && maximumEnds[count - 1] >= begin);
         if (replaced)
         {
             removed.insert(headId);
@@ -92,8 +92,8 @@ void EditorWorkspace::PasteTiming(const Clipboard &copied, MusicalPosition ancho
     std::erase_if(timing,
                   [&](const auto &event)
                   {
-                      return (includeBlanks && event.position >= anchor && event.position <= end) ||
-                             replaced.contains({event.position, event.type});
+                      const bool inBlankRange = includeBlanks && event.position >= anchor && event.position <= end;
+                      return inBlankRange || replaced.contains({event.position, event.type});
                   });
     timing.insert(timing.end(), added.begin(), added.end());
     editor_->ReplaceTiming(std::move(timing));
@@ -147,8 +147,8 @@ void EditorWorkspace::PasteEffects(const Clipboard &copied, MusicalPosition anch
     std::erase_if(effects.hitSoundChanges,
                   [&](const auto &event)
                   {
-                      return (includeBlanks && event.position >= anchor && event.position <= end) ||
-                             replacedSounds.contains({event.keyType, event.position});
+                      const bool inBlankRange = includeBlanks && event.position >= anchor && event.position <= end;
+                      return inBlankRange || replacedSounds.contains({event.keyType, event.position});
                   });
     effects.commands.insert(effects.commands.end(), addedCommands.begin(), addedCommands.end());
     effects.hitSoundChanges.insert(effects.hitSoundChanges.end(), addedSounds.begin(), addedSounds.end());

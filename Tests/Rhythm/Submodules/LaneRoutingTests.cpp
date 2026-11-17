@@ -33,9 +33,10 @@ namespace tests
         const auto checkAccuracy = [&] {
             const auto &leftAccuracy = left.Notes().front()->Accuracy();
             const auto &rightAccuracy = right.Notes().front()->Accuracy();
-            Require(leftAccuracy.finalized && rightAccuracy.finalized &&
-                        leftAccuracy.acceptedHits == 1 && rightAccuracy.acceptedHits == 1 &&
-                        leftAccuracy.acceptedTicks == 3 && rightAccuracy.acceptedTicks == 1,
+            Require(leftAccuracy.finalized && rightAccuracy.finalized && leftAccuracy.acceptedHits == 1,
+                    "The right release must stop its ticks while the left hold continues.");
+            Require(rightAccuracy.acceptedHits == 1 && leftAccuracy.acceptedTicks == 3 &&
+                    rightAccuracy.acceptedTicks == 1,
                     "The right release must stop its ticks while the left hold continues.");
         };
         checkAccuracy();

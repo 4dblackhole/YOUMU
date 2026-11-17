@@ -82,7 +82,8 @@ int WINAPI wWinMain(
         commandLine.find(L"--smoke-editor") != std::wstring_view::npos;
     const bool rhythmDebugMode =
         commandLine.find(L"--rhythm-debug") != std::wstring_view::npos;
-    const bool smokeTest = smokeLobby || smokeGameplay || smokeEditor || basicSmokeTest;
+    const bool smokeRoute = smokeLobby || smokeGameplay || smokeEditor;
+    const bool smokeTest = smokeRoute || basicSmokeTest;
     std::string initialScene(LogoSceneId);
     if (smokeLobby)
     {

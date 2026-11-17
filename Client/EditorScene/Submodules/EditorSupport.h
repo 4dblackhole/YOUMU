@@ -56,8 +56,10 @@ namespace editor_ui
             // Break at the last space for words (Hangul too); before the overflowing character
             // for kana/Han or one long word.
             const auto space = line.find_last_of(L' ');
-            const bool kanaOrHan = (character >= 0x3040 && character <= 0x9FFF) || (character >= 0xF900 && character <= 0xFAFF);
-            const bool atSpace = !kanaOrHan && space != std::wstring::npos && space > 0;
+            const bool kana = character >= 0x3040 && character <= 0x9FFF;
+            const bool kanaOrHan = kana || (character >= 0xF900 && character <= 0xFAFF);
+            const bool spaceInside = space != std::wstring::npos && space > 0;
+            const bool atSpace = !kanaOrHan && spaceInside;
             const auto split = atSpace ? space : line.size() - 1;
             result += line.substr(0, split) + L'\n';
             line = line.substr(atSpace ? split + 1 : split);

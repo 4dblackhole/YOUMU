@@ -257,8 +257,9 @@ namespace tests
         Require(!session.CanUseHp() && Near(gauge.State().percent, 60) && gauge.History()->size() == points,
                 "Pause/Rewind freeze HP/history through replay, Resume and retirement.");
         auto result = session.TakeResult(PlayEndReason::Interrupted, RhythmTime{1'100'000});
-        Require(!result->Summary().CanUseHp() && !result->Summary().IsCleared() &&
-                    result->Summary().hpHistory && result->Summary().hpHistory->size() == points,
+        Require(!result->Summary().CanUseHp() && !result->Summary().IsCleared() && result->Summary().hpHistory,
+                "Results preserve the pre-pause HP curve without clear eligibility.");
+        Require(result->Summary().hpHistory->size() == points,
                 "Results preserve the pre-pause HP curve without clear eligibility.");
         loaded.session.reset();
         gauge.Reset();
@@ -289,9 +290,9 @@ namespace tests
         auto &session = *loaded.session;
         auto gauge = GaugeFor(session);
         Bind(session, gauge);
-        Require(!session.CanEnterGameplay() && !session.CanUseHp() && !gauge.State().applicable &&
-                    !gauge.State().passed,
+        Require(!session.CanEnterGameplay() && !session.CanUseHp() && !gauge.State().applicable,
                 "An effectively empty chart is editor-only and excluded from HP.");
+        Require(!gauge.State().passed, "An effectively empty chart is editor-only and excluded from HP.");
         static_cast<void>(session.Update(RhythmTime{1'000'000}));
         auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{1'000'000});
         Require(!result->Summary().CanUseHp() && !result->Summary().IsCleared(),

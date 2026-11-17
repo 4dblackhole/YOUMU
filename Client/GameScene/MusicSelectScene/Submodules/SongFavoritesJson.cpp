@@ -7,6 +7,14 @@
 namespace
 {
     [[noreturn]] void Invalid() { throw std::invalid_argument("Invalid or unsupported favorites.json."); }
+    // The value of one hexadecimal digit, or 16 when the character is not one.
+    unsigned HexDigitValue(const wchar_t ch)
+    {
+        if (ch >= L'0' && ch <= L'9') return ch - L'0';
+        if (ch >= L'a' && ch <= L'f') return ch - L'a' + 10;
+        if (ch >= L'A' && ch <= L'F') return ch - L'A' + 10;
+        return 16;
+    }
     std::wstring Wide(std::string_view text)
     {
         if (text.empty()) return {};
@@ -105,8 +113,7 @@ namespace
             {
                 if (cursor_ == source_.size()) Invalid();
                 const auto ch = source_[cursor_++];
-                const unsigned digit = ch >= L'0' && ch <= L'9' ? ch - L'0' :
-                    ch >= L'a' && ch <= L'f' ? ch - L'a' + 10 : ch >= L'A' && ch <= L'F' ? ch - L'A' + 10 : 16;
+                const unsigned digit = HexDigitValue(ch);
                 if (digit == 16) Invalid();
                 value = value * 16 + digit;
             }

@@ -23,8 +23,9 @@ namespace tests
             Require(HasEvent(hit, NoteEventType::HitAccepted), "Input must pass all expired notes before judging.");
             auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{100'001});
             const auto &taiko = dynamic_cast<const TaikoPlayResult &>(*result);
-            Require(taiko.judgements[0] == 1 && taiko.judgements[5] == 2 && taiko.timingErrors.size() == 1 &&
-                        taiko.timingErrors.front().error == RhythmDuration{} && taiko.summary.processedNotes == 3,
+            Require(taiko.judgements[0] == 1 && taiko.judgements[5] == 2 && taiko.timingErrors.size() == 1,
+                    "Frame splitting must preserve hit/miss counts, accuracy and timing error.");
+            Require(taiko.timingErrors.front().error == RhythmDuration{} && taiko.summary.processedNotes == 3,
                     "Frame splitting must preserve hit/miss counts, accuracy and timing error.");
         }
         auto profile = std::make_shared<AccuracyRange>();

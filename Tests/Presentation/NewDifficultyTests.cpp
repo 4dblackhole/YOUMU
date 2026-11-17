@@ -57,10 +57,11 @@ int main()
         const auto effects = ChartParser{}.ParseEffectFile(*created.effectPath);
         Check(parsed.Succeeded() && effects.Succeeded(), "New pair must parse.");
         ChartEditor editor(parsed.document, effects.document);
-        Check(editor.Notes().empty() && parsed.document.timing.empty() && effects.document.commands.empty() &&
-                  parsed.document.baseBpm == 120 && parsed.document.patternOffsetMilliseconds == 0 &&
-                  parsed.document.mode == "Taiko" && editor.Timeline().MeasureLength(0) == Rational{1},
+        Check(editor.Notes().empty() && parsed.document.timing.empty() && effects.document.commands.empty(),
               "New chart defaults and empty score.");
+        Check(parsed.document.baseBpm == 120 && parsed.document.patternOffsetMilliseconds == 0 &&
+              parsed.document.mode == "Taiko", "New chart defaults and empty score.");
+        Check(editor.Timeline().MeasureLength(0) == Rational{1}, "New chart defaults and empty score.");
         const auto before = Read(created.patternPath);
         bool refused{};
         try
@@ -131,8 +132,8 @@ int main()
         Check(reread.Succeeded() && reread.document.judgementLevel == 80.25 && reread.document.hpLevel.Value() == 7.5,
               "Create keeps the judgement and HP levels typed before it.");
         Check(reread.document.backgroundFile == fs::path("bg.png") && reread.document.backgroundOffsetX == 12 &&
-                  reread.document.backgroundOffsetY == -4 && reread.document.makers.size() == 2,
-              "Create keeps the BG file, its offset and every maker.");
+              reread.document.backgroundOffsetY == -4, "Create keeps the BG file, its offset and every maker.");
+        Check(reread.document.makers.size() == 2, "Create keeps the BG file, its offset and every maker.");
         const auto catalog = SongCatalog{}.Load(root);
         Check(catalog.songs.size() == 1 && catalog.PatternCount() == 4, "New difficulties reload into the catalog.");
         Check(Read(music) == "Version: 1\nFile: sample.wav\nMusic Name 1: Test\nArtist 1: Test\n",

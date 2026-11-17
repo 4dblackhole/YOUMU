@@ -14,8 +14,10 @@ namespace tests
                     (loaded.diagnostics.empty() ? std::string{} : loaded.diagnostics.front().message));
         auto &session = *loaded.session;
         Require(!session.InputMapping().contains('F') && !session.InputMapping().contains('V') &&
-                    !session.InputMapping().contains(0) && session.InputMapping().at('S') == 1 &&
-                    session.InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 'A', 0, 0},
+                !session.InputMapping().contains(0),
+                "Session input and presentation share the resolved primary/auxiliary keys.");
+        Require(session.InputMapping().at('S') == 1 &&
+                session.InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 'A', 0, 0},
                 "Session input and presentation share the resolved primary/auxiliary keys.");
         Require(
             !HasEvent(session.ProcessInput('F', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
@@ -31,8 +33,9 @@ namespace tests
         options.inputKeys["LeftDon"] = {'S', 0, 0, 'A'};
         auto sparse = TaikoMode(options).CreateSession(pattern);
         Require(sparse.Succeeded() && !sparse.session->InputMapping().contains(0) &&
-                    sparse.session->InputMapping().at('A') == 1 &&
-                    sparse.session->InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 0, 0, 'A'},
+                sparse.session->InputMapping().at('A') == 1,
+                "Sparse auxiliary slots persist while their assigned keys remain playable.");
+        Require(sparse.session->InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 0, 0, 'A'},
                 "Sparse auxiliary slots persist while their assigned keys remain playable.");
         options.inputKeys["LeftDon"] = {'K', 'A'};
         Require(!TaikoMode(options).CreateSession(pattern).Succeeded(),

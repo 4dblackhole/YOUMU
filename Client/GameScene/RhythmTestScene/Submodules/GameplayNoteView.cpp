@@ -321,7 +321,8 @@ void GameplayNoteView::CreateNoteVisual(const INote &source)
     const bool customHead = balloon || dengDeng;
     const bool roll = (visualKind == NoteVisualKind::Roll || visualKind == NoteVisualKind::BigRoll) &&
                       note->Progress().has_value();
-    const bool longNote = presentation != nullptr && presentation->hasEndTime && IsLongVisual(visualKind) && !customHead;
+    const bool hasEndTime = presentation != nullptr && presentation->hasEndTime;
+    const bool longNote = hasEndTime && IsLongVisual(visualKind) && !customHead;
     const bool bigLongParts = visualKind == NoteVisualKind::BigRoll;
     const bool buzz = visualKind == NoteVisualKind::DonBuzz || visualKind == NoteVisualKind::KatBuzz;
     const auto headImage = balloon ? balloonImage : (dengDeng ? dengDengImage : (big ? bigNoteImage : noteImage));
@@ -490,8 +491,9 @@ void GameplayNoteView::UpdateNote(const INote &model, const RhythmTime time, con
     auto targetTime = layers.timing;
     const bool missed = note.state == NoteState::Missed;
     const bool completed = note.state == NoteState::Completed;
-    const bool countingHits = layers.counter != nullptr && !missed && !completed && time >= note.timing &&
-                              note.progress.has_value() && note.progress->accepted > 0;
+    const bool unfinished = !missed && !completed;
+    const bool countingStarted = layers.counter != nullptr && unfinished && time >= note.timing;
+    const bool countingHits = countingStarted && note.progress.has_value() && note.progress->accepted > 0;
     const bool processing = focusNote && countingHits;
     // A focus note stays on the judgement point while it is being hit, and a
     // missed one leaves from its expiry time.
@@ -502,7 +504,9 @@ void GameplayNoteView::UpdateNote(const INote &model, const RhythmTime time, con
     const float speed = presentation != nullptr ? static_cast<float>(presentation->scrollMultiplier) : 1.0F;
     const auto position = LaneObjectPosition(targetTime, time, speed);
     layers.root->SetPosition(position);
-    const bool showLaneHead = focusNote ? !completed && (!processing || missed) : !completed && !missed;
+    const bool focusVisible = !completed && (!processing || missed);
+    const bool laneVisible = !completed && !missed;
+    const bool showLaneHead = focusNote ? focusVisible : laneVisible;
     layers.root->SetVisible(showLaneHead);
 
     // Only the earliest note being hit shows its counter or processing effect.

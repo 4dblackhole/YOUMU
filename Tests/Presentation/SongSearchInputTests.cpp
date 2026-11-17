@@ -122,8 +122,9 @@ namespace
             Check(GetWindowRect(child, &after) != FALSE && after.right - after.left < before.right - before.left,
                   "Native search width follows responsive Canvas layout.");
             MapWindowPoints(nullptr, parent, reinterpret_cast<POINT *>(&after), 2);
-            Check(after.left >= 0 && after.top >= 0 && after.right <= 960 && after.bottom <= 540,
+            Check(after.left >= 0 && after.top >= 0 && after.right <= 960,
                   "Resized search stays inside the client area.");
+            Check(after.bottom <= 540, "Resized search stays inside the client area.");
             input = {};
             InputStateTestAccess::Key(input, VK_LCONTROL, true);
             InputStateTestAccess::Key(input, 'O', true);
@@ -290,7 +291,9 @@ namespace
             Check(view_->Update(input, 0) == SongSelectCommand::None && !recordFilter->IsVisible() && edits().size() == 1,
                   "Native Enter applies record conditions and restores only search.");
             Check(state_.searchText_ == L"angel" && state_.visibleSongIndices_ == visible &&
-                      state_.focusedSongPosition_ == selected && state_.selectedPatternIndex_ == pattern,
+                  state_.focusedSongPosition_ == selected,
+                  "Record filtering preserves the search, visible songs and selected chart.");
+            Check(state_.selectedPatternIndex_ == pattern,
                   "Record filtering preserves the search, visible songs and selected chart.");
             click("RecordQuery");
             fields = edits();
@@ -366,7 +369,7 @@ namespace
 void TestNativeSongSearch()
 {
     Report report;
-    Check(Run(std::make_unique<SearchClient>(report)) == 0 && report.tested && report.rendered &&
-              report.measured && report.cleaned,
+    Check(Run(std::make_unique<SearchClient>(report)) == 0 && report.tested && report.rendered,
           "Native search integration and shutdown must pass.");
+    Check(report.measured && report.cleaned, "Native search integration and shutdown must pass.");
 }

@@ -62,12 +62,12 @@ namespace tests
             log.Append(session.Update(RhythmTime{750'000}, both));
             log.Append(session.ProcessInput(wrong, InputEdge::Released, RhythmTime{750'001}));
             log.Append(session.Update(RhythmTime{1'125'000}, held));
-            Require(log.finalizedAccuracies.size() == 1 &&
-                        log.finalizedAccuracies.front().acceptedTicks == 6 &&
-                        log.finalizedAccuracies.front().target.ticks == 9 &&
-                        log.finalizedAccuracies.front().hitScoreRates.front() == 1.0 &&
-                        std::ranges::count(log.events, NoteEventType::TickRejected, &NoteEvent::type) == 3 &&
-                        session.AccuracyRate() == AccuracyScore::FromRate(0.5 + 0.5 * (6.0 / 9)).Rate(),
+            Require(log.finalizedAccuracies.size() == 1 && log.finalizedAccuracies.front().acceptedTicks == 6 &&
+                    log.finalizedAccuracies.front().target.ticks == 9,
+                    "Wrong-color holds across ticks 4..6 must preserve MAX head and score six of nine ticks.");
+            Require(log.finalizedAccuracies.front().hitScoreRates.front() == 1.0 &&
+                    std::ranges::count(log.events, NoteEventType::TickRejected, &NoteEvent::type) == 3 &&
+                    session.AccuracyRate() == AccuracyScore::FromRate(0.5 + 0.5 * (6.0 / 9)).Rate(),
                     "Wrong-color holds across ticks 4..6 must preserve MAX head and score six of nine ticks.");
             session.RewindJudgements(RhythmTime{625'001});
             static_cast<void>(session.ProcessInput(wrong, InputEdge::Released, RhythmTime{750'001}));
@@ -76,8 +76,11 @@ namespace tests
                     "Rewind must reconstruct the wrong-color held state and per-tick POORs.");
             auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{1'125'000});
             const auto *taiko = dynamic_cast<const TaikoPlayResult *>(result.get());
-            Require(taiko && taiko->poorCount == 3 && taiko->missedTicks == 3 &&
-                        taiko->acceptedTicks == 6 && taiko->timingErrors.size() == 1,
+            if (!taiko)
+                throw std::runtime_error("Tick POOR result must be a Taiko result.");
+            Require(taiko->poorCount == 3 && taiko->missedTicks == 3 && taiko->acceptedTicks == 6,
+                    "Tick POOR counts must not invent additional head timing samples.");
+            Require(taiko->timingErrors.size() == 1,
                     "Tick POOR counts must not invent additional head timing samples.");
 
             auto headPoor = TaikoMode{}.CreateSession(pattern);
@@ -104,10 +107,10 @@ namespace tests
         Require(HasEvent(rejected, NoteEventType::InputRejected) && rejected.finalizedAccuracies.empty(),
                 "A POOR must leave the note available for a subsequent correct input.");
         const auto accepted = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
-        Require(HasEvent(accepted, NoteEventType::HitAccepted) &&
-                    accepted.finalizedAccuracies.size() == 1 &&
-                    accepted.finalizedAccuracies.front().Score().Units() == 0 &&
-                    session.AccuracyRate() == 0.0,
+        Require(HasEvent(accepted, NoteEventType::HitAccepted) && accepted.finalizedAccuracies.size() == 1 &&
+                accepted.finalizedAccuracies.front().Score().Units() == 0,
+                "A POOR followed by a MAX must finalize the logical note with zero accuracy.");
+        Require(session.AccuracyRate() == 0.0,
                 "A POOR followed by a MAX must finalize the logical note with zero accuracy.");
 
         session.Reset();
@@ -146,9 +149,10 @@ namespace tests
         const double bigRate = AccuracyScore::FromRate((1.0 + hit2) * 0.5).Rate();
         const auto bigAccuracyRate = session.AccuracyRate();
         const auto &bigAccuracy = session.LastNoteAccuracy();
-        Require(second.finalizedAccuracies.size() == 1 &&
-                    bigAccuracyRate && bigAccuracy && std::abs(*bigAccuracyRate - bigRate) < 1e-9 &&
-                    bigAccuracy->hitScoreRates == std::vector<double>{1.0, hit2},
+        Require(second.finalizedAccuracies.size() == 1 && bigAccuracyRate && bigAccuracy,
+                "Big accuracy must preserve both interpolated hits and their mean.");
+        Require(std::abs(*bigAccuracyRate - bigRate) < 1e-9 &&
+                bigAccuracy->hitScoreRates == std::vector<double>{1.0, hit2},
                 "Big accuracy must preserve both interpolated hits and their mean.");
         static_cast<void>(session.Update(RhythmTime{400'000}));
         static_cast<void>(session.Update(RhythmTime{500'000}));
@@ -196,11 +200,10 @@ namespace tests
             const auto second = loaded.session->ProcessInput(secondKey, InputEdge::Pressed,
                                                              RhythmTime{2'000});
             Require(first.audioCues.size() == 1 &&
-                        first.audioCues.front().sound ==
-                            (katFirst ? "Taiko.Kat.Hit" : "Taiko.Don.Hit") &&
-                        !HasEvent(repeat, NoteEventType::HitAccepted) &&
-                        HasEvent(second, NoteEventType::Completed) &&
-                        loaded.session->AccuracyRate() == 0.0,
+                    first.audioCues.front().sound == (katFirst ? "Taiko.Kat.Hit" : "Taiko.Don.Hit") &&
+                    !HasEvent(repeat, NoteEventType::HitAccepted),
+                    "Purple accepts either order but a rejected repeated color leaves zero final accuracy.");
+            Require(HasEvent(second, NoteEventType::Completed) && loaded.session->AccuracyRate() == 0.0,
                     "Purple accepts either order but a rejected repeated color leaves zero final accuracy.");
         }
     }
@@ -232,9 +235,10 @@ namespace tests
                 const auto expired = loaded.session->Update(RhythmTime{1'000'000});
                 const auto finalRate = loaded.session->AccuracyRate();
                 const auto &finalAccuracy = loaded.session->LastNoteAccuracy();
-                Require(HasEvent(expired, NoteEventType::Missed) &&
-                            finalRate && finalAccuracy && std::abs(*finalRate - 0.8) < 1e-9 &&
-                            finalAccuracy->acceptedHits == 8 && finalAccuracy->target.hits == 10,
+                Require(HasEvent(expired, NoteEventType::Missed) && finalRate && finalAccuracy,
+                        "Eight of ten hits must finalize at 80 percent, even on timeout.");
+                Require(std::abs(*finalRate - 0.8) < 1e-9 && finalAccuracy->acceptedHits == 8 &&
+                        finalAccuracy->target.hits == 10,
                         "Eight of ten hits must finalize at 80 percent, even on timeout.");
             }
             auto pattern = MakeLongPattern(type);
@@ -312,8 +316,9 @@ namespace tests
         const auto done = hold.Update({RhythmTime{10'100'000}, {}});
         const double head = profile->Evaluate({}, RhythmTime{14'166}).scoreRate;
         Require(done.finalizedAccuracies.size() == 1 && hold.Accuracy().acceptedTicks == 98 &&
-                    std::abs(hold.Accuracy().ScoreRate() - AccuracyScore::FromRate((head + 0.98) * 0.5).Rate()) < 1e-9 &&
-                    std::abs(hold.Accuracy().ScoreRate() - 0.97) < 0.00001,
+                std::abs(hold.Accuracy().ScoreRate() - AccuracyScore::FromRate((head + 0.98) * 0.5).Rate()) < 1e-9,
+                "Buzz must combine interpolated head and 98/100 held ticks equally.");
+        Require(std::abs(hold.Accuracy().ScoreRate() - 0.97) < 0.00001,
                 "Buzz must combine interpolated head and 98/100 held ticks equally.");
         Require(hold.Update({RhythmTime{11'000'000}, {}}).finalizedAccuracies.empty(),
                 "An ended hold must not emit its accuracy twice.");

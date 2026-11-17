@@ -37,10 +37,13 @@ namespace tests
         if (!taiko)
             throw std::runtime_error("Taiko rewind result required.");
         Require(taiko->summary.inputs.size() == 7 && taiko->summary.controls.size() == 4 &&
-                    taiko->summary.controls[1].inputIndex == 4 && taiko->summary.controls[3].inputIndex == 6,
+                taiko->summary.controls[1].inputIndex == 4,
                 "Replay inputs and ordered pause/rewind markers must survive cancellation.");
-        Require(taiko->timingErrors.size() == 1 && taiko->judgements[0] == 1 && taiko->summary.processedNotes == 1 &&
-                    !taiko->summary.IsCleared() && !taiko->summary.CanUseHp(),
+        Require(taiko->summary.controls[3].inputIndex == 6,
+                "Replay inputs and ordered pause/rewind markers must survive cancellation.");
+        Require(taiko->timingErrors.size() == 1 && taiko->judgements[0] == 1 && taiko->summary.processedNotes == 1,
+                "Statistics must contain only the current branch, and practice must remain latched.");
+        Require(!taiko->summary.IsCleared() && !taiko->summary.CanUseHp(),
                 "Statistics must contain only the current branch, and practice must remain latched.");
     }
     void TestLongNoteRewindState()
@@ -89,11 +92,14 @@ namespace tests
             if (!taiko)
                 throw std::runtime_error("Retired Taiko result required.");
             Require(taiko->summary.processedNotes == 1 && taiko->summary.unprocessedNotes == 0 &&
-                        taiko->judgements[5] == 1 && taiko->okCount == 0 && taiko->notes[0].accuracy.Units() == 0 &&
-                        taiko->notes[0].finalState == NoteState::Missed,
+                    taiko->judgements[5] == 1, "Every unfinished long note must retire as a zero-score logical MISS.");
+            Require(taiko->okCount == 0 && taiko->notes[0].accuracy.Units() == 0 &&
+                    taiko->notes[0].finalState == NoteState::Missed,
                     "Every unfinished long note must retire as a zero-score logical MISS.");
             Require(taiko->summary.inputs.size() == 1 && taiko->summary.controls.size() == 2 &&
-                        !taiko->summary.CanUseHp() && !taiko->summary.IsCleared(),
+                    !taiko->summary.CanUseHp(),
+                    "The new attempt must omit old controls and preserve its own retirement markers.");
+            Require(!taiko->summary.IsCleared(),
                     "The new attempt must omit old controls and preserve its own retirement markers.");
         }
         PatternDocument pattern;

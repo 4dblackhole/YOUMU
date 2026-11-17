@@ -132,8 +132,9 @@ namespace
         Check(router.Initialize(audio, error), error.c_str());
         Check(busVolumes.at("Music") == 1 && busVolumes.at("HitSound") == 1, "Buses start at full volume.");
         router.SetVolumes(.5F, .25F);
-        Check(busVolumes.at("Music") == .5F && busVolumes.at("HitSound") == .25F && busVolumes.at("TickSound") == .25F &&
-                  busVolumes.at("UserInputFeedback") == .25F && busVolumes.at("UI") == .25F,
+        Check(busVolumes.at("Music") == .5F && busVolumes.at("HitSound") == .25F && busVolumes.at("TickSound") == .25F,
+              "Music volume scales the Music bus and effects volume every other bus.");
+        Check(busVolumes.at("UserInputFeedback") == .25F && busVolumes.at("UI") == .25F,
               "Music volume scales the Music bus and effects volume every other bus.");
         const std::array automation{AutomationValue{EffectCommandType::BusVolume, "HitSound", .8}};
         router.ApplyAutomation(automation);

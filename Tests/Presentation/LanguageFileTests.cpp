@@ -62,8 +62,9 @@ namespace
         TextCatalog catalog(directory);
         const auto logo = Logo(catalog);
         const auto original = catalog.Get(Language::Korean, "Logo.Start");
-        Check(logo.menu[0] == L"Game Start" && logo.menu[1] == L"Editor" && logo.menu[2] == L"Preferences" &&
-                  logo.menu[3] == L"Exit" && original == L"직접 시작",
+        Check(logo.menu[0] == L"Game Start" && logo.menu[1] == L"Editor" && logo.menu[2] == L"Preferences",
+              "UI uses English while explicit pack reads preserve custom translated entries.");
+        Check(logo.menu[3] == L"Exit" && original == L"직접 시작",
               "UI uses English while explicit pack reads preserve custom translated entries.");
         Check(catalog.Get(Language::Korean, "Pause.resumeValueFormat") == L"{:.1f} s back" &&
                   catalog.Diagnostics().size() == 2,

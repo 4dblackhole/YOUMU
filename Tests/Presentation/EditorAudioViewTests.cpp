@@ -317,8 +317,8 @@ int main(int argc, char** argv)
             preview.Stop();
             for (int i = 0; i < 20; ++i) poll();
             Check(preview.State().Transport() == MusicTransport::Stopped && preview.State().PositionMicroseconds() == 0 &&
-                      playback.PlaybackCount() == 1 && previewLoadCalls == 1,
-                  "Stop rewinds and keeps the voice ready without reopening the file");
+                  playback.PlaybackCount() == 1, "Stop rewinds and keeps the voice ready without reopening the file");
+            Check(previewLoadCalls == 1, "Stop rewinds and keeps the voice ready without reopening the file");
             resume = true;
             Check(awaitPosition(0) && previewLoadCalls == 1, "Song select resumes a stopped song in place");
             preview.RestartTrack();
@@ -352,8 +352,9 @@ int main(int argc, char** argv)
             Check(previewLoadCalls == 2, "Restarting a song that played out reopens it once");
             preview.Seek(nearEnd);
             Check(awaitEnd(SongPreviewController::EndBehavior::Repeat) && preview.State().IsPlaying() &&
-                      preview.State().PositionMicroseconds() == 0 && previewLoadCalls == 3,
+                  preview.State().PositionMicroseconds() == 0,
                   "Song select starts a song that played out again from its beginning");
+            Check(previewLoadCalls == 3, "Song select starts a song that played out again from its beginning");
             awaitVoice();
 
             focused = missing;
@@ -386,8 +387,9 @@ int main(int argc, char** argv)
         EditorWorkspace state(launch);
         state.Initialize();
         Check(state.MusicMetadataPath() == song.metadataPath.lexically_normal() &&
-                  state.Document().SourcePath() == selected.patternPath &&
-                  (!selected.effectPath || state.Document().Effects().sourcePath == *selected.effectPath),
+              state.Document().SourcePath() == selected.patternPath,
+              "Folder actions must resolve the currently edited YMM/YMP/YME paths.");
+        Check((!selected.effectPath || state.Document().Effects().sourcePath == *selected.effectPath),
               "Folder actions must resolve the currently edited YMM/YMP/YME paths.");
         const auto analysisStarted = std::chrono::steady_clock::now();
         state.UpdateAnalysis();
@@ -472,8 +474,9 @@ int main(int argc, char** argv)
         Check(hasText(std::wstring(state.Document().Dirty() ? Editor(texts).saveDirty
                                                             : Editor(texts).save)),
               "Existing footer Save must remain available.");
-        Check(hasText(L"Compose") && hasText(L"Notes") && hasText(L"Scroll speed") && !hasText(L"Waveform"),
+        Check(hasText(L"Compose") && hasText(L"Notes") && hasText(L"Scroll speed"),
               "Compose must stack the channel heads without the audio analysis tracks.");
+        Check(!hasText(L"Waveform"), "Compose must stack the channel heads without the audio analysis tracks.");
         state.Seek(state.Document().Notes().front().timing.count() / 1000.0 + 1000);
         state.SelectTab(EditorTab::Audio);
         view.Build();
@@ -488,9 +491,10 @@ int main(int argc, char** argv)
                     const auto corner = TransformPoint(
                         {packet.bounds.x, packet.bounds.y + packet.bounds.height, 0}, packet.nodeTransform);
                     const float y = 360 - corner.y;
-                    return packet.type == DrawPacketType::Rectangle && y >= top && y < bottom &&
-                           corner.x >= 24 - 640 && corner.x < 1256 - 640 && packet.color.red > .3F &&
-                           packet.color.green < .95F;
+                    const bool inBand = y >= top && y < bottom;
+                    const bool inFrame = inBand && corner.x >= 24 - 640 && corner.x < 1256 - 640;
+                    const bool tinted = packet.color.red > .3F && packet.color.green < .95F;
+                    return packet.type == DrawPacketType::Rectangle && inFrame && tinted;
                 });
         };
         // The frame's track rows: waveform 1.2, music 1, expected hits .8 of the body below the tool row.
@@ -538,8 +542,9 @@ int main(int argc, char** argv)
         const EditorSpectrumRequest detailRequest{0, {tileIndex * tileSeconds, tileSeconds,
             128, detailBands, 20, state.Analysis().Data().sounds.at("Music").maximumFrequencyHz}};
         const auto detail = state.Analysis().Spectrum(detailRequest);
-        Check(detail && detail->columns == 128 && detail->bands == detailBands &&
-                  detail->levels.size() == 128 * detailBands,
+        Check(detail && detail->columns == 128 && detail->bands == detailBands,
+              "The Client must display PCM spectrum tiles at physical pixel resolution.");
+        Check(detail->levels.size() == 128 * detailBands,
               "The Client must display PCM spectrum tiles at physical pixel resolution.");
         state.Seek(state.TimeMilliseconds() + 1);
         view.Build();
@@ -660,8 +665,9 @@ int main(int argc, char** argv)
                 left = left || frame(VK_ESCAPE);
             Check(!left && alertOpen(), "Escape with unsaved changes must ask instead of leaving.");
             visuals.Render({});
-            Check(hasText(L"Unsaved changes") && hasText(L"Discard") && hasText(L"Cancel") && hasText(L"Save"),
+            Check(hasText(L"Unsaved changes") && hasText(L"Discard") && hasText(L"Cancel"),
                   "The unsaved alert offers Discard, Cancel and Save.");
+            Check(hasText(L"Save"), "The unsaved alert offers Discard, Cancel and Save.");
             const auto timeBefore = state.TimeMilliseconds();
             Check(!frame('Z') && state.TimeMilliseconds() == timeBefore, "Editor shortcuts must wait behind the alert.");
             Check(!frame(VK_ESCAPE) && !alertOpen() && state.Document().Dirty(),
@@ -696,8 +702,9 @@ int main(int argc, char** argv)
         state.SetRealtime(true);
         view.Build();
         visuals.Render({});
-        Check(hasText(L"−") && hasText(L"+") && hasText(L"Spacing") && hasText(L"50%"),
+        Check(hasText(L"−") && hasText(L"+") && hasText(L"Spacing"),
               "Realtime view must expose the note spacing buttons and current spacing.");
+        Check(hasText(L"50%"), "Realtime view must expose the note spacing buttons and current spacing.");
         view.Shutdown();
         Check(visuals.CanvasCount() == 0, "Editor Canvas survived shutdown");
         visuals.OnResize(1920, 1080);

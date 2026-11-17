@@ -23,9 +23,8 @@ NoteState TapInputRule::State() const noexcept
 bool TapInputRule::CanAccept(const NoteRuleContext &, const RhythmInputEvent &input,
                              const JudgementResult &judgement) const noexcept
 {
-    return !IsTerminal(state_) && input.edge == InputEdge::Pressed &&
-           input.action == requiredAction_ &&
-           IsAtLeastAsAccurateAs(judgement.grade, maximumGrade_);
+    const bool pressed = !IsTerminal(state_) && input.edge == InputEdge::Pressed;
+    return pressed && input.action == requiredAction_ && IsAtLeastAsAccurateAs(judgement.grade, maximumGrade_);
 }
 
 void TapInputRule::ProcessInput(const NoteRuleContext &context, const RhythmInputEvent &input,

@@ -50,8 +50,10 @@ bool TaikoEditorNoteInspector::Clear() noexcept
 }
 bool TaikoEditorNoteInspector::IsSelected(std::size_t id) const noexcept
 {
-    return selected_ &&
-           (selected_->head.note.sourceOrder == id || (selected_->tail && selected_->tail->note.sourceOrder == id));
+    if (!selected_)
+        return false;
+    const bool tailSelected = selected_->tail && selected_->tail->note.sourceOrder == id;
+    return selected_->head.note.sourceOrder == id || tailSelected;
 }
 void TaikoEditorNoteInspector::Refresh(const IEditorDocument &document)
 {

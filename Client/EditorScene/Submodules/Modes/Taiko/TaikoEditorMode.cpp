@@ -58,7 +58,8 @@ GameplayLaunchRequest TaikoEditorMode::CreateDocument(const IEditorDocument &dra
 bool TaikoEditorMode::CancelInteraction() noexcept
 {
     const bool hadSelection = inspector_.Clear();
-    const bool hadInteraction = pending_.has_value() || popup_ >= 0 || hadSelection || selectionAnchor_.has_value();
+    const bool hadPending = pending_.has_value() || popup_ >= 0;
+    const bool hadInteraction = hadPending || hadSelection || selectionAnchor_.has_value();
     selectionAnchor_.reset();
     selecting_ = false;
     pending_.reset();

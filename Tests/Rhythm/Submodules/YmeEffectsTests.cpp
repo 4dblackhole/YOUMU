@@ -39,9 +39,9 @@ namespace tests
         auto &session = *loaded.session;
         const auto &lines = session.MeasureLines();
         const auto originalSize = lines.size();
-        Require(lines.size() >= 5 && lines[0].timing == RhythmTime{} &&
-                    lines[1].timing == RhythmTime{2'500'000} &&
-                    std::abs(lines[1].scrollMultiplier - (1 - .75 * 2.5 / 4.5)) < 1e-12 &&
+        Require(lines.size() >= 5 && lines[0].timing == RhythmTime{} && lines[1].timing == RhythmTime{2'500'000},
+                "Measure lines must fix Separate at their compiled start, including delayed Area interpolation.");
+        Require(std::abs(lines[1].scrollMultiplier - (1 - .75 * 2.5 / 4.5)) < 1e-12 &&
                     lines[2].scrollMultiplier == .25 && session.FindNotePresentation(1)->scrollMultiplier == 1,
                 "Measure lines must fix Separate at their compiled start, including delayed Area interpolation.");
         Require(session.MinimumScrollMultiplier() <= .25 &&
@@ -99,9 +99,10 @@ Ramp: From+(To-From)*u
         Require(loaded.Succeeded(), "The mixed BPM/signature/delay effect fixture must load.");
         const auto &timeline = editor.Timeline();
         Require(timeline.Compile({0, {1, 2}}) == RhythmTime{1'475'000} &&
-                    timeline.Compile({0, {3, 4}}) == RhythmTime{1'625'000} &&
-                    timeline.Compile({1, {}}) == RhythmTime{1'875'000} &&
-                    timeline.Compile({2, {}}) == RhythmTime{2'875'000},
+                timeline.Compile({0, {3, 4}}) == RhythmTime{1'625'000} &&
+                timeline.Compile({1, {}}) == RhythmTime{1'875'000},
+                "Every BPM prefix and measure time must include prior delays exactly once.");
+        Require(timeline.Compile({2, {}}) == RhythmTime{2'875'000},
                 "Every BPM prefix and measure time must include prior delays exactly once.");
         const auto compiled = timeline.CompileEffects(effects);
         Require(compiled[0].timing == RhythmTime{625'000} &&
@@ -116,8 +117,9 @@ Ramp: From+(To-From)*u
         const auto &values = loaded.session->EvaluateAutomation(RhythmTime{1'475'000});
         const auto volume = std::ranges::find(values, std::string("HitSound"), &AutomationValue::target);
         Require(volume != values.end() && std::abs(volume->value - (.2 + .6 * u)) < 1e-12 &&
-                    !loaded.session->IsKiaiActive(RhythmTime{1'624'999}) &&
-                    loaded.session->IsKiaiActive(RhythmTime{1'625'000}),
+                !loaded.session->IsKiaiActive(RhythmTime{1'624'999}),
+                "Runtime volume and zone changes must follow the same delayed endpoint times as the editor.");
+        Require(loaded.session->IsKiaiActive(RhythmTime{1'625'000}),
                 "Runtime volume and zone changes must follow the same delayed endpoint times as the editor.");
         editor.ReplaceTiming({});
         Require(std::abs(editor.EffectValueAt(EffectCommandType::NoteSpeed, {0, {1, 2}}) - 1.5) < 1e-12,
@@ -135,9 +137,11 @@ Ramp: From+(To-From)*u
         ChartEditor moved(pattern, reordered);
         loaded = TaikoMode{}.CreateSession(pattern, reordered);
         Require(loaded.Succeeded() && moved.Notes().back().timing == RhythmTime{750'000} &&
-                    moved.Notes().back().scrollMultiplier == 1 && loaded.session->MinimumScrollMultiplier() == 1 &&
-                    moved.EffectValueAt(EffectCommandType::NoteSpeed, {0, {3, 4}}) == 1 &&
-                    !moved.Timeline().FindEffectAt(reordered, EffectCommandType::SyncopationZone, {0, {3, 4}}),
+                moved.Notes().back().scrollMultiplier == 1,
+                "An effect whose real start is still in the future must not apply merely because its beat is earlier.");
+        Require(loaded.session->MinimumScrollMultiplier() == 1 &&
+                moved.EffectValueAt(EffectCommandType::NoteSpeed, {0, {3, 4}}) == 1 &&
+                !moved.Timeline().FindEffectAt(reordered, EffectCommandType::SyncopationZone, {0, {3, 4}}),
                 "An effect whose real start is still in the future must not apply merely because its beat is earlier.");
         moved.ReplaceTiming({});
         Require(moved.Notes().back().scrollMultiplier == 2,
@@ -174,14 +178,17 @@ Ramp: From+(To-From)*u
                 const auto preview = BuildTaikoAudioPreview(pattern, {}, editor.Timeline(), editor.Notes());
                 if (i == 4)
                 {
-                    Require(playable.empty() && notes.empty() && preview.empty() && editor.Pattern().notes.size() == 2,
+                    Require(playable.empty() && notes.empty() && preview.empty(),
+                            "Only reversed compiled longs disappear, while both authored endpoints remain saved.");
+                    Require(editor.Pattern().notes.size() == 2,
                             "Only reversed compiled longs disappear, while both authored endpoints remain saved.");
                     continue;
                 }
                 const auto oldHeadTime = editor.Timeline().Compile(begin), oldTailTime = editor.Timeline().Compile(end);
-                Require(playable.size() == 2 && notes.size() == 1 && notes.front()->Timing() == oldHeadTime &&
-                            loaded.session->FindNotePresentation(notes.front()->Id())->endTime == oldTailTime &&
-                            std::ranges::any_of(preview, [&](const auto &cue) { return cue.time == oldHeadTime; }),
+                Require(playable.size() == 2 && notes.size() == 1 && notes.front()->Timing() == oldHeadTime,
+                        "Masked/equal long endpoints must keep their historical time in play, editor and preview.");
+                Require(loaded.session->FindNotePresentation(notes.front()->Id())->endTime == oldTailTime &&
+                        std::ranges::any_of(preview, [&](const auto &cue) { return cue.time == oldHeadTime; }),
                         "Masked/equal long endpoints must keep their historical time in play, editor and preview.");
             }
         // Auto-count longs also remain valid when their entire source body is cut.
@@ -224,8 +231,9 @@ Ramp: From+(To-From)*u
                 "Retained Areas and excluded point state must agree between editor and gameplay.");
         const auto hit = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{2'000'000});
         const auto preview = BuildTaikoAudioPreview(pattern, effects, editor.Timeline(), editor.Notes());
-        Require(!hit.audioCues.empty() && hit.audioCues.front().sound == "Chart.HitSound.3" && preview.size() == 1 &&
-                    preview.front().sound == hit.audioCues.front().sound,
+        Require(!hit.audioCues.empty() && hit.audioCues.front().sound == "Chart.HitSound.3" && preview.size() == 1,
+                "A masked hit-sound change must not override the surviving point in play or audio preview.");
+        Require(preview.front().sound == hit.audioCues.front().sound,
                 "A masked hit-sound change must not override the surviving point in play or audio preview.");
         const ChartEditor copy(editor);
         Require(copy.EffectValueAt(EffectCommandType::NoteSpeed, {1, {3, 4}}) == 3,
@@ -523,8 +531,10 @@ void TestYmeEffects(const std::filesystem::path &songsRoot)
     const auto &timeline = session.Timeline();
     const auto time = [&timeline](long long measure) { return timeline.Compile({measure - 1, {}}); };
     Require(!session.IsKiaiActive(time(3) - RhythmDuration{1}) && session.IsKiaiActive(time(3)) &&
-                session.IsKiaiActive(time(7) - RhythmDuration{1}) && !session.IsKiaiActive(time(7)) &&
-                session.IsKiaiActive(time(4)),
+            session.IsKiaiActive(time(7) - RhythmDuration{1}),
+            "Kiai must honor ON/OFF boundaries and backward queries without "
+            "adding display/score behavior.");
+    Require(!session.IsKiaiActive(time(7)) && session.IsKiaiActive(time(4)),
             "Kiai must honor ON/OFF boundaries and backward queries without "
             "adding display/score behavior.");
     const auto middle = time(3) + (time(4) - time(3)) / 2;

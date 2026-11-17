@@ -18,8 +18,9 @@ class JudgeLevel final
     }
     static bool IsValid(double value) noexcept
     {
-        return std::isfinite(value) && value >= Minimum && value <= Maximum &&
-               std::abs(value * 100 - std::round(value * 100)) < 1e-8;
+        if (!std::isfinite(value) || value < Minimum || value > Maximum)
+            return false;
+        return std::abs(value * 100 - std::round(value * 100)) < 1e-8;
     }
     double Value() const noexcept
     {

@@ -124,9 +124,9 @@ namespace tests
             ChartParser parser;
             const auto parsed = parser.ParsePattern("[Metadata]\nBG: abcd/bg1.png\noffset: 25.5, -40.25\n");
             const auto roundtrip = parser.ParsePattern(ChartEditor::WritePattern(parsed.document));
-            Require(parsed.Succeeded() && roundtrip.Succeeded() &&
-                        roundtrip.document.backgroundFile == "abcd/bg1.png" &&
-                        roundtrip.document.backgroundOffsetX == 25.5 && roundtrip.document.backgroundOffsetY == -40.25,
+            Require(parsed.Succeeded() && roundtrip.Succeeded() && roundtrip.document.backgroundFile == "abcd/bg1.png",
+                    "BG and engine-space offsets must round-trip independently of the YMP folder.");
+            Require(roundtrip.document.backgroundOffsetX == 25.5 && roundtrip.document.backgroundOffsetY == -40.25,
                     "BG and engine-space offsets must round-trip independently of the YMP folder.");
             for (const auto text :
                  {"BG: ../outside.png", "BG: C:/outside.png", "offset: nan, 0", "offset: 1", "offset: 0, 1e300"})
@@ -175,8 +175,10 @@ namespace tests
             document.UpdateNote(11, head, MusicalPosition{1, {3, 4}});
             selected = document.FindNote(10);
             Require(selected->head.note.sourceOrder == 10 && selected->tail->note.sourceOrder == 11 &&
-                        selected->tail->note.keyType == 17 && document.FindNote(12)->head.note.position.measure == 2 &&
-                        document.NotesInMeasures(0, 1).empty() && document.NotesInMeasures(1, 2).size() == 2,
+                    selected->tail->note.keyType == 17,
+                    "Property edits must preserve IDs/unrelated notes and update both endpoints and range indices.");
+            Require(document.FindNote(12)->head.note.position.measure == 2 && document.NotesInMeasures(0, 1).empty() &&
+                    document.NotesInMeasures(1, 2).size() == 2,
                     "Property edits must preserve IDs/unrelated notes and update both endpoints and range indices.");
             const auto revision = document.Revision();
             auto invalid = selected->head.note;
@@ -374,11 +376,13 @@ namespace tests
         {
             invalidRejected = true;
         }
-        Require(invalidRejected && editor.Revision() == beforeRevision && editor.Dirty() == beforeDirty &&
-                    ChartEditor::WritePattern(editor.Pattern()) == beforePattern &&
-                    ChartEditor::WriteEffects(editor.Effects()) == beforeEffects &&
-                    editor.Notes().front().timing == beforeTime &&
-                    std::abs(editor.Notes().front().scrollMultiplier - (5.0 / 3.0)) < 1e-9,
+        Require(invalidRejected && editor.Revision() == beforeRevision && editor.Dirty() == beforeDirty,
+                "Failed candidate validation must preserve document, revision, dirty state and compiled caches.");
+        Require(ChartEditor::WritePattern(editor.Pattern()) == beforePattern &&
+                ChartEditor::WriteEffects(editor.Effects()) == beforeEffects &&
+                editor.Notes().front().timing == beforeTime,
+                "Failed candidate validation must preserve document, revision, dirty state and compiled caches.");
+        Require(std::abs(editor.Notes().front().scrollMultiplier - (5.0 / 3.0)) < 1e-9,
                 "Failed candidate validation must preserve document, revision, dirty state and compiled caches.");
         auto serialized = ChartEditor::WriteEffects(effects);
         const auto parsedEffects = ChartParser{}.ParseEffect(serialized);
@@ -396,10 +400,11 @@ namespace tests
                 "Save must produce adjacent YMP/YME and clear dirty state.");
         const auto parsed = ChartParser{}.ParsePatternFile(pattern.sourcePath);
         Require(parsed.Succeeded() && parsed.document.notes.size() == pattern.notes.size() &&
-                    parsed.document.makers == pattern.makers &&
-                    ChartParser{}.ParseEffectFile(yme).document.hitSounds == effects.hitSounds &&
-                    MusicalTimeline(parsed.document).CompileNotes(parsed.document)[0].timing ==
-                        editor.Notes()[0].timing,
+                parsed.document.makers == pattern.makers,
+                "Saving must preserve Unicode metadata, hit sound table and exact compiled note "
+                "timing.");
+        Require(ChartParser{}.ParseEffectFile(yme).document.hitSounds == effects.hitSounds &&
+                MusicalTimeline(parsed.document).CompileNotes(parsed.document)[0].timing == editor.Notes()[0].timing,
                 "Saving must preserve Unicode metadata, hit sound table and exact compiled note "
                 "timing.");
         editor.Save();

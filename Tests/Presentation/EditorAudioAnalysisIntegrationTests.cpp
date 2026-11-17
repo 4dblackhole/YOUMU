@@ -22,8 +22,10 @@ namespace
             std::pow(analysis.maximumFrequencyHz / analysis.minimumFrequencyHz,
                      (static_cast<double>(band) + .5) / static_cast<double>(frame.bands.size()));
         const float db = SpectrumFloorDb * (1 - *strongest);
-        Require(std::abs(frequency - 1000) < 80 && db > -9 && db < -4 && frame.minimum < -.49F &&
-                    frame.maximum > .49F,
+        Require(std::abs(frequency - 1000) < 80 && db > -9 && db < -4,
+                "A half-scale 1 kHz stereo tone must stay visible at about -6 dBFS, even "
+                "when its channels have opposite phases.");
+        Require(frame.minimum < -.49F && frame.maximum > .49F,
                 "A half-scale 1 kHz stereo tone must stay visible at about -6 dBFS, even "
                 "when its channels have opposite phases.");
         Require(std::ranges::all_of(analysis.frames[90].bands, [](float level) { return level < .001F; }) &&

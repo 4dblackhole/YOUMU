@@ -135,8 +135,8 @@ namespace song_select
     }
 
     constexpr SongSelectFrame ReferenceFrame = CalculateFrame(1280.0F);
-    static_assert(ReferenceFrame.scale == 1.0F && ReferenceFrame.detail.x == 368.0F &&
-                  ReferenceFrame.detail.width == 496.0F && ReferenceFrame.list.x == 880.0F);
+    static_assert(ReferenceFrame.scale == 1.0F && ReferenceFrame.detail.x == 368.0F);
+    static_assert(ReferenceFrame.detail.width == 496.0F && ReferenceFrame.list.x == 880.0F);
     static_assert(ReferenceFrame.record.x == 0.0F && ReferenceFrame.record.width == 352.0F);
     static_assert(layout::SheetLeft + layout::SheetImageWidth == layout::CanvasSize.width);
     constexpr SongSelectFrame NarrowFrame = CalculateFrame(960.0F);

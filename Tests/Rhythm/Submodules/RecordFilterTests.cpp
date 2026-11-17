@@ -15,8 +15,9 @@ namespace tests
         draft.choices[RecordFilterFlagCount] = 2;
         draft.values = {L"60", L"70", L"1.5", L"1.5", L"240", L"240", L"35", L"35", L"18446744073709551615"};
         auto filter = ParseRecordFilter(draft);
-        Require(filter.flags[0] == false && filter.flags[1] == true && !filter.flags[2] && filter.scrollUnit == 1,
+        Require(filter.flags[0] == false && filter.flags[1] == true && !filter.flags[2],
                 "False, true and unlimited are distinct choices; BPM uses the stored unit.");
+        Require(filter.scrollUnit == 1, "False, true and unlimited are distinct choices; BPM uses the stored unit.");
         const auto restored = FormatRecordFilter(filter);
         Require(restored.choices == draft.choices && restored.values == draft.values,
                 "Reopening preserves numeric values and the full uint64 seed.");

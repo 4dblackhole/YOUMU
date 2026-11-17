@@ -90,8 +90,9 @@ namespace tests
         colour.Finalize();
         const auto wrongColour = colour.ProcessInput({RhythmTime{60'000}, 1, 'F', InputEdge::Pressed});
         Require(HasEvent(wrongColour, NoteEventType::Missed) && colour.CurrentIndex() == 1 &&
-                    HasEvent(wrongColour, NoteEventType::InputRejected) &&
-                    !HasEvent(wrongColour, NoteEventType::HitAccepted),
+                HasEvent(wrongColour, NoteEventType::InputRejected),
+                "The Good next note must receive even a wrong-colour edge after automatic focusing.");
+        Require(!HasEvent(wrongColour, NoteEventType::HitAccepted),
                 "The Good next note must receive even a wrong-colour edge after automatic focusing.");
 
         Lane dense;
@@ -130,9 +131,10 @@ namespace tests
             overlap.Finalize();
             const auto first = overlap.ProcessInput({{}, 1, 'F', InputEdge::Pressed});
             Require(std::ranges::count(first.events, NoteEventType::HitAccepted, &NoteEvent::type) == 1 &&
-                        std::ranges::count(first.events, NoteEventType::Completed, &NoteEvent::type) == 1 &&
-                        !HasEvent(first, NoteEventType::Missed) && overlap.CurrentIndex() == 1 &&
-                        overlap.Notes()[1]->State() == NoteState::Pending,
+                    std::ranges::count(first.events, NoteEventType::Completed, &NoteEvent::type) == 1 &&
+                    !HasEvent(first, NoteEventType::Missed),
+                    "Overlapping judgement windows must accept only one note per pressed edge.");
+            Require(overlap.CurrentIndex() == 1 && overlap.Notes()[1]->State() == NoteState::Pending,
                     "Overlapping judgement windows must accept only one note per pressed edge.");
             Require(!HasEvent(overlap.Update({}), NoteEventType::Missed),
                     "Advancing focus after a hit must not miss the still-open next note.");
