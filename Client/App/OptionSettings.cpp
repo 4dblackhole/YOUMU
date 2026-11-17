@@ -87,15 +87,19 @@ namespace
         return number;
     }
 
+    bool IsIdentifierCharacter(char c)
+    {
+        const bool lower = c >= 'a' && c <= 'z';
+        const bool upper = c >= 'A' && c <= 'Z';
+        const bool letter = lower || upper;
+        const bool digit = c >= '0' && c <= '9';
+        const bool punctuation = c == '_' || c == '-' || c == '.';
+        return letter || digit || punctuation;
+    }
+
     bool IsIdentifier(std::string_view value)
     {
-        return !value.empty() && value.size() <= 128 &&
-               std::ranges::all_of(value,
-                                   [](char c)
-                                   {
-                                       return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                                              (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
-                                   });
+        return !value.empty() && value.size() <= 128 && std::ranges::all_of(value, IsIdentifierCharacter);
     }
 
     bool IsSupportedLanguage(const Language language)

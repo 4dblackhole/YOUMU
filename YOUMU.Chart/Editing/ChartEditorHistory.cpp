@@ -31,8 +31,11 @@ namespace
 
     bool SameNote(const PatternNote &a, const PatternNote &b)
     {
-        return a.position == b.position && a.keyType == b.keyType && a.actionType == b.actionType &&
-               a.hitSound == b.hitSound && a.extraData == b.extraData && a.sourceOrder == b.sourceOrder;
+        const bool samePlacement = a.position == b.position && a.keyType == b.keyType && a.actionType == b.actionType;
+        if (!samePlacement)
+            return false;
+        const bool sameContent = a.hitSound == b.hitSound && a.extraData == b.extraData;
+        return sameContent && a.sourceOrder == b.sourceOrder;
     }
 
     bool SameTiming(const std::vector<TimingDirective> &a, const std::vector<TimingDirective> &b)
