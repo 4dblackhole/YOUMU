@@ -59,7 +59,7 @@ namespace song_select
         constexpr float ViewportTop = 160.0F;
         constexpr float ContentTop = 4.0F;
         constexpr float SongLeft = 38.0F;
-        constexpr float SongWidth = 334.0F;
+        constexpr float SongWidth = ListWidth - SongLeft; // Cards run to the screen's right edge.
         constexpr float SongHeight = 58.0F;
         constexpr float SongPitch = 64.0F;
         constexpr float FocusedOutset = 20.0F; // The selected card sticks out to the left.

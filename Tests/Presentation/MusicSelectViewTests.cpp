@@ -410,6 +410,9 @@ namespace
                 Check(!Find(*card,"Thumbnail") && title->GetComponent<TextVisualComponent>() && title->NodeSize().height==20 &&
                           artist->Bounds().x==title->Bounds().x,
                       "Every card shows one title line and one artist line without a BG thumbnail.");
+                const auto cardBounds=card->BoundsInCanvas();
+                Check(std::abs(cardBounds.x+cardBounds.width-canvas->LogicalSize().width/2)<.01F,
+                      "Every card, selected or not, reaches the right screen edge at any width.");
             }
             auto *button=Find(canvas->Root(),"FilterButton");
             Check(button && button->GetComponent<TextVisualComponent>()->TextColor().alpha==1,
