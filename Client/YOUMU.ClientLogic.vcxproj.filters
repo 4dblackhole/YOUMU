@@ -29,6 +29,13 @@
     <Filter Include="EditorScene\Submodules\Modes\Taiko" />
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="Audio" />
+    <Filter Include="GameScene\RhythmTestScene" />
+    <Filter Include="GameScene\RhythmTestScene\Submodules" />
+    <ClInclude Include="Audio\SampleRestartGate.h"><Filter>Audio</Filter></ClInclude>
+    <ClCompile Include="Audio\SampleRestartGate.cpp"><Filter>Audio</Filter></ClCompile>
+    <ClInclude Include="GameScene\RhythmTestScene\Submodules\ScreenMarkThinning.h"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClInclude>
+    <ClCompile Include="GameScene\RhythmTestScene\Submodules\ScreenMarkThinning.cpp"><Filter>GameScene\RhythmTestScene\Submodules</Filter></ClCompile>
     <ClInclude Include="Records\PlayRecordStore.h"><Filter>Records</Filter></ClInclude>
     <ClCompile Include="Records\PlayRecordStore.cpp"><Filter>Records</Filter></ClCompile>
     <ClInclude Include="Records\RecordCondition.h"><Filter>Records</Filter></ClInclude>

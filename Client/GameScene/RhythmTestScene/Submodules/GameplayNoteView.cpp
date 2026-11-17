@@ -1,6 +1,7 @@
 #include "GameplayNoteView.h"
 #include "GameplaySupport.h"
 #include "Presentation/UiFonts.h"
+#include "ScreenMarkThinning.h"
 
 #include <format>
 #include <limits>
@@ -53,6 +54,9 @@ namespace
     constexpr BadgeStyle RollBadge{38.0F, 30.0F, 60.0F, 17.0F, 36.0F, 4.0F, 10.0F};
     constexpr float FocusBadgeTop = FocusArtCentre.y - 120.0F + 14.0F;
     constexpr float RollBadgeOffset = 52.0F, RollBadgeTopInset = 2.0F;
+    // PERF-01: ticks of one note closer than this on screen overlap into one band; one
+    // sprite per band keeps the shape (user-confirmed 2 screen pixels).
+    constexpr float MinimumTickScreenDistance = 2.0F;
 }
 
 void GameplayNoteView::AppendImagePaths(std::vector<std::filesystem::path> &paths)
@@ -231,6 +235,9 @@ void GameplayNoteView::UpdateTickVisuals(NoteVisualLayers &layers, const NotePre
     std::size_t used = 0;
     const auto &ticks = presentation.tickTimes;
     const float speed = static_cast<float>(presentation.scrollMultiplier);
+    // Bands start at the note's own time, so the anchor's distance from it shifts every offset.
+    ScreenMarkThinning thinning(MinimumTickScreenDistance, canvas_ != nullptr ? canvas_->PixelScale() : 1.0F);
+    const float bandOrigin = TravelPixelsAt(anchor, layers.timing, speed);
     const auto first = ticks.begin() + static_cast<std::ptrdiff_t>(std::min(processedTicks, ticks.size()));
     const long double distance = session_->ScrollDistance(time, {});
     const long double scale = session_->Timeline().BaseBpm() / 240'000'000.0L * pixelsPerWholeNote_ * speed;
@@ -247,6 +254,9 @@ void GameplayNoteView::UpdateTickVisuals(NoteVisualLayers &layers, const NotePre
         const float y = LaneObjectPosition(*it, time, speed).y;
         if (y < 0 || y > laneRoot_->NodeSize().height + layers.tickSize.height)
             continue;
+        const float offset = TravelPixelsAt(*it, anchor, speed);
+        if (!thinning.Admit(bandOrigin + offset))
+            continue;
         if (used == layers.ticks.size())
         {
             auto &node = CreateSprite(*layers.root, {}, layers.tickImage, "LongNote.Tick");
@@ -257,7 +267,7 @@ void GameplayNoteView::UpdateTickVisuals(NoteVisualLayers &layers, const NotePre
         visual.timing = *it;
         visual.node->SetVisible(true);
         visual.node->SetBounds({(layers.diameter - layers.tickSize.width) * .5F,
-            layers.diameter * .5F - layers.tickSize.height * .5F + TravelPixelsAt(*it, anchor, speed),
+            layers.diameter * .5F - layers.tickSize.height * .5F + offset,
             layers.tickSize.width, layers.tickSize.height});
     }
     for (; used < layers.ticks.size(); ++used)

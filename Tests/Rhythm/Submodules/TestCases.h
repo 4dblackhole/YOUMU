@@ -20,6 +20,9 @@ namespace tests
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
     void TestRecordFilters();
+    void TestSampleRestartGateMixerPeriods();
+    void TestSampleRestartGateDenseTicks();
+    void TestScreenMarkThinning();
     void TestIntervalRangeQueries();
     void TestLongViewportIndexEdits();
     void TestUnusedChartSoundsAreNotPrepared();

@@ -2,6 +2,7 @@
 
 #include "PhantomCore.h"
 
+#include "Audio/SampleRestartGate.h"
 #include "Mode/PlayGameMode.h"
 #include "Time/RhythmTimer.h"
 
@@ -71,6 +72,13 @@ private:
     void Route(
         std::span<const AudioCueRequest> cues,
         const RhythmTimer* timer);
+    // Restarts a still-playing sample voice; immediate requests pass restartGate_.
+    void RestartSample(PhantomCore::AudioPlaybackId id, const PhantomCore::AudioClip* clip,
+                       const PhantomCore::AudioPlaybackSettings& settings,
+                       const std::shared_ptr<PhantomCore::AudioBus>& bus, bool immediate);
+    [[nodiscard]] SampleRestartGate::Request RestartRequest(
+        const PhantomCore::AudioClip* clip, const PhantomCore::AudioBus* bus,
+        const PhantomCore::AudioPlaybackSettings& settings) const noexcept;
     [[nodiscard]] PhantomCore::AudioBus* FindBus(
         std::string_view id) noexcept;
     [[nodiscard]] PhantomCore::AudioEffect* EnsureEffect(
@@ -102,6 +110,8 @@ private:
     // loaded sound resource.
     std::map<const PhantomCore::AudioClip*, PhantomCore::AudioPlaybackId>
         sampleVoices_;
+    // Keyed by the same clip address as sampleVoices_.
+    SampleRestartGate restartGate_;
     std::string lastError_;
     std::set<std::pair<std::string, PhantomCore::AudioEffectType>> bypassedEffects_;
     std::map<std::pair<EffectCommandType, std::string>, double> appliedValues_;
