@@ -103,7 +103,8 @@ class MusicSelectView final
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
     {
         const bool listPanel = favoritesPanel_.IsVisible() || osuImportPanel_.IsVisible();
-        return listPanel || filterPanel_.IsVisible() || records_.FilterVisible() || playOptionsPanel_.IsVisible();
+        const bool filterOrRecords = filterPanel_.IsVisible() || records_.FilterVisible();
+        return listPanel || filterOrRecords || playOptionsPanel_.IsVisible();
     }
     [[nodiscard]] bool IsAdditionMenuOpen() const { return additionMenu_ && additionMenu_->IsVisible(); }
     void RefreshFilterButton();

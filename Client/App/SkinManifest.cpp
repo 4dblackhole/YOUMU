@@ -55,9 +55,11 @@ namespace
     }
     bool Relative(const std::filesystem::path &path)
     {
-        return !path.empty() && !path.has_root_path() &&
-               path.native().find_first_of(L"\r\n\t:") == std::wstring::npos &&
-               std::ranges::none_of(path, [](const auto &part) { return part == L".."; });
+        if (path.empty() || path.has_root_path())
+            return false;
+        if (path.native().find_first_of(L"\r\n\t:") != std::wstring::npos)
+            return false;
+        return std::ranges::none_of(path, [](const auto &part) { return part == L".."; });
     }
     void Diagnose(std::vector<std::string> &diagnostics, std::size_t line, std::string message)
     {

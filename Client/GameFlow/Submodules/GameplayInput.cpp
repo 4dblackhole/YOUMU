@@ -31,8 +31,9 @@ void GameplaySessionController::ProcessControlKeys(const UpdateContext &context)
             input.Events(),
             [&](const auto &event)
             {
-                return event.type == InputEventType::KeyPressed && event.code == key &&
-                       (state_ != PlayState::Gameplay || event.performanceCounterTicks >= gameplayStartTicks_);
+                if (event.type != InputEventType::KeyPressed || event.code != key)
+                    return false;
+                return state_ != PlayState::Gameplay || event.performanceCounterTicks >= gameplayStartTicks_;
             });
     };
     if (pressed('R'))

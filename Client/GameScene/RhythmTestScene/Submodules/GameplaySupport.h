@@ -123,23 +123,25 @@ inline void SetColor(PhantomCore::Visual2DNode &node, const PhantomCore::Color c
 [[nodiscard]] inline bool IsBigVisual(
     const NoteVisualKind visualKind) noexcept
 {
-    return visualKind == NoteVisualKind::BigDon ||
-           visualKind == NoteVisualKind::BigKat ||
-           visualKind == NoteVisualKind::BigRoll ||
-           visualKind == NoteVisualKind::Balloon ||
-           visualKind == NoteVisualKind::DengDeng ||
-           visualKind == NoteVisualKind::Purple;
+    const bool bigNote = visualKind == NoteVisualKind::BigDon ||
+                         visualKind == NoteVisualKind::BigKat ||
+                         visualKind == NoteVisualKind::BigRoll;
+    const bool customHead = visualKind == NoteVisualKind::Balloon ||
+                            visualKind == NoteVisualKind::DengDeng ||
+                            visualKind == NoteVisualKind::Purple;
+    return bigNote || customHead;
 }
 
 [[nodiscard]] inline bool IsLongVisual(
     const NoteVisualKind visualKind) noexcept
 {
-    return visualKind == NoteVisualKind::Roll ||
-           visualKind == NoteVisualKind::BigRoll ||
-           visualKind == NoteVisualKind::Balloon ||
-           visualKind == NoteVisualKind::DengDeng ||
-           visualKind == NoteVisualKind::DonBuzz ||
-           visualKind == NoteVisualKind::KatBuzz;
+    const bool roll = visualKind == NoteVisualKind::Roll ||
+                      visualKind == NoteVisualKind::BigRoll ||
+                      visualKind == NoteVisualKind::Balloon;
+    const bool dengOrBuzz = visualKind == NoteVisualKind::DengDeng ||
+                            visualKind == NoteVisualKind::DonBuzz ||
+                            visualKind == NoteVisualKind::KatBuzz;
+    return roll || dengOrBuzz;
 }
 
 [[nodiscard]] inline PhantomCore::Color AmbientColor(

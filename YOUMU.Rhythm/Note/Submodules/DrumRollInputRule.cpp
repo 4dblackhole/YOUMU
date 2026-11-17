@@ -30,9 +30,10 @@ NoteState DrumRollInputRule::State() const noexcept
 bool DrumRollInputRule::CanAccept(const NoteRuleContext &context, const RhythmInputEvent &input,
                                   const JudgementResult &) const noexcept
 {
-    return !IsTerminal(state_) && input.edge == InputEdge::Pressed &&
-           input.time >= context.noteTime && input.time <= endTime_ &&
-           std::ranges::find(acceptedActions_, input.action) != acceptedActions_.end();
+    if (IsTerminal(state_) || input.edge != InputEdge::Pressed)
+        return false;
+    const bool inWindow = input.time >= context.noteTime && input.time <= endTime_;
+    return inWindow && std::ranges::find(acceptedActions_, input.action) != acceptedActions_.end();
 }
 
 void DrumRollInputRule::ProcessInput(const NoteRuleContext &context,

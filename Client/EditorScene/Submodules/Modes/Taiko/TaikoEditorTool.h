@@ -74,13 +74,18 @@ inline std::wstring_view Name(int id, const std::array<std::wstring_view, Tools.
 inline bool UsesHitCount(int id) noexcept
 {
     const auto *tool = Find(id);
-    return tool && (tool->note == Type::Roll || tool->note == Type::BigRoll || tool->note == Type::Balloon ||
-                    tool->note == Type::DengDeng);
+    if (!tool)
+        return false;
+    const bool roll = tool->note == Type::Roll || tool->note == Type::BigRoll;
+    return roll || tool->note == Type::Balloon || tool->note == Type::DengDeng;
 }
 inline bool UsesTickDivision(int id) noexcept
 {
     const auto *tool = Find(id);
-    return tool && (tool->note == Type::TickRoll || tool->note == Type::BigTickRoll || tool->note == Type::Buzz);
+    if (!tool)
+        return false;
+    const bool tickRoll = tool->note == Type::TickRoll || tool->note == Type::BigTickRoll;
+    return tickRoll || tool->note == Type::Buzz;
 }
 inline std::vector<std::string> ExtraData(const Tool &tool)
 {

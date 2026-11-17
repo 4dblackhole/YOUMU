@@ -71,13 +71,20 @@ namespace taiko_result_ui::layout
             width += c >= 0x1100 ? size : c == L' ' ? size * 0.28F : size * 0.58F;
         return width;
     }
+    constexpr float EstimateNumberGlyphWidth(const wchar_t c, const float size)
+    {
+        if (c >= L'0' && c <= L'9')
+            return size * 0.44F;
+        const bool narrow = c == L'.' || c == L',' || c == L' ';
+        if (narrow)
+            return size * 0.22F;
+        return c == L'%' ? size * 0.76F : size * 0.5F;
+    }
     constexpr float EstimateNumberWidth(std::wstring_view text, float size)
     {
         float width = 0;
         for (const wchar_t c : text)
-            width += (c >= L'0' && c <= L'9') ? size * 0.44F
-                     : (c == L'.' || c == L',' || c == L' ') ? size * 0.22F
-                     : c == L'%' ? size * 0.76F : size * 0.5F;
+            width += EstimateNumberGlyphWidth(c, size);
         return width;
     }
 

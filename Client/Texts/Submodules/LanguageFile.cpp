@@ -16,15 +16,17 @@ namespace
             return {};
         return value.substr(first, value.find_last_not_of(" \t\r") - first + 1);
     }
+    bool IsIdentifierCharacter(unsigned char c)
+    {
+        const bool lower = c >= 'a' && c <= 'z';
+        const bool letter = lower || (c >= 'A' && c <= 'Z');
+        const bool digit = c >= '0' && c <= '9';
+        const bool punctuation = c == '.' || c == '_' || c == '-';
+        return letter || digit || punctuation;
+    }
     bool Identifier(std::string_view value)
     {
-        return !value.empty() && std::ranges::all_of(value,
-                                                     [](unsigned char c)
-                                                     {
-                                                         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                                                                (c >= '0' && c <= '9') || c == '.' || c == '_' ||
-                                                                c == '-';
-                                                     });
+        return !value.empty() && std::ranges::all_of(value, IsIdentifierCharacter);
     }
     std::wstring Decode(std::string_view value)
     {

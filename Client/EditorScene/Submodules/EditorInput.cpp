@@ -222,8 +222,8 @@ void EditorView::UpdateTimelineNavigation(const InputState &input, bool keyboard
         return;
     const int direction = input.MouseWheelDelta() > 0 ? -1 : 1;
     const auto point = DesignPoint(input);
-    const bool overPanel = point && state_.Tab() == EditorTab::Compose && state_.Panel() &&
-                           point->x >= frame_.width - editor_layout::InspectorWidth;
+    const bool composePanel = point && state_.Tab() == EditorTab::Compose && state_.Panel();
+    const bool overPanel = composePanel && point->x >= frame_.width - editor_layout::InspectorWidth;
     if (overPanel)
         state_.listOffset = static_cast<std::size_t>(
             std::max<std::int64_t>(0, static_cast<std::int64_t>(state_.listOffset) + direction));
