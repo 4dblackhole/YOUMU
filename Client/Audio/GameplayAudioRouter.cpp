@@ -381,14 +381,7 @@ void GameplayAudioRouter::Route(
                     playback_.FindVoice(active->second);
                 if (voice != nullptr && voice->IsPlaying())
                 {
-                    if (!playback_.Restart(
-                            active->second,
-                            settings,
-                            playbackBus,
-                            error))
-                    {
-                        lastError_ = std::move(error);
-                    }
+                    RestartSample(active->second, clipAddress, settings, playbackBus, timer == nullptr);
                     continue;
                 }
 
@@ -419,8 +412,36 @@ void GameplayAudioRouter::Route(
         if (sound->second.restartWhilePlaying)
         {
             sampleVoices_.insert_or_assign(clipAddress, voice);
+            // A new voice plays from the start at the next mix, like a restart would.
+            if (timer == nullptr)
+                restartGate_.Remember(RestartRequest(clipAddress, playbackBus.get(), settings));
+            else
+                restartGate_.Forget(clipAddress);
         }
     }
+}
+
+SampleRestartGate::Request GameplayAudioRouter::RestartRequest(const AudioClip *const clip, const AudioBus *const bus,
+                                                               const AudioPlaybackSettings &settings) const noexcept
+{
+    return {clip, bus, settings.volume, settings.pitch, audioSystem_->DspClock()};
+}
+
+void GameplayAudioRouter::RestartSample(const AudioPlaybackId id, const AudioClip *const clip,
+                                        const AudioPlaybackSettings &settings,
+                                        const std::shared_ptr<AudioBus> &bus, const bool immediate)
+{
+    // Immediate restarts the mixer has not read yet are dropped by the gate; a scheduled
+    // restart moves the voice to a later clock, so the gate forgets it.
+    if (!immediate)
+        restartGate_.Forget(clip);
+    else if (!restartGate_.Admit(RestartRequest(clip, bus.get(), settings)))
+        return;
+    std::string error;
+    if (playback_.Restart(id, settings, bus, error))
+        return;
+    lastError_ = std::move(error);
+    restartGate_.Forget(clip);
 }
 
 void GameplayAudioRouter::ApplyAutomation(
@@ -458,6 +479,7 @@ void GameplayAudioRouter::PauseMusicAndStopSamples()
         musicVoice_ = InvalidAudioPlaybackId;
     musicPositioned_ = false;
     sampleVoices_.clear();
+    restartGate_.Clear();
     appliedValues_.clear();
 }
 
@@ -484,6 +506,7 @@ void GameplayAudioRouter::StopAllVoices() noexcept
     musicPositioned_ = false;
     musicPastEnd_ = false;
     sampleVoices_.clear();
+    restartGate_.Clear();
     appliedValues_.clear();
 }
 

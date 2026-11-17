@@ -66,6 +66,7 @@
 | GAME-02 | 판정 범위·논리 노트 정확도·정밀도 | [정확도](DesignDecisions.md#game-02-판정과-정확도) |
 | GAME-03 | POOR 거부와 최종 0점 패널티 | [POOR](DesignDecisions.md#game-03-poor) |
 | GAME-04 | Buzz 헤드/몸통 분리·색 유지·틱 확정 | [Buzz](DesignDecisions.md#game-04-buzz와-틱) |
+| PERF-01 | 밀집 틱: 2 화면 px 띠 그리기·믹서 주기 중복 재시작 생략 | [밀집 틱](DesignDecisions.md#perf-01-밀집-틱의-표시와-소리) |
 | PLAY-01 | Scroll/Mirror/Random/Accelerate/JudgeLevel | [플레이 옵션](DesignDecisions.md#play-01-플레이-옵션) |
 | PAUSE-01 | ESC 메뉴·재개/되감기/재시도·자격 | [Pause](DesignDecisions.md#pause-01-일시정지와-복원) |
 | DEBUG-01 | Debug 전용 Space·1~4·시간 표시·복원 | [Debug](DesignDecisions.md#debug-01-디버그-조작) |

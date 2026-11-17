@@ -6,6 +6,7 @@
 //   GameplayTimingProbe.exe --pattern <path substring> [--songs-root <Songs>] [--label <name>]
 //       [--accelerate <0.5..2>] [--keep-pitch 0|1] [--replay] [--pause-every <s> --pause-count <n>]
 //       [--minimize-at <s> --minimize-for <s>] [--max-seconds <s>] [--out <folder>]
+//       [--width <px> --height <px>]
 //
 // d (clock offset) = chart time from QPC - chart time of the raw mixer DSP clock read with it, in
 // wall milliseconds, against the controller's anchor snapshot. Positive d: the music (DSP clock) is
@@ -74,6 +75,7 @@ namespace
         double minimizeAt{-1};
         double minimizeFor{};
         double maxSeconds{900};
+        std::uint32_t width{1600}, height{900};
     };
 
     struct Anchor
@@ -110,6 +112,12 @@ namespace
     {
         RhythmTime time{};
         std::uint64_t fps{}, ups{}, drawCalls{}, peakDrawCalls{};
+    };
+    // Visible long-note tick sprites of one rendered frame, counted after Render outside its timing.
+    struct TickNodeRead
+    {
+        RhythmTime time{};
+        std::uint32_t visible{};
     };
     struct BuzzSection
     {
@@ -227,6 +235,7 @@ namespace
         std::vector<Timed> renders;
         std::vector<Stall> stalls;
         std::vector<PerformanceRead> performance;
+        std::vector<TickNodeRead> tickNodes;
         std::vector<BuzzSection> buzz;
         std::string song, output;
         int sampleRate{};
@@ -301,8 +310,8 @@ namespace
         {
             EngineConfig config;
             config.windowTitle = WindowTitle;
-            config.windowWidth = 1600;
-            config.windowHeight = 900;
+            config.windowWidth = options_.width;
+            config.windowHeight = options_.height;
             config.showWindow = true;
             config.audio.allowNoSoundFallback = false;
             return config;
@@ -346,6 +355,7 @@ namespace
             results_.updates.resize(static_cast<std::size_t>(span / BucketWidth) + 1);
             results_.renders.reserve(std::size_t{1} << 22);
             results_.stalls.reserve(std::size_t{1} << 16);
+            results_.tickNodes.reserve(std::size_t{1} << 22);
             GameplayLaunchRequest request{pattern->patternPath, pattern->effectPath, song->audioPath, "Taiko"};
             request.songsRoot = options_.songsRoot;
             request.playOptions = sessionOptions.play;
@@ -405,6 +415,10 @@ namespace
             iteration_.renderEnd = end;
             if (results_.recorder.running && results_.renders.size() < results_.renders.capacity())
                 results_.renders.push_back({begin, Microseconds(end - begin), results_.recorder.lastTime});
+            // Every 8th frame, so the tree walk barely shifts the loop it measures.
+            const bool sample = results_.recorder.running && ++renderCount_ % 8 == 0;
+            if (sample && results_.tickNodes.size() < results_.tickNodes.capacity())
+                results_.tickNodes.push_back({results_.recorder.lastTime, CountVisibleTicks()});
         }
         void OnResize(std::uint32_t width, std::uint32_t height) override
         {
@@ -422,6 +436,25 @@ namespace
         }
 
       private:
+        // Canvas ids are issued from 1 upward; the gameplay Scene creates only a handful.
+        [[nodiscard]] std::uint32_t CountVisibleTicks()
+        {
+            std::uint32_t count{};
+            for (ScreenCanvasId id = 1; id <= 64; ++id)
+                if (const auto *canvas = visuals_.FindCanvas(id))
+                    count += CountVisible(canvas->Root());
+            return count;
+        }
+        [[nodiscard]] static std::uint32_t CountVisible(const Visual2DNode &node)
+        {
+            if (!node.IsVisible())
+                return 0;
+            std::uint32_t count = node.Name() == "LongNote.Tick" ? 1U : 0U;
+            for (const auto &child : node.Children())
+                count += CountVisible(*child);
+            return count;
+        }
+
         // QPC marks of one main-loop iteration, from this client's Update start to the next one.
         struct Iteration
         {
@@ -546,6 +579,7 @@ namespace
         int pausesDone_{};
         bool minimized_{}, windowDone_{};
         std::uint64_t lastMeasurement_{};
+        std::uint64_t renderCount_{};
         Iteration iteration_;
         InputState input_;
         ScreenVisual2DManager visuals_;
@@ -718,6 +752,7 @@ namespace
         double updates{}, updateSum{}, updateMax{}, loopMax{};
         std::size_t tickCues{};
         std::size_t lastBatch = SIZE_MAX;
+        double routeSum{};
         for (const auto &cue : recorder.cues)
         {
             if (cue.cueTime < from || cue.cueTime >= to || !cue.tick)
@@ -725,8 +760,20 @@ namespace
             ++tickCues;
             late.push_back(static_cast<double>((cue.requestTime - cue.cueTime).count()) / 1000.0 / rate);
             if (cue.batch != lastBatch)
+            {
                 route.push_back(static_cast<double>(cue.after - cue.before) * 1000.0 / frequency);
+                routeSum += route.back();
+            }
             lastBatch = cue.batch;
+        }
+        double tickNodeSum{}, tickNodeMax{}, tickFrames{};
+        for (const auto &read : results.tickNodes)
+        {
+            if (read.time < from || read.time >= to)
+                continue;
+            ++tickFrames;
+            tickNodeSum += read.visible;
+            tickNodeMax = std::max(tickNodeMax, static_cast<double>(read.visible));
         }
         // Loop: from one Update's start to the next, including Render, FMOD service and messages.
         for (std::size_t i = 0; i < results.updates.size(); ++i)
@@ -761,6 +808,9 @@ namespace
               updates / seconds, updates > 0 ? updateSum / updates : NAN, updateMax, loopMax,
               static_cast<double>(render.size()) / seconds, Percentile(render, 0.99), Maximum(render),
               Maximum(interval));
+        Print(file, "%-22s   tick batches %5zu (%.2f cues each), route ms per second %6.3f | visible tick nodes mean %6.1f max %4.0f\n",
+              "", route.size(), route.empty() ? 0.0 : static_cast<double>(tickCues) / static_cast<double>(route.size()),
+              routeSum / seconds, tickFrames > 0 ? tickNodeSum / tickFrames : 0.0, tickNodeMax);
     }
 
     // Main-loop iterations of 5 ms or more, longest first, with the phase that took the time.
@@ -882,6 +932,10 @@ namespace
                 options.minimizeFor = std::stod(value());
             else if (name == "--max-seconds")
                 options.maxSeconds = std::stod(value());
+            else if (name == "--width")
+                options.width = static_cast<std::uint32_t>(std::stoul(value()));
+            else if (name == "--height")
+                options.height = static_cast<std::uint32_t>(std::stoul(value()));
             else
                 throw std::invalid_argument("Unknown option " + std::string(name));
         }

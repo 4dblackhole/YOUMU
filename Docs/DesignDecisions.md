@@ -233,6 +233,29 @@ YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/
 [InputOrderingTests](../Tests/Rhythm/Submodules/InputOrderingTests.cpp),
 [PlayPauseTests](../Tests/Rhythm/Submodules/PlayPauseTests.cpp).
 
+## PERF-01 밀집 틱의 표시와 소리
+
+근거: 사용자 확정(밀집 Buzz의 낭비를 줄이되 결합도 최소화, 그리기 기준 2 화면 px,
+소리는 믹서 주기 기준, 설정이 다르면 마지막 요청). 구현: 구현.
+
+- 노트 규칙은 틱마다 `NoteEvent`와 `AudioCueRequest`를 그대로 냅니다. 판정·정확도·점수·콤보·HP
+  규칙과 틱 수는 바꾸지 않습니다. 틱 소리는 즉시 재생이며 DSP 예약 재생으로 바꾸지 않습니다.
+- 그리기: 노트 뷰는 한 노트의 틱을 노트 시각 기준 2 화면 픽셀 폭의 띠로 나누고 띠마다 처음
+  보이는 틱 하나만 그립니다. 화면 픽셀은 Canvas 배율을 반영하므로 스크롤 속도·배속·창 크기에
+  맞게 동작하며 노트 종류 이름을 보지 않습니다. 2px보다 넓게 떨어진 틱은 모두 그립니다.
+  예: 180 BPM 1024분할 반 마디 Buzz(틱 512개, 스크롤 1배, 1280×720)는 약 290개를 그립니다.
+- 소리: 오디오 라우터는 같은 Sample voice를 다시 시작하는 즉시 재생 요청이 믹서 시계(DSP
+  clock)가 그대로인 동안 같은 버스·음량·음높이로 다시 오면 보내지 않습니다. 믹서는 다음 믹스
+  때 voice를 읽으므로 들리는 결과는 같습니다. 버스·음량·음높이 중 하나라도 다르면 지금처럼
+  다시 시작하여 마지막 요청이 남습니다. 시계를 모르면(0) 항상 보냅니다. 예약 재생은 대상이 아닙니다.
+- 두 규칙은 노트 뷰와 오디오 라우터 아래의 일반 기능입니다. 게임플레이 Scene·Controller와
+  Taiko 모드는 틱 밀도나 Buzz를 위한 분기·상수를 갖지 않습니다.
+
+상세: [Presentation](Gameplay/Presentation.md#표시-객체의-생성과-재사용), [Audio](Gameplay/Audio.md).
+검증: [SampleRestartGateTests](../Tests/Rhythm/Submodules/SampleRestartGateTests.cpp),
+[ScreenMarkThinningTests](../Tests/Rhythm/Submodules/ScreenMarkThinningTests.cpp),
+AllNotesGameplayTests, GameplayJudgementTests와 GameplayTimingProbe 전후 비교.
+
 ## PLAY-01 플레이 옵션
 
 근거: 사용자 확정 + 채택한 옵션 계약. 구현: 구현.
