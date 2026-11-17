@@ -340,6 +340,8 @@ void GameplayAudioRouter::Route(
     {
         return;
     }
+    // Raw, not a clock snapshot: a cue the mixer has not reached keeps its
+    // deadline, and the snapshot estimate can lead what was actually mixed.
     const std::uint64_t currentDspClock =
         timer != nullptr ? audioSystem_->DspClock() : 0;
     for (const AudioCueRequest& cue : cues)

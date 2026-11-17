@@ -7,8 +7,10 @@
 //       [--accelerate <0.5..2>] [--keep-pitch 0|1] [--replay] [--pause-every <s> --pause-count <n>]
 //       [--minimize-at <s> --minimize-for <s>] [--max-seconds <s>] [--out <folder>]
 //
-// d (clock offset) = chart time from QPC - chart time of the DSP clock read in the same snapshot,
-// in wall milliseconds. Positive d: the music (DSP clock) is behind the note clock.
+// d (clock offset) = chart time from QPC - chart time of the raw mixer DSP clock read with it, in
+// wall milliseconds, against the controller's anchor snapshot. Positive d: the music (DSP clock) is
+// behind the note clock. The anchor's DSP clock is the engine's smoothed snapshot estimate; the
+// reads are raw AudioSystem::DspClock() values, an observation independent of that estimate.
 // Only the first read of each DSP mixer block is used, the read closest to that block's mix.
 #include <Windows.h>
 #include "YOUMUAssets.h"
@@ -82,6 +84,7 @@ namespace
         std::int64_t frequency{};
         RhythmTime timeline{};
         double rate{1};
+        bool smoothed{};
     };
     struct ClockRead
     {
@@ -132,18 +135,24 @@ namespace
         void OnClockAnchored(const AudioClockSnapshot &anchor, RhythmTime timeline, double rate) noexcept override
         {
             anchors.push_back({anchor.performanceCounterTicks, anchor.dspClock, anchor.sampleRate,
-                               anchor.performanceCounterFrequency, timeline, rate});
+                               anchor.performanceCounterFrequency, timeline, rate, anchor.smoothed});
             lastDsp_.reset();
         }
-        void OnGameplayClock(const AudioClockSnapshot &clock, RhythmTime time) noexcept override
+        void OnGameplayClock(const AudioClockSnapshot &, RhythmTime time) noexcept override
         {
             running = true;
             lastTime = time;
             ++clockReads;
-            if (anchors.empty() || lastDsp_ == clock.dspClock)
+            if (anchors.empty() || audio == nullptr)
                 return;
-            lastDsp_ = clock.dspClock;
-            reads.push_back({clock.performanceCounterTicks, clock.dspClock, time, anchors.size() - 1});
+            // The snapshot's DSP clock is estimated from QPC, so pairing it with its own QPC would
+            // measure the estimator. The raw mixer clock is read here instead, as the old snapshot did.
+            const auto qpc = Qpc();
+            const auto dsp = audio->DspClock();
+            if (lastDsp_ == dsp)
+                return;
+            lastDsp_ = dsp;
+            reads.push_back({qpc, dsp, time, anchors.size() - 1});
         }
         void BeforeImmediateCues(std::span<const AudioCueRequest> requests) noexcept override
         {
@@ -175,6 +184,7 @@ namespace
             return anchor.qpc + static_cast<std::int64_t>(std::llround(seconds * anchor.frequency));
         }
 
+        const AudioSystem *audio{};
         std::vector<Anchor> anchors;
         std::vector<ClockRead> reads;
         std::vector<CueRead> cues;
@@ -304,6 +314,7 @@ namespace
             results_.bufferLength = services.audio.DspBufferLength();
             results_.bufferCount = services.audio.DspBufferCount();
             results_.latencyMs = services.audio.EstimatedDspLatencyMilliseconds();
+            results_.recorder.audio = &services.audio;
             visuals_.Initialize(services.visual2DRendering,
                                 {static_cast<float>(services.windowWidth), static_cast<float>(services.windowHeight)});
             const auto catalog = SongCatalog{}.Load(options_.songsRoot);
@@ -645,12 +656,12 @@ namespace
         std::filesystem::create_directories(folder);
         const auto &recorder = results.recorder;
         std::ofstream anchors(folder / "anchors.csv");
-        anchors << "index,qpc,dsp,sample_rate,frequency,timeline_us,rate\n";
+        anchors << "index,qpc,dsp,sample_rate,frequency,timeline_us,rate,smoothed\n";
         for (std::size_t i = 0; i < recorder.anchors.size(); ++i)
         {
             const auto &a = recorder.anchors[i];
             anchors << i << ',' << a.qpc << ',' << a.dsp << ',' << a.sampleRate << ',' << a.frequency << ','
-                    << a.timeline.count() << ',' << a.rate << '\n';
+                    << a.timeline.count() << ',' << a.rate << ',' << a.smoothed << '\n';
         }
         std::ofstream clock(folder / "clock.csv");
         clock << "anchor,seconds,qpc,dsp,time_us,offset_ms\n";
@@ -805,6 +816,9 @@ namespace
                       segment.start, segment.middle, segment.end, segment.slopePpm, segment.slopePpm * 0.18);
             Print(file, "\n");
         }
+        const auto rawAnchors = std::ranges::count(recorder.anchors, false, &Anchor::smoothed);
+        Print(file, "anchors on the raw clock (no smoothed estimate yet): %zu of %zu\n",
+              static_cast<std::size_t>(rawAnchors), recorder.anchors.size());
         if (initials.size() > 1)
             Print(file, "initial offsets over %zu anchors: min %6.3f med %6.3f max %6.3f spread %6.3f ms\n",
                   initials.size(), *std::ranges::min_element(initials), Percentile(initials, 0.5),

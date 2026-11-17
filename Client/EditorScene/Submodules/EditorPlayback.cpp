@@ -42,8 +42,11 @@ void EditorPlayback::Toggle()
 
 void EditorPlayback::UpdatePosition()
 {
+    // The anchor is a clock snapshot, so the cursor is read from one too. The
+    // raw mixer clock steps per mixer wake and would let a re-anchor move the
+    // cursor backwards; it only answers whether a scheduled start was mixed.
     if (running_ && audio_)
-        position_ = PositionAtDsp(audio_->DspClock());
+        position_ = PositionAtDsp(audio_->CaptureClockSnapshot().dspClock);
 }
 
 Time EditorPlayback::PositionAtDsp(const std::uint64_t dspClock) const noexcept
@@ -60,14 +63,14 @@ std::uint64_t EditorPlayback::DspClockAt(const Time time) const noexcept
     return clock_.ToDspClock(elapsed);
 }
 
-void EditorPlayback::AdjustTrackRates(const double rate, const std::uint64_t dspClock, std::string &error)
+void EditorPlayback::AdjustTrackRates(const double rate, const std::uint64_t mixedDspClock, std::string &error)
 {
     for (auto &[path, track] : tracks_)
     {
         auto *voice = voices_.FindVoice(track.voice);
         if (!voice || !voice->IsPlaying())
             continue;
-        if (track.scheduledDspClock && *track.scheduledDspClock > dspClock)
+        if (track.scheduledDspClock && *track.scheduledDspClock > mixedDspClock)
         {
             const auto scheduled = *track.scheduledDspClock;
             // The queued hit has not sounded. Cancel and queue that same cue
@@ -114,8 +117,9 @@ void EditorPlayback::SetRate(const double rate)
         if (musicVoice && musicVoice->IsPlaying() && position_ < Time{})
             Require(musicVoice->SetDelay(DspClockAt(Time{}), 0, error), error);
         // Retiming music precedes native Stop calls, which can let the mixer
-        // cross a formerly queued hit's deadline while they execute.
-        AdjustTrackRates(rate, snapshot.dspClock, error);
+        // cross a formerly queued hit's deadline while they execute. Whether a
+        // hit was mixed is a raw-clock question: the snapshot can lead it.
+        AdjustTrackRates(rate, audio_->DspClock(), error);
     }
     catch (...)
     {
