@@ -66,7 +66,9 @@ namespace song_select
         constexpr float DifficultyTop = 58.0F;
         constexpr float DifficultyHeight = 32.0F;
         constexpr float DifficultyPitch = 36.0F;
-        constexpr float DifficultyWidth = 276.0F;
+        constexpr float DifficultyLeft = 34.0F; // Inside the selected card, which starts FocusedOutset further left.
+        constexpr float DifficultyWidth = SongWidth + FocusedOutset - DifficultyLeft; // Rows end at the card's right edge.
+        constexpr float DifficultyLevelInset = 20.0F; // The level's right gap, clear of the scrollbar strip.
         constexpr float FocusedPadding = 6.0F;
         constexpr float ScrollStep = 64.0F;
         constexpr float ScrollbarWidth = 12.0F;
