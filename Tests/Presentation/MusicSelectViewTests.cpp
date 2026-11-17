@@ -256,6 +256,17 @@ namespace
         auto &thumb = Need(Find(scrollbar, "Thumb"), "The scrollbar must have its bar.");
         Check(scrollbar.BoundsInCanvas().width == 12 && thumb.BoundsInCanvas().width == 6,
               "The song list uses the shared 12px strip with a 6px bar.");
+        Check(std::abs(scrollbar.BoundsInCanvas().x + scrollbar.BoundsInCanvas().width - viewport.BoundsInCanvas().x -
+                       viewport.BoundsInCanvas().width) < .01F,
+              "The song list's scrollbar strip touches the right screen edge.");
+        // The selected card's difficulty row ends where the card ends, with the level clear of the strip.
+        auto &focusedCard = Need(Find(canvas->Root(), "Song.0"), "The focused card must exist.");
+        auto &difficultyRow = Need(Find(focusedCard, "Difficulty.0"), "The focused card must list its difficulty.");
+        auto &level = Need(Find(difficultyRow, "Level"), "A difficulty row must show its level.");
+        const auto cardRect = focusedCard.BoundsInCanvas(), rowRect = difficultyRow.BoundsInCanvas();
+        Check(std::abs(rowRect.x + rowRect.width - cardRect.x - cardRect.width) < .01F &&
+                  level.BoundsInCanvas().x + level.BoundsInCanvas().width <= scrollbar.BoundsInCanvas().x,
+              "The difficulty row reaches the card's right edge and its level stays left of the scrollbar.");
         // Drag the bar down: the list scrolls and the first card leaves the virtualized range.
         const auto grab = Centre(thumb);
         Drag(view, input, grab, {grab.x, grab.y - 300});
@@ -410,6 +421,9 @@ namespace
                 Check(!Find(*card,"Thumbnail") && title->GetComponent<TextVisualComponent>() && title->NodeSize().height==20 &&
                           artist->Bounds().x==title->Bounds().x,
                       "Every card shows one title line and one artist line without a BG thumbnail.");
+                const auto cardBounds=card->BoundsInCanvas();
+                Check(std::abs(cardBounds.x+cardBounds.width-canvas->LogicalSize().width/2)<.01F,
+                      "Every card, selected or not, reaches the right screen edge at any width.");
             }
             auto *button=Find(canvas->Root(),"FilterButton");
             Check(button && button->GetComponent<TextVisualComponent>()->TextColor().alpha==1,

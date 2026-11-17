@@ -103,7 +103,7 @@ void SongListView::SetLayout()
     const Size size = viewport_->NodeSize();
     viewport_->SetClipRect({0.0F, 0.0F, size.width, size.height});
     content_->SetSize(size);
-    scrollbar_.SetRail({size.width - layout::ScrollbarWidth - 4.0F, layout::ContentTop, layout::ScrollbarWidth,
+    scrollbar_.SetRail({size.width - layout::ScrollbarWidth, layout::ContentTop, layout::ScrollbarWidth,
                         std::max(size.height - layout::ContentTop * 2.0F, 1.0F)});
     UpdateScrollbar();
 }
@@ -209,7 +209,7 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
 
     if (focused)
     {
-        const float rowLeft = 34.0F;
+        const float rowLeft = layout::DifficultyLeft;
         if (song.patterns.empty())
             static_cast<void>(CreateNumber(button, {rowLeft, layout::DifficultyTop, layout::DifficultyWidth,
                                                     layout::DifficultyHeight},
@@ -227,10 +227,10 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
                 PatternName(song.patterns[index], selection_.notation_), std::format("Difficulty.{}", index));
             auto &difficultyText = RequireComponent<TextVisualComponent>(difficulty);
             StyleText(difficultyText, 13.0F, 800, PureWhite);
-            difficultyText.SetContentBounds({20.0F, 0.0F, layout::DifficultyWidth - 20.0F - 60.0F, layout::DifficultyHeight});
+            difficultyText.SetContentBounds({20.0F, 0.0F, layout::DifficultyWidth - 20.0F - (layout::DifficultyLevelInset + 48.0F), layout::DifficultyHeight});
             // A chart without a calculated difficulty shows a dash.
             const auto &level = song.patterns[index].calculatedDifficulty;
-            static_cast<void>(CreateNumber(difficulty, {layout::DifficultyWidth - 60.0F, 0.0F, 48.0F, layout::DifficultyHeight},
+            static_cast<void>(CreateNumber(difficulty, {layout::DifficultyWidth - layout::DifficultyLevelInset - 48.0F, 0.0F, 48.0F, layout::DifficultyHeight},
                                            level ? std::format(L"{:.2f}", *level) : std::wstring(L"—"), 14.0F, 800,
                                            PureWhite, "Level", TextAlignment::Trailing));
             StyleDifficulty(difficulty, visuals_, index == selection_.selectedPatternIndex_);
