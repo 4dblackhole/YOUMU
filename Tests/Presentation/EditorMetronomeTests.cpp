@@ -23,10 +23,12 @@ void TestEditorMetronome()
     metronome.Prepare(document, 4, files, 1, hits);
     check(metronome.Cues().size() == 1 && metronome.Files().size() == 4,
           "Disabled metronome adds sources, but no playback or analysis hits.");
-    check(metronome.Beats().size() >= 5 && metronome.Beats()[0].seconds == .2 && metronome.Beats()[1].seconds == .7 &&
-              metronome.Beats()[2].seconds == 1.2 && metronome.Beats()[3].seconds == 1.7 &&
-              metronome.Beats()[4].seconds == 1.95 && metronome.Beats()[0].accent && !metronome.Beats()[1].accent &&
-              metronome.Beats()[4].accent,
+    check(metronome.Beats().size() >= 5 && metronome.Beats()[0].seconds == .2 && metronome.Beats()[1].seconds == .7,
+          "Click timing must reflect BPM, delay, chart/global offsets and measure accents.");
+    check(metronome.Beats()[2].seconds == 1.2 && metronome.Beats()[3].seconds == 1.7 &&
+          metronome.Beats()[4].seconds == 1.95,
+          "Click timing must reflect BPM, delay, chart/global offsets and measure accents.");
+    check(metronome.Beats()[0].accent && !metronome.Beats()[1].accent && metronome.Beats()[4].accent,
           "Click timing must reflect BPM, delay, chart/global offsets and measure accents.");
     const auto revision = metronome.CueRevision();
     const auto *cached = metronome.Beats().data();
@@ -41,7 +43,8 @@ void TestEditorMetronome()
     document.Replace(pattern, {});
     metronome.Prepare(document, 4, files, 1, hits);
     check(metronome.Beats()[0].seconds == .2 && metronome.Beats()[1].seconds == .7 &&
-              metronome.Beats()[2].seconds == .95 && metronome.Beats()[3].seconds == 1.45,
+          metronome.Beats()[2].seconds == .95, "Negative delay must remove invaded ticks and advance surviving beats.");
+    check(metronome.Beats()[3].seconds == 1.45,
           "Negative delay must remove invaded ticks and advance surviving beats.");
     document.SetMeasureLength(0, Rational{3, 4});
     metronome.Prepare(document, 4, files, 1, hits);

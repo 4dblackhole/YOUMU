@@ -79,10 +79,11 @@ namespace tests
                     const std::string_view maker =
                         pattern.pattern.makers.empty() ? std::string_view{} : pattern.pattern.makers.front();
                     Require(pattern.effectPath.has_value() &&
-                                pattern.effectPath->parent_path() == pattern.patternPath.parent_path() &&
-                                pattern.effectPath->stem() == pattern.patternPath.stem() &&
-                                pattern.patternPath.parent_path().filename() ==
-                                    SongLayout::FolderName(maker, pattern.pattern.name),
+                            pattern.effectPath->parent_path() == pattern.patternPath.parent_path() &&
+                            pattern.effectPath->stem() == pattern.patternPath.stem(),
+                            "Each AngelDream difficulty must own a YMP/YME pair in a Maker - Difficulty chart set.");
+                    Require(pattern.patternPath.parent_path().filename() ==
+                                SongLayout::FolderName(maker, pattern.pattern.name),
                             "Each AngelDream difficulty must own a YMP/YME pair in a Maker - Difficulty chart set.");
                 }
                 TemporaryDirectory saved("youmu-catalog-save");
@@ -182,10 +183,11 @@ namespace tests
     {
         const std::filesystem::path song = std::filesystem::path("Songs") / "Artist - Title";
         Require(SongLayout::SongFolderOfPattern(song / "Chart/Maker - Oni/a.ymp") == song &&
-                    SongLayout::SongFolderOfPattern(song / "chart/Maker - Oni/a.ymp") == song &&
-                    SongLayout::SongFolderOfPattern(song / "Patterns/Maker - Oni/a.ymp").empty() &&
-                    SongLayout::SongFolderOfPattern(song / "Chart/a.ymp").empty() &&
-                    SongLayout::SongFolderOfPattern({}).empty(),
+                SongLayout::SongFolderOfPattern(song / "chart/Maker - Oni/a.ymp") == song &&
+                SongLayout::SongFolderOfPattern(song / "Patterns/Maker - Oni/a.ymp").empty(),
+                "A pattern belongs to the song folder two levels above its chart set folder.");
+        Require(SongLayout::SongFolderOfPattern(song / "Chart/a.ymp").empty() &&
+                SongLayout::SongFolderOfPattern({}).empty(),
                 "A pattern belongs to the song folder two levels above its chart set folder.");
         Require(SongLayout::SongFolderOfMusic(song / "Music/a.ymm") == song &&
                     SongLayout::SongFolderOfMusic(song / "a.ymm").empty(),
@@ -195,9 +197,10 @@ namespace tests
                     SongLayout::BackgroundPathOfPattern("a.ymp", "bg1.png").empty(),
                 "Backgrounds resolve inside the song folder's BG folder.");
         Require(SongLayout::FolderName("Konpaku Sariel", "Dream") == "Konpaku Sariel - Dream" &&
-                    SongLayout::FolderName("", " Oni ") == "Unknown - Oni" &&
-                    SongLayout::FolderName("A/B", "C:D?.") == "A_B - C_D_" &&
-                    SongLayout::FolderName("\xEC\x95\x84", "\xEA\xB3\xA1") == std::filesystem::path(L"\uC544 - \uACE1"),
+                SongLayout::FolderName("", " Oni ") == "Unknown - Oni" &&
+                SongLayout::FolderName("A/B", "C:D?.") == "A_B - C_D_",
+                "Folder names join the first two labels and replace characters a filename cannot hold.");
+        Require(SongLayout::FolderName("\xEC\x95\x84", "\xEA\xB3\xA1") == std::filesystem::path(L"\uC544 - \uACE1"),
                 "Folder names join the first two labels and replace characters a filename cannot hold.");
 
         TemporaryDirectory fixture("YOUMUSongLayout");
@@ -243,8 +246,9 @@ namespace tests
         const auto load = [&] { return SongCatalog::MetadataIndex(cache, countNotes).Load(root); };
         const auto first = lengths(load());
         // 4/4 at 120 BPM: a quarter is 0.5 s, so beat 2 of measure 1 to beat 3 of measure 2 is 2.5 s.
-        Require(first.size() == 2 && first.at("Long") && std::abs(*first.at("Long") - 2.5) < 1e-9 && !first.at("Empty"),
+        Require(first.size() == 2 && first.at("Long") && std::abs(*first.at("Long") - 2.5) < 1e-9,
                 "Chart length spans the notes; a pattern without notes has no length.");
+        Require(!first.at("Empty"), "Chart length spans the notes; a pattern without notes has no length.");
         Require(lengths(load()) == first, "The disk index restores chart lengths.");
     }
 
@@ -271,12 +275,14 @@ namespace tests
         const auto load = [&] { return SongCatalog::MetadataIndex(cache, countNotes).Load(root); };
         const auto first = load();
         Require(first.Succeeded() && first.PatternCount() == 1 &&
-            first.songs.front().patterns.front().pattern.notes.empty() &&
-            first.songs.front().patterns.front().noteCount == 1 &&
-            first.songs.front().patterns.front().bpmRange == std::pair{120.0, 180.0} &&
-            first.songs.front().patterns.front().pattern.judgementLevel == JudgeLevel{40.37} &&
-            first.songs.front().patterns.front().pattern.hpLevel == HpLevel{17.25},
-            "The metadata index must preserve list metadata and counts without retaining note bodies.");
+                first.songs.front().patterns.front().pattern.notes.empty(),
+                "The metadata index must preserve list metadata and counts without retaining note bodies.");
+        Require(first.songs.front().patterns.front().noteCount == 1 &&
+                first.songs.front().patterns.front().bpmRange == std::pair{120.0, 180.0} &&
+                first.songs.front().patterns.front().pattern.judgementLevel == JudgeLevel{40.37},
+                "The metadata index must preserve list metadata and counts without retaining note bodies.");
+        Require(first.songs.front().patterns.front().pattern.hpLevel == HpLevel{17.25},
+                "The metadata index must preserve list metadata and counts without retaining note bodies.");
         Require(std::filesystem::file_size(cache) > 24, "The index must be persisted outside source songs.");
         auto unsupported = ChartParser{}.ParsePatternFile(pattern).document;
         unsupported.mode = "UnsupportedRegressionMode";
@@ -284,10 +290,12 @@ namespace tests
             "Unsupported modes must not publish a fabricated logical note count.");
         const auto savedAt = std::filesystem::last_write_time(cache);
         const auto restored = load();
-        Require(restored.PatternCount() == 1 && restored.songs.front().patterns.front().bpmRange == std::pair{120.0, 180.0} &&
-                restored.songs.front().patterns.front().pattern.hpLevel == HpLevel{17.25} &&
-                std::filesystem::last_write_time(cache) == savedAt,
-            "A new catalog instance must reuse the disk index without rewriting it.");
+        Require(restored.PatternCount() == 1 &&
+                restored.songs.front().patterns.front().bpmRange == std::pair{120.0, 180.0} &&
+                restored.songs.front().patterns.front().pattern.hpLevel == HpLevel{17.25},
+                "A new catalog instance must reuse the disk index without rewriting it.");
+        Require(std::filesystem::last_write_time(cache) == savedAt,
+                "A new catalog instance must reuse the disk index without rewriting it.");
         const auto readVersion = [&](std::streamoff offset)
         {
             std::ifstream file(cache, std::ios::binary);

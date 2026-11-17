@@ -49,15 +49,17 @@ void TestEditorMenu()
           "Menu captions remain English when explanations use Korean.");
     menu.Refresh(true);
     Check(caption->GetComponent<TextVisualComponent>()->Text() == L"Save" && unsaved->IsVisible() &&
-              title->GetComponent<TextVisualComponent>()->Text() == L"Feathered Horizon" &&
-              pattern->GetComponent<TextVisualComponent>()->Text() == L"[Easy]",
+          title->GetComponent<TextVisualComponent>()->Text() == L"Feathered Horizon",
+          "The bar must name the document and mark unsaved changes with the gold dot.");
+    Check(pattern->GetComponent<TextVisualComponent>()->Text() == L"[Easy]",
           "The bar must name the document and mark unsaved changes with the gold dot.");
     texts.SetLanguage(Language::English);
     menu.Refresh(false);
     Check(file->GetComponent<TextVisualComponent>()->Text() == L"File" &&
           edit->GetComponent<TextVisualComponent>()->Text() == L"Edit" &&
-          caption->GetComponent<TextVisualComponent>()->Text() == L"Save" && !unsaved->IsVisible(),
+          caption->GetComponent<TextVisualComponent>()->Text() == L"Save",
           "Menu must refresh language and dirty state.");
+    Check(!unsaved->IsVisible(), "Menu must refresh language and dirty state.");
 
     const std::array fileActions{EditorMenuAction::Save, EditorMenuAction::OpenYmmFolder,
                                 EditorMenuAction::OpenYmpFolder, EditorMenuAction::OpenYmeFolder};
@@ -85,8 +87,9 @@ void TestEditorMenu()
             for (std::size_t i = 0; i < actions.size(); ++i)
             {
                 const auto opened = menu.Update({.pointer = pointer(x, 10), .leftPressed = true}, false);
-                Check(opened.consumePointer && opened.consumeKeyboard && !opened.action && popup->IsVisible(),
+                Check(opened.consumePointer && opened.consumeKeyboard && !opened.action,
                       "A menu must open without editing beneath it.");
+                Check(popup->IsVisible(), "A menu must open without editing beneath it.");
                 const auto idle = menu.Update({}, false);
                 Check(idle.consumeKeyboard && idle.consumePointer && !idle.action,
                       "Open menus must own input between events.");
@@ -103,8 +106,9 @@ void TestEditorMenu()
 
     static_cast<void>(menu.Update({.toggle = true}, false));
     const auto dismissed = menu.Update({.dismiss = true}, false);
-    Check(!dismissed.action && dismissed.consumeKeyboard && dismissed.consumePointer && !popup->IsVisible(),
+    Check(!dismissed.action && dismissed.consumeKeyboard && dismissed.consumePointer,
           "Escape must dismiss without leaving the editor.");
+    Check(!popup->IsVisible(), "Escape must dismiss without leaving the editor.");
     static_cast<void>(menu.Update({.toggle = true}, false));
     const auto accepted = menu.Update({.accept = true}, false);
     Check(accepted.action == EditorMenuAction::Save && accepted.consumeKeyboard && !popup->IsVisible(),
@@ -132,8 +136,9 @@ void TestEditorMenu()
 
     static_cast<void>(menu.Update({.toggle = true}, false));
     const auto outside = menu.Update({.pointer = Point{600, -200}, .leftPressed = true}, false);
-    Check(!outside.action && outside.consumePointer && outside.consumeKeyboard && !popup->IsVisible(),
+    Check(!outside.action && outside.consumePointer && outside.consumeKeyboard,
           "Outside dismissal must not click through.");
+    Check(!popup->IsVisible(), "Outside dismissal must not click through.");
     const auto resumed = menu.Update({.pointer = Point{600, -200}, .leftPressed = true}, false);
     Check(!resumed.consumePointer && !resumed.consumeKeyboard, "Closed menus must release input.");
     static_cast<void>(menu.Update({.toggleEdit = true}, false));

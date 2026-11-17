@@ -149,8 +149,9 @@ namespace
         auto &start = Find(logoRoot, "YOUMU.Editor");
         const auto &style = start.GetComponent<SpriteVisualComponent>()->Style();
         const auto customButton = style.normalImage;
-        Check(style.normalImage && style.hoveredImage && style.normalImage.value != style.hoveredImage.value &&
-                  style.pressedImage && style.pressedImage.value != style.hoveredImage.value,
+        Check(style.normalImage && style.hoveredImage && style.normalImage.value != style.hoveredImage.value,
+              "Buttons must use authored states; a state the skin omits falls back to the built-in part.");
+        Check(style.pressedImage && style.pressedImage.value != style.hoveredImage.value,
               "Buttons must use authored states; a state the skin omits falls back to the built-in part.");
         Check(Find(logoRoot, "YOUMU.LogoBackground").IsVisible() && Image(Find(logoRoot, "YOUMU.LogoBackground")),
               "The title shows the skin's full-screen sky.");
@@ -192,10 +193,12 @@ namespace
         static_cast<void>(logo.Update(InputState{}, 0));
         Check(static_cast<bool>(Image(Find(Find(logoRoot, "Options.Rail.General"), "Icon"))),
               "Options rail icons keep their skin image while their colour follows hover and the lit section.");
-        Check(Image(start) && Image(start).value != customButton.value && Image(sheet) &&
-                  Image(sheet).value != customSheet.value &&
-                  Image(sheet).value == visuals.RegisterImage(selection.Image("MusicSelect", "Panels.Sheet")).value &&
-                  Image(back) && Image(back).value != customSheet.value && Image(Find(logoRoot, "YOUMU.LogoBackground")),
+        Check(Image(start) && Image(start).value != customButton.value && Image(sheet),
+              "Returning to the default skin must restore the built-in title and song-select parts.");
+        Check(Image(sheet).value != customSheet.value &&
+              Image(sheet).value == visuals.RegisterImage(selection.Image("MusicSelect", "Panels.Sheet")).value &&
+              Image(back), "Returning to the default skin must restore the built-in title and song-select parts.");
+        Check(Image(back).value != customSheet.value && Image(Find(logoRoot, "YOUMU.LogoBackground")),
               "Returning to the default skin must restore the built-in title and song-select parts.");
         Check(selection.Select(L"Test Skin", error), error.c_str());
         Check(selection.Image("InGame", "note") == defaults / "InGame/note.png",

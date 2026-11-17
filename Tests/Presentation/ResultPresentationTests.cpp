@@ -65,9 +65,9 @@ namespace
             std::ifstream file(path, std::ios::binary);
             std::array<unsigned char, 24> header{};
             file.read(reinterpret_cast<char *>(header.data()), static_cast<std::streamsize>(header.size()));
-            Check(file.gcount() == static_cast<std::streamsize>(header.size()) && header[0] == 137 &&
-                      header[1] == 'P' && header[2] == 'N' && header[3] == 'G',
+            Check(file.gcount() == static_cast<std::streamsize>(header.size()) && header[0] == 137 && header[1] == 'P',
                   "Result assets must resolve to real embedded/fallback PNGs.");
+            Check(header[2] == 'N' && header[3] == 'G', "Result assets must resolve to real embedded/fallback PNGs.");
             const auto dimension = [&header](const std::size_t offset)
             {
                 return (static_cast<std::uint32_t>(header[offset]) << 24) |
@@ -194,7 +194,9 @@ namespace
                     if (!text) throw std::runtime_error("Failure caption missing.");
                     Check(text->Text() == texts.Get("Result.failed"), "Failure caption follows the selected language.");
                     const auto b = label->Bounds();
-                    Check(b.x >= 32 && b.x + b.width <= 372 && b.y >= 720 - 130 && b.y + b.height <= 720 - 96,
+                    Check(b.x >= 32 && b.x + b.width <= 372 && b.y >= 720 - 130,
+                          "Failure sits in the HP title row above the chart so it never covers the curve.");
+                    Check(b.y + b.height <= 720 - 96,
                           "Failure sits in the HP title row above the chart so it never covers the curve.");
                 }
                 if (fixture.hpAvailable)
@@ -260,9 +262,9 @@ namespace
                 if (!text) throw std::runtime_error("Usage-overlay text missing.");
                 Check(text->Text() == expected, "Used actions appear together in the selected language.");
                 const auto bounds = overlay->Bounds();
-                Check(bounds.x >= 32 && bounds.x + bounds.width <= 372.01F &&
-                          bounds.y >= 720 - 130 && bounds.y + bounds.height <= 720 - 96,
+                Check(bounds.x >= 32 && bounds.x + bounds.width <= 372.01F && bounds.y >= 720 - 130,
                       "Usage sits in the HP title row, outside the plot.");
+                Check(bounds.y + bounds.height <= 720 - 96, "Usage sits in the HP title row, outside the plot.");
             }
             view->Shutdown();
         }
@@ -293,8 +295,11 @@ namespace
         for (const auto &rectangle : curve)
         {
             const auto b = rectangle.bounds;
-            Check(std::isfinite(b.x) && std::isfinite(b.y) && b.width > 0 && b.height > 0 &&
-                      b.x >= plot.x && b.y >= plot.y && b.x + b.width <= 410.01F && b.y + b.height <= 120.01F,
+            Check(std::isfinite(b.x) && std::isfinite(b.y) && b.width > 0,
+                  "HP geometry stays finite and inside the original plot.");
+            Check(b.height > 0 && b.x >= plot.x && b.y >= plot.y,
+                  "HP geometry stays finite and inside the original plot.");
+            Check(b.x + b.width <= 410.01F && b.y + b.height <= 120.01F,
                   "HP geometry stays finite and inside the original plot.");
         }
         summary.hpGauges.front().applicable = false;
@@ -339,7 +344,9 @@ namespace
                 const auto size = canvas->LogicalSize();
                 const auto bounds = background->BoundsInCanvas();
                 Check(bounds.x <= -size.width / 2 + .01F && bounds.x + bounds.width >= size.width / 2 - .01F &&
-                          bounds.y <= -size.height / 2 + .01F && bounds.y + bounds.height >= size.height / 2 - .01F,
+                      bounds.y <= -size.height / 2 + .01F,
+                      "Result BG covers narrow and wide viewports without exposing edges.");
+                Check(bounds.y + bounds.height >= size.height / 2 - .01F,
                       "Result BG covers narrow and wide viewports without exposing edges.");
                 if (assigned)
                 {
@@ -368,9 +375,11 @@ namespace
     void TestAccuracyText()
     {
         const auto text = [](std::uint32_t units) { return AccuracyText(AccuracyScore::FromUnits(units)); };
-        Check(text(100'000'000) == L"100.00%" && text(99'999'999) == L"99.99%" && text(99'990'000) == L"99.99%" &&
-                  text(99'989'999) == L"99.98%" && text(5'009'999) == L"5.00%" && text(9'999) == L"0.00%" &&
-                  text(0) == L"0.00%",
+        Check(text(100'000'000) == L"100.00%" && text(99'999'999) == L"99.99%" && text(99'990'000) == L"99.99%",
+              "Displayed accuracy discards digits below two decimals and shows 100.00% only at exactly 100%.");
+        Check(text(99'989'999) == L"99.98%" && text(5'009'999) == L"5.00%" && text(9'999) == L"0.00%",
+              "Displayed accuracy discards digits below two decimals and shows 100.00% only at exactly 100%.");
+        Check(text(0) == L"0.00%",
               "Displayed accuracy discards digits below two decimals and shows 100.00% only at exactly 100%.");
         Check(EmptyAccuracyText == L"--.--%", "The empty accuracy placeholder keeps the two-decimal width.");
     }
@@ -386,17 +395,19 @@ namespace
               "A result without judgements leaves the ring band empty.");
         // 3 MAX, 1 GREAT and 4 POOR: 37.5%, 12.5% and 50% clockwise from 12 o'clock.
         const auto ring = BuildJudgementRing({3, 0, 1, 0, 0, 0, 0, 4}, colors, center, 80, 90, 0.5F);
-        Check(ring.slices.size() == 3 && ring.slices[0].judgement == 0 && ring.slices[1].judgement == 2 &&
-                  ring.slices[2].judgement == 7 && ring.slices[0].start == 0 && ring.slices[0].end == 0.375 &&
-                  ring.slices[1].end == 0.5 && ring.slices[2].end == 1,
+        Check(ring.slices.size() == 3 && ring.slices[0].judgement == 0 && ring.slices[1].judgement == 2,
+              "Slices follow MAX..POOR order and skip judgements without counts.");
+        Check(ring.slices[2].judgement == 7 && ring.slices[0].start == 0 && ring.slices[0].end == 0.375,
+              "Slices follow MAX..POOR order and skip judgements without counts.");
+        Check(ring.slices[1].end == 0.5 && ring.slices[2].end == 1,
               "Slices follow MAX..POOR order and skip judgements without counts.");
         double area = 0;
         std::array<double, RingJudgementCount> share{};
         for (const auto &rectangle : ring.rectangles)
         {
             const auto b = rectangle.bounds;
-            Check(b.width > 0 && b.height > 0 && b.x >= 10 - .01F && b.x + b.width <= 190.01F && b.y >= 110 - .01F &&
-                      b.y + b.height <= 290.01F,
+            Check(b.width > 0 && b.height > 0 && b.x >= 10 - .01F, "Ring rows stay inside the outer circle's box.");
+            Check(b.x + b.width <= 190.01F && b.y >= 110 - .01F && b.y + b.height <= 290.01F,
                   "Ring rows stay inside the outer circle's box.");
             const double cx = b.x + b.width / 2 - center.x, cy = b.y + b.height / 2 - center.y;
             const double distance = std::hypot(cx, cy);
@@ -406,12 +417,16 @@ namespace
         }
         const double band = 3.14159265358979 * (90.0 * 90.0 - 80.0 * 80.0);
         Check(std::abs(area - band) / band < .01 && std::abs(share[0] / area - .375) < .01 &&
-                  std::abs(share[2] / area - .125) < .01 && std::abs(share[7] / area - .5) < .01,
-              "Slice areas match the judgement shares over the whole band.");
+              std::abs(share[2] / area - .125) < .01, "Slice areas match the judgement shares over the whole band.");
+        Check(std::abs(share[7] / area - .5) < .01, "Slice areas match the judgement shares over the whole band.");
         const auto at = [&](float x, float y) { return RingSliceAt(ring, {center.x + x, center.y + y}); };
-        Check(at(10, 84) && at(10, 84)->judgement == 0 && at(-10, 84) && at(-10, 84)->judgement == 7 &&
-                  at(-10, -84) && at(-10, -84)->judgement == 7 && at(60, -60) && at(60, -60)->judgement == 2 &&
-                  !at(0, 0) && !at(0, 79) && !at(0, 91),
+        Check(at(10, 84) && at(10, 84)->judgement == 0 && at(-10, 84),
+              "Pointer lookup returns the slice under the band and nothing inside or outside it.");
+        Check(at(-10, 84)->judgement == 7 && at(-10, -84) && at(-10, -84)->judgement == 7,
+              "Pointer lookup returns the slice under the band and nothing inside or outside it.");
+        Check(at(60, -60) && at(60, -60)->judgement == 2 && !at(0, 0),
+              "Pointer lookup returns the slice under the band and nothing inside or outside it.");
+        Check(!at(0, 79) && !at(0, 91),
               "Pointer lookup returns the slice under the band and nothing inside or outside it.");
     }
     void TestAccuracyRanks()
@@ -464,9 +479,11 @@ namespace
                       "Each rank case displays its accuracy truncated to two decimals.");
                 const auto bounds = rank->Bounds();
                 const auto native = renderer.GetImageSize(sprite->Style().normalImage);
-                Check(bounds.width > 0 && bounds.height > 0 && bounds.x >= 485 && bounds.y >= 342 &&
-                          bounds.x + bounds.width <= 721.01F && bounds.y + bounds.height <= 460.01F &&
-                          std::abs(bounds.width / bounds.height - native.width / native.height) < .001F,
+                Check(bounds.width > 0 && bounds.height > 0 && bounds.x >= 485,
+                      "Every rank must retain its aspect ratio inside the ring.");
+                Check(bounds.y >= 342 && bounds.x + bounds.width <= 721.01F && bounds.y + bounds.height <= 460.01F,
+                      "Every rank must retain its aspect ratio inside the ring.");
+                Check(std::abs(bounds.width / bounds.height - native.width / native.height) < .001F,
                       "Every rank must retain its aspect ratio inside the ring.");
             };
             checkRank();
@@ -518,8 +535,9 @@ namespace
                   "Small viewports must keep bars visible and inside the plot.");
         result.timingErrors = {{.error = RhythmDuration{-125'000}}, {.error = RhythmDuration{126'000}}};
         graph = taiko_result_ui::BuildGraphs(result, scatter, histogram);
-        Check(graph.halfRangeMilliseconds == 130 && graph.maximumBinCount == 1 && graph.rectangles.size() == 6 &&
-                  graph.rectangles.back().bounds.width < 2,
+        Check(graph.halfRangeMilliseconds == 130 && graph.maximumBinCount == 1 && graph.rectangles.size() == 6,
+              "Expanding the error axis must preserve 1ms bin resolution instead of keeping 41 wide bins.");
+        Check(graph.rectangles.back().bounds.width < 2,
               "Expanding the error axis must preserve 1ms bin resolution instead of keeping 41 wide bins.");
         result.timingErrors = {{.error = RhythmDuration{-1'000'000'000'000}},
                                {.error = RhythmDuration{1'000'000'000'000}}};
@@ -533,8 +551,8 @@ namespace
     }
     bool SameColor(Color left, Color right)
     {
-        return left.red == right.red && left.green == right.green && left.blue == right.blue &&
-               left.alpha == right.alpha;
+        const bool sameRgb = left.red == right.red && left.green == right.green && left.blue == right.blue;
+        return sameRgb && left.alpha == right.alpha;
     }
     void TestHistogramJudgementColors()
     {
@@ -553,10 +571,11 @@ namespace
         const auto &max = graph.rectangles[firstBar];
         const auto &perfect = graph.rectangles[firstBar + 1];
         Check(max.bounds.x == perfect.bounds.x && max.bounds.width == perfect.bounds.width &&
-                  std::abs(max.bounds.y - histogram.y) < .001F &&
-                  std::abs(max.bounds.height - histogram.height / 3) < .001F &&
-                  std::abs(perfect.bounds.y - max.bounds.y - max.bounds.height) < .001F &&
-                  std::abs(perfect.bounds.y + perfect.bounds.height - histogram.y - histogram.height) < .001F,
+              std::abs(max.bounds.y - histogram.y) < .001F,
+              "Mixed MAX/PERFECT must stack in one bin, preserving each count and the total height.");
+        Check(std::abs(max.bounds.height - histogram.height / 3) < .001F &&
+              std::abs(perfect.bounds.y - max.bounds.y - max.bounds.height) < .001F &&
+              std::abs(perfect.bounds.y + perfect.bounds.height - histogram.y - histogram.height) < .001F,
               "Mixed MAX/PERFECT must stack in one bin, preserving each count and the total height.");
         for (const auto [bar, sample] :
              {std::pair{0, 0}, std::pair{1, 1}, std::pair{2, 3}, std::pair{3, 4}, std::pair{4, 5}})
@@ -565,11 +584,14 @@ namespace
         std::ranges::reverse(result.timingErrors);
         const auto reversed = taiko_result_ui::BuildGraphs(result, scatter, histogram);
         for (std::size_t i = firstBar; i < graph.rectangles.size(); ++i)
+        {
             Check(SameColor(graph.rectangles[i].color, reversed.rectangles[i].color) &&
                       graph.rectangles[i].bounds.x == reversed.rectangles[i].bounds.x &&
-                      graph.rectangles[i].bounds.y == reversed.rectangles[i].bounds.y &&
-                      graph.rectangles[i].bounds.height == reversed.rectangles[i].bounds.height,
+                      graph.rectangles[i].bounds.y == reversed.rectangles[i].bounds.y,
                   "Histogram stack order must be stable regardless of the input record order.");
+            Check(graph.rectangles[i].bounds.height == reversed.rectangles[i].bounds.height,
+                  "Histogram stack order must be stable regardless of the input record order.");
+        }
     }
     void TestGraphsAndView()
     {
@@ -581,15 +603,17 @@ namespace
         taiko->summary.score = 12'345'678;
         const Rect scatter{0, 0, 500, 150}, histogram{550, 0, 500, 150};
         auto data = taiko_result_ui::BuildGraphs(*taiko, scatter, histogram);
-        Check(data.maximumBinCount == 1 && data.halfRangeMilliseconds == 100 && data.startSeconds == -2 &&
-                  data.endSeconds == 1,
+        Check(data.maximumBinCount == 1 && data.halfRangeMilliseconds == 100 && data.startSeconds == -2,
               "Graph axes must cover real time/error samples and retain signed timing.");
+        Check(data.endSeconds == 1, "Graph axes must cover real time/error samples and retain signed timing.");
         Check(data.rectangles.size() == 8,
               "Three timing inputs must yield three scatter points and three histogram bars.");
         for (const auto &rect : data.rectangles)
-            Check(std::isfinite(rect.bounds.x) && std::isfinite(rect.bounds.y) && rect.bounds.width > 0 &&
-                      rect.bounds.height > 0,
+        {
+            Check(std::isfinite(rect.bounds.x) && std::isfinite(rect.bounds.y) && rect.bounds.width > 0,
                   "Graph primitives must have valid bounded geometry.");
+            Check(rect.bounds.height > 0, "Graph primitives must have valid bounded geometry.");
+        }
         // Stress only graph data, without creating thousands of widget nodes.
         const auto sample = taiko->timingErrors.front();
         taiko->timingErrors.insert(taiko->timingErrors.end(), 10'000, sample);
@@ -623,8 +647,10 @@ namespace
         for(const auto key:{"scrollSpeed","metronome","mirror","random","accelerate","judgeLevel"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
         Check(HasText(*canvas, L"Accuracy") && HasText(*canvas, L"Recorded song") &&
-                  HasText(*canvas, L"Recorded creator") && HasText(*canvas, L"Recorded artist") &&
-                  textOf("Result.Accuracy") + L"%" == AccuracyText(taiko->summary.accuracy),
+              HasText(*canvas, L"Recorded creator"),
+              "Result view must display the recorded accuracy truncated to two decimals.");
+        Check(HasText(*canvas, L"Recorded artist") &&
+              textOf("Result.Accuracy") + L"%" == AccuracyText(taiko->summary.accuracy),
               "Result view must display the recorded accuracy truncated to two decimals.");
         const auto packets = canvas->BuildDrawList();
         const auto *banner = FindNode(canvas->Root(), "Result.SongBanner");
@@ -638,16 +664,19 @@ namespace
             throw std::runtime_error("Result must retain each metadata element independently.");
         namespace layout = taiko_result_ui::layout;
         const auto columns = layout::ColumnsFor(1280);
-        Check(banner->Bounds().width == 1280 && banner->Bounds().height == 72 && song->Bounds().x == 145 &&
-                  song->Bounds().y == 720 - 41 && artist->Bounds().x == 145 && artist->Bounds().y == 720 - 61 &&
-                  creator->Bounds().x + creator->Bounds().width <= 1248.01F && creator->Bounds().y >= 720 - 72 &&
-                  std::abs(rank->Bounds().x + 172 - (columns.centerX + columns.sideWidth / 2)) < .01F &&
-                  columns.sideWidth == 414,
+        Check(banner->Bounds().width == 1280 && banner->Bounds().height == 72 && song->Bounds().x == 145,
+              "Song, artist and creator share the top banner; the rank ring is centred in the middle column.");
+        Check(song->Bounds().y == 720 - 41 && artist->Bounds().x == 145 && artist->Bounds().y == 720 - 61,
+              "Song, artist and creator share the top banner; the rank ring is centred in the middle column.");
+        Check(creator->Bounds().x + creator->Bounds().width <= 1248.01F && creator->Bounds().y >= 720 - 72 &&
+              std::abs(rank->Bounds().x + 172 - (columns.centerX + columns.sideWidth / 2)) < .01F,
+              "Song, artist and creator share the top banner; the rank ring is centred in the middle column.");
+        Check(columns.sideWidth == 414,
               "Song, artist and creator share the top banner; the rank ring is centred in the middle column.");
         const auto inside = [](Rect b, Rect area)
         {
-            return b.x >= area.x - .01F && b.x + b.width <= area.x + area.width + .01F && b.y >= area.y - .01F &&
-                   b.y + b.height <= area.y + area.height + .01F;
+            const bool insideColumns = b.x >= area.x - .01F && b.x + b.width <= area.x + area.width + .01F;
+            return insideColumns && b.y >= area.y - .01F && b.y + b.height <= area.y + area.height + .01F;
         };
         const Rect ringBox{columns.centerX + columns.sideWidth / 2 - layout::RingOuterRadius,
                            720 - layout::RingCenterY - layout::RingOuterRadius, layout::RingOuterRadius * 2,
@@ -655,10 +684,14 @@ namespace
         for (const auto &packet : packets)
             if (packet.type == DrawPacketType::RectangleBatch)
                 for (const auto &primitive : *packet.rectangles)
-                    Check(inside(primitive.bounds, layout::Bounds(layout::HistogramPlot(columns))) ||
-                              inside(primitive.bounds, layout::Bounds(layout::ScatterPlot(columns))) ||
-                              inside(primitive.bounds, layout::Bounds(layout::HpPlot)) || inside(primitive.bounds, ringBox),
+                {
+                    const bool inHistogramOrScatter =
+                        inside(primitive.bounds, layout::Bounds(layout::HistogramPlot(columns))) ||
+                        inside(primitive.bounds, layout::Bounds(layout::ScatterPlot(columns)));
+                    Check(inHistogramOrScatter || inside(primitive.bounds, layout::Bounds(layout::HpPlot)) ||
+                              inside(primitive.bounds, ringBox),
                           "Graph samples, the HP clear line and ring slices must stay inside their plots.");
+                }
         Check(std::ranges::count(packets, DrawPacketType::RectangleBatch, &DrawPacket::type) == 2 &&
                   packets.size() < 260,
               "Large result graphs use one batch and the judgement ring another, with constant widget count.");
@@ -672,9 +705,11 @@ namespace
             throw std::runtime_error("Result retry/replay nodes must exist.");
         Check(retry->IsEnabled() && !replay->IsEnabled(),
               "Retry is available for a played selection; replay remains disabled.");
-        Check(retry->Bounds().x == 1040 && retry->Bounds().width == 240 && retry->Bounds().height == 84 &&
-                  retry->Bounds().y == 0 && replay->Bounds().x == 915 && replay->Bounds().width == 125 &&
-                  replay->Bounds().height == 64,
+        Check(retry->Bounds().x == 1040 && retry->Bounds().width == 240 && retry->Bounds().height == 84,
+              "Retry rises above the bottom bar at the right edge with the Replay text button beside it.");
+        Check(retry->Bounds().y == 0 && replay->Bounds().x == 915 && replay->Bounds().width == 125,
+              "Retry rises above the bottom bar at the right edge with the Replay text button beside it.");
+        Check(replay->Bounds().height == 64,
               "Retry rises above the bottom bar at the right edge with the Replay text button beside it.");
         const auto click = [&](const Visual2DNode &button)
         {
@@ -828,10 +863,11 @@ namespace
             };
             waitForAlert();
             const auto &content=alert.Content();
-            Check(content.kind==AlertKind::Error&&content.title==L"Record not saved"&&
-                      content.detail.starts_with(database.wstring())&&content.buttons.size()==2&&
-                      content.buttons[0].cancel&&content.buttons[1].primary,
+            Check(content.kind==AlertKind::Error &&
+                  content.title==L"Record not saved"&& content.detail.starts_with(database.wstring()) &&
+                  content.buttons.size()==2&& content.buttons[0].cancel,
                   "The alert names the record file and offers Close and Retry.");
+            Check(content.buttons[1].primary, "The alert names the record file and offers Close and Retry.");
             if(fixFirst)
             {
                 std::filesystem::remove(database);
@@ -960,13 +996,15 @@ namespace
             {
                 const auto &summary = resultData_->Summary();
                 Check(summary.endReason == PlayEndReason::Completed && summary.processedNotes == 1 &&
-                          summary.unprocessedNotes == 0 && context.totalSeconds >= 4.9,
-                      "All notes must finalize before the three-second Result delay.");
+                      summary.unprocessedNotes == 0, "All notes must finalize before the three-second Result delay.");
+                Check(context.totalSeconds >= 4.9, "All notes must finalize before the three-second Result delay.");
                 Check(summary.hpGauges.size() == 1 && summary.hpGauges.front().applicable &&
-                          summary.hpGauges.front().percent == 0 && !summary.IsCleared(),
+                      summary.hpGauges.front().percent == 0,
                       "An automatic MISS must transfer its final HP and fail the clear gate.");
-                Check(resultCreations_ == 1 && !pending_ && ScreenVisuals().CanvasCount() == 1 &&
-                          !ScreenVisuals().FindCanvas(1),
+                Check(!summary.IsCleared(), "An automatic MISS must transfer its final HP and fail the clear gate.");
+                Check(resultCreations_ == 1 && !pending_ && ScreenVisuals().CanvasCount() == 1,
+                      "The moved result must survive gameplay Scene/Canvas destruction.");
+                Check(!ScreenVisuals().FindCanvas(1),
                       "The moved result must survive gameplay Scene/Canvas destruction.");
                 // The first attempt owns loading Canvas 1 and gameplay Canvas 2.
                 auto *canvas = ScreenVisuals().FindCanvas(3);
@@ -997,7 +1035,9 @@ namespace
             else if (Scenes().CurrentSceneId() == RhythmTestSceneId && retryRequested_ &&
                      !returnRequested_)
             {
-                Check(sessionCreations_ == 2 && resultCreations_ == 1 && !pending_ && !ScreenVisuals().FindCanvas(3),
+                Check(sessionCreations_ == 2 && resultCreations_ == 1 && !pending_,
+                      "Retry must construct a fresh session and destroy the old Result Canvas.");
+                Check(!ScreenVisuals().FindCanvas(3),
                       "Retry must construct a fresh session and destroy the old Result Canvas.");
                 // Gameplay creates its Canvas only after asynchronous resources
                 // are ready. Scene entry alone is not presentation readiness.

@@ -167,7 +167,9 @@ namespace
         Check(!Find(root, "YOUMU.PlayerPlay").IsEnabled() && !Find(root, "YOUMU.PlayerSeek").IsEnabled(),
               "The empty player shows its controls disabled.");
         Check(Text(root, "YOUMU.PlayerTitle").empty() && Text(root, "YOUMU.PlayerArtist").empty() &&
-                  Text(root, "YOUMU.PlayerElapsed").empty() && Text(root, "YOUMU.PlayerLength").empty(),
+              Text(root, "YOUMU.PlayerElapsed").empty(),
+              "The empty player leaves every caption blank instead of borrowing another song.");
+        Check(Text(root, "YOUMU.PlayerLength").empty(),
               "The empty player leaves every caption blank instead of borrowing another song.");
         Check(Find(root, "YOUMU.PlayerArtworkEmpty").IsVisible() && !Find(root, "YOUMU.PlayerArtwork").IsVisible(),
               "The empty player shows the empty art box.");

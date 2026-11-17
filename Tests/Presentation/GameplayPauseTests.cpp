@@ -114,8 +114,9 @@ namespace
               "Pause rows are 533x52 with 10 between Resume and Rewind.");
         const auto *title = Find(canvas->Root(), "Pause.Title");
         const auto *preparing = Find(canvas->Root(), "Pause.Preparing");
-        Check(title && title->GetComponent<TextVisualComponent>()->Text() == L"PAUSED" && preparing &&
-                  !preparing->IsVisible() && title->BoundsInCanvas().y >= firstBounds.y + firstBounds.height,
+        Check(title && title->GetComponent<TextVisualComponent>()->Text() == L"PAUSED" && preparing,
+              "The PAUSED title sits above the rows and the preparing band hides once Resume is available.");
+        Check(!preparing->IsVisible() && title->BoundsInCanvas().y >= firstBounds.y + firstBounds.height,
               "The PAUSED title sits above the rows and the preparing band hides once Resume is available.");
         const auto clickSelector = [&](std::string_view name)
         {
@@ -190,14 +191,17 @@ namespace
               "Pause menu must use the current language.");
         menu.Show(1280, 720, false, 12);
         const auto *waiting = Find(canvas->Root(), "Pause.Preparing");
-        Check(waiting && waiting->IsVisible() && !Find(canvas->Root(), "Pause.0")->IsEnabled() &&
-                  !Find(canvas->Root(), "Pause.1.Next")->IsEnabled() && Find(canvas->Root(), "Pause.2")->IsEnabled(),
+        Check(waiting && waiting->IsVisible() && !Find(canvas->Root(), "Pause.0")->IsEnabled(),
+              "While preparing, the band shows and only Resume/Rewind with their steppers are disabled.");
+        Check(!Find(canvas->Root(), "Pause.1.Next")->IsEnabled() && Find(canvas->Root(), "Pause.2")->IsEnabled(),
               "While preparing, the band shows and only Resume/Rewind with their steppers are disabled.");
         menu.SetPreparationFailed(true);
         const auto *resumeSelector = Find(*Find(canvas->Root(), "Pause.Row.0"), "Pause.Selector");
         const auto *resumeValue = resumeSelector ? Find(*resumeSelector, "Pause.Value") : nullptr;
+        const bool resumeValueReadable =
+            resumeValue && resumeValue->GetComponent<TextVisualComponent>()->Text() == L"1.0 s back";
         Check(!Find(canvas->Root(), "Pause.Preparing")->IsVisible() && !Find(canvas->Root(), "Pause.0")->IsEnabled() &&
-                  resumeValue && resumeValue->GetComponent<TextVisualComponent>()->Text() == L"1.0 s back",
+              resumeValueReadable,
               "A failed preparation keeps Resume/Rewind off without the band and keeps their values readable.");
         Check(menu.HandleKey(VK_RETURN).action == GameplayPauseAction::Retry,
               "A failed preparation selects Retry, which reloads the files.");
@@ -532,9 +536,11 @@ namespace
                         const auto bounds = background->BoundsInCanvas();
                         Check(std::abs(bounds.width / bounds.height - 1920.0F / 1080.0F) < .001F &&
                               std::abs(bounds.x + bounds.width * .5F - 80.0F) < .01F &&
-                              std::abs(bounds.y + bounds.height * .5F + 20.0F) < .01F &&
-                              bounds.x <= -640 && bounds.x + bounds.width >= 640 &&
-                              bounds.y <= -360 && bounds.y + bounds.height >= 360,
+                              std::abs(bounds.y + bounds.height * .5F + 20.0F) < .01F,
+                              "Loading background must preserve aspect ratio, offset, and viewport coverage.");
+                        Check(bounds.x <= -640 && bounds.x + bounds.width >= 640 && bounds.y <= -360,
+                              "Loading background must preserve aspect ratio, offset, and viewport coverage.");
+                        Check(bounds.y + bounds.height >= 360,
                               "Loading background must preserve aspect ratio, offset, and viewport coverage.");
                         introImage_ = true;
                     }
@@ -644,8 +650,12 @@ namespace
                 Check(introImage_, "The loading introduction displays the selected background.");
                 Check(sampleStarts == before + 2, "The first visible-frame Don and Kat must both request a sample.");
                 if (accelerated_)
-                    Check(!stretchRequests.empty() && stretchRequests.back()==1.5 && musicStarts.back().pitch==1.0F &&
-                          sampleSettings.back().pitch==1.5F, "Cold first-input playback respects independent BGM/hit pitch choices.");
+                {
+                    Check(!stretchRequests.empty() && stretchRequests.back()==1.5 && musicStarts.back().pitch==1.0F,
+                          "Cold first-input playback respects independent BGM/hit pitch choices.");
+                    Check(sampleSettings.back().pitch==1.5F,
+                          "Cold first-input playback respects independent BGM/hit pitch choices.");
+                }
                 verified_ = true;
                 return false;
             }
@@ -846,8 +856,9 @@ namespace
                 if (!taiko)
                     throw std::runtime_error("Retirement result missing.");
                 Check(taiko->summary.processedNotes == 3 && taiko->summary.unprocessedNotes == 0 &&
-                          taiko->judgements[5] == 3 && !taiko->summary.IsCleared() && !taiko->summary.CanUseHp() &&
-                          taiko->summary.controls.size() == 2,
+                      taiko->judgements[5] == 3,
+                      "Retire must mark all remaining notes MISS and keep only the new attempt's controls.");
+                Check(!taiko->summary.IsCleared() && !taiko->summary.CanUseHp() && taiko->summary.controls.size() == 2,
                       "Retire must mark all remaining notes MISS and keep only the new attempt's controls.");
                 phase_ = 2;
             }
@@ -909,13 +920,16 @@ namespace
                 std::this_thread::sleep_for(std::chrono::milliseconds{1});
             }
             const auto *focus = controller.Session().Gear().Lanes().front()->CurrentNote();
-            Check(controller.Session().FinalizedNoteCount() == 1 && focus &&
-                      focus->Timing() == RhythmTime{100'000} && focus->State() == NoteState::Pending &&
-                      std::ranges::any_of(controller.Feedback(), [](const auto &feedback) {
-                          return std::ranges::any_of(feedback.result.events, [](const auto &event) {
-                              return event.type == NoteEventType::Missed;
-                          });
-                      }),
+            const bool focusPending =
+                focus && focus->Timing() == RhythmTime{100'000} && focus->State() == NoteState::Pending;
+            Check(controller.Session().FinalizedNoteCount() == 1 && focusPending &&
+                      std::ranges::any_of(controller.Feedback(),
+                                          [](const auto &feedback)
+                                          {
+                                              return std::ranges::any_of(feedback.result.events,
+                                                                         [](const auto &event)
+                                                                         { return event.type == NoteEventType::Missed; });
+                                          }),
                   "The real controller must miss the late-Bad note and focus the Good next note without any key.");
             controller.Shutdown();
         }
@@ -974,7 +988,9 @@ namespace
                 frame();
                 [[maybe_unused]] const auto afterFrozen = std::chrono::steady_clock::now();
                 Check(controller.CurrentState() == PlayState::Gameplay && !controller.PauseMenuOpen() &&
-                          controller.Session().FinalizedNoteCount() == priorNotes + 1 && sampleStarts > samples,
+                      controller.Session().FinalizedNoteCount() == priorNotes + 1,
+                      "A note input after Space in the same batch must still be judged and play a hit sound.");
+                Check(sampleStarts > samples,
                       "A note input after Space in the same batch must still be judged and play a hit sound.");
                 const auto frozen = controller.Time();
                 edge(VK_SPACE, false);
@@ -1058,8 +1074,9 @@ namespace
                 const auto progress = static_cast<double>((controller.Time() - frozen).count());
                 const auto lowerBound = chartMicroseconds(afterFrozen, beforeLastFrame) - 1'000;
                 const auto upperBound = chartMicroseconds(beforeFrozen, std::chrono::steady_clock::now()) + 1'000;
-                Check(progress > 0 && progress >= lowerBound && progress <= upperBound &&
-                          controller.CurrentState() == PlayState::Gameplay,
+                Check(progress > 0 && progress >= lowerBound && progress <= upperBound,
+                      "Release must ignore Space and all four debug timeline keys.");
+                Check(controller.CurrentState() == PlayState::Gameplay,
                       "Release must ignore Space and all four debug timeline keys.");
 #endif
                 controller.Shutdown();
@@ -1129,8 +1146,9 @@ namespace
             router.StopAllVoices();
             const auto startsBeforeEnd = musicStarts.size();
             Check(router.PrepareMusicAt(RhythmTime{120'000'000}) == Preparation::Ready &&
-                      router.StartPreparedMusic(RhythmTime{120'000'000}, timer) &&
-                      musicStarts.size() == startsBeforeEnd && playback_.PlaybackCount() == voicesBefore,
+                  router.StartPreparedMusic(RhythmTime{120'000'000}, timer) && musicStarts.size() == startsBeforeEnd,
+                  "A chart beyond the music's end must resume without creating an out-of-range voice.");
+            Check(playback_.PlaybackCount() == voicesBefore,
                   "A chart beyond the music's end must resume without creating an out-of-range voice.");
         }
         void CheckResourceLoadFailure(const UpdateContext &ctx)
@@ -1143,8 +1161,9 @@ namespace
             failSampleLoads = true;
             failed.Start(*services_, RhythmTime{});
             failed.Update(ctx);
-            Check(failed.CurrentState() == PlayState::Pause && failed.PauseMenuOpen() && !failed.CanContinue() &&
-                      failed.ErrorMessage().find("hit sound load failure") != std::string_view::npos,
+            Check(failed.CurrentState() == PlayState::Pause && failed.PauseMenuOpen() && !failed.CanContinue(),
+                  "A failed sample must block gameplay and expose the pause menu with an error.");
+            Check(failed.ErrorMessage().find("hit sound load failure") != std::string_view::npos,
                   "A failed sample must block gameplay and expose the pause menu with an error.");
             Check(failed.PreparationFailed() && !failed.AttemptStarted() &&
                       failed.ErrorSource() == GameplayErrorSource::Audio,
@@ -1154,8 +1173,9 @@ namespace
             failSampleLoads = false;
             failed.RetryFromPause(ctx);
             WaitForGameplay(failed, ctx);
-            Check(failed.ErrorMessage().empty() && failed.Session().CanUseHp() && failed.AttemptStarted() &&
-                      !failed.PreparationFailed() && failed.ErrorSource() == GameplayErrorSource::None,
+            Check(failed.ErrorMessage().empty() && failed.Session().CanUseHp() && failed.AttemptStarted(),
+                  "Retry must reload failed resources and begin a clean attempt after recovery.");
+            Check(!failed.PreparationFailed() && failed.ErrorSource() == GameplayErrorSource::None,
                   "Retry must reload failed resources and begin a clean attempt after recovery.");
             failed.Shutdown();
         }
@@ -1193,7 +1213,9 @@ namespace
             failNextMusicStart = true;
             Check(common->ResumeFromPause(ctx, RhythmDuration{500'000}), "A seek request must be accepted.");
             Check(common->CurrentState() == PlayState::Pause && common->PauseMenuOpen() &&
-                      common->Time() == RhythmTime{500'000} && !common->ErrorMessage().empty(),
+                  common->Time() == RhythmTime{500'000},
+                  "Audio failure must keep a frozen clock and expose the pause menu/error.");
+            Check(!common->ErrorMessage().empty(),
                   "Audio failure must keep a frozen clock and expose the pause menu/error.");
             common->RetryFromPause(ctx);
             Check(common->CurrentState() == PlayState::Loading, "Retry must use Loading for every mode.");
@@ -1234,11 +1256,15 @@ namespace
                 if (expireLastNote)
                 {
                     Check(controller.ShouldShowResult() && !controller.PauseMenuOpen() &&
-                              controller.Session().CanUseHp() && controller.Session().FinalizedNoteCount() == 2,
+                          controller.Session().CanUseHp(),
+                          "Escape must finalize the expired last target and end immediately without using pause.");
+                    Check(controller.Session().FinalizedNoteCount() == 2,
                           "Escape must finalize the expired last target and end immediately without using pause.");
                     auto result = controller.TakeResult();
                     Check(result && result->Summary().endReason == PlayEndReason::Completed &&
-                              result->Summary().controls.empty() && result->Summary().endTime == controller.Time(),
+                          result->Summary().controls.empty(),
+                          "The immediate result must be a normal completion at the Escape time.");
+                    Check(result->Summary().endTime == controller.Time(),
                           "The immediate result must be a normal completion at the Escape time.");
                 }
                 else
@@ -1381,8 +1407,9 @@ namespace
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
         while (!(loaded = loader.Poll()) && std::chrono::steady_clock::now() < deadline)
             std::this_thread::sleep_for(std::chrono::milliseconds{1});
-        Check(loaded && !loaded->Succeeded() && !loaded->diagnostics.empty() && !loaded->session,
+        Check(loaded && !loaded->Succeeded() && !loaded->diagnostics.empty(),
               "The normal song-selection loader reports an empty-chart error before scene entry.");
+        Check(!loaded->session, "The normal song-selection loader reports an empty-chart error before scene entry.");
     }
 } // namespace
 int main(int argc, char **argv)

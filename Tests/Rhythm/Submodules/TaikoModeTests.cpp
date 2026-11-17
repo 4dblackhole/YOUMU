@@ -18,20 +18,22 @@ namespace tests
             {
                 const auto state = note.State();
                 const auto result = session.ProcessInput(key, edge, RhythmTime{us});
-                Require(
-                    note.Progress() == NoteProgress{count, 3} && note.State() == state &&
-                        !HasEvent(result, NoteEventType::HitAccepted) &&
-                        std::ranges::all_of(result.events, [](const auto &event)
+                Require(note.Progress() == NoteProgress{count, 3} && note.State() == state &&
+                            !HasEvent(result, NoteEventType::HitAccepted),
+                        "Wrong/released/out-of-range input must not change the phase, count or emit a timing rejection.");
+                Require(std::ranges::all_of(result.events,
+                                            [](const auto &event)
                                             { return event.judgement.grade == JudgementGrade::Unjudged; }),
-                    "Wrong/released/out-of-range input must not change the phase, count or emit a timing rejection.");
+                        "Wrong/released/out-of-range input must not change the phase, count or emit a timing rejection.");
             };
             const auto accept = [&](char key, std::int64_t us, std::size_t count)
             {
                 const auto result = session.ProcessInput(key, InputEdge::Pressed, RhythmTime{us});
                 const auto sound = key == 'F' ? "Taiko.Don.Hit" : "Taiko.Kat.Hit";
-                Require(HasEvent(result, NoteEventType::HitAccepted) &&
-                            note.Progress() == NoteProgress{count, 3} && result.audioCues.size() == 1 &&
-                            result.audioCues.front().sound == sound,
+                Require(HasEvent(result, NoteEventType::HitAccepted) && note.Progress() == NoteProgress{count, 3} &&
+                        result.audioCues.size() == 1,
+                        "Accepted alternation must count once and sound the actual action, including Kat-first.");
+                Require(result.audioCues.front().sound == sound,
                         "Accepted alternation must count once and sound the actual action, including Kat-first.");
             };
             reject(other, 499'999, 0, InputEdge::Pressed);
@@ -52,8 +54,11 @@ namespace tests
             static_cast<void>(session.Update(RhythmTime{1'500'000}));
             const auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{1'500'000});
             const auto *taiko = dynamic_cast<const TaikoPlayResult *>(result.get());
-            Require(taiko && taiko->poorCount == 0 && taiko->timingErrors.empty() &&
-                        taiko->summary.accuracy.Units() == 66'666'666,
+            if (!taiko)
+                throw std::runtime_error("Wrong-order result must be a Taiko result.");
+            Require(taiko->poorCount == 0 && taiko->timingErrors.empty(),
+                    "Wrong order must not add POOR/timing samples or subtract from the two accepted hits.");
+            Require(taiko->summary.accuracy.Units() == 66'666'666,
                     "Wrong order must not add POOR/timing samples or subtract from the two accepted hits.");
         }
         // Explicit YME sound assignments still override action-based default sounds.
@@ -150,10 +155,10 @@ namespace tests
             'F', InputEdge::Pressed, RhythmTime{70'000});
         const NoteProcessResult insideGood = tickRoll.session->ProcessInput(
             'D', InputEdge::Pressed, RhythmTime{71'000});
-        Require(HasEvent(first, NoteEventType::TickAccepted) &&
-                    !HasEvent(duplicate, NoteEventType::TickAccepted) &&
-                    !HasEvent(outsideGood, NoteEventType::TickAccepted) &&
-                    HasEvent(insideGood, NoteEventType::TickAccepted),
+        Require(HasEvent(first, NoteEventType::TickAccepted) && !HasEvent(duplicate, NoteEventType::TickAccepted) &&
+                !HasEvent(outsideGood, NoteEventType::TickAccepted),
+                "TickRoll must cap each tick to one hit and use the Good window.");
+        Require(HasEvent(insideGood, NoteEventType::TickAccepted),
                 "TickRoll must cap each tick to one hit and use the Good window.");
 
         Require(tickRoll.session->Gear().Lanes().front()->Notes().front()->ProcessedTickCount() == 2,
@@ -170,12 +175,9 @@ namespace tests
             MakeLongPattern(TaikoNoteType::BigTickRoll, {"TickDivision=16"}));
         ModeLoadResult bigRoll =
             taiko.CreateSession(MakeLongPattern(TaikoNoteType::BigRoll));
-        Require(bigRoll.Succeeded() &&
-                    bigRoll.session->FindNotePresentation(1)->visualKind ==
-                        NoteVisualKind::BigRoll &&
-                    bigTickRoll.Succeeded() &&
-                    bigTickRoll.session->FindNotePresentation(1)->visualKind ==
-                        NoteVisualKind::BigRoll,
+        Require(bigRoll.Succeeded() && bigRoll.session->FindNotePresentation(1)->visualKind == NoteVisualKind::BigRoll &&
+                bigTickRoll.Succeeded(), "BigRoll variants must use the large long-note presentation.");
+        Require(bigTickRoll.session->FindNotePresentation(1)->visualKind == NoteVisualKind::BigRoll,
                 "BigRoll variants must use the large long-note presentation.");
     }
 
@@ -280,10 +282,10 @@ Mode: Taiko
             donBuzz.session->Update(RhythmTime{125'000}, heldDon);
         const NoteProcessResult releasedTick =
             donBuzz.session->Update(RhythmTime{250'000});
-        Require(HasEvent(donTick, NoteEventType::TickAccepted) &&
-                    donTick.audioCues.size() == 1 &&
-                    donTick.audioCues.front().sound == "Taiko.Don.Hit" &&
-                    HasEvent(releasedTick, NoteEventType::TickMissed),
+        Require(HasEvent(donTick, NoteEventType::TickAccepted) && donTick.audioCues.size() == 1 &&
+                donTick.audioCues.front().sound == "Taiko.Don.Hit",
+                "Buzz must sound only authored ticks while its action is held.");
+        Require(HasEvent(releasedTick, NoteEventType::TickMissed),
                 "Buzz must sound only authored ticks while its action is held.");
 
         ModeLoadResult katBuzz = taiko.CreateSession(
@@ -393,8 +395,9 @@ Mode: Taiko
                                    (missTail ? NoteEventType::TickMissed : NoteEventType::TickAccepted);
                     });
                 Require(tailEvent != log.events.end() && note.ProcessedTickCount() == view.tickTimes.size() &&
-                            note.Accuracy().acceptedTicks == view.tickTimes.size() - (missTail ? 1 : 0) &&
-                            log.finalizedAccuracies.size() == 1,
+                        note.Accuracy().acceptedTicks == view.tickTimes.size() - (missTail ? 1 : 0),
+                        "Tail ticks must be accepted/missed and included in finalized accuracy exactly once.");
+                Require(log.finalizedAccuracies.size() == 1,
                         "Tail ticks must be accepted/missed and included in finalized accuracy exactly once.");
                 Require(session.Update(view.endTime + RhythmDuration{1}).events.empty(),
                         "An already finalized tail must not emit another tick or completion.");
@@ -468,13 +471,11 @@ Mode: Taiko
         Require(loaded.session->Gear().LaneCount() == 1 &&
                     loaded.session->Gear().Lanes().front()->Notes().size() == 5,
                 "Don, Kat, large notes and rolls must share one ordered Lane.");
-        Require(loaded.session->FindNotePresentation(1)->visualKind ==
-                        NoteVisualKind::Don &&
-                    loaded.session->FindNotePresentation(4)->visualKind ==
-                        NoteVisualKind::BigKat &&
-                    loaded.session->FindNotePresentation(5)->visualKind ==
-                        NoteVisualKind::Roll &&
-                    loaded.session->FindNotePresentation(5)->hasEndTime,
+        Require(loaded.session->FindNotePresentation(1)->visualKind == NoteVisualKind::Don &&
+                loaded.session->FindNotePresentation(4)->visualKind == NoteVisualKind::BigKat &&
+                loaded.session->FindNotePresentation(5)->visualKind == NoteVisualKind::Roll,
+                "Every logical note must expose its mode-owned visual identity.");
+        Require(loaded.session->FindNotePresentation(5)->hasEndTime,
                 "Every logical note must expose its mode-owned visual identity.");
     }
 
@@ -498,8 +499,9 @@ Mode: Taiko
                                 {other, RhythmTime{100'000}, {}}});
             const auto &values = session.EvaluateAutomation(RhythmTime{150'000});
             Require(values.size() == 2 && std::abs(values[0].value - .75) < 1e-9 &&
-                        std::abs(values[1].value - .8) < 1e-9 &&
-                        session.EvaluateAutomation(RhythmTime{150'000}).data() == values.data(),
+                    std::abs(values[1].value - .8) < 1e-9,
+                    "Automation must select the latest command per target, interpolate and reuse same-time results.");
+            Require(session.EvaluateAutomation(RhythmTime{150'000}).data() == values.data(),
                     "Automation must select the latest command per target, interpolate and reuse same-time results.");
             Require(session.EvaluateAutomation(RhythmTime{50'000}).size() == 1 &&
                         session.EvaluateAutomation(RhythmTime{50'000})[0].value == .25 &&

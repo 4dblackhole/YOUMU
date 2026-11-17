@@ -38,7 +38,9 @@ namespace tests
         const auto serialized = Read(path);
         SongFavorites reload(path);
         Require(reload.Load(error) && reload.Values().Find(first)->name == L"練習 한글 \"A\"" &&
-                    reload.Values().Find(first)->patternKeys.contains(key) && reload.Values().Find(second)->patternKeys.contains(key),
+                reload.Values().Find(first)->patternKeys.contains(key),
+                "UTF-8 names, JSON escapes and multiple folder membership round-trip across instances.");
+        Require(reload.Values().Find(second)->patternKeys.contains(key),
                 "UTF-8 names, JSON escapes and multiple folder membership round-trip across instances.");
         values.Rename(first, L"Renamed");
         values.SetMembership(first, key, false);

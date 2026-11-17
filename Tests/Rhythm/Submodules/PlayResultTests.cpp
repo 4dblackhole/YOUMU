@@ -35,9 +35,10 @@ namespace tests
         Require(session.Statistics().combo == 2, "Roll hits do not each increment combo.");
         static_cast<void>(session.Update(RhythmTime{1'500'000}));
         auto statistics = session.Statistics();
-        Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.okCount == 1 &&
-                    statistics.judgements[0] == 3 && session.Accuracy()->Units() == 100'000'000 &&
-                    session.Score() == 50'000'000,
+        Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.okCount == 1,
+                "A successful roll adds one OK/combo; live counts share the result collector.");
+        Require(statistics.judgements[0] == 3 && session.Accuracy()->Units() == 100'000'000 &&
+                session.Score() == 50'000'000,
                 "A successful roll adds one OK/combo; live counts share the result collector.");
         hit('D', 2'070'000);
         Require(session.Statistics().combo == 0 && session.Statistics().judgements[4] == 1,
@@ -51,16 +52,20 @@ namespace tests
                 "A later accepted completion starts a new combo and preserves the maximum.");
         session.RewindJudgements(RhythmTime{2'000'000});
         statistics = session.Statistics();
-        Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.poorCount == 0 &&
-                    statistics.judgements[4] == 0 && statistics.okCount == 1 &&
-                    session.Accuracy()->Units() == 100'000'000 && session.Score() == 50'000'000,
+        Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.poorCount == 0,
+                "Rewind rebuilds score, combo, maximum and all counts from retained judgement history.");
+        Require(statistics.judgements[4] == 0 && statistics.okCount == 1 && session.Accuracy()->Units() == 100'000'000,
+                "Rewind rebuilds score, combo, maximum and all counts from retained judgement history.");
+        Require(session.Score() == 50'000'000,
                 "Rewind rebuilds score, combo, maximum and all counts from retained judgement history.");
         session.RetireRemaining(RhythmTime{2'000'000});
         Require(session.Statistics().combo == 0 && session.Statistics().judgements[5] == 3,
                 "Retirement applies remaining logical misses to live counts and combo.");
         auto result = session.TakeResult(PlayEndReason::Interrupted, RhythmTime{2'000'000});
         Require(result->Summary().maximumCombo == 3 && session.Score() == 50'000'000 &&
-                    result->Summary().score == session.Score() && result->Summary().accuracy.Units() == 50'000'000,
+                result->Summary().score == session.Score(),
+                "Retire preserves earned points and maximum combo, and the result shows the same score.");
+        Require(result->Summary().accuracy.Units() == 50'000'000,
                 "Retire preserves earned points and maximum combo, and the result shows the same score.");
     }
 
@@ -153,24 +158,32 @@ namespace tests
         if (!taiko)
             throw std::runtime_error("Taiko result type must be preserved.");
         Require(taiko->summary.totalNotes == 4 && taiko->summary.processedNotes == 3 &&
-                    taiko->summary.unprocessedNotes == 1 && taiko->summary.accuracy.Units() == expectedSum / 4,
+                taiko->summary.unprocessedNotes == 1,
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
-        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 2 && taiko->judgements[5] == 1 &&
-                    taiko->poorCount == 1 && taiko->okCount == 0,
+        Require(taiko->summary.accuracy.Units() == expectedSum / 4,
+                "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
+        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 2 && taiko->judgements[5] == 1,
+                "Count graded inputs and failed completions once; releases and blanks are never POOR.");
+        Require(taiko->poorCount == 1 && taiko->okCount == 0,
                 "Count graded inputs and failed completions once; releases and blanks are never POOR.");
         Require(taiko->timingErrors.size() == 3 && taiko->meanErrorMilliseconds &&
-                    std::abs(*taiko->meanErrorMilliseconds - 20.0 / 3) < 1e-9 &&
-                    std::abs(*taiko->varianceMillisecondsSquared - 200.0 / 9) < 1e-9,
+                std::abs(*taiko->meanErrorMilliseconds - 20.0 / 3) < 1e-9,
                 "Population variance must exclude automatic misses and free roll hits.");
-        Require(taiko->groups[0].total == 2 && taiko->groups[1].total == 1 && taiko->groups[2].total == 1 &&
-                    taiko->notes[0].accuracy.Units() == 0 &&
-                    taiko->notes[2].accuracy.Units() == 33'333'333 && taiko->notes[3].accuracy.Units() == 0,
+        Require(std::abs(*taiko->varianceMillisecondsSquared - 200.0 / 9) < 1e-9,
+                "Population variance must exclude automatic misses and free roll hits.");
+        Require(taiko->groups[0].total == 2 && taiko->groups[1].total == 1 && taiko->groups[2].total == 1,
+                "A POOR normal note scores zero; groups retain partial roll accuracy and note weights.");
+        Require(taiko->notes[0].accuracy.Units() == 0 && taiko->notes[2].accuracy.Units() == 33'333'333 &&
+                taiko->notes[3].accuracy.Units() == 0,
                 "A POOR normal note scores zero; groups retain partial roll accuracy and note weights.");
         const auto &inputs = taiko->summary.inputs;
-        Require(inputs.size() == 8 && inputs[0].time.count() == -1'000'000 && inputs[3].time == inputs[4].time &&
-                    inputs[3].edge == InputEdge::Pressed && inputs[4].edge == InputEdge::Released &&
-                    inputs[4].physicalKey == 'F' && taiko->summary.inputMapping.at('F') == inputs[3].action &&
-                    taiko->summary.initialTime.count() == -2'000'000,
+        Require(inputs.size() == 8 && inputs[0].time.count() == -1'000'000 && inputs[3].time == inputs[4].time,
+                "Input logs must preserve signed microseconds, physical keys, edges and tied event order.");
+        Require(inputs[3].edge == InputEdge::Pressed && inputs[4].edge == InputEdge::Released &&
+                inputs[4].physicalKey == 'F',
+                "Input logs must preserve signed microseconds, physical keys, edges and tied event order.");
+        Require(taiko->summary.inputMapping.at('F') == inputs[3].action &&
+                taiko->summary.initialTime.count() == -2'000'000,
                 "Input logs must preserve signed microseconds, physical keys, edges and tied event order.");
         loaded.session.reset();
         Require(result->Summary().inputs.size() == 8 && taiko->notes.size() == 4,
@@ -204,8 +217,9 @@ namespace tests
             const auto *taiko = dynamic_cast<const TaikoPlayResult *>(result.get());
             if (!taiko)
                 throw std::runtime_error("Long Taiko result type must be preserved.");
-            Require(taiko->okCount == 1 && taiko->judgements[5] == 0 && taiko->summary.processedNotes == 1 &&
-                        taiko->summary.accuracy.Units() == 100'000'000,
+            Require(taiko->okCount == 1 && taiko->judgements[5] == 0 && taiko->summary.processedNotes == 1,
+                    "Each successful long-note completion must produce exactly one OK.");
+            Require(taiko->summary.accuracy.Units() == 100'000'000,
                     "Each successful long-note completion must produce exactly one OK.");
             Require(taiko->summary.maximumCombo == 1,
                     "Every long-note kind contributes exactly one combo on successful completion.");

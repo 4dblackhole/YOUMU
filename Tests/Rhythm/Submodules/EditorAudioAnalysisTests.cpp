@@ -25,8 +25,9 @@ namespace tests
                 consume(channels, rate, pcm.subspan(offset, std::min(chunk, pcm.size() - offset)));
         };
         const auto analysis = AnalyzeAudio({}, {}, reader);
-        Require(reads == 1 && analysis.sampleRate == rate && analysis.frames.size() == 100 &&
-                    std::abs(analysis.durationSeconds - 1) < 1e-9,
+        Require(reads == 1 && analysis.sampleRate == rate && analysis.frames.size() == 100,
+                "Analysis must retain injected PCM sample rate and exact duration.");
+        Require(std::abs(analysis.durationSeconds - 1) < 1e-9,
                 "Analysis must retain injected PCM sample rate and exact duration.");
         const auto &frame = analysis.frames[30];
         const auto strongest = std::ranges::max_element(frame.bands);
@@ -35,7 +36,9 @@ namespace tests
             std::pow(analysis.maximumFrequencyHz / analysis.minimumFrequencyHz,
                      (static_cast<double>(band) + .5) / static_cast<double>(frame.bands.size()));
         const float db = SpectrumFloorDb * (1 - *strongest);
-        Require(std::abs(frequency - 1000) < 80 && db > -9 && db < -4 && frame.minimum < -.49F && frame.maximum > .49F,
+        Require(std::abs(frequency - 1000) < 80 && db > -9 && db < -4,
+                "Opposite-phase stereo must preserve its 1 kHz, half-scale spectrum and waveform.");
+        Require(frame.minimum < -.49F && frame.maximum > .49F,
                 "Opposite-phase stereo must preserve its 1 kHz, half-scale spectrum and waveform.");
         Require(std::ranges::all_of(analysis.frames[90].bands, [](float level) { return level < .001F; }) &&
                     analysis.frames[90].peak < .0001F,
@@ -57,7 +60,9 @@ namespace tests
         {
             const auto &expected = analysis.frames[index], &actual = fragmentedAnalysis.frames[index];
             Require(actual.minimum == expected.minimum && actual.maximum == expected.maximum &&
-                        actual.peak == expected.peak && actual.bands == expected.bands,
+                    actual.peak == expected.peak,
+                    "Windows spanning PCM chunks must retain the same extrema and spectrum.");
+            Require(actual.bands == expected.bands,
                     "Windows spanning PCM chunks must retain the same extrema and spectrum.");
         }
         for (const auto region : {std::pair{.301, .002}, std::pair{-.01, 1.02}, std::pair{1.1, .25}})

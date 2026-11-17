@@ -296,8 +296,9 @@ namespace
         for (const auto &[node, before] : descendants)
         {
             const auto after = node->BoundsInCanvas();
-            Check(Near(after.x - before.x, 37) && Near(after.y - before.y, 29) && Near(after.width, before.width) &&
-                      Near(after.height, before.height),
+            Check(Near(after.x - before.x, 37) && Near(after.y - before.y, 29) && Near(after.width, before.width),
+                  "One gear transform must move all nested keys, lane parts, notes and judgements together.");
+            Check(Near(after.height, before.height),
                   "One gear transform must move all nested keys, lane parts, notes and judgements together.");
         }
         const auto unchangedHud = Node(root, "Hud.GameProgress").BoundsInCanvas();
@@ -404,9 +405,9 @@ namespace
             presenter.OnResize(width, height);
             const auto bg = Node(root, "Background").Bounds();
             const auto logicalWidth = viewport.width / viewport.height * 720;
-            Check(bg.x <= -logicalWidth / 2 && bg.x + bg.width >= logicalWidth / 2 && bg.y <= -360 &&
-                      bg.y + bg.height >= 360,
+            Check(bg.x <= -logicalWidth / 2 && bg.x + bg.width >= logicalWidth / 2 && bg.y <= -360,
                   "Chart backgrounds must cover every viewport, including authored offsets.");
+            Check(bg.y + bg.height >= 360, "Chart backgrounds must cover every viewport, including authored offsets.");
             Check(Near(bg.x + bg.width / 2, 70) && Near(bg.y + bg.height / 2, -25),
                   "Background offsets must follow the engine's +Y-up coordinate system.");
             checkFraction(.5F);
@@ -572,8 +573,10 @@ namespace
                                           [&](const auto &child)
                                           {
                                               const auto position = child->Position();
-                                              return child->Name() == "Lane.MeasureLine" && child->IsVisible() &&
-                                                     Near(position.x, centre.x) && Near(position.y, centre.y);
+                                              const bool visibleMeasureLine =
+                                                  child->Name() == "Lane.MeasureLine" && child->IsVisible();
+                                              return visibleMeasureLine && Near(position.x, centre.x) &&
+                                                     Near(position.y, centre.y);
                                           });
                 Check(aligned == 1,
                       "Coincident note and bar must stay centred together under Whole/Separate and resize.");
@@ -714,8 +717,11 @@ namespace
         line.Present({L"Effect file", L"quality-regression.yme:4", L"[HitSound] invalid value"}, 1280, 720);
         auto &root = line.Canvas()->Root();
         const auto text = [&](const char *name) { return std::wstring(Node(root, name).GetComponent<TextVisualComponent>()->Text()); };
-        Check(line.IsShown() && text("Hud.Error.Kind") == L"Effect file" && text("Hud.Error.Location") == L"quality-regression.yme:4" &&
-                  text("Hud.Error.Cause") == L"[HitSound] invalid value" && Node(root, "Hud.Error.LocationChip").IsVisible(),
+        Check(line.IsShown() && text("Hud.Error.Kind") == L"Effect file" &&
+              text("Hud.Error.Location") == L"quality-regression.yme:4",
+              "An effect diagnostic names its kind, file and line, and cause.");
+        Check(text("Hud.Error.Cause") == L"[HitSound] invalid value" &&
+              Node(root, "Hud.Error.LocationChip").IsVisible(),
               "An effect diagnostic names its kind, file and line, and cause.");
         const auto plate = Node(root, "Hud.Error").BoundsInCanvas();
         Check(Near(plate.y + plate.height, 360 - UiErrorLine::Top) && Near(plate.x + plate.width * .5F, 0) &&
@@ -975,13 +981,15 @@ namespace
         static_cast<void>(loaded.session->Update(RhythmTime{1'200'000}));
         presenter.UpdatePresentation(RhythmTime{1'200'000});
         Check(Number(root, "Hud.Score") == "33333333" && Number(root, "Hud.Combo") == "0" &&
-                  Number(root, "Hud.JudgementCount5") == "1" && Number(root, "Hud.JudgementCount7") == "1",
+              Number(root, "Hud.JudgementCount5") == "1",
+              "POOR and automatic MISS update exact score/counts and break combo.");
+        Check(Number(root, "Hud.JudgementCount7") == "1",
               "POOR and automatic MISS update exact score/counts and break combo.");
         loaded.session->RewindJudgements(RhythmTime{500'000});
         presenter.UpdatePresentation(RhythmTime{500'000});
         Check(Number(root, "Hud.Score") == "33333333" && Number(root, "Hud.Combo") == "1" &&
-                  Number(root, "Hud.JudgementCount5") == "0" && Number(root, "Hud.JudgementCount7") == "0",
-              "Rewind immediately restores all visible HUD values.");
+              Number(root, "Hud.JudgementCount5") == "0", "Rewind immediately restores all visible HUD values.");
+        Check(Number(root, "Hud.JudgementCount7") == "0", "Rewind immediately restores all visible HUD values.");
         for (const auto width : {405U, 1280U, 1920U})
         {
             visuals.OnResize(width, 720);
@@ -1005,8 +1013,9 @@ namespace
               "Updates/resizes reuse every number node and image independently of note pooling.");
         const auto accuracy = Node(root, "Hud.Accuracy").BoundsInCanvas();
         const auto panel = Node(root, "Hud.ScorePanel").BoundsInCanvas();
-        Check(Near(panel.y + panel.height, 360 - 24) && accuracy.x >= panel.x && Near(accuracy.width, 133) &&
-                  accuracy.x + accuracy.width <= Node(root, "Hud.Score").BoundsInCanvas().x,
+        Check(Near(panel.y + panel.height, 360 - 24) && accuracy.x >= panel.x && Near(accuracy.width, 133),
+              "Accuracy keeps a fixed 100.00% width in the top-right panel, left of the score.");
+        Check(accuracy.x + accuracy.width <= Node(root, "Hud.Score").BoundsInCanvas().x,
               "Accuracy keeps a fixed 100.00% width in the top-right panel, left of the score.");
         presenter.Shutdown();
     }
@@ -1026,9 +1035,9 @@ namespace
         auto &lock = Node(canvas.Root(), "Hud.HP.Lock");
         Check(NodeCount(canvas.Root()) == baseline + 4 && frame.Children().size() == 3,
               "HP consists of the frame, one fill, the clear marker and the lock.");
-        Check(Near(frame.Bounds().x, -640) && Near(frame.Bounds().y, 176) && Near(frame.Bounds().width, 490) &&
-                  Near(frame.Bounds().height, 24),
+        Check(Near(frame.Bounds().x, -640) && Near(frame.Bounds().y, 176) && Near(frame.Bounds().width, 490),
               "The HP frame starts at the left screen edge, 16 above the gear.");
+        Check(Near(frame.Bounds().height, 24), "The HP frame starts at the left screen edge, 16 above the gear.");
         Check(!fill.IsVisible() && !lock.IsVisible(), "Starting HP is zero and unlocked.");
         const auto image = [&](Visual2DNode &node)
         { return renderer.paths.at(node.GetComponent<SpriteVisualComponent>()->Style().normalImage.value).filename().wstring(); };
@@ -1050,9 +1059,9 @@ namespace
                   lock.IsVisible(),
               "Another gauge threshold moves the marker; the lock appears once HP is disabled.");
         view.SetLayout(800, 160);
-        Check(Near(frame.Bounds().x, -400) && Near(fill.Bounds().width, 454 * .6F) && lock.IsVisible() &&
-                  NodeCount(canvas.Root()) == nodes,
+        Check(Near(frame.Bounds().x, -400) && Near(fill.Bounds().width, 454 * .6F) && lock.IsVisible(),
               "Resizing preserves HP and the lock without allocating new nodes.");
+        Check(NodeCount(canvas.Root()) == nodes, "Resizing preserves HP and the lock without allocating new nodes.");
         view.Shutdown();
     }
 } // namespace

@@ -124,8 +124,9 @@ namespace tests
             bool refused = false;
             try { editor.Save(); }
             catch (const std::invalid_argument &) { refused = true; }
-            Require(refused && editor.Dirty() && editor.Revision() == revision &&
-                        ReadFile(pattern.sourcePath) == original && editor.Pattern().notes.size() == 1,
+            Require(refused && editor.Dirty() && editor.Revision() == revision,
+                    "Save-path aliases must be rejected before changing files, dirty state or document.");
+            Require(ReadFile(pattern.sourcePath) == original && editor.Pattern().notes.size() == 1,
                     "Save-path aliases must be rejected before changing files, dirty state or document.");
             editor.Undo();
             Require(editor.Pattern().notes.empty(), "A rejected save must preserve undo history.");
@@ -163,9 +164,10 @@ namespace tests
     {
         ChartParser parser;
         const auto music = parser.ParseMusic("\xEF\xBB\xBFVersion: 7\nFile: music.wav\nTypo: value\n");
-        Require(music.Succeeded() && music.document.version == 7 && music.diagnostics.size() == 1 &&
-                    music.diagnostics.front().severity == DiagnosticSeverity::Warning &&
-                    music.diagnostics.front().location.line == 3,
+        Require(music.Succeeded() && music.document.version == 7 && music.diagnostics.size() == 1,
+                "BOM must preserve the first field and unknown fields must carry line-numbered warnings.");
+        Require(music.diagnostics.front().severity == DiagnosticSeverity::Warning &&
+                music.diagnostics.front().location.line == 3,
                 "BOM must preserve the first field and unknown fields must carry line-numbered warnings.");
         const auto pattern = parser.ParsePattern("\xEF\xBB\xBFVersion: 7\nBase BPM: 120\nTypo: value\n");
         Require(pattern.Succeeded() && pattern.document.version == 7 && pattern.diagnostics.size() == 1,
@@ -175,7 +177,9 @@ namespace tests
         const auto missing = folder.Path() / L"없는 채보.ymp";
         const auto missingPattern = parser.ParsePatternFile(missing);
         Require(!missingPattern.Succeeded() && missingPattern.diagnostics.front().location.file == missing &&
-                    !parser.ParseMusicFile(missing).Succeeded() && !parser.ParseEffectFile(missing).Succeeded(),
+                !parser.ParseMusicFile(missing).Succeeded(),
+                "Missing Unicode files must return diagnostics without throwing ANSI conversion errors.");
+        Require(!parser.ParseEffectFile(missing).Succeeded(),
                 "Missing Unicode files must return diagnostics without throwing ANSI conversion errors.");
         for (const auto *name : {L"이름 없는 곡", L"다른 곡"})
         {
@@ -247,9 +251,9 @@ namespace tests
         editor.ReplaceTiming({{{0, {}}, TimingDirectiveType::Bpm, 240},
                               {{1, {}}, TimingDirectiveType::DelayMilliseconds, -100}});
         Require(editor.Notes().front().timing == RhythmTime{900'000} &&
-                    editor.Notes().front().note.sourceOrder == noteId &&
-                    editor.AudioSourceRevision() == sourceRevision &&
-                    editor.NotesInTimeRange(RhythmTime{900'000}, RhythmTime{900'000}).size() == 1,
+                editor.Notes().front().note.sourceOrder == noteId && editor.AudioSourceRevision() == sourceRevision,
+                "Partial timing edits must preserve note IDs/sources and rebuild exact time queries.");
+        Require(editor.NotesInTimeRange(RhythmTime{900'000}, RhythmTime{900'000}).size() == 1,
                 "Partial timing edits must preserve note IDs/sources and rebuild exact time queries.");
         const auto revision = editor.Revision();
         bool rejected = false;
@@ -271,8 +275,9 @@ namespace tests
         effects.commands.push_back(speed);
         editor.ReplaceEffects(effects);
         Require(editor.Notes().front().scrollMultiplier == .5 && editor.AudioSourceRevision() == sourceRevision &&
-                    editor.NotesInMeasures(2, 3).size() == 2 &&
-                    editor.Notes().front().timing == RhythmTime{900'000},
+                editor.NotesInMeasures(2, 3).size() == 2,
+                "Partial effect edits must keep time indices/pairs and update note speed.");
+        Require(editor.Notes().front().timing == RhythmTime{900'000},
                 "Partial effect edits must keep time indices/pairs and update note speed.");
         const auto effectRevision = editor.Revision();
         effects.commands.front().endValue = 0;
