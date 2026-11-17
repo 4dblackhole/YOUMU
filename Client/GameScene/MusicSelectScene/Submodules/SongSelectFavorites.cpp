@@ -16,7 +16,8 @@ void MusicSelectView::OpenFavoritesPanel()
         {
             const auto &entry = song.patterns[selection_.selectedPatternIndex_];
             pattern = entry.patternPath;
-            name = song_select::SongTitle(song) + L" / " + song_select::PatternName(entry);
+            name = song_select::SongTitle(song, selection_.notation_) + L" / " +
+                   song_select::PatternName(entry, selection_.notation_);
         }
     }
     favoritesPanel_.Open(selection_.favorites_, pattern, std::move(name));

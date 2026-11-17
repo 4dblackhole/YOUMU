@@ -820,11 +820,18 @@ namespace
         Check(state.Document().Effects().commands.size() == 2, "Effect multi-paste must undo as a group.");
         auto metadata = state.Document().Pattern();
         metadata.name = "Changed";
+        metadata.romanizedName = "Changed (romanized)";
+        metadata.romanizedMaker = "Maker (romanized)";
         state.Replace(metadata, state.Document().Effects());
         state.Undo();
-        Check(state.Document().Pattern().name.empty(), "Metadata edits must participate in the same history.");
+        Check(state.Document().Pattern().name.empty() && state.Document().Pattern().romanizedName.empty() &&
+                  state.Document().Pattern().romanizedMaker.empty(),
+              "Metadata edits must participate in the same history.");
         state.Redo();
         Check(state.Document().Pattern().name == "Changed", "Metadata redo must restore its value.");
+        Check(state.Document().Pattern().romanizedName == "Changed (romanized)" &&
+                  state.Document().Pattern().romanizedMaker == "Maker (romanized)",
+              "Metadata redo must restore the romanized lines too.");
     }
 
     void TestLastNoteSeeking()

@@ -189,11 +189,11 @@ void MusicSelectScene::CreateDifficulty(SceneManager &scenes)
     const auto &song = selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
     library_->ReleaseAudio();
     // No file exists until the editor's Create; leaving before it leaves the song unchanged.
-    GameplayLaunchRequest request{{}, {}, song.audioPath, "Taiko", SongTitle(song), L""};
+    GameplayLaunchRequest request{{}, {}, song.audioPath, "Taiko", SongTitle(song, selection_.notation_), L""};
     request.globalOffsetMs = options_.Values().globalOffsetMs;
     request.volumes = options_.Values().volumes;
     request.songsRoot = library_->CatalogRoot();
-    request.songArtist = SongArtist(song);
+    request.songArtist = SongArtist(song, selection_.notation_);
     request.editorNewDifficulty = std::make_shared<const SongCatalogEntry>(song);
     selection_.ClearLaunchError();
     launchRequest_->Set(std::move(request));
@@ -243,17 +243,17 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
     GameplayLaunchRequest request{
         pattern.patternPath, pattern.effectPath,
         song.audioPath,      pattern.pattern.mode,
-        SongTitle(song),     pattern.pattern.makers.empty() ? L"" : DecodeDisplayText(pattern.pattern.makers.front())};
+        SongTitle(song, selection_.notation_), MakerName(pattern, selection_.notation_)};
     request.globalOffsetMs = options_.Values().globalOffsetMs;
     request.volumes = options_.Values().volumes;
-    request.patternTitle = PatternName(pattern);
+    request.patternTitle = PatternName(pattern, selection_.notation_);
     request.playOptions = selection_.playOptions_;
     request.songsRoot = library_->CatalogRoot();
     request.backgroundPath =
         SongLayout::BackgroundPathOfPattern(pattern.patternPath, pattern.pattern.backgroundFile);
     request.backgroundOffsetX = pattern.pattern.backgroundOffsetX;
     request.backgroundOffsetY = pattern.pattern.backgroundOffsetY;
-    request.songArtist = SongArtist(song);
+    request.songArtist = SongArtist(song, selection_.notation_);
     if (const auto keys = options_.Values().modeKeys.find(request.mode); keys != options_.Values().modeKeys.end())
         request.inputKeys = keys->second;
     if (purpose_ == SongSelectPurpose::Editor)

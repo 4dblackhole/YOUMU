@@ -1,5 +1,6 @@
 #pragma once
 #include "Catalog/SongCatalog.h"
+#include "Model/Submodules/NotationText.h"
 #include <Windows.h>
 #include <algorithm>
 #include <cwctype>
@@ -49,24 +50,33 @@ namespace song_select
         return text.empty() ? std::wstring{fallback} : text;
     }
 
-    [[nodiscard]] inline std::wstring SongTitle(const SongCatalogEntry &song)
+    // Song and chart texts are shown in the notation chosen in the options (NotationText).
+    // A song without any name shows its YMM file name.
+    [[nodiscard]] inline std::wstring SongTitle(const SongCatalogEntry &song, const TextNotation notation)
     {
-        return song.music.names.empty() ? song.metadataPath.stem().wstring()
-                                        : DecodeDisplayText(song.music.names.front());
+        const auto title = NotationText(song.music.names, song.music.romanizedName, notation);
+        return title.empty() ? song.metadataPath.stem().wstring() : DecodeDisplayText(title);
     }
 
-    [[nodiscard]] inline std::wstring SongArtist(const SongCatalogEntry &song)
+    // Empty when the song names no artist.
+    [[nodiscard]] inline std::wstring ArtistName(const SongCatalogEntry &song, const TextNotation notation)
     {
-        return song.music.artists.empty() ? L"—" : DecodeDisplayText(song.music.artists.front());
+        return DecodeDisplayText(NotationText(song.music.artists, song.music.romanizedArtist, notation));
     }
 
-    // Every name of a list, for the tooltip of a line that shows only the first.
-    [[nodiscard]] inline std::wstring AllNames(const std::vector<std::string> &values)
+    [[nodiscard]] inline std::wstring SongArtist(const SongCatalogEntry &song, const TextNotation notation)
     {
-        std::wstring names;
+        auto artist = ArtistName(song, notation);
+        return artist.empty() ? std::wstring{L"—"} : artist;
+    }
+
+    // Every notation of a block, the romanized line first, for the tooltip of a line that shows one.
+    [[nodiscard]] inline std::wstring AllNames(const std::vector<std::string> &values, const std::string_view romanized)
+    {
+        std::wstring names = DecodeDisplayText(romanized);
         for (const auto &value : values)
         {
-            if (value.empty())
+            if (value.empty() || value == romanized)
                 continue;
             if (!names.empty())
                 names += L" · ";
@@ -75,16 +85,27 @@ namespace song_select
         return names;
     }
 
-    [[nodiscard]] inline std::size_t NameCount(const std::vector<std::string> &values)
+    [[nodiscard]] inline std::size_t NameCount(const std::vector<std::string> &values, const std::string_view romanized)
     {
-        return static_cast<std::size_t>(std::ranges::count_if(values, [](const auto &value) { return !value.empty(); }));
+        const auto listed = std::ranges::count_if(
+            values, [romanized](const auto &value) { return !value.empty() && value != romanized; });
+        return static_cast<std::size_t>(listed) + (romanized.empty() ? 0 : 1);
     }
 
-    [[nodiscard]] inline std::wstring PatternName(
-        const SongCatalogPattern &pattern)
+    // A chart without a name shows its YMP file name.
+    [[nodiscard]] inline std::wstring PatternName(const SongCatalogPattern &pattern, const TextNotation notation)
     {
-        return pattern.pattern.name.empty() ? pattern.patternPath.stem().wstring()
-                                            : DecodeDisplayText(pattern.pattern.name);
+        const auto name = NotationText(pattern.pattern.name, pattern.pattern.romanizedName, notation);
+        return name.empty() ? pattern.patternPath.stem().wstring() : DecodeDisplayText(name);
+    }
+
+    // The representative (first) maker; empty when the chart names none. Makers are different
+    // people, so only the romanized line replaces the first one, never another maker.
+    [[nodiscard]] inline std::wstring MakerName(const SongCatalogPattern &pattern, const TextNotation notation)
+    {
+        const auto &makers = pattern.pattern.makers;
+        const std::string_view first = makers.empty() ? std::string_view{} : std::string_view{makers.front()};
+        return DecodeDisplayText(NotationText(first, pattern.pattern.romanizedMaker, notation));
     }
 
     [[nodiscard]] inline std::wstring Lowercase(std::wstring value)
@@ -138,6 +159,9 @@ namespace song_select
             fields.push_back(FoldSearchText(song.metadataPath.stem().wstring()));
         append(song.music.names);
         append(song.music.artists);
+        // The romanized lines are searched whichever notation is shown.
+        fields.push_back(FoldSearchText(DecodeDisplayText(song.music.romanizedName)));
+        fields.push_back(FoldSearchText(DecodeDisplayText(song.music.romanizedArtist)));
         append(song.music.tags);
         for (const auto &pattern : song.patterns)
             append(pattern.pattern.tags);

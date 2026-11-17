@@ -82,7 +82,9 @@ SongCatalogPattern Create(const fs::path &songsRoot, const SongCatalogEntry &son
     pattern.sourcePath = folder / (filename + L".ymp");
     pattern.effectFile = filename + L".yme";
     pattern.name = metadata.name;
+    pattern.romanizedName = metadata.romanizedName;
     pattern.makers = metadata.makers;
+    pattern.romanizedMaker = metadata.romanizedMaker;
     pattern.tags = metadata.tags;
     pattern.mode = "Taiko";
     pattern.baseBpm = metadata.baseBpm;

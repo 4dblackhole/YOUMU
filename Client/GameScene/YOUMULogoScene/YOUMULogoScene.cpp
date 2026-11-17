@@ -12,7 +12,7 @@ YOUMULogoScene::YOUMULogoScene(ScreenVisual2DManager &visuals,
                                          TextCatalog &texts,
                                          OptionSettings &options,
                                          std::shared_ptr<SongLibrary> library)
-    : library_(std::move(library)), view_(std::make_unique<LogoView>(visuals, texts, options))
+    : library_(std::move(library)), options_(options), view_(std::make_unique<LogoView>(visuals, texts, options))
 {
     if (!library_)
         throw std::invalid_argument("The title requires a song library.");
@@ -87,8 +87,8 @@ void YOUMULogoScene::ShowPlayer()
     {
         const auto &state = library_->Player().State();
         display.hasSong = true;
-        display.title = song_select::SongTitle(*song);
-        display.artist = song_select::SongArtist(*song);
+        display.title = song_select::SongTitle(*song, options_.Values().notation);
+        display.artist = song_select::SongArtist(*song, options_.Values().notation);
         display.artwork = library_->FocusedArtwork();
         display.playing = state.IsPlaying();
         display.positionMicroseconds = state.PositionMicroseconds();

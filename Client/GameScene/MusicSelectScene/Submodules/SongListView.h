@@ -89,7 +89,8 @@ class SongListView final
     PhantomCore::NodeId CreateDifficultyButton(PhantomCore::Visual2DNode &card, std::size_t visiblePosition);
     void ApplyScrollOffset();
     void ApplyNowPlaying(const SongCard &card) const;
-    void HintName(PhantomCore::Visual2DNode &line, const std::vector<std::string> &names, bool &hinted);
+    void HintName(PhantomCore::Visual2DNode &line, const std::vector<std::string> &names, std::string_view romanized,
+                  bool &hinted);
     void ClearNameHints();
     void UpdateScrollbar();
     [[nodiscard]] float VisibleBottom() const noexcept;

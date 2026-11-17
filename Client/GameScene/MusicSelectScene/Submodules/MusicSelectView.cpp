@@ -59,6 +59,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     alert_.Initialize(*canvas_, &screenVisuals_);
     ApplyTexts();
     UpdateResponsiveLayout();
+    selection_.notation_ = settings_.Values().notation;
     RebuildVisibleSongs();
     UpdateSearchInputVisibility();
 }
@@ -80,6 +81,13 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         return command_;
     }
     SynchronizeSearchText();
+    // The notation option changes the shown texts and the name/artist order.
+    if (selection_.notation_ != settings_.Values().notation)
+    {
+        selection_.notation_ = settings_.Values().notation;
+        RebuildVisibleSongs();
+        songList_.EnsureFocusedVisible();
+    }
     if (textRevision_ != texts_.Revision())
     {
         ApplyTexts();

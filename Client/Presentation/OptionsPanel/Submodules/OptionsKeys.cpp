@@ -399,6 +399,12 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
         SelectResolution(action.selectedIndex);
         return true;
     }
+    if (action.type == ActionType::SelectionChanged && action.source == notationCombo_->Id())
+    {
+        CancelKeyboardEdit();
+        SelectNotation(action.selectedIndex);
+        return true;
+    }
     if (action.type != ActionType::Clicked)
         return false;
     if (auto *overlay = VisibleKeyOverlay())

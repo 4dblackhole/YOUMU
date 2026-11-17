@@ -15,8 +15,10 @@ namespace
         result.backgroundFile = source.backgroundFile;
         result.backgroundOffsetX = source.backgroundOffsetX;
         result.backgroundOffsetY = source.backgroundOffsetY;
+        result.romanizedMaker = source.romanizedMaker;
         result.makers = source.makers;
         result.tags = source.tags;
+        result.romanizedName = source.romanizedName;
         result.name = source.name;
         result.mode = source.mode;
         result.patternOffsetMilliseconds = source.patternOffsetMilliseconds;

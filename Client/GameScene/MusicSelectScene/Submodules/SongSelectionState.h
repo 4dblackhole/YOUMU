@@ -1,5 +1,6 @@
 #pragma once
 #include "Catalog/SongCatalog.h"
+#include "Model/Submodules/NotationText.h"
 #include "SongFilter.h"
 #include "SongFavorites.h"
 #include "Mode/PlayOptions.h"
@@ -35,6 +36,8 @@ class SongSelectionState final
     std::size_t focusedSongPosition_{};
     std::size_t selectedPatternIndex_{};
     SortMode sortMode_{SortMode::Difficulty};
+    // The notation the list shows; name and artist order follow it. The view copies the option here.
+    TextNotation notation_{TextNotation::First};
     std::wstring searchText_;
     SongFilter filter_;
     SongFavorites favorites_;

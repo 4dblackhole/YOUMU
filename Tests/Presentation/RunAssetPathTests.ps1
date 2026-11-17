@@ -8,7 +8,7 @@ $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/
 $compiledExe = Join-Path $testRoot 'AssetPathTests.exe'
 Push-Location $repoRoot
 try {
-    & cl /nologo /W4 /analyze /utf-8 /std:c++20 /EHsc @runtime /DNOMINMAX /IClient /IYOUMU.Assets/Public `
+    & cl /nologo /W4 /analyze /utf-8 /std:c++20 /EHsc @runtime /DNOMINMAX /IClient /IYOUMU.Chart /IYOUMU.Assets/Public `
         /IDependencies/PhantomCore/Engine/SDK Tests/Presentation/AssetPathTests.cpp `
         "build/obj/YOUMU.Client/x64/$Configuration/OptionSettings.obj" `
         "build/obj/YOUMU.Client/x64/$Configuration/Pch.obj" "bin/x64/$Configuration/YOUMU.Assets.lib" `

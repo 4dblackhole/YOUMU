@@ -39,6 +39,7 @@ class YOUMULogoScene final : public PhantomCore::GameScene
     void RunMenuItem(std::size_t index, PhantomCore::SceneManager &scenes);
 
     std::shared_ptr<SongLibrary> library_;
+    OptionSettings &options_; // The title player shows the song in the chosen notation.
     std::unique_ptr<LogoView> view_;
     // Game Start hands the song to song select; every other exit silences it.
     bool keepPlaybackOnExit_{};

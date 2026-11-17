@@ -60,6 +60,13 @@ Import osu! folder는 Client의 EditorOsuImport가 EXE를 백그라운드에서 
   `offset:`은 osu!의 `(x, y)`를 1280×720/엔진 2D 좌표의 `(1.5*x, -1.5*y)`로 변환합니다.
 - `App/Main`: UTF-16 Windows 인자, UTF-8 JSON stdout, stderr/종료 코드.
 
+## 곡명·아티스트 표기
+
+YMM의 첫 표기는 osu!의 `TitleUnicode`·`ArtistUnicode`(없으면 `Title`·`Artist`)입니다. osu!의 로마자
+`Title`·`Artist`는 첫 표기와 다를 때만 `Romanized Music Name`·`Romanized Artist` 줄에 적고, 같으면 그 줄을
+비워 둡니다. osu!에는 난이도명·제작자의 로마자 표기가 없으므로 YMP의 두 로마자 줄은 비어 있습니다.
+줄의 뜻과 표시 규칙은 [YMM](Formats/Ymm.md#로마자-줄과-표시)에 있습니다.
+
 ## OD와 JudgeLevel
 
 osu!taiko의 100/OK 판정 폭에 가장 가까운 YOUMU GOOD 판정 폭을 갖도록 YMP의

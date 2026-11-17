@@ -117,6 +117,8 @@ int main(const int argumentCount, char *arguments[])
         {"TestYmpSystemBreaksAdvanceAndRemainAvailable", TestYmpSystemBreaksAdvanceAndRemainAvailable},
         {"TestOutOfMeasureEntriesAreIgnored", TestOutOfMeasureEntriesAreIgnored},
         {"TestTimingMicrosecondsAndEffects", TestTimingMicrosecondsAndEffects},
+        {"TestRomanizedNotation", TestRomanizedNotation},
+        {"TestSongSelectionNotation", TestSongSelectionNotation},
         {"TestInvalidNumericFieldsReportDiagnostics", TestInvalidNumericFieldsReportDiagnostics},
         {"TestNumericFieldsRejectEmbeddedNulls", TestNumericFieldsRejectEmbeddedNulls},
         {"TestSongCatalogIsolatesInvalidFiles", TestSongCatalogIsolatesInvalidFiles},

@@ -490,6 +490,12 @@ namespace
                   settings.Values().windowWidth == 960,
               "Native resize failure preserves saved size.");
         window.reject = false;
+        Check(RequireDropdown(FindNode(canvas.Root(), "Options.Notation.Combo")).SelectedIndex() == 0,
+              "Song texts start in their first notation.");
+        Check(panel.ProcessAction(Select(canvas, "Options.Notation.Combo", 1)) &&
+                  settings.Values().notation == TextNotation::Romanized &&
+                  RequireDropdown(FindNode(canvas.Root(), "Options.Notation.Combo")).SelectedIndex() == 1,
+              "The notation choice is saved at once.");
         Section(panel, canvas, "Audio");
         click("Options.Offset.Field");
         Check(panel.OwnsKeyboard(), "Offset field captures numeric input.");
@@ -573,6 +579,7 @@ namespace
         Check(restored.Load(error) && restored.Values().globalOffsetMs == -5 && restored.Values().windowWidth == 960 &&
                   restored.Values().modeKeys == candidate.modeKeys,
               "Resolution, offset and all mode profiles survive restart.");
+        Check(restored.Values().notation == TextNotation::Romanized, "The notation choice survives restart.");
         candidate.windowWidth = 0;
         Check(!settings.Save(candidate, error), "Invalid saved resolution rejected.");
         candidate = settings.Values();

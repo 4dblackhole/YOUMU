@@ -1,5 +1,6 @@
 #include "OsuSongPlacement.h"
 #include "Catalog/SongLayout.h"
+#include "Model/Submodules/NotationText.h"
 #include "Parsing/ChartParser.h"
 #include <Windows.h>
 #include <algorithm>
@@ -84,18 +85,6 @@ namespace
             line = end + 1;
         }
         Fail("Converted file has no " + std::string(key) + " line.");
-    }
-    // Song folders are named in romanized notation: the first pure-ASCII entry, else the first.
-    std::string_view FolderNotation(const std::vector<std::string> &values)
-    {
-        const auto ascii = std::ranges::find_if(values, [](const std::string &value) {
-            return !value.empty() && std::ranges::all_of(value, [](const char c) {
-                return static_cast<unsigned char>(c) < 128;
-            });
-        });
-        if (ascii != values.end())
-            return *ascii;
-        return values.empty() ? std::string_view{} : std::string_view{values.front()};
     }
 
     // Exclusive for one Songs root across processes. CREATE_NEW never opens a user's own file,
@@ -279,8 +268,11 @@ namespace
     {
         OsuPlacement plan;
         const auto audio = SourceAudio(chart);
-        const auto song =
-            SongLayout::FolderName(FolderNotation(chart.music.artists), FolderNotation(chart.music.names));
+        // Song folders are named in romanized notation, by the same rule the screens use.
+        const auto &music = chart.music;
+        const auto song = SongLayout::FolderName(
+            NotationText(music.artists, music.romanizedArtist, TextNotation::Romanized),
+            NotationText(music.names, music.romanizedName, TextNotation::Romanized));
         const std::string_view maker =
             chart.pattern.makers.empty() ? std::string_view{} : std::string_view{chart.pattern.makers.front()};
         const auto preferredFolder = fs::weakly_canonical(root / song);

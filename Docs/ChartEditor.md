@@ -63,7 +63,8 @@
 ### Audio·Metadata
 
 - Audio: Metronome, 보이는 범위 −/+, Offset −1/+1 ms·입력 아래에 파형·음악 FFT·예상 히트사운드 FFT를 같은 시간축으로 둡니다.
-- Metadata: Pattern(Name, Chart by 여러 줄 — 첫 줄 ★이 대표, Add·✕, Tags는 쉼표 구분, JudgeLevel·HP, Base BPM·Offset) /
+- Metadata: Pattern(Name (romanized)·Name, Chart by (romanized)·Chart by 여러 줄 — 첫 줄 ★이 대표, Add·✕, Tags는 쉼표 구분,
+  JudgeLevel·HP, Base BPM·Offset. 로마자 칸은 파일과 같이 각 묶음의 맨 위이고 비워 둘 수 있습니다) /
   Files(Music YMM, Effect file은 표시만, BG 미리보기와 x·y) / Hit sounds 표.
 
 ### 새 난이도

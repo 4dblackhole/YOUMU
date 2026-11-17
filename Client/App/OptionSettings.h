@@ -1,6 +1,7 @@
 #pragma once
 
 #include "App/AudioVolumes.h"
+#include "Model/Submodules/NotationText.h"
 #include "PhantomCore.h"
 #include "Texts/TextCatalog.h"
 
@@ -19,6 +20,8 @@ struct OptionValues
     std::string driverName;
     AudioVolumes volumes;
     std::uint32_t windowWidth{1280}, windowHeight{720};
+    // Song, artist, chart and maker texts: the first notation, or the romanized line.
+    TextNotation notation{TextNotation::First};
     std::int32_t globalOffsetMs{};
     std::filesystem::path songsPath; // Empty selects the development/deployment default.
     std::map<std::string, std::map<std::string, std::vector<std::uint16_t>>> modeKeys;

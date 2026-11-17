@@ -25,6 +25,7 @@
     <ClInclude Include="Model\Submodules\CompiledChart.h" />
     <ClInclude Include="Model\Submodules\EffectDocument.h" />
     <ClInclude Include="Model\Submodules\MusicDocument.h" />
+    <ClInclude Include="Model\Submodules\NotationText.h" />
     <ClInclude Include="Model\Submodules\PatternDocument.h" />
     <ClCompile Include="Parsing\ChartParser.cpp" />
     <ClInclude Include="Parsing\ChartParser.h" />
