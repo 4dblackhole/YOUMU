@@ -301,8 +301,10 @@ namespace
                     const float y = 360 - corner.y;
                     const bool colored = waveform ? packet.color.green > .5F && packet.color.red < .3F
                                                   : packet.color.red > .3F && packet.color.green < .95F;
-                    return packet.type == DrawPacketType::Rectangle && y >= top && y < bottom &&
-                           corner.x >= 24 - 640 && corner.x < 1256 - 640 && colored;
+                    const bool inRows = y >= top && y < bottom;
+                    const bool inColumns = corner.x >= 24 - 640 && corner.x < 1256 - 640;
+                    const bool inBand = inRows && inColumns;
+                    return packet.type == DrawPacketType::Rectangle && inBand && colored;
                 });
         };
         // Track rows of the 16:9 frame: waveform 1.2, music 1, expected hits .8 of the space below the tools.
@@ -347,7 +349,9 @@ namespace
                 Check(notes.front().note.extraData == std::vector<std::string>{"Action=Kat", "TickDivision=16"},
                       "Kat Buzz options changed.");
             const auto markers = state.Mode().AudioMarkers(state.Document());
-            const bool hasTicks = id == 12 || id == 14 || id == 17 || id == 18;
+            const bool tickRoll = id == 12 || id == 14;
+            const bool tickBuzz = id == 17 || id == 18;
+            const bool hasTicks = tickRoll || tickBuzz;
             Check(markers.size() == (hasTicks ? 5 : id == 5 ? 2 : 1), "Taiko expected-hit count changed.");
             Check(markers.front().sound == (id == 2 || id == 18 ? "Taiko.Kat.Hit"
                                             : id == 4           ? "Taiko.BigKat.FirstHit"
@@ -471,8 +475,9 @@ namespace
             return color.red > .85F && color.green < .35F && std::abs(color.alpha - .4F) < .01F;
         });
         Check(red > 0 && std::ranges::find(overview.labels, L"1") != overview.labels.end() &&
-                  std::ranges::find(overview.labels, L"2") != overview.labels.end() &&
-                  std::ranges::none_of(overview.labels, [](const auto &label) { return label.starts_with(L"BPM"); }),
+              std::ranges::find(overview.labels, L"2") != overview.labels.end(),
+              "The score must number its measures and mark the cut section without BPM captions.");
+        Check(std::ranges::none_of(overview.labels, [](const auto &label) { return label.starts_with(L"BPM"); }),
               "The score must number its measures and mark the cut section without BPM captions.");
         // Beats keep uniform widths: the note at 1/4 of the second measure sits a quarter into it.
         state.Mode().EditScore(state, {ScoreLeft + MeasureWidth * 1.25F, ScoreY}, false);
@@ -622,12 +627,13 @@ namespace
         const bool selectLit = std::ranges::any_of(std::views::iota(std::size_t{}, tools.rectangles.size()), [&](auto i) {
             const auto &rect = tools.rectangles[i];
             const auto &color = tools.rectangleColors[i];
-            return rect.x >= 238 && rect.x < 286 && rect.height == 3 && color.red > .9F && color.blue < .3F;
+            const bool inToolColumn = rect.x >= 238 && rect.x < 286;
+            const bool litColor = color.red > .9F && color.blue < .3F;
+            return inToolColumn && rect.height == 3 && litColor;
         });
-        Check(selectLit && !tools.actions.empty() &&
-                  std::ranges::any_of(tools.images, [](const auto &path) {
-                      return path.filename() == L"SelectionTool.png" && std::filesystem::is_regular_file(path);
-                  }), "Selection must start active and display the cursor/eraser icon.");
+        Check(selectLit && !tools.actions.empty(), "Selection must start active and display the cursor/eraser icon.");
+        Check(std::ranges::any_of(tools.images, [](const auto &path) { return path.filename() == L"SelectionTool.png" && std::filesystem::is_regular_file(path); }),
+              "Selection must start active and display the cursor/eraser icon.");
         const std::array cases{
             std::pair{1, Color{1, 1, 1, 1}}, std::pair{2, Color{1, .2F, .2F, 1}},
             std::pair{4, Color{.2F, .5F, 1, 1}}, std::pair{8, Color{1, .9F, .1F, 1}},
@@ -653,9 +659,10 @@ namespace
                 if (std::abs(rect.y - (160 + 152 * .18F)) >= .01F || std::abs(center - tickX) >= .02F) continue;
                 if (std::abs(rect.width * grid.deviceScale - 2) >= .01F) continue;
                 const auto &color = grid.rectangleColors[i];
-                foundTick = std::abs(color.red - expected.red) < .001F &&
-                            std::abs(color.green - expected.green) < .001F &&
-                            std::abs(color.blue - expected.blue) < .001F && std::abs(color.alpha - .55F) < .001F;
+                const bool rgbMatches = std::abs(color.red - expected.red) < .001F &&
+                                        std::abs(color.green - expected.green) < .001F &&
+                                        std::abs(color.blue - expected.blue) < .001F;
+                foundTick = rgbMatches && std::abs(color.alpha - .55F) < .001F;
             }
             Check(foundTick && foundBar, "Realtime grid must use the requested colors and device-pixel widths.");
         }
@@ -674,8 +681,12 @@ namespace
             RecordingCanvas empty;
             state.Mode().DrawChart(empty, state, TestCatalog(Language::English));
             Check(std::ranges::any_of(
-                      empty.rectangles, [](const auto &rect)
-                      { return rect.x == 184 && rect.y == 160 && rect.width == 1096 && rect.height == 152; }),
+                      empty.rectangles,
+                      [](const auto &rect)
+                      {
+                          const bool origin = rect.x == 184 && rect.y == 160;
+                          return origin && rect.width == 1096 && rect.height == 152;
+                      }),
                   "Spacing must not resize the realtime lane.");
             // An eighth note stays inside the lane even at 400%.
             const float x = JudgeX + WholeNotePixels / 8 * static_cast<float>(zoom);
@@ -1038,10 +1049,12 @@ namespace
         inspector.Apply(state);
         const auto selected = *state.Document().FindNote(id);
         Check(selected.head.note.position == MusicalPosition{1, {1, 8}} && selected.tail &&
-                  selected.tail->note.position == MusicalPosition{2, {1, 4}} &&
-                  selected.head.note.keyType == 14 && selected.tail->note.keyType == 14 &&
-                  selected.head.timing == RhythmTime{2'250'000} &&
-                  selected.tail->timing == RhythmTime{4'500'000},
+              selected.tail->note.position == MusicalPosition{2, {1, 4}},
+              "Musical input must use one-based measures, exact whole-note fractions and preserve the paired end.");
+        Check(selected.head.note.keyType == 14 && selected.tail->note.keyType == 14 &&
+              selected.head.timing == RhythmTime{2'250'000},
+              "Musical input must use one-based measures, exact whole-note fractions and preserve the paired end.");
+        Check(selected.tail->timing == RhythmTime{4'500'000},
               "Musical input must use one-based measures, exact whole-note fractions and preserve the paired end.");
         for (const auto language : {Language::Korean, Language::English})
         {
@@ -1062,8 +1075,9 @@ namespace
         RecordingCanvas refreshed;
         inspector.Draw(refreshed, state, TestCatalog(Language::English));
         Check(inspector.Form().startMeasure == "2" && inspector.Form().startBeat == "1/8" &&
-                  state.Document().FindNote(id)->tail->note.sourceOrder == selected.tail->note.sourceOrder &&
-                  state.Document().FindNote(id)->head.timing == RhythmTime{2'166'667},
+              state.Document().FindNote(id)->tail->note.sourceOrder == selected.tail->note.sourceOrder,
+              "Timeline changes must refresh derived times while retaining source coordinates and paired IDs.");
+        Check(state.Document().FindNote(id)->head.timing == RhythmTime{2'166'667},
               "Timeline changes must refresh derived times while retaining source coordinates and paired IDs.");
         const auto revision = state.Document().Revision();
         for (int invalid = 0; invalid < 5; ++invalid)
@@ -1093,8 +1107,9 @@ namespace
                 rejected = true;
             }
             Check(rejected && state.Document().Revision() == revision &&
-                      state.Document().FindNote(id)->head.note.position == selected.head.note.position &&
-                      state.Document().FindNote(id)->tail->note.position == selected.tail->note.position,
+                  state.Document().FindNote(id)->head.note.position == selected.head.note.position,
+                  "Invalid musical fields must preserve both endpoints and all document caches.");
+            Check(state.Document().FindNote(id)->tail->note.position == selected.tail->note.position,
                   "Invalid musical fields must preserve both endpoints and all document caches.");
         }
         inspector.Select(state.Document(), id);
@@ -1104,9 +1119,10 @@ namespace
         inspector.Form().endMeasure = "5";
         inspector.Apply(state);
         Check(state.Document().Notes().size() == 2 && state.Document().FindNote(id)->tail &&
-                  state.Document().FindNote(id)->head.note.position == MusicalPosition{3, {3, 8}} &&
-                  state.Document().FindNote(id)->tail->note.sourceOrder == selected.tail->note.sourceOrder &&
-                  state.Document().NotesInMeasures(1, 3).empty() && state.Document().NotesInMeasures(3, 5).size() == 2,
+              state.Document().FindNote(id)->head.note.position == MusicalPosition{3, {3, 8}},
+              "Changing variants must retain the paired end IDs and update both musical positions in the index.");
+        Check(state.Document().FindNote(id)->tail->note.sourceOrder == selected.tail->note.sourceOrder &&
+              state.Document().NotesInMeasures(1, 3).empty() && state.Document().NotesInMeasures(3, 5).size() == 2,
               "Changing variants must retain the paired end IDs and update both musical positions in the index.");
     }
 
@@ -1147,7 +1163,9 @@ Dip: 1-3*u*(1-u)
                 {
                     const auto &a = actual.rectangles[i], &b = expected.rectangles[i];
                     Check(std::abs(a.x - b.x) < .01F && std::abs(a.y - b.y) < .01F &&
-                              std::abs(a.width - b.width) < .01F && std::abs(a.height - b.height) < .01F,
+                          std::abs(a.width - b.width) < .01F,
+                          "Realtime notes, long bodies and grids must use the same time axis with or without effects.");
+                    Check(std::abs(a.height - b.height) < .01F,
                           "Realtime notes, long bodies and grids must use the same time axis with or without effects.");
                 }
             }
@@ -1226,8 +1244,9 @@ Dip: 1-3*u*(1-u)
         {
             refused = error.reason == Failure::ExistingFolder;
         }
-        Check(refused && duplicate->Creating() && duplicate->Document().Pattern().name == "Fresh" &&
-                  duplicate->Document().Effects().hitSounds.contains("1"),
+        Check(refused && duplicate->Creating() && duplicate->Document().Pattern().name == "Fresh",
+              "A refused Create must keep the draft unchanged.");
+        Check(duplicate->Document().Effects().hitSounds.contains("1"),
               "A refused Create must keep the draft unchanged.");
         fs::remove_all(root);
     }
@@ -1448,8 +1467,8 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     Check(!view.Update(update), "Drawing error must not leave the editor.");
     visuals.Render({});
     Check(state.Status() == "Injected chart drawing failure." && hasText(L"Injected chart drawing failure.") &&
-              !state.NeedsRebuild() && probe->chartCalls == oldCalls + 1,
-          "Drawing failure must render its status and stop automatic retry.");
+          !state.NeedsRebuild(), "Drawing failure must render its status and stop automatic retry.");
+    Check(probe->chartCalls == oldCalls + 1, "Drawing failure must render its status and stop automatic retry.");
     static_cast<void>(view.Update(update));
     Check(probe->chartCalls == oldCalls + 1, "A failed build retried without a new action.");
     probe->failDrawing = false;

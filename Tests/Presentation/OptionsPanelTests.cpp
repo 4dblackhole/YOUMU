@@ -269,8 +269,9 @@ namespace
             previous.driverIndex = 7;
             Check(settings.Save(previous, error), "Could not prepare valid option values.");
             { std::ofstream file(path); file << content; }
-            Check(!settings.Load(error) && !settings.LoadWarning().empty() && settings.Values().driverIndex == -1 &&
-                      settings.Values().audioMiddleware == "FMOD",
+            Check(!settings.Load(error) && !settings.LoadWarning().empty() && settings.Values().driverIndex == -1,
+                  "Failed reloads must publish defaults and retain a visible warning.");
+            Check(settings.Values().audioMiddleware == "FMOD",
                   "Failed reloads must publish defaults and retain a visible warning.");
             std::ifstream file(path);
             const std::string preserved{std::istreambuf_iterator<char>(file), {}};
@@ -318,7 +319,9 @@ namespace
             "Relative Songs paths must use the executable directory, not the current working directory.");
         Check(restored.Save(values, error), error.c_str());
         Check(restored.Values().skinSet == values.skinSet && restored.Values().driverIndex == 2 &&
-              restored.Values().language == values.language && restored.Values().driverName == values.driverName,
+              restored.Values().language == values.language,
+              "Unicode skin, language and audio settings must survive another instance.");
+        Check(restored.Values().driverName == values.driverName,
               "Unicode skin, language and audio settings must survive another instance.");
         {
             std::ofstream file(folder / "invalid.ini");
@@ -388,7 +391,9 @@ namespace
         Check(Combo(canvas, "Options.Output.Combo").IsExpanded(), "Output list must open through pointer input.");
         const auto actions = click({bounds.x + bounds.width / 2, bounds.y - 2.5F * 34.0F});
         Check(actions.size() == 1 && actions.front().source == FindNode(canvas.Root(), "Options.Output.Combo").Id() &&
-              actions.front().selectedIndex == 2 && panel.ProcessAction(actions.front()),
+              actions.front().selectedIndex == 2,
+              "The ASIO popup row must receive clicks ahead of the driver field below it.");
+        Check(panel.ProcessAction(actions.front()),
               "The ASIO popup row must receive clicks ahead of the driver field below it.");
         Check(audio.ActiveOutput() == AudioOutputBackend::Asio && backendCreations == 1 && clip->IsValid(),
               "Output switching must reuse the system and retain loaded clips without restart.");
@@ -400,8 +405,9 @@ namespace
         Check(SetFileAttributesW(settings.Path().c_str(), FILE_ATTRIBUTE_READONLY) != FALSE,
               "Test file must be made read-only.");
         Check(panel.ProcessAction(Select(canvas, "Options.Output.Combo", 1)) &&
-              audio.ActiveOutput() == AudioOutputBackend::Asio && audio.ActiveDriverIndex() == 5 &&
-              settings.Values().audioOutput == AudioOutputBackend::Asio,
+              audio.ActiveOutput() == AudioOutputBackend::Asio && audio.ActiveDriverIndex() == 5,
+              "Saving failure must restore runtime audio and preserve persisted values.");
+        Check(settings.Values().audioOutput == AudioOutputBackend::Asio,
               "Saving failure must restore runtime audio and preserve persisted values.");
         Section(panel, canvas, "General");
         Check(panel.ProcessAction(Select(canvas, "Options.Language.Combo", 0)) &&
@@ -414,8 +420,9 @@ namespace
               "Language must apply after a successful save.");
         OptionSettings nextRun(settings.Path());
         Check(nextRun.Load(error) && nextRun.Values().language == Language::Korean &&
-              nextRun.Values().audioOutput == AudioOutputBackend::Asio && nextRun.Values().driverIndex == 5,
+              nextRun.Values().audioOutput == AudioOutputBackend::Asio,
               "The next run must read the most recent successful settings.");
+        Check(nextRun.Values().driverIndex == 5, "The next run must read the most recent successful settings.");
         backend->devices.clear();
         backend->driver = -1;
         panel.RefreshTexts();
@@ -576,8 +583,9 @@ namespace
         Check(settings.Save(candidate, error),
               "Other mode settings can be preserved before loading its implementation.");
         OptionSettings restored(settings.Path());
-        Check(restored.Load(error) && restored.Values().globalOffsetMs == -5 && restored.Values().windowWidth == 960 &&
-                  restored.Values().modeKeys == candidate.modeKeys,
+        Check(restored.Load(error) && restored.Values().globalOffsetMs == -5 && restored.Values().windowWidth == 960,
+              "Resolution, offset and all mode profiles survive restart.");
+        Check(restored.Values().modeKeys == candidate.modeKeys,
               "Resolution, offset and all mode profiles survive restart.");
         Check(restored.Values().notation == TextNotation::Romanized, "The notation choice survives restart.");
         candidate.windowWidth = 0;
@@ -628,9 +636,9 @@ namespace
                                    {{L"Discard", false, true}, {L"Cancel", false, false, true}, {L"Save", true}}};
         alert.Show(unsaved);
         const auto panel = FindNode(canvas.Root(), "Alert.Panel").BoundsInCanvas();
-        Check(alert.IsOpen() && panel.width == UiAlert::Width && std::abs(panel.x + panel.width / 2) < .01F &&
-                  std::abs(panel.y + panel.height / 2) < .01F,
+        Check(alert.IsOpen() && panel.width == UiAlert::Width && std::abs(panel.x + panel.width / 2) < .01F,
               "The alert is a 480 wide panel at the Canvas centre.");
+        Check(std::abs(panel.y + panel.height / 2) < .01F, "The alert is a 480 wide panel at the Canvas centre.");
         const auto band = FindNode(canvas.Root(), "Alert.Band").BoundsInCanvas();
         Check(band.height == 4 && std::abs(band.y + band.height - (panel.y + panel.height)) < .01F,
               "A 4px severity band tops the panel.");
@@ -718,8 +726,9 @@ namespace
         auto &viewport = FindNode(canvas.Root(), "Options.Viewport");
         auto &general = FindNode(canvas.Root(), "Options.Section.General");
         auto &audioHeader = FindNode(canvas.Root(), "Options.Section.Audio");
-        Check(general.IsVisible() && audioHeader.IsVisible() && Lit(canvas, "General") && !Lit(canvas, "Audio"),
+        Check(general.IsVisible() && audioHeader.IsVisible() && Lit(canvas, "General"),
               "All sections share one body and the first section starts lit.");
+        Check(!Lit(canvas, "Audio"), "All sections share one body and the first section starts lit.");
         Check(std::abs(Top(viewport) - Top(general) - 22) < .01F, "The first section starts at the top of the body.");
 
         // A rail click brings its section to the top and lights it until the body is scrolled by hand.
@@ -914,7 +923,9 @@ namespace
         const auto plate = FindNode(canvas.Root(), "Plate").BoundsInCanvas();
         const auto text = FindNode(canvas.Root(), "Label").GetComponent<TextVisualComponent>()->Text();
         const auto lines = 1 + std::ranges::count(text, L'\n');
-        Check(tooltip.IsShown() && lines >= 2 && plate.width <= 300 && plate.height == 12 + 18 * static_cast<float>(lines),
+        Check(tooltip.IsShown() && lines >= 2 && plate.width <= 300,
+              "A long name wraps within the 300-wide plate and the plate grows by a line each.");
+        Check(plate.height == 12 + 18 * static_cast<float>(lines),
               "A long name wraps within the 300-wide plate and the plate grows by a line each.");
         tooltip.Shutdown();
     }
@@ -966,8 +977,9 @@ namespace
         // Press the bar 10px below its top: the grab point stays under the pointer.
         router.Process(canvas, Pointer({106, 140}, true, true));
         auto offset = bar.Track(Point{106, 140}, true);
-        Check(bar.IsDragging() && offset && std::abs(*offset) < .01F && Alpha(thumb) == 1.0F,
+        Check(bar.IsDragging() && offset && std::abs(*offset) < .01F,
               "Pressing the bar holds it in solid cobalt without moving the list.");
+        Check(Alpha(thumb) == 1.0F, "Pressing the bar holds it in solid cobalt without moving the list.");
         offset = bar.Track(Point{106, 65}, true);
         Check(offset && std::abs(*offset - 300) < .01F, "Dragging the bar a third of its travel scrolls a third.");
         offset = bar.Track(Point{106, -400}, true);
@@ -988,8 +1000,9 @@ namespace
         tabs.SetRail({-300, 200, 400, UiScrollbar::HorizontalGrabWidth});
         tabs.SetRange(400, 800, 400);
         const auto tabThumb = FindNode(FindNode(canvas.Root(), "Tabs"), "Thumb").BoundsInCanvas();
-        Check(tabThumb.height == 4 && tabThumb.y == 202 && tabThumb.width == 200 && tabThumb.x == -100,
+        Check(tabThumb.height == 4 && tabThumb.y == 202 && tabThumb.width == 200,
               "A horizontal scrollbar is 8px with a 4px bar at its offset.");
+        Check(tabThumb.x == -100, "A horizontal scrollbar is 8px with a 4px bar at its offset.");
 
         // A host without a per-frame pointer follows the strip's own pointer events.
         UiScrollbar list;

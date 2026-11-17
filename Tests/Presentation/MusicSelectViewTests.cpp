@@ -159,9 +159,10 @@ namespace
             Click(*canvas, Point{bounds.x + bounds.width / 2, bounds.y - 4.0F - 34.0F * 3.5F});
             InputState input;
             Check(view.Update(input, 0) == SongSelectCommand::None &&
-                      state.sortMode_ == SongSelectionState::SortMode::BaseBpm &&
-                      state.visibleSongIndices_ == std::vector<std::size_t>{1, 2, 0} &&
-                      state.focusedSongPosition_ == 2 && HasCard(canvas->Root(), 2),
+                  state.sortMode_ == SongSelectionState::SortMode::BaseBpm &&
+                  state.visibleSongIndices_ == std::vector<std::size_t>{1, 2, 0},
+                  "Clicking Base BPM must reorder real cards and retain the focused song.");
+            Check(state.focusedSongPosition_ == 2 && HasCard(canvas->Root(), 2),
                   "Clicking Base BPM must reorder real cards and retain the focused song.");
             texts.SetLanguage(Language::English);
             static_cast<void>(view.Update(input, 0));
@@ -418,8 +419,10 @@ namespace
                 if (!card->Name().starts_with("Song.")) continue;
                 auto *title=Find(*card,"Title"), *artist=Find(*card,"Artist");
                 if (!title || !artist) throw std::runtime_error("Card metadata fields missing.");
-                Check(!Find(*card,"Thumbnail") && title->GetComponent<TextVisualComponent>() && title->NodeSize().height==20 &&
-                          artist->Bounds().x==title->Bounds().x,
+                Check(!Find(*card,"Thumbnail") && title->GetComponent<TextVisualComponent>() &&
+                      title->NodeSize().height==20,
+                      "Every card shows one title line and one artist line without a BG thumbnail.");
+                Check(artist->Bounds().x==title->Bounds().x,
                       "Every card shows one title line and one artist line without a BG thumbnail.");
                 const auto cardBounds=card->BoundsInCanvas();
                 Check(std::abs(cardBounds.x+cardBounds.width-canvas->LogicalSize().width/2)<.01F,
@@ -496,7 +499,9 @@ namespace
         const auto scan = await([&] { return importer.PollScan(); });
         Check(scan.success && scan.difficulties.size() == 3, scan.message.c_str());
         Check(scan.difficulties[0].state == State::Ready && scan.difficulties[0].name == "Oni" &&
-                  scan.difficulties[0].maker == "Author" && scan.difficulties[1].state == State::Ready,
+              scan.difficulties[0].maker == "Author",
+              "Taiko difficulties are converted, checked and offered with their own names.");
+        Check(scan.difficulties[1].state == State::Ready,
               "Taiko difficulties are converted, checked and offered with their own names.");
         Check(scan.difficulties[2].state == State::Failed && !scan.difficulties[2].problem.empty() &&
                   scan.difficulties[2].name.empty(),
@@ -508,8 +513,9 @@ namespace
         Check(first.success && first.changed, first.message.c_str());
         const auto song = root / "Artist - Song";
         Check(fs::exists(song / "Music/Artist - Song.ymm") && fs::exists(song / "Music/Artist - Song.mp3") &&
-                  fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].ymp") &&
-                  fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].yme") && fs::exists(song / "BG/bg.png"),
+              fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].ymp"),
+              "The Client names and places the music, the chart pair and the background.");
+        Check(fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].yme") && fs::exists(song / "BG/bg.png"),
               "The Client names and places the music, the chart pair and the background.");
         Check(!fs::exists(song / "Chart/Author - Hard") && sourceFiles() == 5,
               "Only the chosen difficulty is placed, and the osu! song folder stays as it was.");
@@ -586,7 +592,9 @@ namespace
         Check(node("OsuImport.Overlay").IsVisible() && label("OsuImport.Folder") == L"123 Artist - Song",
               "The list opens over song select and names the osu! song folder.");
         Check(label("OsuImport.Check.0") == L"✓" && node("OsuImport.Check.0").IsEnabled() &&
-                  !node("OsuImport.Check.1").IsEnabled() && !node("OsuImport.Check.2").IsEnabled(),
+              !node("OsuImport.Check.1").IsEnabled(),
+              "Difficulties that can be imported start checked; the others cannot be checked.");
+        Check(!node("OsuImport.Check.2").IsEnabled(),
               "Difficulties that can be imported start checked; the others cannot be checked.");
         Check(label("OsuImport.Difficulty.0").starts_with(L"Oni") &&
                   label("OsuImport.Difficulty.1").find(texts.Get("OsuImport.exists")) != std::wstring::npos &&
@@ -601,8 +609,9 @@ namespace
         Check(!view.TakeOsuImportChoice(), "Editing the checks is not an answer.");
         click("OsuImport.Import");
         const auto imported = view.TakeOsuImportChoice();
-        Check(imported && imported->import && imported->indices == std::vector<std::size_t>{0} &&
-                  !node("OsuImport.Overlay").IsVisible(),
+        Check(imported && imported->import && imported->indices == std::vector<std::size_t>{0},
+              "Import answers with the checked difficulties and closes the list.");
+        Check(!node("OsuImport.Overlay").IsVisible(),
               "Import answers with the checked difficulties and closes the list.");
         Check(!view.TakeOsuImportChoice(), "The answer is delivered once.");
         // Esc cancels, but only after the keys that were down when the list opened are released.
@@ -1025,7 +1034,9 @@ namespace
                     if (!cell) throw std::runtime_error("Pattern figure missing.");
                     const auto actual = cell->BoundsInCanvas();
                     Check(actual.x >= previousRight - .01F && actual.x + actual.width <= bounds.x + bounds.width + .01F &&
-                              actual.y >= bounds.y && actual.y + actual.height <= bounds.y + bounds.height + .01F,
+                          actual.y >= bounds.y,
+                          "The figures sit side by side inside the detail column without overlap.");
+                    Check(actual.y + actual.height <= bounds.y + bounds.height + .01F,
                           "The figures sit side by side inside the detail column without overlap.");
                     previousRight = actual.x + actual.width;
                 }
@@ -1076,10 +1087,9 @@ namespace
             if (!node || !node->GetComponent<TextVisualComponent>()) throw std::runtime_error("Missing detail label.");
             return node->GetComponent<TextVisualComponent>()->Text();
         };
-        Check(detail("Detail.JudgeLevel.Value") == L"40.37" &&
-              detail("Detail.HP.Value") == L"9.00" &&
-              detail("Detail.BPM.Value") == L"120–180" &&
-              detail("Detail.Length.Value") == L"2:05", "Selected pattern details use real data.");
+        Check(detail("Detail.JudgeLevel.Value") == L"40.37" && detail("Detail.HP.Value") == L"9.00" &&
+              detail("Detail.BPM.Value") == L"120–180", "Selected pattern details use real data.");
+        Check(detail("Detail.Length.Value") == L"2:05", "Selected pattern details use real data.");
         {
             // The figures sit in a 448-wide table: strong rules above and below, light ones between rows and columns.
             const auto *information = Find(canvas->Root(), "SongInformation");
@@ -1095,11 +1105,15 @@ namespace
                 rules[i] = rule->BoundsInCanvas();
             }
             Check(std::abs(rules[0].x - tableLeft) < .01F && std::abs(rules[0].width - 448.0F) < .01F &&
-                      std::abs(rules[0].y + 1.0F - tableTop) < .01F && std::abs(rules[1].y - (tableTop - 137.0F)) < .01F,
+                  std::abs(rules[0].y + 1.0F - tableTop) < .01F,
                   "Strong rules close the figure table above and below.");
-            Check(std::abs(rules[2].y - (tableTop - 69.0F)) < .01F && std::abs(rules[3].x - (tableLeft + 448.0F / 3.0F)) < .01F &&
-                      std::abs(rules[4].x - (tableLeft + 896.0F / 3.0F)) < .01F && std::abs(rules[3].height - 137.0F) < .01F,
+            Check(std::abs(rules[1].y - (tableTop - 137.0F)) < .01F,
+                  "Strong rules close the figure table above and below.");
+            Check(std::abs(rules[2].y - (tableTop - 69.0F)) < .01F &&
+                  std::abs(rules[3].x - (tableLeft + 448.0F / 3.0F)) < .01F &&
+                  std::abs(rules[4].x - (tableLeft + 896.0F / 3.0F)) < .01F,
                   "Light rules divide the two rows and the three columns.");
+            Check(std::abs(rules[3].height - 137.0F) < .01F, "Light rules divide the two rows and the three columns.");
             const auto *artistIcon = Find(canvas->Root(), "ArtistIcon");
             const bool hasArtist = !detail("SelectedArtist").empty();
             Check(artistIcon != nullptr && artistIcon->IsVisible() == hasArtist &&
@@ -1124,8 +1138,9 @@ namespace
             const float centre = 24.0F + columnWidth * .5F + (columnWidth + 10.0F) * static_cast<float>(keyIndex++);
             const float top = 78.0F + (expected.y - 68.0F) * faceScale;
             Check(child->IsVisible() && std::abs(actual.x + actual.width * .5F - centre) < .01F &&
-                  std::abs(panelHeight - actual.y - actual.height - top) < .01F &&
-                  std::abs(actual.width - expected.width * faceScale) < .01F && std::abs(actual.height - 24.0F) < .01F,
+                  std::abs(panelHeight - actual.y - actual.height - top) < .01F,
+                  "Taiko key settings heads must reuse the Gameplay key faces over their columns.");
+            Check(std::abs(actual.width - expected.width * faceScale) < .01F && std::abs(actual.height - 24.0F) < .01F,
                   "Taiko key settings heads must reuse the Gameplay key faces over their columns.");
         }
         Check(keyIndex == gameplayKeys.size(), "Taiko key settings must display all four Gameplay key faces.");
@@ -1181,8 +1196,10 @@ namespace
             const float scale = std::min(1.0F, size.width / 1280.0F);
             const float coveredWidth = std::max(size.width, 1280.0F) * scale, coveredHeight = 720.0F * scale;
             Check(bg.x <= -coveredWidth / 2 + .01F && bg.x + bg.width >= coveredWidth / 2 - .01F &&
-                      bg.y <= -coveredHeight / 2 + .01F && bg.y + bg.height >= coveredHeight / 2 - .01F &&
-                      std::abs(bg.width / bg.height - 1600.0F / 900) < .001F,
+                  bg.y <= -coveredHeight / 2 + .01F,
+                  "Selected artwork covers the whole 16:9-or-wider arrangement with its source aspect ratio.");
+            Check(bg.y + bg.height >= coveredHeight / 2 - .01F &&
+                  std::abs(bg.width / bg.height - 1600.0F / 900) < .001F,
                   "Selected artwork covers the whole 16:9-or-wider arrangement with its source aspect ratio.");
             Check(std::abs(bg.x + bg.width / 2 - 35 * scale) < .01F && std::abs(bg.y + bg.height / 2 + 15 * scale) < .01F,
                   "Changing authored offsets for the same BG updates its framing without another image load.");
@@ -1297,7 +1314,9 @@ namespace
         Check(recordPanel->BoundsInCanvas().x==recordBounds.x && recordPanel->BoundsInCanvas().width==recordBounds.width,
               "Record results reuse the existing panel without relocating it.");
         Check(Find(canvas->Root(),"SongContent")->BoundsInCanvas().y==contentY && selection.searchText_==L"Record" &&
-                  selection.focusedSongPosition_==selectedSong && selection.selectedPatternIndex_==selectedPattern,
+              selection.focusedSongPosition_==selectedSong,
+              "Applying a record filter preserves song list scroll, search and the selected chart.");
+        Check(selection.selectedPatternIndex_==selectedPattern,
               "Applying a record filter preserves song list scroll, search and the selected chart.");
         for(const auto &row:Find(canvas->Root(),"RecordRows")->Children())
             Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only the Random plays (JudgeLevel 70) appear.");
@@ -1398,7 +1417,9 @@ namespace
         Check(options.Save(values, error), error.c_str());
         static_cast<void>(view.Update(none, 0));
         Check(caption("Song.0", "Title") == L"Aaa" && caption("Song.0", "Artist") == L"Hiiragi" &&
-                  caption("Song.1", "Title") == L"Middle" && state.focusedSongPosition_ == 0,
+              caption("Song.1", "Title") == L"Middle",
+              "Romanized notation renames the cards, re-sorts them and keeps the focused song.");
+        Check(state.focusedSongPosition_ == 0,
               "Romanized notation renames the cards, re-sorts them and keeps the focused song.");
         Check(Find(canvas->Root(), "Difficulty.0")->GetComponent<TextVisualComponent>()->Text() == L"Soflan",
               "The chart name follows the notation.");
@@ -1521,7 +1542,9 @@ int main()
         std::optional<ModeLoadResult> loaded;
         while (!(loaded = sessions.Poll()) && std::chrono::steady_clock::now() < deadline)
             std::this_thread::sleep_for(std::chrono::milliseconds{1});
-        Check(loaded && loaded->Succeeded() && !sessions.Busy() && !loaded->session->Gear().Lanes().empty(),
+        Check(loaded && loaded->Succeeded() && !sessions.Busy(),
+              "The worker must create and transfer a real playable session without loading on Poll.");
+        Check(!loaded->session->Gear().Lanes().empty(),
               "The worker must create and transfer a real playable session without loading on Poll.");
         Check(pattern.noteCount == loaded->session->PlayableNoteCount(),
               "Displayed catalog counts must equal the playable session logical note objects.");

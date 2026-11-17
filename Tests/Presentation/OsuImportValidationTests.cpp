@@ -81,7 +81,9 @@ namespace
         const auto valid = Manifest(folder);
         const auto chart = ValidateConvertedOsuResult(valid, folder);
         Check(chart.music.audioFile == fs::path("audio/song.mp3") && chart.pattern.name == "Oni" &&
-                  fs::equivalent(chart.patternFile, patternFile) && chart.sourceFolder.empty(),
+              fs::equivalent(chart.patternFile, patternFile),
+              "A valid result returns the parsed chart; the audio it names is not required here.");
+        Check(chart.sourceFolder.empty(),
               "A valid result returns the parsed chart; the audio it names is not required here.");
         // One long note has two serialized rows, but one playable/source object.
         Rejected(Manifest(folder, "2"), folder);
@@ -177,8 +179,9 @@ namespace
         const auto before = sourceFiles();
 
         const auto plan = PlanOsuPlacement(songs, source.Convert());
-        Check(plan.problem.empty() && plan.newSong && !plan.chartExists && !fs::exists(songs),
+        Check(plan.problem.empty() && plan.newSong && !plan.chartExists,
               "Planning a placement reports a new song and writes nothing.");
+        Check(!fs::exists(songs), "Planning a placement reports a new song and writes nothing.");
         const auto first = PlaceConvertedOsuChart(songs, source.Convert());
         const auto song = songs / "Test artist - Test", music = song / "Music";
         const auto set = song / "Chart" / "Test author - Oni";
@@ -192,12 +195,14 @@ namespace
         const auto placedMusic = parser.ParseMusicFile(first.musicFile);
         const auto placedPattern = parser.ParsePatternFile(first.patternFile);
         Check(placedMusic.Succeeded() && placedMusic.document.audioFile == fs::path("Test artist - Test.mp3") &&
-                  placedMusic.document.names == std::vector<std::string>{"원본 곡명", "Test"} &&
-                  placedMusic.document.tags == std::vector<std::string>{"a", "b"},
+              placedMusic.document.names == std::vector<std::string>{"원본 곡명", "Test"},
+              "The YMM points at the renamed audio and keeps every other line.");
+        Check(placedMusic.document.tags == std::vector<std::string>{"a", "b"},
               "The YMM points at the renamed audio and keeps every other line.");
         Check(placedPattern.Succeeded() && placedPattern.document.effectFile == first.effectFile.filename() &&
-                  placedPattern.document.backgroundFile == fs::path("bg.png") &&
-                  placedPattern.document.backgroundOffsetX == 15 && placedPattern.document.notes.size() == 2,
+              placedPattern.document.backgroundFile == fs::path("bg.png"),
+              "The YMP points at the renamed YME and at the image's file name in the song's BG folder.");
+        Check(placedPattern.document.backgroundOffsetX == 15 && placedPattern.document.notes.size() == 2,
               "The YMP points at the renamed YME and at the image's file name in the song's BG folder.");
         Check(Read(song / "BG/bg.png") == "image A" && Patterns(songs) == 1 && sourceFiles() == before,
               "The background is copied into the song's BG folder and the osu! folder is left untouched.");
@@ -211,8 +216,9 @@ namespace
         const auto musicTime = fs::last_write_time(first.musicFile), imageTime = fs::last_write_time(song / "BG/bg.png");
         source.version = "Hard";
         const auto second = PlaceConvertedOsuChart(songs, source.Convert());
-        Check(!second.newSong && second.musicFile == first.musicFile && Patterns(songs) == 2 &&
-                  fs::last_write_time(first.musicFile) == musicTime && fs::last_write_time(song / "BG/bg.png") == imageTime,
+        Check(!second.newSong && second.musicFile == first.musicFile && Patterns(songs) == 2,
+              "Another difficulty reuses the existing YMM, byte-identical audio and identical background.");
+        Check(fs::last_write_time(first.musicFile) == musicTime && fs::last_write_time(song / "BG/bg.png") == imageTime,
               "Another difficulty reuses the existing YMM, byte-identical audio and identical background.");
 
         // Same names, same size, different bytes: nothing of the refused import may appear.
@@ -228,7 +234,9 @@ namespace
         source.title = "Different";
         const auto shared = PlaceConvertedOsuChart(songs, source.Convert());
         Check(shared.musicFile == first.musicFile && !fs::exists(songs / "Test artist - Different") &&
-                  shared.patternFile.parent_path() == song / "Chart" / "Test author - Third" && Patterns(songs) == 3,
+              shared.patternFile.parent_path() == song / "Chart" / "Test author - Third",
+              "Identical audio in a differently named source must reuse the registered song and join its folder.");
+        Check(Patterns(songs) == 3,
               "Identical audio in a differently named source must reuse the registered song and join its folder.");
         source.title = "Test";
 
@@ -276,8 +284,10 @@ namespace
         source.version = "CON";
         const auto named = PlaceConvertedOsuChart(songs, source.Convert());
         Check(named.songFolder.filename() == "Artist_Name - Song_Name" &&
-                  named.patternFile.parent_path().filename() == "Test author - CON" &&
-                  named.patternFile.filename() == "Artist_Name - Song_Name [CON].ymp" && !fs::exists(named.songFolder / "BG"),
+              named.patternFile.parent_path().filename() == "Test author - CON" &&
+              named.patternFile.filename() == "Artist_Name - Song_Name [CON].ymp",
+              "Source metadata must produce valid song, chart set and file names; no background means no BG folder.");
+        Check(!fs::exists(named.songFolder / "BG"),
               "Source metadata must produce valid song, chart set and file names; no background means no BG folder.");
 
         // Without a romanized notation the first notation names the folder.
@@ -295,8 +305,9 @@ namespace
         const auto romanized = PlaceConvertedOsuChart(songs, source.Convert());
         const auto romanizedMusic = ChartParser{}.ParseMusicFile(romanized.musicFile);
         Check(romanized.songFolder.filename() == "Artist R - Kyoku" &&
-                  romanized.patternFile.filename() == "Artist R - Kyoku [Oni].ymp" && romanizedMusic.Succeeded() &&
-                  romanizedMusic.document.romanizedName == "Kyoku" && romanizedMusic.document.names.front() == "곡",
+              romanized.patternFile.filename() == "Artist R - Kyoku [Oni].ymp" && romanizedMusic.Succeeded(),
+              "Romanized lines name the song folder and stay in the placed YMM.");
+        Check(romanizedMusic.document.romanizedName == "Kyoku" && romanizedMusic.document.names.front() == "곡",
               "Romanized lines name the song folder and stay in the placed YMM.");
         source.romanizedTitle.clear();
         source.romanizedArtist.clear();
