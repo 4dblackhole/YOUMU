@@ -86,8 +86,8 @@ Songs/
     BG/<원본 배경 파일명>
 ```
 
-- `<Artist - Title>`은 로마자 표기입니다: YMM의 곡명·아티스트에서 첫 ASCII 표기, 없으면 첫 표기를 씁니다.
-  Creator가 없으면 `Unknown`입니다.
+- `<Artist - Title>`은 [로마자 표시 규칙](Formats/Ymm.md#로마자-줄과-표시)의 아티스트·곡명입니다: 로마자 줄, 없으면 이미
+  로마자인 표기, 그것도 없으면 첫 표기. Creator가 없으면 `Unknown`입니다.
 - 변환기가 쓴 YMM·YMP는 음원·배경·YME를 원래 이름으로 가리키므로, Client가 YMM의 `File`, YMP의
   `Effect file`·`BG` 세 줄만 새 이름으로 고쳐 쓰고 나머지 바이트는 그대로 둡니다. `BG`는 곡 폴더의 `BG`
   기준 파일명이 됩니다.

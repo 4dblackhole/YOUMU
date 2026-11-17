@@ -13,8 +13,10 @@ UTF-8 텍스트이며 빈 줄과 `//`로 시작하는 줄을 무시합니다. �
 Effect file: angeldream [long notes test].yme
 BG: bg1.png
 offset: 0, 0
+Romanized Pattern Maker:
 Pattern Maker Count: 1
 Pattern Maker 1: Maker Name
+Romanized Pattern Name:
 Pattern Name: Long Notes Test
 Tags: test,long-note
 
@@ -33,7 +35,9 @@ HP: 9.00
 | `Effect file` | YMP 폴더 기준 YME 경로입니다. 효과가 없으면 생략할 수 있습니다. 같은 이름 YME를 자동 검색하지 않습니다. |
 | `BG` | 이 YMP가 속한 곡 폴더의 `BG` 하위 기준 이미지 경로입니다. `bg1.png`는 `Songs/<곡 폴더>/BG/bg1.png`입니다. 생략/빈 값은 기존 배경을 사용합니다. |
 | `offset` | 배경 중심의 `x, y` 오프셋입니다. 기본 `0, 0`. 엔진 2D 논리 좌표(기준 높이 720), +X 오른쪽/+Y 위쪽입니다. `Pattern Offset` 시간 보정과 별개입니다. |
+| `Romanized Pattern Maker` | 대표(첫) 제작자의 로마자 표기 한 줄입니다. 제작자 묶음의 맨 윗줄에 두며 비워 둘 수 있습니다. |
 | `Pattern Maker ...` | 제작자 문자열입니다. `Pattern Maker Count`는 현재 개수 검증에 사용하지 않습니다. |
+| `Romanized Pattern Name` | 패턴 이름의 로마자 표기입니다. `Pattern Name` 바로 윗줄에 두며 비워 둘 수 있습니다. |
 | `Pattern Name` | 곡 선택 화면에 표시할 패턴 이름입니다. |
 | `Tags` | 쉼표로 구분한 패턴 태그입니다. |
 | `Pattern Offset` | 밀리초 단위 패턴 오프셋입니다. 양수이면 모든 노트가 늦어집니다. |
@@ -41,6 +45,10 @@ HP: 9.00
 | `Mode` | 플레이/에디터 진입에 필요한 명시적 모드입니다. 현재 지원 값은 `Taiko`입니다. 빈 값을 Taiko로 대체하지 않습니다. |
 | `JudgeLevel` | 판정 창 크기를 정하는 1.00~100.00 고정소수점 값(0.01 단위)입니다. 생략하면 50.00입니다. 값이 커질수록 판정 창이 좁아집니다. |
 | `HP` | 체력 감소 배율입니다. JudgeLevel 바로 아래에 기록하며 1.00~100.00, 0.01 단위입니다. 생략 시 9.00입니다. |
+
+로마자 줄은 [YMM의 로마자 줄](Ymm.md#로마자-줄과-표시)과 같은 규칙으로 표시합니다. 로마자 표시에서 줄이 비어 있으면
+난이도명과 대표 제작자를 적힌 그대로 보여 줍니다(제작자는 서로 다른 사람이므로 다른 제작자가 대신하지 않습니다).
+저장할 때는 두 로마자 줄을 비어 있어도 항상 씁니다.
 
 `JudgeLevel`은 정수 표기(예: 50)도 읽으며 저장할 때 50.00처럼 두 자리를 고정합니다.
 범위 밖 값·유효한 소수 셋째 자리·NaN/무한대는 오류입니다. 내부 값은 JudgeLevel의
