@@ -36,15 +36,6 @@ namespace
         return std::wstring(prefix) + detail;
     }
 
-    // Only the representative (first) name is shown; search still covers every name.
-    [[nodiscard]] std::wstring FirstName(const std::vector<std::string> &values)
-    {
-        for (const auto &value : values)
-            if (!value.empty())
-                return DecodeDisplayText(value);
-        return {};
-    }
-
 
     constexpr std::array<const char *, 6> StatNames{"BPM", "Length", "Notes", "JudgeLevel", "HP", "Mode"};
 } // namespace
@@ -382,12 +373,14 @@ void MusicSelectView::RefreshSelectionPresentation()
         std::min(selection_.focusedSongPosition_, selection_.visibleSongIndices_.size() - 1);
     const auto &song =
         selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
-    SetCaption(*selectedSongLabel_, SongTitle(song));
-    const std::wstring artist = FirstName(song.music.artists);
+    // One notation is shown; the tooltips list every notation and search covers them all.
+    const auto notation = selection_.notation_;
+    SetCaption(*selectedSongLabel_, SongTitle(song, notation));
+    const std::wstring artist = ArtistName(song, notation);
     SetCaption(*selectedArtistLabel_, artist);
     artistIcon_->SetVisible(!artist.empty());
-    tooltip_.Set(*selectedSongLabel_, {AllNames(song.music.names)});
-    tooltip_.Set(*selectedArtistLabel_, {AllNames(song.music.artists)});
+    tooltip_.Set(*selectedSongLabel_, {AllNames(song.music.names, song.music.romanizedName)});
+    tooltip_.Set(*selectedArtistLabel_, {AllNames(song.music.artists, song.music.romanizedArtist)});
     if (song.patterns.empty())
     {
         artwork_.SetImage({}, board_->NodeSize());
@@ -402,12 +395,12 @@ void MusicSelectView::RefreshSelectionPresentation()
                       board_->NodeSize(), selected.pattern.backgroundOffsetX,
                       selected.pattern.backgroundOffsetY);
     difficultyBlock_->SetVisible(true);
-    SetCaption(*selectedPatternLabel_, PatternName(selected));
+    SetCaption(*selectedPatternLabel_, PatternName(selected, notation));
     RequireComponent<TextVisualComponent>(*levelBadge_->Children().front())
         .SetText(selected.calculatedDifficulty ? std::format(L"{:.2f}", *selected.calculatedDifficulty) : std::wstring(L"—"));
-    const std::wstring creator = FirstName(selected.pattern.makers);
+    const std::wstring creator = MakerName(selected, notation);
     SetCaption(*selectedCreatorLabel_, creator);
-    tooltip_.Set(*selectedCreatorLabel_, {AllNames(selected.pattern.makers)});
+    tooltip_.Set(*selectedCreatorLabel_, {AllNames(selected.pattern.makers, selected.pattern.romanizedMaker)});
     creatorIcon_->SetVisible(!creator.empty());
     if (goButton_)
         goButton_->SetEnabled(true);

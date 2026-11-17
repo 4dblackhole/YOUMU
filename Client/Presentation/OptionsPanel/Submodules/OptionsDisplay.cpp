@@ -14,6 +14,14 @@ void OptionsPanel::CreateDisplayControls()
         "Options.Resolution.Combo");
     ConfigureCombo(*resolutionCombo_);
     AddFieldLine(*content_, *resolutionCombo_, "Options.Resolution.Line");
+    // Song and chart texts: the first notation of the file, or the romanized line.
+    const float notationTop = NextField(ControlHeight);
+    notationLabel_ = &CreateFieldLabel(*content_, notationTop, "Options.Notation.Label");
+    notationCombo_ = &CreateDropdown(
+        *content_, TopLeft({ContentLeft, notationTop + ControlOffset, FieldWidth, ControlHeight}, contentHeight_), {},
+        "Options.Notation.Combo");
+    ConfigureCombo(*notationCombo_);
+    AddFieldLine(*content_, *notationCombo_, "Options.Notation.Line");
 }
 
 void OptionsPanel::RefreshDisplayControls()
@@ -43,6 +51,20 @@ void OptionsPanel::RefreshDisplayControls()
     combo.SetSelectedIndex(
         static_cast<std::size_t>(std::ranges::find(resolutions_, current) - resolutions_.begin()));
     resolutionCombo_->SetEnabled(window_ != nullptr);
+    SetCaption(*notationLabel_, std::wstring(texts_.Get("Options.notation")));
+    auto &notation = RequireDropdown(*notationCombo_);
+    notation.SetItems({std::wstring(texts_.Get("Options.notationFirst")), std::wstring(texts_.Get("Options.notationRomanized"))});
+    notation.SetSelectedIndex(options_.Values().notation == TextNotation::Romanized ? 1 : 0);
+}
+
+void OptionsPanel::SelectNotation(const std::size_t index)
+{
+    auto candidate = options_.Values();
+    candidate.notation = index == 1 ? TextNotation::Romanized : TextNotation::First;
+    // Screens read the saved value, so a failed save leaves the shown notation unchanged.
+    static_cast<void>(SaveOptions(candidate));
+    RefreshDisplayControls();
+    RefreshStatus();
 }
 
 void OptionsPanel::SelectResolution(std::size_t index)

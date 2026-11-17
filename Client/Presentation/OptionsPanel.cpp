@@ -196,6 +196,7 @@ void OptionsPanel::Shutdown() noexcept
     songsLabel_ = songsField_ = songsBrowse_ = songsDefault_ = nullptr;
     skinLabel_ = skinCombo_ = nullptr;
     resolutionLabel_ = resolutionCombo_ = nullptr;
+    notationLabel_ = notationCombo_ = nullptr;
     middlewareLabel_ = outputLabel_ = driverLabel_ = nullptr;
     middlewareCombo_ = outputCombo_ = driverCombo_ = nullptr;
     offsetLabel_ = offsetField_ = offsetUnit_ = nullptr;

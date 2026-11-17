@@ -18,14 +18,6 @@ namespace
     constexpr Color CardWhite{1.0F, 1.0F, 1.0F, 0.92F};
     constexpr Color FocusedArtist{0.949F, 0.969F, 1.0F, 1.0F};
 
-    [[nodiscard]] std::wstring FirstArtist(const SongCatalogEntry &song)
-    {
-        for (const auto &artist : song.music.artists)
-            if (!artist.empty())
-                return DecodeDisplayText(artist);
-        return {};
-    }
-
     // Height of the selected card: its heading plus one row per difficulty. A song
     // without charts keeps one row for the NO DIFFICULTIES line.
     [[nodiscard]] constexpr float FocusedHeight(const std::size_t difficulties) noexcept
@@ -207,11 +199,11 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
     // One line each: the representative title and artist. The editor keeps room for its + button.
     const float textLeft = focused ? 34.0F : 28.0F;
     const float textWidth = std::max(width - textLeft - (editor_ ? 56.0F : 44.0F), 1.0F);
-    auto &title = CreateCaption(button, {textLeft, 10.0F, textWidth, 20.0F}, SongTitle(song), focused ? 17.0F : 15.0F,
+    auto &title = CreateCaption(button, {textLeft, 10.0F, textWidth, 20.0F}, SongTitle(song, selection_.notation_), focused ? 17.0F : 15.0F,
                                 focused ? std::uint16_t{900} : std::uint16_t{800}, focused ? PureWhite : theme::Ink,
                                 "Title");
     title.SetClipRect({0.0F, 0.0F, textWidth, 20.0F});
-    auto &artist = CreateCaption(button, {textLeft, 30.0F, textWidth, 18.0F}, FirstArtist(song), 13.0F, 600,
+    auto &artist = CreateCaption(button, {textLeft, 30.0F, textWidth, 18.0F}, ArtistName(song, selection_.notation_), 13.0F, 600,
                                  focused ? FocusedArtist : theme::Caption, "Artist");
     artist.SetClipRect({0.0F, 0.0F, textWidth, 18.0F});
 
@@ -232,7 +224,7 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
                 TopLeft({rowLeft, layout::DifficultyTop + layout::DifficultyPitch * static_cast<float>(patternRow),
                          layout::DifficultyWidth, layout::DifficultyHeight},
                         button.NodeSize().height),
-                PatternName(song.patterns[index]), std::format("Difficulty.{}", index));
+                PatternName(song.patterns[index], selection_.notation_), std::format("Difficulty.{}", index));
             auto &difficultyText = RequireComponent<TextVisualComponent>(difficulty);
             StyleText(difficultyText, 13.0F, 800, PureWhite);
             difficultyText.SetContentBounds({20.0F, 0.0F, layout::DifficultyWidth - 20.0F - 60.0F, layout::DifficultyHeight});
@@ -290,19 +282,20 @@ void SongListView::RefreshNameHints()
         if (card.catalogIndex >= songs.size())
             continue;
         const auto &song = songs[card.catalogIndex];
-        HintName(*card.title, song.music.names, card.titleHinted);
-        HintName(*card.artist, song.music.artists, card.artistHinted);
+        HintName(*card.title, song.music.names, song.music.romanizedName, card.titleHinted);
+        HintName(*card.artist, song.music.artists, song.music.romanizedArtist, card.artistHinted);
     }
 }
 
-void SongListView::HintName(Visual2DNode &line, const std::vector<std::string> &names, bool &hinted)
+void SongListView::HintName(Visual2DNode &line, const std::vector<std::string> &names, const std::string_view romanized,
+                            bool &hinted)
 {
     // A line hints every name when it has several, or the full one when its line cuts it.
     const auto &text = RequireComponent<TextVisualComponent>(line);
     const auto measured = text.MeasuredSize();
     const auto &clip = line.ClipRect();
     const bool cut = measured.has_value() && clip.has_value() && measured->width > clip->width + 0.5F;
-    const bool wanted = cut || NameCount(names) > 1;
+    const bool wanted = cut || NameCount(names, romanized) > 1;
     if (wanted == hinted)
         return;
     hinted = wanted;
@@ -311,7 +304,7 @@ void SongListView::HintName(Visual2DNode &line, const std::vector<std::string> &
         tooltip_->SetLine(line, {});
         return;
     }
-    auto all = AllNames(names);
+    auto all = AllNames(names, romanized);
     tooltip_->SetLine(line, {all.empty() ? std::wstring(text.Text()) : std::move(all)});
 }
 

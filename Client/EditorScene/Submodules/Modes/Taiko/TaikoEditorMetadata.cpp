@@ -94,7 +94,15 @@ void TaikoEditorMode::DrawMetadata(IEditorModeCanvas &canvas, IEditorContext &st
     const auto &p = state.Document().Pattern();
     const float x0 = lefts[0], w0 = widths[0], half0 = (w0 - 10) * .5F;
     float y = top + 36;
+    // Each block starts with its romanized line, as in the file. An empty one is fine: the
+    // romanized display then uses the text below it when that is already in Roman letters.
+    field({x0, y, w0, 52}, std::wstring(catalog.Get("Editor.romanizedName")), p.romanizedName,
+          [](auto &d, const auto &value) { d.romanizedName = value; });
+    y += 62;
     field({x0, y, w0, 52}, std::wstring(text.patternName), p.name, [](auto &d, const auto &value) { d.name = value; });
+    y += 62;
+    field({x0, y, w0, 52}, std::wstring(catalog.Get("Editor.romanizedMakers")), p.romanizedMaker,
+          [](auto &d, const auto &value) { d.romanizedMaker = value; });
     y += 62;
     // Chart by: one row per creator; the first (★) is the one shown in song select and results.
     auto makers = p.makers;

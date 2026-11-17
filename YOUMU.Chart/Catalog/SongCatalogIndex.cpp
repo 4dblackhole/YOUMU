@@ -108,11 +108,13 @@ namespace
     {
         out.Number(doc.version); out.Path(doc.audioFile);
         out.Strings(doc.names); out.Strings(doc.artists); out.Strings(doc.tags);
+        out.Text(doc.romanizedName); out.Text(doc.romanizedArtist);
     }
     void Read(Reader &in, MusicDocument &doc)
     {
         doc.version = in.Number<int>(); doc.audioFile = in.Path();
         doc.names = in.Strings(); doc.artists = in.Strings(); doc.tags = in.Strings();
+        doc.romanizedName = in.Text(); doc.romanizedArtist = in.Text();
     }
     void Write(Writer &out, const PatternDocument &doc)
     {
@@ -121,6 +123,7 @@ namespace
         out.Strings(doc.makers); out.Strings(doc.tags); out.Text(doc.name); out.Text(doc.mode);
         out.Number(doc.patternOffsetMilliseconds); out.Number(doc.baseBpm); out.Number(doc.judgementLevel.Value());
         out.Number(doc.hpLevel.Value());
+        out.Text(doc.romanizedName); out.Text(doc.romanizedMaker);
     }
     void Read(Reader &in, PatternDocument &doc)
     {
@@ -130,6 +133,7 @@ namespace
         doc.patternOffsetMilliseconds = in.Number<double>(); doc.baseBpm = in.Number<double>();
         doc.judgementLevel = JudgeLevel{in.Number<double>()};
         doc.hpLevel = HpLevel{in.Number<double>()};
+        doc.romanizedName = in.Text(); doc.romanizedMaker = in.Text();
     }
     // Effect bodies aren't needed by song selection; their parse diagnostics are.
     void Write(Writer &, const EffectDocument &) {}

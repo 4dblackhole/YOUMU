@@ -193,6 +193,12 @@ namespace
                 values.windowWidth = ReadInteger<std::uint32_t>(value);
             else if (key == "Height")
                 values.windowHeight = ReadInteger<std::uint32_t>(value);
+            else if (key == "Notation")
+            {
+                if (value == "first") values.notation = TextNotation::First;
+                else if (value == "romanized") values.notation = TextNotation::Romanized;
+                else throw std::runtime_error("Notation must be first or romanized.");
+            }
         }
         else if (section.starts_with("Keys."))
         {
@@ -319,6 +325,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nSkinSet=" << EncodeUtf8(values.skinSet) << "\r\nGlobalOffsetMs=" << values.globalOffsetMs
              << "\r\nSongsPath=" << EncodeUtf8(values.songsPath.wstring())
              << "\r\n\r\n[Display]\r\nWidth=" << values.windowWidth << "\r\nHeight=" << values.windowHeight
+             << "\r\nNotation=" << (values.notation == TextNotation::Romanized ? "romanized" : "first")
              << "\r\n\r\n[Audio]\r\nMiddleware=" << values.audioMiddleware
              << "\r\nOutput=" << OutputName(values.audioOutput) << "\r\nDriverIndex=" << values.driverIndex
              << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master

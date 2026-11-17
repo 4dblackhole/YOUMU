@@ -1328,6 +1328,75 @@ namespace
         Check(!panel->IsVisible(), "Ctrl+O closes global settings.");
     }
     // While the shared alert is open, Enter and Esc answer it and never reach song select.
+    // The notation option switches every shown song and chart text and the name order at once.
+    void TestNotationOption()
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts("Client/Texts/Languages");
+        const std::filesystem::path file = "build/notation-view-options.ini";
+        std::filesystem::remove(file);
+        OptionSettings options(file);
+        SongSelectionState state;
+        SongCatalogEntry kana, latin;
+        kana.metadataPath = "build/notation/kana.ymm";
+        kana.music.names = {"\xE3\x82\xAA\xE3\x83\xA2\xE3\x82\xA4"};
+        kana.music.romanizedName = "Aaa";
+        kana.music.artists = {"\xE6\x9F\x8A"};
+        kana.music.romanizedArtist = "Hiiragi";
+        kana.patterns.resize(1);
+        kana.patterns[0].patternPath = "build/notation/kana.ymp";
+        kana.patterns[0].pattern.name = "\xE3\x82\xBD";
+        kana.patterns[0].pattern.romanizedName = "Soflan";
+        kana.patterns[0].pattern.makers = {"\xE9\xAD\x82"};
+        kana.patterns[0].pattern.romanizedMaker = "Tamashii";
+        latin.metadataPath = "build/notation/latin.ymm";
+        latin.music.names = {"Middle"};
+        latin.patterns.resize(1);
+        latin.patterns[0].patternPath = "build/notation/latin.ymp";
+        state.catalog_.songs = {latin, kana};
+        state.sortMode_ = SongSelectionState::SortMode::Title;
+        state.RebuildVisibleSongs();
+        state.SelectVisibleSong(1);
+        MusicSelectView view(visuals, state, SongSelectPurpose::Gameplay, texts, options);
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas) throw std::runtime_error("Notation Canvas missing.");
+        const auto caption = [&](const std::string &card, const std::string &line)
+        {
+            auto *node = Find(canvas->Root(), card);
+            auto *text = node ? Find(*node, line) : nullptr;
+            if (!text) throw std::runtime_error("Notation caption missing: " + card + "/" + line);
+            return text->GetComponent<TextVisualComponent>()->Text();
+        };
+        InputState none;
+        static_cast<void>(view.Update(none, 0));
+        Check(caption("Song.1", "Title") == L"\u30AA\u30E2\u30A4" && caption("Song.1", "Artist") == L"\u67CA" &&
+                  caption("Song.0", "Title") == L"Middle",
+              "Song cards start in the first notation, with the kana title sorted last.");
+        auto values = options.Values();
+        values.notation = TextNotation::Romanized;
+        std::string error;
+        Check(options.Save(values, error), error.c_str());
+        static_cast<void>(view.Update(none, 0));
+        Check(caption("Song.0", "Title") == L"Aaa" && caption("Song.0", "Artist") == L"Hiiragi" &&
+                  caption("Song.1", "Title") == L"Middle" && state.focusedSongPosition_ == 0,
+              "Romanized notation renames the cards, re-sorts them and keeps the focused song.");
+        Check(Find(canvas->Root(), "Difficulty.0")->GetComponent<TextVisualComponent>()->Text() == L"Soflan",
+              "The chart name follows the notation.");
+        values.notation = TextNotation::First;
+        Check(options.Save(values, error), error.c_str());
+        static_cast<void>(view.Update(none, 0));
+        Check(caption("Song.1", "Title") == L"\u30AA\u30E2\u30A4" && state.focusedSongPosition_ == 1,
+              "Switching back restores the first notation.");
+        view.Shutdown();
+        std::filesystem::remove(file);
+        Check(visuals.CanvasCount() == 0, "The notation test releases its Canvas.");
+    }
     void TestAlertHoldsKeys()
     {
         Renderer renderer;
@@ -1413,6 +1482,7 @@ int main()
         TestHpInformation();
         TestRecordHistoryView();
         TestAlertHoldsKeys();
+        TestNotationOption();
         TestOsuImportPanel();
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);

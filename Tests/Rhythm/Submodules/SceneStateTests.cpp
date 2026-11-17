@@ -2,6 +2,7 @@
 #include "GameFlow/GameplayLaunchStore.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicPlayerState.h"
 #include "GameScene/MusicSelectScene/Submodules/SongSelectionState.h"
+#include "GameScene/MusicSelectScene/Submodules/SongSelectionText.h"
 #include "TestSupport.h"
 #include <limits>
 
@@ -406,5 +407,66 @@ namespace tests
                     TaikoVisual(TaikoNoteType::Buzz, TaikoAction::Kat) ==
                         NoteVisualKind::KatBuzz,
                 "Typed presentation must preserve the large roll and Kat Buzz appearances.");
+    }
+    // The shown notation decides the name and artist order; search covers every notation.
+    void TestSongSelectionNotation()
+    {
+        using namespace song_select;
+        SongCatalogEntry kana, latin;
+        kana.metadataPath = "kana/Music/kana.ymm";
+        kana.music.names = {"\xE3\x82\xAA\xE3\x83\xA2\xE3\x82\xA4"}; // Sorts after every Latin title.
+        kana.music.romanizedName = "Aaa";
+        kana.music.artists = {"\xE6\x9F\x8A"};
+        kana.music.romanizedArtist = "Zed";
+        kana.patterns.resize(1);
+        kana.patterns[0].pattern.name = "\xE3\x82\xBD";
+        kana.patterns[0].pattern.romanizedName = "Soflan";
+        kana.patterns[0].pattern.makers = {"\xE9\xAD\x82", "Guest"};
+        latin.metadataPath = "latin/Music/latin.ymm";
+        latin.music.names = {"Middle"};
+        latin.music.artists = {"Artist"};
+        latin.patterns.resize(1);
+        latin.patterns[0].pattern.name = "Oni";
+        latin.patterns[0].pattern.makers = {"Maker"};
+
+        using enum TextNotation;
+        Require(SongTitle(kana, First) == L"\u30AA\u30E2\u30A4" && SongTitle(kana, Romanized) == L"Aaa" &&
+                    SongArtist(kana, Romanized) == L"Zed" && SongTitle(latin, Romanized) == L"Middle",
+                "Song texts follow the chosen notation; Roman text needs no romanized line.");
+        Require(PatternName(kana.patterns[0], Romanized) == L"Soflan" && PatternName(kana.patterns[0], First) == L"\u30BD" &&
+                    MakerName(latin.patterns[0], Romanized) == L"Maker",
+                "Chart names follow the same rule.");
+        // Makers are different people, so another maker never stands in for the first one's romanization.
+        Require(MakerName(kana.patterns[0], Romanized) == L"\u9B42" && MakerName(kana.patterns[0], First) == L"\u9B42",
+                "Without a romanized line the representative maker is shown as written.");
+        kana.patterns[0].pattern.romanizedMaker = "Tamashii";
+        Require(MakerName(kana.patterns[0], Romanized) == L"Tamashii" && MakerName(kana.patterns[0], First) == L"\u9B42",
+                "The makers' romanized line replaces the representative maker.");
+        SongCatalogEntry unnamed;
+        unnamed.metadataPath = "x/Music/file name.ymm";
+        Require(SongTitle(unnamed, Romanized) == L"file name" && SongArtist(unnamed, Romanized) == L"\u2014" &&
+                    ArtistName(unnamed, First).empty(),
+                "A song without names still shows its file name and a dash for the artist.");
+        Require(AllNames(kana.music.names, kana.music.romanizedName) == L"Aaa \u00B7 \u30AA\u30E2\u30A4" &&
+                    NameCount(kana.music.names, kana.music.romanizedName) == 2 &&
+                    NameCount(latin.music.names, latin.music.romanizedName) == 1,
+                "Tooltips list the romanized line before the notations.");
+
+        SongSelectionState state;
+        state.catalog_.songs = {latin, kana};
+        state.sortMode_ = SongSelectionState::SortMode::Title;
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{0, 1}, "First notation: the kana title sorts last.");
+        state.notation_ = Romanized;
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{1, 0}, "Romanized: the same song sorts by its romanized title.");
+        state.sortMode_ = SongSelectionState::SortMode::Artist;
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{0, 1}, "Artist order follows the romanized artist.");
+        state.notation_ = First;
+        state.searchText_ = L"aaa zed";
+        state.RebuildVisibleSongs();
+        Require(state.visibleSongIndices_ == std::vector<std::size_t>{1},
+                "Romanized lines are searched even while the first notation is shown.");
     }
 } // namespace tests

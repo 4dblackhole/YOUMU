@@ -65,8 +65,8 @@ void SongSelectionState::RebuildVisibleSongs()
     {
         std::vector<std::wstring> keys(catalog_.songs.size());
         for (const auto index : visibleSongIndices_)
-            keys[index] = Lowercase(sortMode_ == SortMode::Artist ? SongArtist(catalog_.songs[index])
-                                                                : SongTitle(catalog_.songs[index]));
+            keys[index] = Lowercase(sortMode_ == SortMode::Artist ? SongArtist(catalog_.songs[index], notation_)
+                                                                : SongTitle(catalog_.songs[index], notation_));
         std::stable_sort(visibleSongIndices_.begin(), visibleSongIndices_.end(),
             [&keys](const auto left, const auto right) { return keys[left] < keys[right]; });
     }

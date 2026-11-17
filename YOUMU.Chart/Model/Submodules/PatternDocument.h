@@ -39,8 +39,11 @@ struct PatternDocument
     // Relative to the song folder's BG folder, independently of the YMP folder.
     std::filesystem::path backgroundFile;
     double backgroundOffsetX{}, backgroundOffsetY{}; // 1280x720 logical space, +Y up.
+    // The romanized line above the makers and above the name; empty when not filled in (NotationText).
+    std::string romanizedMaker;
     std::vector<std::string> makers;
     std::vector<std::string> tags;
+    std::string romanizedName;
     std::string name;
     std::string mode;
     double patternOffsetMilliseconds{};

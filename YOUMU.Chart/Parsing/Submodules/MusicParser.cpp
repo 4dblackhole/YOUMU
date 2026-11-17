@@ -27,6 +27,10 @@ ParseResult<MusicDocument> ChartParser::ParseMusic(const std::string_view utf8,
         {
             result.document.audioFile = PathFromUtf8(value);
         }
+        else if (key == "Romanized Music Name")
+            result.document.romanizedName = std::string(value);
+        else if (key == "Romanized Artist")
+            result.document.romanizedArtist = std::string(value);
         else if (StartsWithInsensitive(key, "Music Name") &&
                  !StartsWithInsensitive(key, "Music Name Count"))
         {

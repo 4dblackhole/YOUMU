@@ -111,6 +111,7 @@ class OptionsPanel final
     void CreateDisplayControls();
     void RefreshDisplayControls();
     void SelectResolution(std::size_t index);
+    void SelectNotation(std::size_t index);
     void CreateVolumeControls();
     void RefreshVolumeControls();
     void ShowVolume(const VolumeSlider &slider, int percent);
@@ -187,6 +188,7 @@ class OptionsPanel final
     PhantomCore::Visual2DNode *songsLabel_{}, *songsField_{}, *songsBrowse_{}, *songsDefault_{};
     PhantomCore::Visual2DNode *skinLabel_{}, *skinCombo_{};
     PhantomCore::Visual2DNode *resolutionLabel_{}, *resolutionCombo_{};
+    PhantomCore::Visual2DNode *notationLabel_{}, *notationCombo_{};
     PhantomCore::Visual2DNode *middlewareLabel_{}, *outputLabel_{}, *driverLabel_{};
     PhantomCore::Visual2DNode *middlewareCombo_{}, *outputCombo_{}, *driverCombo_{};
     PhantomCore::Visual2DNode *offsetLabel_{}, *offsetField_{}, *offsetUnit_{};

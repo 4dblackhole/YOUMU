@@ -22,6 +22,7 @@
     <ClInclude Include="Model\Submodules\CompiledChart.h"><Filter>Model\Submodules</Filter></ClInclude>
     <ClInclude Include="Model\Submodules\EffectDocument.h"><Filter>Model\Submodules</Filter></ClInclude>
     <ClInclude Include="Model\Submodules\MusicDocument.h"><Filter>Model\Submodules</Filter></ClInclude>
+    <ClInclude Include="Model\Submodules\NotationText.h"><Filter>Model\Submodules</Filter></ClInclude>
     <ClInclude Include="Model\Submodules\PatternDocument.h"><Filter>Model\Submodules</Filter></ClInclude>
     <ClCompile Include="Parsing\ChartParser.cpp"><Filter>Parsing</Filter></ClCompile>
     <ClInclude Include="Parsing\ChartParser.h"><Filter>Parsing</Filter></ClInclude>

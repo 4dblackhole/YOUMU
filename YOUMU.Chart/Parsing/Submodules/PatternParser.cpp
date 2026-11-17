@@ -133,6 +133,10 @@ ParseResult<PatternDocument> ChartParser::ParsePattern(const std::string_view ut
                 AddDiagnostic(result.diagnostics, sourcePath, lineNumber,
                               "Background offset requires finite x, y values.");
         }
+        else if (key == "Romanized Pattern Name")
+            result.document.romanizedName = std::string(value);
+        else if (key == "Romanized Pattern Maker")
+            result.document.romanizedMaker = std::string(value);
         else if (StartsWithInsensitive(key, "Pattern Maker") &&
                  !StartsWithInsensitive(key, "Pattern Maker Count"))
             result.document.makers.emplace_back(value);

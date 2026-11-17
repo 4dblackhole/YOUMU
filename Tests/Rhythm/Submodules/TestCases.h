@@ -93,6 +93,8 @@ namespace tests
     void TestInvalidNumericFieldsReportDiagnostics();
     void TestNumericFieldsRejectEmbeddedNulls();
     void TestTimingMicrosecondsAndEffects();
+    void TestRomanizedNotation();
+    void TestSongSelectionNotation();
     void TestIndexedHitSoundChanges();
     void TestSpecialNoteSoundOverridePriority();
     void TestChartEditingAndSave();

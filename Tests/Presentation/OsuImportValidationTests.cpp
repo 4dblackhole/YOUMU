@@ -123,6 +123,7 @@ namespace
     {
         fs::path folder, converted;
         std::string title{"Test"}, titleUnicode{"원본 곡명"}, artist{"Test artist"}, version{"Oni"};
+        std::string romanizedTitle, romanizedArtist; // The converter's romanized lines; empty writes them empty.
         std::string audio{"audio/song.mp3"}, background{"nested/bg.png"};
 
         ConvertedOsuChart Convert() const
@@ -130,7 +131,9 @@ namespace
             fs::remove_all(converted);
             const std::string names = titleUnicode.empty() ? "Music Name 1: " + title + "\n"
                                                            : "Music Name 1: " + titleUnicode + "\nMusic Name 2: " + title + "\n";
-            Write(converted / L"맵 [Oni].ymm", "Version: 1\nFile: " + audio + "\n" + names + "Artist 1: " + artist + "\nTags: a,b\n");
+            Write(converted / L"맵 [Oni].ymm", "Version: 1\nFile: " + audio + "\nRomanized Music Name: " + romanizedTitle + "\n" +
+                                                    names + "Romanized Artist: " + romanizedArtist + "\nArtist 1: " + artist +
+                                                    "\nTags: a,b\n");
             auto pattern = LongNotePattern();
             pattern.name = version;
             pattern.backgroundFile = fs::path(std::u8string(reinterpret_cast<const char8_t *>(background.data()), background.size()));
@@ -284,7 +287,20 @@ namespace
         source.version = "Oni";
         const auto unicode = PlaceConvertedOsuChart(songs, source.Convert());
         Check(unicode.songFolder.filename() == fs::path(L"아티스트 - 곡") && Patterns(songs) == 2,
-              "A song without an ASCII notation is named by its first notation.");
+              "A song without a Roman notation is named by its first notation.");
+        // The romanized lines name the folder when they are filled in.
+        Write(source.folder / "audio/song.mp3", "romanized recording");
+        source.romanizedTitle = "Kyoku";
+        source.romanizedArtist = "Artist R";
+        const auto romanized = PlaceConvertedOsuChart(songs, source.Convert());
+        const auto romanizedMusic = ChartParser{}.ParseMusicFile(romanized.musicFile);
+        Check(romanized.songFolder.filename() == "Artist R - Kyoku" &&
+                  romanized.patternFile.filename() == "Artist R - Kyoku [Oni].ymp" && romanizedMusic.Succeeded() &&
+                  romanizedMusic.document.romanizedName == "Kyoku" && romanizedMusic.document.names.front() == "곡",
+              "Romanized lines name the song folder and stay in the placed YMM.");
+        source.romanizedTitle.clear();
+        source.romanizedArtist.clear();
+        fs::remove_all(romanized.songFolder);
 
         // A user's own file at the lock path is neither opened nor deleted, and blocks the import.
         Write(source.folder / "audio/song.mp3", "third recording");

@@ -845,7 +845,10 @@ out << std::setprecision(17) << "Version: " << pattern.version << "\n[Metadata]\
     << "Effect file: " << Utf8(pattern.effectFile) << '\n'
     << "BG: " << Utf8(pattern.backgroundFile) << '\n'
     << "offset: " << pattern.backgroundOffsetX << ", " << pattern.backgroundOffsetY << '\n'
-    << "Pattern Name: " << pattern.name << '\n';
+    // Each block starts with its romanized line, written even when empty so it can be filled in.
+    << "Romanized Pattern Name: " << pattern.romanizedName << '\n'
+    << "Pattern Name: " << pattern.name << '\n'
+    << "Romanized Pattern Maker: " << pattern.romanizedMaker << '\n';
 for (std::size_t i = 0; i < pattern.makers.size(); ++i)
     out << "Pattern Maker " << i << ": " << pattern.makers[i] << '\n';
 out << "Tags: ";

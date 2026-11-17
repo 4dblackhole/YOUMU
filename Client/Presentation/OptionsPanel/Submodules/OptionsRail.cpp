@@ -58,7 +58,7 @@ void OptionsPanel::LayoutSections()
 {
     std::array<std::vector<float>, SectionCount> controls{
         std::vector<float>{ControlHeight, SongsControlHeight},
-        std::vector<float>{ControlHeight, ControlHeight},
+        std::vector<float>{ControlHeight, ControlHeight, ControlHeight}, // Skin, resolution, notation.
         std::vector<float>(volumes_.size() + 4, ControlHeight),
         std::vector<float>{}};
     for (const auto &layout : inputLayouts_)
@@ -240,7 +240,8 @@ void OptionsPanel::SpySection()
 
 void OptionsPanel::CollapseCombos()
 {
-    for (auto *node : {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_})
+    for (auto *node : {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_,
+                       notationCombo_})
         if (node)
             RequireDropdown(*node).Collapse();
 }

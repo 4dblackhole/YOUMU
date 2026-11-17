@@ -1,3 +1,4 @@
+#include "Model/Submodules/NotationText.h"
 #include "Taiko/Submodules/TaikoAudioPreview.h"
 #include "Taiko/Submodules/TaikoChartNotes.h"
 #include "TestSupport.h"
@@ -439,5 +440,72 @@ Version: 1
         Require(effects.Succeeded() && effects.document.commands.size() == 2 &&
                     effects.document.commands[1].type == EffectCommandType::ReverbSend,
                 "YME must parse real-time audio automation independently of YMP.");
+    }
+
+    // Each block of notations has a romanized line of its own above it.
+    void TestRomanizedNotation()
+    {
+        ChartParser parser;
+        const auto music = parser.ParseMusic("Version: 1\nFile: a.mp3\n"
+                                             "Romanized Music Name: Omoiyoshino\n"
+                                             "Music Name 1: \xE3\x82\xAA\xE3\x83\xA2\xE3\x82\xA4\n"
+                                             "Music Name 2: Second\n"
+                                             "Romanized Artist: \n"
+                                             "Artist Vocal: \xE9\xAB\x98\xE5\xAE\xAE\n"
+                                             "Artist Vocal Romanized: Takamiya Nasuno\n",
+                                             "memory.ymm");
+        Require(music.diagnostics.empty() && music.document.romanizedName == "Omoiyoshino" &&
+                    music.document.names.size() == 2 && music.document.romanizedArtist.empty() &&
+                    music.document.artists.size() == 2,
+                "The romanized lines are their own fields; role-style Artist lines stay notations.");
+        using enum TextNotation;
+        Require(NotationText(music.document.names, music.document.romanizedName, First) ==
+                        "\xE3\x82\xAA\xE3\x83\xA2\xE3\x82\xA4" &&
+                    NotationText(music.document.names, music.document.romanizedName, Romanized) == "Omoiyoshino",
+                "The first notation and the romanized line are shown as chosen.");
+        Require(NotationText(music.document.artists, music.document.romanizedArtist, Romanized) == "Takamiya Nasuno" &&
+                    NotationText(music.document.artists, music.document.romanizedArtist, First) == "\xE9\xAB\x98\xE5\xAE\xAE",
+                "An empty romanized line is replaced by a notation that is already in Roman letters.");
+        const std::vector<std::string> foreign{"\xEA\xB3\xA1", "\xE6\x9B\xB2"};
+        Require(NotationText(foreign, {}, Romanized) == foreign.front() &&
+                    NotationText(std::vector<std::string>{}, {}, Romanized).empty() &&
+                    NotationText(std::vector<std::string>{"", "Later"}, {}, First) == "Later",
+                "Without any Roman notation the first notation that is not empty stays.");
+        Require(IsRomanText("Caf\xC3\xA9 P*Light (K-2)") && !IsRomanText("") && !IsRomanText("\xE2\x98\x85 Star") &&
+                    !IsRomanText("\xEA\xB3\xA1"),
+                "Roman text covers Latin letters with accents, digits and ASCII punctuation only.");
+        Require(NotationText("\xE3\x82\xBD", "Soflan", Romanized) == "Soflan" &&
+                    NotationText("Oni", "", Romanized) == "Oni" && NotationText("Oni", "Demon", First) == "Oni",
+                "A single text follows the same rule.");
+
+        PatternDocument pattern;
+        pattern.mode = "Taiko";
+        pattern.romanizedName = "Soflan(^^)";
+        pattern.name = "\xE3\x82\xBD\xE3\x83\x95\xE3\x83\xA9\xE3\x83\xB3(^^)";
+        pattern.romanizedMaker = "Konpaku Sariel";
+        pattern.makers = {"\xE9\xAD\x82\xE9\xAD\x84", "Second"};
+        const auto text = ChartEditor::WritePattern(pattern);
+        const auto name = text.find("Romanized Pattern Name: Soflan(^^)\nPattern Name: ");
+        const auto maker = text.find("Romanized Pattern Maker: Konpaku Sariel\nPattern Maker 0: ");
+        Require(name != std::string::npos && maker != std::string::npos,
+                "The writer puts each romanized line directly above its block.");
+        const auto parsed = parser.ParsePattern(text, "memory.ymp");
+        Require(parsed.diagnostics.empty() && parsed.document.romanizedName == pattern.romanizedName &&
+                    parsed.document.romanizedMaker == pattern.romanizedMaker && parsed.document.name == pattern.name &&
+                    parsed.document.makers == pattern.makers && ChartEditor::WritePattern(parsed.document) == text,
+                "Romanized chart lines survive a save and load round trip.");
+        const auto empty = parser.ParsePattern(ChartEditor::WritePattern(PatternDocument{}), "memory.ymp");
+        Require(empty.diagnostics.empty() && empty.document.romanizedName.empty() && empty.document.romanizedMaker.empty(),
+                "Empty romanized lines are written and read back as empty.");
+
+        // The editor's undo history carries the romanized lines like every other metadata field.
+        ChartEditor editor(pattern);
+        auto renamed = editor.Pattern();
+        renamed.romanizedName = "Changed";
+        editor.Replace(renamed, editor.Effects());
+        Require(editor.Dirty() && editor.Pattern().romanizedName == "Changed", "A romanized line edit is a document change.");
+        editor.Undo();
+        Require(editor.Pattern().romanizedName == "Soflan(^^)" && editor.Pattern().romanizedMaker == "Konpaku Sariel",
+                "Undo restores the romanized lines.");
     }
 } // namespace tests
