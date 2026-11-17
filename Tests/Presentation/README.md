@@ -570,8 +570,11 @@ time and holds each Buzz from its head to its end.
 
 The summary (`<out>/<label>/summary.txt`, with CSV files beside it) reports:
 
-- Clock offset d: chart time from QPC minus chart time of the DSP clock read in the same
-  snapshot, in wall milliseconds, using the first read of each mixer block. It is given per
+- Clock offset d: chart time from QPC minus chart time of the raw mixer clock
+  (`AudioSystem::DspClock()`) read with it, against the controller's anchor snapshot, in wall
+  milliseconds, using the first read of each mixer block. The anchor's DSP value is the engine's
+  smoothed estimate, so the raw reads observe the mixer independently of it; the summary also
+  counts anchors taken before a smoothed estimate was available. It is given per
   anchor (start, Resume, Rewind, Retry), with the start/middle/end medians and slope for
   segments of 20 s or longer.
 - Per Buzz and per window: tick-sound request lateness against the tick's chart time, audio

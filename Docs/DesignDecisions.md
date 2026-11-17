@@ -58,6 +58,8 @@
   각 경로의 기존 물리 상태 반영 순서를 따릅니다. [모드 입력 계약](AddingGameMode.md#세션과-입력)
 - 음악/미래 cue는 DSP로 예약하고, 입력 히트사운드는 판정 후 즉시 재생합니다.
   Pause/seek 후에는 새 DSP 기준을 잡습니다. BPM/박자/효과 시각은 로딩 시 컴파일합니다.
+- DSP 기준점과 그 기준으로 읽는 재생 위치는 같은 clock snapshot 추정값을 쓰고,
+  예약 시각을 mixer가 지났는지는 날 DSP clock과 비교합니다. [시계 구분](Gameplay/Rules.md#한-개의-타이머)
 
 상세: [Rules](Gameplay/Rules.md#한-개의-타이머), [Audio](Gameplay/Audio.md).
 검증: InputOrderingTests, PlayPauseTests, GameplayPauseTests와 전체 노트 replay.

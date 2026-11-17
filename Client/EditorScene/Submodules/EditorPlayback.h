@@ -70,7 +70,7 @@ class EditorPlayback final
     void UpdatePosition();
     [[nodiscard]] RhythmTime PositionAtDsp(std::uint64_t dspClock) const noexcept;
     [[nodiscard]] std::uint64_t DspClockAt(RhythmTime time) const noexcept;
-    void AdjustTrackRates(double rate, std::uint64_t dspClock, std::string &error);
+    void AdjustTrackRates(double rate, std::uint64_t mixedDspClock, std::string &error);
     void ScheduleHitSounds();
     void StopVoices() noexcept;
     void PauseVoices();

@@ -21,6 +21,9 @@ namespace
     // A controllable DSP clock makes cue deadlines, pre-roll and stalled UI
     // intervals deterministic without depending on a physical audio driver.
     std::uint64_t dspClock{};
+    // Clock snapshots are dspClock + snapshotOffset. A real mixer's smoothed
+    // snapshot leads or trails its raw, block-stepped clock by part of a wake.
+    std::int64_t snapshotOffset{};
     class ClockBackend final : public IAudioBackend
     {
       public:
@@ -97,6 +100,11 @@ namespace
         std::uint64_t DspClock() const noexcept override
         {
             return dspClock;
+        }
+        AudioMixerClockEstimate EstimateDspClock(std::int64_t) const noexcept override
+        {
+            return {static_cast<std::uint64_t>(static_cast<std::int64_t>(dspClock) + snapshotOffset),
+                    snapshotOffset != 0};
         }
         std::unique_ptr<IAudioBusBackend> CreateBus(std::string_view, IAudioBusBackend *, std::string &) override
         {
@@ -350,6 +358,70 @@ namespace
         playback.Shutdown();
         audio.Update();
     }
+
+    // The anchor and the cursor share the clock snapshot; whether a queued hit
+    // was mixed is read from the raw clock, which the snapshot can trail or lead.
+    void TestSnapshotAndMixerClocks()
+    {
+        dspClock = 0;
+        snapshotOffset = 0;
+        probes.clear();
+        AudioSystem audio;
+        std::string error;
+        Check(audio.Initialize({}, CreateClockBackend, CreateClip, error), "Snapshot probe initialization failed.");
+        const std::map<std::string, std::filesystem::path> files{{"Music", "music"}, {"Don", "don"}};
+        {
+            EditorPlayback playback;
+            playback.Initialize(audio);
+            const std::vector<AudioMarker> cues{{0, "Don"}, {.5, "Don"}};
+            const auto update = [&] { playback.Update(files, 1, cues, 1, Time{3'000'000}); };
+            playback.Toggle();
+            update(); // Anchored at 960.
+            dspClock = 24960; // The mixer reached the half-second hit; the snapshot trails by 5 ms.
+            snapshotOffset = -240;
+            update();
+            const auto hit = probes.back();
+            Check(playback.Position() == Time{495'000} && hit->settings.startDspClock == 24960,
+                  "The cursor must be read from the clock snapshot that anchored it.");
+            const auto deadlines = hit->deadlines.size();
+            playback.SetRate(2);
+            Check(playback.Position() == Time{495'000} && hit->playing && hit->settings.pitch == 2 &&
+                      hit->deadlines.size() == deadlines,
+                  "A rate change must keep the cursor and only retune a hit the mixer already reached.");
+            dspClock += 48000;
+            update();
+            Check(playback.Position() == Time{2'495'000},
+                  "After a rate change the cursor must advance from the re-anchored snapshot.");
+            playback.Shutdown();
+        }
+        dspClock = 0;
+        snapshotOffset = 0;
+        probes.clear();
+        {
+            EditorPlayback playback;
+            playback.Initialize(audio);
+            const std::vector<AudioMarker> cues{{0, "Don"}, {.01, "Don"}};
+            const auto update = [&] { playback.Update(files, 1, cues, 1, Time{3'000'000}); };
+            playback.Seek(Time{-100'000});
+            playback.Toggle();
+            update();
+            dspClock = 5280;
+            update();
+            const auto queued = probes.back();
+            Check(queued->settings.startDspClock == 5760, "Snapshot probe did not queue the expected hit.");
+            snapshotOffset = 600; // The snapshot is past the hit's deadline; the mixer is not.
+            playback.SetRate(2);
+            Check(!queued->playing && playback.Position() == Time{2'500},
+                  "A hit the mixer has not reached must be cancelled for re-queueing, not only retuned.");
+            update();
+            Check(probes.back() != queued && probes.back()->settings.startDspClock == 5820 &&
+                      probes.back()->settings.pitch == 2,
+                  "The cancelled hit must be queued once under the new rate mapping.");
+            playback.Shutdown();
+        }
+        snapshotOffset = 0;
+        audio.Update();
+    }
 } // namespace
 
 void TestEditorPlayback()
@@ -357,6 +429,7 @@ void TestEditorPlayback()
     TestPlaybackRates();
     TestPlayerVolumes();
     TestRateChangeAcrossCueDeadline();
+    TestSnapshotAndMixerClocks();
     dspClock = 0;
     probes.clear();
     loads = 0;
