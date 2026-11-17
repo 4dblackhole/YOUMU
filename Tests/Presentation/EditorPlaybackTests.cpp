@@ -388,8 +388,9 @@ namespace
                   "The cursor must be read from the clock snapshot that anchored it.");
             const auto deadlines = hit->deadlines.size();
             playback.SetRate(2);
-            Check(playback.Position() == Time{495'000} && hit->playing && hit->settings.pitch == 2 &&
-                      hit->deadlines.size() == deadlines,
+            Check(playback.Position() == Time{495'000} && hit->playing && hit->settings.pitch == 2,
+                  "A rate change must keep the cursor and only retune a hit the mixer already reached.");
+            Check(hit->deadlines.size() == deadlines,
                   "A rate change must keep the cursor and only retune a hit the mixer already reached.");
             dspClock += 48000;
             update();

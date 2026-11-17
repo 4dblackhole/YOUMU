@@ -16,11 +16,10 @@ namespace tests
 
     void TestRationalNumberUsesExactOrderingAndArithmetic()
     {
-        Require(RationalNumber{3, 8} < RationalNumber{1, 2} &&
-                    RationalNumber{4, 8} == RationalNumber{1, 2} &&
-                    RationalNumber{1, 6} + RationalNumber{1, 3} ==
-                        RationalNumber{1, 2} &&
-                    RationalNumber{-1, 2} < RationalNumber{-3, 8},
+        Require(RationalNumber{3, 8} < RationalNumber{1, 2} && RationalNumber{4, 8} == RationalNumber{1, 2} &&
+                RationalNumber{1, 6} + RationalNumber{1, 3} == RationalNumber{1, 2},
+                "RationalNumber must compare and add reduced fractions exactly.");
+        Require(RationalNumber{-1, 2} < RationalNumber{-3, 8},
                 "RationalNumber must compare and add reduced fractions exactly.");
 
         bool rejectedZeroDenominator = false;
@@ -37,18 +36,19 @@ namespace tests
 
     void TestTimingCommandWhitespaceGrammar()
     {
-        Require(ParseTimingBody("1/2, #bpm 150").Succeeded() &&
-                    ParseTimingBody("1/2,        #bpm   150").Succeeded() &&
-                    ParseTimingBody("#measure 4/4").Succeeded() &&
-                    ParseTimingBody("#measure C").Succeeded(),
+        Require(ParseTimingBody("1/2, #bpm 150").Succeeded() && ParseTimingBody("1/2,        #bpm   150").Succeeded() &&
+                ParseTimingBody("#measure 4/4").Succeeded(),
+                "Timing grammar must allow whitespace after commas and between a command and its "
+                "value.");
+        Require(ParseTimingBody("#measure C").Succeeded(),
                 "Timing grammar must allow whitespace after commas and between a command and its "
                 "value.");
 
-        Require(!ParseTimingBody("1/ 2, #bpm 150").Succeeded() &&
-                    !ParseTimingBody("1/2, #bpm150").Succeeded() &&
-                    !ParseTimingBody("#measure4/4").Succeeded() &&
-                    !ParseTimingBody("# measure 4/4").Succeeded() &&
-                    !ParseTimingBody("#measure 4/  4").Succeeded(),
+        Require(!ParseTimingBody("1/ 2, #bpm 150").Succeeded() && !ParseTimingBody("1/2, #bpm150").Succeeded() &&
+                !ParseTimingBody("#measure4/4").Succeeded(),
+                "Timing grammar must reject whitespace inside fractions and commands without a "
+                "separating space.");
+        Require(!ParseTimingBody("# measure 4/4").Succeeded() && !ParseTimingBody("#measure 4/  4").Succeeded(),
                 "Timing grammar must reject whitespace inside fractions and commands without a "
                 "separating space.");
     }
@@ -122,9 +122,10 @@ Base BPM: 140
             const MusicalTimeline timeline(pattern);
             const auto starts = timeline.CompileMeasureStarts();
             Require(starts[1] == RhythmTime{static_cast<long long>(1'333'333 + delay * 1000)} &&
-                        starts[2] == RhythmTime{static_cast<long long>(2'666'667 + delay * 1000)} &&
-                        timeline.MeasureLength(0) == Rational{1, 1} &&
-                        timeline.PositionToWholeNotes({1, {}}) == Rational{1, 1},
+                    starts[2] == RhythmTime{static_cast<long long>(2'666'667 + delay * 1000)} &&
+                    timeline.MeasureLength(0) == Rational{1, 1},
+                    "Boundary delay must change only the preceding measure's elapsed duration, never source beats.");
+            Require(timeline.PositionToWholeNotes({1, {}}) == Rational{1, 1},
                     "Boundary delay must change only the preceding measure's elapsed duration, never source beats.");
             const auto loaded = TaikoMode{}.CreateSession(pattern);
             Require(loaded.Succeeded() && loaded.session->Timeline().Compile({1, {}}) == starts[1],
@@ -165,9 +166,11 @@ Mode: Taiko
         ChartEditor editor(pattern);
         const auto &timeline = editor.Timeline();
         const auto first = timeline.MeasureSpan(0), second = timeline.MeasureSpan(1), third = timeline.MeasureSpan(2);
-        Require(first.begin == RhythmTime{} && first.end == RhythmTime{1'000'000} &&
-                    first.wholeNotes == .5L && second.begin == first.end &&
-                    second.end == RhythmTime{2'500'000} && second.wholeNotes == .75L && third.wholeNotes == 1,
+        Require(first.begin == RhythmTime{} && first.end == RhythmTime{1'000'000} && first.wholeNotes == .5L,
+                "A -3/4 delay at measure 2's 1/4 must leave measure lengths 2/4, 3/4, then 4/4.");
+        Require(second.begin == first.end && second.end == RhythmTime{2'500'000} && second.wholeNotes == .75L,
+                "A -3/4 delay at measure 2's 1/4 must leave measure lengths 2/4, 3/4, then 4/4.");
+        Require(third.wholeNotes == 1,
                 "A -3/4 delay at measure 2's 1/4 must leave measure lengths 2/4, 3/4, then 4/4.");
         Require(timeline.Compile({1, {1, 4}}) == second.begin &&
                     second.sourceBegin == MusicalPosition{1, {1, 4}} &&
@@ -175,9 +178,10 @@ Mode: Taiko
                 "The delayed note must appear at the effective measure start without changing its beat.");
         const auto playable = PlayableInSourceOrder(editor.Notes());
         auto play = TaikoMode{}.CreateSession(editor.Pattern());
-        Require(play.Succeeded() && playable.size() == 3 && play.session->Gear().Lanes().front()->Notes().size() == 3 &&
-                    !timeline.IsPositionActive({0, {1, 2}}) && !timeline.IsPositionActive({1, {}}) &&
-                    timeline.IsPositionActive({1, {1, 4}}),
+        Require(play.Succeeded() && playable.size() == 3 && play.session->Gear().Lanes().front()->Notes().size() == 3,
+                "The overwritten interval includes its earlier boundary, excludes its new endpoint, and removes taps.");
+        Require(!timeline.IsPositionActive({0, {1, 2}}) && !timeline.IsPositionActive({1, {}}) &&
+                timeline.IsPositionActive({1, {1, 4}}),
                 "The overwritten interval includes its earlier boundary, excludes its new endpoint, and removes taps.");
         const auto ticks = timeline.CompileSubdivisions({0, {}}, {2, {}}, 16);
         std::vector<RhythmTime> expected;
@@ -192,8 +196,9 @@ Mode: Taiko
                 "hit counts exclude the tail.");
         const auto restored = ChartParser{}.ParsePattern(ChartEditor::WritePattern(editor.Pattern()));
         Require(restored.Succeeded() && restored.document.notes.size() == 6 &&
-                    restored.document.notes[4].position == MusicalPosition{1, {1, 4}} &&
-                    restored.document.timing.front().value == -1500,
+                restored.document.notes[4].position == MusicalPosition{1, {1, 4}},
+                "Saving must retain overwritten notes, delays and original beat positions.");
+        Require(restored.document.timing.front().value == -1500,
                 "Saving must retain overwritten notes, delays and original beat positions.");
         const auto id = pattern.notes[2].sourceOrder;
         Require(editor.FindNote(id) && !editor.FindNote(id)->head.positionActive,
@@ -213,10 +218,11 @@ Mode: Taiko
                           {{0, {3, 4}}, TimingDirectiveType::DelayMilliseconds, -100},
                           {{1, {1, 4}}, TimingDirectiveType::DelayMilliseconds, -1250}};
         const MusicalTimeline nested(pattern);
-        Require(nested.Compile({1, {1, 4}}) == RhythmTime{400'000} &&
-                    nested.Compile({2, {}}) == RhythmTime{1'900'000} && !nested.IsPositionActive({0, {1, 2}}) &&
-                    !nested.IsPositionActive({0, {3, 4}}) &&
-                    std::abs(nested.WholeNotesAtTime(RhythmTime{400'000}) - 1.25L) < 1e-12,
+        Require(nested.Compile({1, {1, 4}}) == RhythmTime{400'000} && nested.Compile({2, {}}) == RhythmTime{1'900'000} &&
+                !nested.IsPositionActive({0, {1, 2}}),
+                "Nested overwrites must discard earlier tempo/delay state and support inverse seeking.");
+        Require(!nested.IsPositionActive({0, {3, 4}}) &&
+                std::abs(nested.WholeNotesAtTime(RhythmTime{400'000}) - 1.25L) < 1e-12,
                 "Nested overwrites must discard earlier tempo/delay state and support inverse seeking.");
         const auto nestedTicks = nested.CompileSubdivisions({0, {}}, {2, {}}, 16);
         expected.clear();
@@ -233,7 +239,9 @@ Mode: Taiko
                           {{0, {3, 4}}, TimingDirectiveType::DelayMilliseconds, -750}};
         const MusicalTimeline gap(pattern);
         Require(!gap.IsPositionActive({0, {1, 2}}) && gap.Compile({0, {3, 4}}) == RhythmTime{1'500'000} &&
-                    gap.Compile({1, {}}) == RhythmTime{2'000'000} && gap.MeasureSpan(0).wholeNotes == 1,
+                gap.Compile({1, {}}) == RhythmTime{2'000'000},
+                "A cut inside a positive gap must retain elapsed remainder and restore the BPM before the gap.");
+        Require(gap.MeasureSpan(0).wholeNotes == 1,
                 "A cut inside a positive gap must retain elapsed remainder and restore the BPM before the gap.");
         // Same-position BPM is a new event at the surviving cut endpoint.
         pattern.timing.push_back({{0, {3, 4}}, TimingDirectiveType::Bpm, 180});
@@ -246,8 +254,9 @@ Mode: Taiko
                           {{1, {1, 4}}, TimingDirectiveType::DelayMilliseconds, -1250}};
         const MusicalTimeline gapAcrossBar(pattern);
         Require(gapAcrossBar.MeasureSpan(0).wholeNotes == .75L && gapAcrossBar.MeasureSpan(1).wholeNotes == .75L &&
-                    gapAcrossBar.MeasureSpan(0).end == RhythmTime{1'500'000} &&
-                    gapAcrossBar.MeasureSpan(1).end == RhythmTime{3'000'000},
+                gapAcrossBar.MeasureSpan(0).end == RhythmTime{1'500'000},
+                "A remaining positive gap belongs to its original closed-end measure even after a cross-bar cut.");
+        Require(gapAcrossBar.MeasureSpan(1).end == RhythmTime{3'000'000},
                 "A remaining positive gap belongs to its original closed-end measure even after a cross-bar cut.");
 
         // Entirely removed measures have zero visible duration, no duplicate
@@ -256,8 +265,9 @@ Mode: Taiko
         pattern.notes = {{{0, {}}, 1}, {{1, {}}, 1}, {{2, {1, 4}}, 1}, {{3, {}}, 1}};
         const MusicalTimeline large(pattern);
         Require(large.MeasureSpan(0).wholeNotes == .25L && large.MeasureSpan(1).wholeNotes == 0 &&
-                    large.MeasureSpan(2).wholeNotes == .75L && large.CompileMeasureStarts().size() == 3 &&
-                    large.MeasureLength(1) == Rational{1, 1},
+                large.MeasureSpan(2).wholeNotes == .75L,
+                "A cross-measure overwrite must collapse complete bars without modifying source signatures.");
+        Require(large.CompileMeasureStarts().size() == 3 && large.MeasureLength(1) == Rational{1, 1},
                 "A cross-measure overwrite must collapse complete bars without modifying source signatures.");
         pattern.timing = {{{0, {1, 4}}, TimingDirectiveType::DelayMilliseconds, -750}};
         const MusicalTimeline negativeStart(pattern);
@@ -292,10 +302,10 @@ Base BPM: 120
 )";
         const auto parsed = ChartParser{}.ParsePattern(Pattern, "system-breaks.ymp");
         Require(parsed.Succeeded() && parsed.document.notes.size() == 4 &&
-                    parsed.document.notes[0].position.measure == 0 &&
-                    parsed.document.notes[1].position.measure == 1 &&
-                    parsed.document.notes[2].position.measure == 2 &&
-                    parsed.document.notes[3].position.measure == 3,
+                parsed.document.notes[0].position.measure == 0,
+                "Both YMP measure separators must advance the current measure.");
+        Require(parsed.document.notes[1].position.measure == 1 && parsed.document.notes[2].position.measure == 2 &&
+                parsed.document.notes[3].position.measure == 3,
                 "Both YMP measure separators must advance the current measure.");
         Require(parsed.document.systemBreakMeasures == std::vector<std::int64_t>{1, 3},
                 "The parser must preserve each unique measure that starts after "
@@ -316,16 +326,10 @@ Base BPM: 120
 )";
         const auto parsed = ChartParser{}.ParsePattern(Pattern, "out-of-measure.ymp");
         Require(parsed.Succeeded() && parsed.document.notes.size() == 1 &&
-                    std::ranges::none_of(parsed.document.timing,
-                                         [](const TimingDirective &directive) {
-                                             return directive.type ==
-                                                    TimingDirectiveType::Bpm;
-                                         }) &&
-                    std::ranges::count_if(parsed.diagnostics,
-                                          [](const Diagnostic &diagnostic) {
-                                              return diagnostic.severity ==
-                                                     DiagnosticSeverity::Warning;
-                                          }) == 2,
+                std::ranges::none_of(parsed.document.timing, [](const TimingDirective &directive) { return directive.type == TimingDirectiveType::Bpm; }),
+                "Notes and timing directives at or beyond the current measure length must be "
+                "ignored with warnings.");
+        Require(std::ranges::count_if(parsed.diagnostics, [](const Diagnostic &diagnostic) { return diagnostic.severity == DiagnosticSeverity::Warning; }) == 2,
                 "Notes and timing directives at or beyond the current measure length must be "
                 "ignored with warnings.");
     }
@@ -370,8 +374,9 @@ Base BPM: 120
                                                   "[Time Signature]\n0/4,#bpm ", "[Time Signature]\n0/4,#delay "})
             {
                 const auto parsed = parser.ParsePattern(std::string(prefix) + number + "\n", source);
-                Require(!parsed.Succeeded() && !parsed.diagnostics.empty() && parsed.document.sourcePath == source &&
-                            parsed.diagnostics.front().location.file == source,
+                Require(!parsed.Succeeded() && !parsed.diagnostics.empty() && parsed.document.sourcePath == source,
+                        "Invalid numeric fields must retain their source and report a diagnostic, including embedded NULs.");
+                Require(parsed.diagnostics.front().location.file == source,
                         "Invalid numeric fields must retain their source and report a diagnostic, including embedded NULs.");
             }
             const auto effect = parser.ParseEffect("[Sounds]\n1,0/4,#Volume HitSound,Value=" + number + "\n", "numeric-fields.yme");
@@ -419,8 +424,9 @@ JudgeLevel: 50
         {
             const auto unsupported = parser.ParsePattern("[Time Signature]\n" + std::string(command), "unsupported.ymp");
             Require(!unsupported.Succeeded() && !unsupported.diagnostics.empty() &&
-                        unsupported.diagnostics.front().severity == DiagnosticSeverity::Error &&
-                        unsupported.diagnostics.front().location.line == 2,
+                    unsupported.diagnostics.front().severity == DiagnosticSeverity::Error,
+                    "Unsupported YMP effects must fail rather than silently discard automation.");
+            Require(unsupported.diagnostics.front().location.line == 2,
                     "Unsupported YMP effects must fail rather than silently discard automation.");
         }
 
@@ -455,8 +461,9 @@ Version: 1
                                              "Artist Vocal Romanized: Takamiya Nasuno\n",
                                              "memory.ymm");
         Require(music.diagnostics.empty() && music.document.romanizedName == "Omoiyoshino" &&
-                    music.document.names.size() == 2 && music.document.romanizedArtist.empty() &&
-                    music.document.artists.size() == 2,
+                music.document.names.size() == 2,
+                "The romanized lines are their own fields; role-style Artist lines stay notations.");
+        Require(music.document.romanizedArtist.empty() && music.document.artists.size() == 2,
                 "The romanized lines are their own fields; role-style Artist lines stay notations.");
         using enum TextNotation;
         Require(NotationText(music.document.names, music.document.romanizedName, First) ==
@@ -471,8 +478,9 @@ Version: 1
                     NotationText(std::vector<std::string>{}, {}, Romanized).empty() &&
                     NotationText(std::vector<std::string>{"", "Later"}, {}, First) == "Later",
                 "Without any Roman notation the first notation that is not empty stays.");
-        Require(IsRomanText("Caf\xC3\xA9 P*Light (K-2)") && !IsRomanText("") && !IsRomanText("\xE2\x98\x85 Star") &&
-                    !IsRomanText("\xEA\xB3\xA1"),
+        Require(IsRomanText("Caf\xC3\xA9 P*Light (K-2)") && !IsRomanText("") && !IsRomanText("\xE2\x98\x85 Star"),
+                "Roman text covers Latin letters with accents, digits and ASCII punctuation only.");
+        Require(!IsRomanText("\xEA\xB3\xA1"),
                 "Roman text covers Latin letters with accents, digits and ASCII punctuation only.");
         Require(NotationText("\xE3\x82\xBD", "Soflan", Romanized) == "Soflan" &&
                     NotationText("Oni", "", Romanized) == "Oni" && NotationText("Oni", "Demon", First) == "Oni",
@@ -491,8 +499,10 @@ Version: 1
                 "The writer puts each romanized line directly above its block.");
         const auto parsed = parser.ParsePattern(text, "memory.ymp");
         Require(parsed.diagnostics.empty() && parsed.document.romanizedName == pattern.romanizedName &&
-                    parsed.document.romanizedMaker == pattern.romanizedMaker && parsed.document.name == pattern.name &&
-                    parsed.document.makers == pattern.makers && ChartEditor::WritePattern(parsed.document) == text,
+                parsed.document.romanizedMaker == pattern.romanizedMaker,
+                "Romanized chart lines survive a save and load round trip.");
+        Require(parsed.document.name == pattern.name && parsed.document.makers == pattern.makers &&
+                ChartEditor::WritePattern(parsed.document) == text,
                 "Romanized chart lines survive a save and load round trip.");
         const auto empty = parser.ParsePattern(ChartEditor::WritePattern(PatternDocument{}), "memory.ymp");
         Require(empty.diagnostics.empty() && empty.document.romanizedName.empty() && empty.document.romanizedMaker.empty(),

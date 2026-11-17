@@ -53,8 +53,10 @@ namespace tests
         draft.ToggleRow(SongFilterRow::Tag);
         SongFilter parsed;
         Require(ParseSongFilter(draft, parsed) == SongFilterError::None && parsed.minimumNotes == 900 &&
-                    parsed.tag == L"Cloud" && parsed.switchedOff[static_cast<std::size_t>(SongFilterRow::Tag)] &&
-                    !parsed.IsRowActive(SongFilterRow::Tag) && parsed.IsActive(),
+                parsed.tag == L"Cloud",
+                "Applying keeps switched-off values for reopening while only switched-on rows filter.");
+        Require(parsed.switchedOff[static_cast<std::size_t>(SongFilterRow::Tag)] &&
+                !parsed.IsRowActive(SongFilterRow::Tag) && parsed.IsActive(),
                 "Applying keeps switched-off values for reopening while only switched-on rows filter.");
         const auto reopened = FormatSongFilter(parsed);
         Require(reopened.tag == L"Cloud" && !reopened.IsRowOn(SongFilterRow::Tag) && reopened.IsRowOn(notes),
@@ -388,13 +390,14 @@ namespace tests
         Require(playing.patternPath == "first.ymp" && store.Snapshot().musicPath == "second.mp3",
                 "An active session and a later selection must own independent launch values.");
         Require(playing.songTitle == L"Played title" && playing.patternCreator == L"Played creator" &&
-                    playing.songArtist == L"Played artist" && store.Snapshot().songTitle.empty() &&
-                    store.Snapshot().songArtist.empty(),
+                playing.songArtist == L"Played artist",
+                "Result display metadata must belong to the played selection snapshot.");
+        Require(store.Snapshot().songTitle.empty() && store.Snapshot().songArtist.empty(),
                 "Result display metadata must belong to the played selection snapshot.");
         playing.Clear();
-        Require(!playing.IsValid() && playing.songTitle.empty() && playing.patternCreator.empty() &&
-                    playing.songArtist.empty(),
+        Require(!playing.IsValid() && playing.songTitle.empty() && playing.patternCreator.empty(),
                 "Clearing a launch must also clear result display metadata.");
+        Require(playing.songArtist.empty(), "Clearing a launch must also clear result display metadata.");
 
         for (const auto &tool : Tools)
             Require(FindTaikoNote(static_cast<int>(tool.note)) != nullptr,
@@ -431,7 +434,9 @@ namespace tests
 
         using enum TextNotation;
         Require(SongTitle(kana, First) == L"\u30AA\u30E2\u30A4" && SongTitle(kana, Romanized) == L"Aaa" &&
-                    SongArtist(kana, Romanized) == L"Zed" && SongTitle(latin, Romanized) == L"Middle",
+                SongArtist(kana, Romanized) == L"Zed",
+                "Song texts follow the chosen notation; Roman text needs no romanized line.");
+        Require(SongTitle(latin, Romanized) == L"Middle",
                 "Song texts follow the chosen notation; Roman text needs no romanized line.");
         Require(PatternName(kana.patterns[0], Romanized) == L"Soflan" && PatternName(kana.patterns[0], First) == L"\u30BD" &&
                     MakerName(latin.patterns[0], Romanized) == L"Maker",
