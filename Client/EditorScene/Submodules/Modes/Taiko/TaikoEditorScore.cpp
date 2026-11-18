@@ -383,7 +383,7 @@ void TaikoEditorMode::DrawPreview(IEditorModeCanvas &canvas, IEditorContext &sta
         auto tint = face.tint;
         if (lit[i])
         {
-            canvas.Image({bounds.x - 10 * k * .5F, bounds.y - 10 * k * .5F, 49 * k, 80 * k}, SkinImage(L"KeyLightStrong"), face.tint);
+            canvas.Image({bounds.x - 10 * k * .5F, bounds.y - 10 * k * .5F, 49 * k, 80 * k}, SkinImage(L"KeyLight"), face.tint);
             tint = {std::min(1.0F, tint.red * 1.38F + .1F), std::min(1.0F, tint.green * 1.38F + .1F),
                     std::min(1.0F, tint.blue * 1.38F + .1F), 1};
         }

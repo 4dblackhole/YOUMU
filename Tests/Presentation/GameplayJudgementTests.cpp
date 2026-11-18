@@ -4,6 +4,7 @@
 #include "GameScene/RhythmTestScene/Submodules/GameplayPresenter.h"
 #include "Parsing/ChartParser.h"
 #include "Presentation/LaneKeyBeam.h"
+#include "MusicSelectTestInput.h"
 #include "Presentation/UiErrorLine.h"
 #include "Taiko/TaikoMode.h"
 #include "Time/RhythmTimer.h"
@@ -344,12 +345,33 @@ namespace
             if (child->Name() != "Input.Key.PressFlash")
                 continue;
             const auto color = child->GetComponent<SpriteVisualComponent>()->Style().normal;
-            const bool kat = keyIndex == 0 || keyIndex == 3;
-            Check(kat ? color.blue > color.red : color.red > color.blue,
-                  "Both key flash sides must use their Don red / Kat blue ambient color.");
+            const bool whiteRedGreen = color.red == 1.0F && color.green == 1.0F;
+            Check(whiteRedGreen && color.blue == 1.0F,
+                  "Key flashes must be white light without the Don/Kat ambient color.");
             ++keyIndex;
         }
         Check(keyIndex == 4, "All four key flashes must exist.");
+        // Left Kat: the first assigned key (D) shows KeyLight and the flash; another assigned key (C) only KeyLight.
+        const auto firstChild = [&](const std::string_view name) -> Visual2DNode & {
+            for (const auto &child : inputPanel.Children())
+                if (child->Name() == name)
+                    return *child;
+            throw std::runtime_error("Missing input panel node.");
+        };
+        auto &leftKatGlow = firstChild("Input.Key.Glow");
+        auto &leftKatFlash = firstChild("Input.Key.PressFlash");
+        const auto pressOnly = [&](const std::uint16_t key) {
+            InputState input;
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Key(input, key, true);
+            presenter.UpdateInputPresentation(input, 0.0);
+        };
+        pressOnly('C');
+        Check(leftKatGlow.IsVisible(), "Another assigned key must show KeyLight.");
+        Check(!leftKatFlash.IsVisible(), "Another assigned key must not show the key press flash.");
+        pressOnly('D');
+        Check(leftKatGlow.IsVisible(), "The first assigned key must show KeyLight.");
+        Check(leftKatFlash.IsVisible(), "The first assigned key must show the key press flash with KeyLight.");
         auto &progress = Node(root, "Hud.GameProgress");
         auto &track = Node(root, "Progress.Track");
         auto &fill = Node(root, "Progress.Fill");

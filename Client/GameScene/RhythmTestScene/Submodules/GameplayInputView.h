@@ -20,7 +20,6 @@ private:
     std::array<PhantomCore::Visual2DNode*, 4> keyGlows_{};
     std::array<PhantomCore::Visual2DNode*, 4> keyPressFlashes_{};
     std::array<double, 4> keyPressFlashRemainingSeconds_{};
-    PhantomCore::ImageHandle strongKeyLightImage_{};
-    PhantomCore::ImageHandle weakKeyLightImage_{};
+    PhantomCore::ImageHandle keyLightImage_{};
     PhantomCore::ImageHandle keyPressFlashImage_{};
 };
