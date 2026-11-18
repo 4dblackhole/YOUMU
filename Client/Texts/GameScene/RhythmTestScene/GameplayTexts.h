@@ -13,6 +13,10 @@ struct GameplayTextSet
     std::wstring_view lastNone;
     std::wstring_view early;
     std::wstring_view late;
+    // Mean timing error under the guide: unit after the number, and the value
+    // shown before the attempt has a graded hit.
+    std::wstring_view averageErrorUnit;
+    std::wstring_view averageErrorEmpty;
     // Kind captions of the screen error line.
     std::wstring_view errorEffect;
     std::wstring_view errorAudio;

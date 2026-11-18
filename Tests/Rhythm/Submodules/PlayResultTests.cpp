@@ -40,9 +40,16 @@ namespace tests
         Require(statistics.judgements[0] == 3 && session.Accuracy()->Units() == 100'000'000 &&
                 session.Score() == 50'000'000,
                 "A successful roll adds one OK/combo; live counts share the result collector.");
+        const auto gradedHits = [](const PlayStatistics &live)
+        { return live.judgements[0] + live.judgements[1] + live.judgements[2] + live.judgements[3] + live.judgements[4]; };
+        Require(session.Statistics().timingErrorSum == RhythmDuration{} &&
+                    session.Statistics().timingErrorCount == gradedHits(session.Statistics()),
+                "On-time graded hits add zero error; every graded hit is one timing sample.");
         hit('D', 2'070'000);
         Require(session.Statistics().combo == 0 && session.Statistics().judgements[4] == 1,
                 "BAD breaks combo even though the note completes.");
+        Require(session.Statistics().timingErrorSum == RhythmDuration{70'000},
+                "A late BAD adds its signed error to the live timing sum.");
         hit('F', 2'500'000);
         hit('D', 3'000'000);
         Require(session.Statistics().combo == 0 && session.Statistics().poorCount == 1,
@@ -58,6 +65,9 @@ namespace tests
                 "Rewind rebuilds score, combo, maximum and all counts from retained judgement history.");
         Require(session.Score() == 50'000'000,
                 "Rewind rebuilds score, combo, maximum and all counts from retained judgement history.");
+        Require(statistics.timingErrorSum == RhythmDuration{} && statistics.timingErrorCount == gradedHits(statistics) &&
+                    statistics.timingErrorCount > 0,
+                "Rewind drops later timing samples and keeps the earlier ones, as the result does.");
         session.RetireRemaining(RhythmTime{2'000'000});
         Require(session.Statistics().combo == 0 && session.Statistics().judgements[5] == 3,
                 "Retirement applies remaining logical misses to live counts and combo.");

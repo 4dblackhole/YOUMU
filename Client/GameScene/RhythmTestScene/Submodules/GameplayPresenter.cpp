@@ -27,6 +27,7 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
         for (const auto file : {L"Gear.Band",
                                 L"Hud.ScorePanel",
                                 L"Hud.JudgeCountsPanel",
+                                L"Hud.TimingPanel",
                                 L"InputPanel",
                                 L"LaneLight",
                                 L"JudgementCircle",
@@ -139,6 +140,7 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
     progressView_.Update(time);
     UpdateAccuracyPresentation();
     statisticsView_.Update(*session_);
+    judgementView_.ShowAverageError(session_->Statistics());
 #if defined(_DEBUG)
     UpdateDebugPresentation(time);
 #endif
