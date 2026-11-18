@@ -635,7 +635,7 @@ namespace
             if (shown_ && !sent_)
             {
                 const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
-                InputStateTestAccess::Press(input_, 'F', ticks);
+                InputStateTestAccess::Press(input_, 'C', ticks);
                 InputStateTestAccess::Press(input_, 'D', ticks);
                 sent_ = true;
             }
@@ -760,7 +760,7 @@ namespace
                 return true;
             if (phase_ == 0 && controller_->Time().count() >= 12'250'000)
             {
-                static_cast<void>(session_->ProcessInput('F', InputEdge::Pressed, controller_->Time()));
+                static_cast<void>(session_->ProcessInput('C', InputEdge::Pressed, controller_->Time()));
                 controller_->OpenPauseMenu(ctx);
                 paused_ = controller_->Time();
                 phase_ = 1;
@@ -984,7 +984,7 @@ namespace
                 InputStateTestAccess::Begin(input);
                 const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
                 InputStateTestAccess::Press(input, VK_SPACE, ticks);
-                InputStateTestAccess::Press(input, 'F', ticks + 1);
+                InputStateTestAccess::Press(input, 'C', ticks + 1);
                 [[maybe_unused]] const auto beforeFrozen = std::chrono::steady_clock::now();
                 frame();
                 [[maybe_unused]] const auto afterFrozen = std::chrono::steady_clock::now();
@@ -995,7 +995,7 @@ namespace
                       "A note input after Space in the same batch must still be judged and play a hit sound.");
                 const auto frozen = controller.Time();
                 edge(VK_SPACE, false);
-                edge('F', false);
+                edge('C', false);
 #if defined(_DEBUG)
                 InputStateTestAccess::Begin(input);
                 frame(.5);
@@ -1039,10 +1039,10 @@ namespace
                 Check(controller.Time() == frozen, "Holding both continuous-seek keys must cancel out.");
                 edge('1', false);
                 edge('2', false);
-                edge('F', true);
+                edge('C', true);
                 Check(controller.Session().FinalizedNoteCount() == priorNotes + 1 && controller.Time() == frozen,
                       "A restored note must be playable while the clock stays frozen.");
-                edge('F', false);
+                edge('C', false);
                 edge(VK_SPACE, true);
                 WaitForGameplay(controller, ctx);
                 Check(musicStarts.back().startPositionMicroseconds == static_cast<std::uint64_t>(frozen.count()),

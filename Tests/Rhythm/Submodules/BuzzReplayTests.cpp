@@ -17,7 +17,7 @@ namespace tests
             const auto &note = *session.Gear().Lanes().front()->Notes().front();
             const auto &view = *session.FindNotePresentation(note.Id());
             const auto press = note.Timing() + delay;
-            const PhysicalKey key = kat ? PhysicalKey{'D'} : PhysicalKey{'F'};
+            const PhysicalKey key = kat ? PhysicalKey{'D'} : PhysicalKey{'C'};
             NoteProcessResult log;
             if (incremental)
                 for (auto time = note.Timing(); time < press; time += RhythmDuration{997})

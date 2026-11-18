@@ -13,14 +13,14 @@ namespace tests
                 "Remapped mode must load: " +
                     (loaded.diagnostics.empty() ? std::string{} : loaded.diagnostics.front().message));
         auto &session = *loaded.session;
-        Require(!session.InputMapping().contains('F') && !session.InputMapping().contains('V') &&
+        Require(!session.InputMapping().contains('C') && !session.InputMapping().contains('V') &&
                 !session.InputMapping().contains(0),
                 "Session input and presentation share the resolved primary/auxiliary keys.");
         Require(session.InputMapping().at('S') == 1 &&
                 session.InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 'A', 0, 0},
                 "Session input and presentation share the resolved primary/auxiliary keys.");
         Require(
-            !HasEvent(session.ProcessInput('F', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
+            !HasEvent(session.ProcessInput('C', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
             "Old key must no longer judge the note.");
         Require(HasEvent(session.ProcessInput('S', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
                 "Remapped primary judges the Buzz head.");

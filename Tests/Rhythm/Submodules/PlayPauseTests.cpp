@@ -14,8 +14,8 @@ namespace tests
         auto &s = *loaded.session;
         for (const auto us : {0, 500'000})
         {
-            static_cast<void>(s.ProcessInput('F', InputEdge::Pressed, RhythmTime{us}));
-            static_cast<void>(s.ProcessInput('F', InputEdge::Released, RhythmTime{us + 1}));
+            static_cast<void>(s.ProcessInput('C', InputEdge::Pressed, RhythmTime{us}));
+            static_cast<void>(s.ProcessInput('C', InputEdge::Released, RhythmTime{us + 1}));
         }
         s.RecordControl(
             {PlayControlType::Pause, RhythmTime{800'000}, RhythmTime{800'000}, 0, true});
@@ -24,14 +24,14 @@ namespace tests
         s.RecordControl({PlayControlType::Rewind, RhythmTime{800'000}, RhythmTime{500'000}});
         Require(s.FinalizedNoteCount() == 1 && s.Gear().Lanes().front()->CurrentNote()->Timing().count() == 500'000,
                 "Rewind must retain earlier grades and undo target-time grades.");
-        static_cast<void>(s.ProcessInput('F', InputEdge::Pressed, RhythmTime{510'000}));
-        static_cast<void>(s.ProcessInput('F', InputEdge::Released, RhythmTime{510'001}));
+        static_cast<void>(s.ProcessInput('C', InputEdge::Pressed, RhythmTime{510'000}));
+        static_cast<void>(s.ProcessInput('C', InputEdge::Released, RhythmTime{510'001}));
         s.RecordControl(
             {PlayControlType::Pause, RhythmTime{900'000}, RhythmTime{900'000}, 0, true});
         s.RewindJudgements({});
         s.RecordControl({PlayControlType::Rewind, RhythmTime{900'000}, {}});
         Require(s.FinalizedNoteCount() == 0, "Repeated rewind must undo the newer branch too.");
-        static_cast<void>(s.ProcessInput('F', InputEdge::Pressed, {}));
+        static_cast<void>(s.ProcessInput('C', InputEdge::Pressed, {}));
         auto result = s.TakeResult(PlayEndReason::Interrupted, RhythmTime{1});
         const auto *taiko = dynamic_cast<const TaikoPlayResult *>(result.get());
         if (!taiko)
@@ -48,12 +48,12 @@ namespace tests
     }
     void TestLongNoteRewindState()
     {
-        const std::array<PhysicalKey, 1> held{'F'};
+        const std::array<PhysicalKey, 1> held{'C'};
         auto loaded = TaikoMode{}.CreateSession(
             MakeLongPattern(TaikoNoteType::Buzz, {"TickDivision=8", "Action=Don"}));
         Require(loaded.Succeeded(), "Buzz rewind fixture must load.");
         auto &s = *loaded.session;
-        static_cast<void>(s.ProcessInput('F', InputEdge::Pressed, {}));
+        static_cast<void>(s.ProcessInput('C', InputEdge::Pressed, {}));
         static_cast<void>(s.Update(RhythmTime{250'000}, held));
         static_cast<void>(s.Update(RhythmTime{500'000}, held));
         s.RewindJudgements(RhythmTime{400'000});
@@ -77,12 +77,12 @@ namespace tests
             auto loaded = TaikoMode{}.CreateSession(p);
             Require(loaded.Succeeded(), "Retirement fixture must load.");
             auto &s = *loaded.session;
-            static_cast<void>(s.ProcessInput('F', InputEdge::Pressed, {}));
+            static_cast<void>(s.ProcessInput('C', InputEdge::Pressed, {}));
             s.RecordControl(
                 {PlayControlType::Pause, RhythmTime{300'000}, RhythmTime{300'000}, 0, true});
             s.Reset();
             Require(s.CanUseHp(), "Retry must reset pause eligibility for a new attempt.");
-            static_cast<void>(s.ProcessInput('F', InputEdge::Pressed, {}));
+            static_cast<void>(s.ProcessInput('C', InputEdge::Pressed, {}));
             s.RecordControl(
                 {PlayControlType::Pause, RhythmTime{300'000}, RhythmTime{300'000}, 0, true});
             s.RecordControl({PlayControlType::Retire, RhythmTime{300'000}, RhythmTime{300'000}});
@@ -109,7 +109,7 @@ namespace tests
         Require(completed.Succeeded(), "Completed practice fixture must load.");
         auto &session = *completed.session;
         session.RecordControl({PlayControlType::Pause, {}, {}, 0, true});
-        static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
+        static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
         auto result = session.TakeResult(PlayEndReason::Completed, {});
         Require(result->Summary().processedNotes == 1 && !result->Summary().IsCleared() &&
                     !result->Summary().CanUseHp(),
