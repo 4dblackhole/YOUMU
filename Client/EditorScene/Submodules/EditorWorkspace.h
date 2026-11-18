@@ -145,7 +145,8 @@ class EditorWorkspace final : public IEditorContext
     void Replace(PatternDocument, EffectDocument) override;
     void AddNote(MusicalPosition, int keyType,
                  std::optional<MusicalPosition> end = {},
-                 std::vector<std::string> extra = {}) override;
+                 std::vector<std::string> extra = {},
+                 std::span<const std::size_t> replaced = {}) override;
     void UpdateNote(std::size_t, PatternNote,
                     std::optional<MusicalPosition>) override;
     void DeleteNote(std::size_t sourceOrder) override;

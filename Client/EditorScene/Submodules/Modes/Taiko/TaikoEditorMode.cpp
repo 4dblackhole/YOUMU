@@ -99,15 +99,23 @@ void TaikoEditorMode::PlaceNote(IEditorContext &state, MusicalPosition p)
             pending_ = p;
         else
         {
-            ValidatePlacement(state.Document(), std::min(*pending_, p), noteId, std::max(*pending_, p));
-            state.AddNote(std::min(*pending_, p), noteId, std::max(*pending_, p), ExtraData(*selected));
+            const auto begin = std::min(*pending_, p);
+            const auto end = std::max(*pending_, p);
+            const auto replaced = OverlappedNotes(state.Document(), begin, end);
+            ValidatePlacement(state.Document(), begin, noteId, end, {}, replaced);
+            state.AddNote(begin, noteId, end, ExtraData(*selected), replaced);
             pending_.reset();
         }
     }
     else
     {
-        ValidatePlacement(state.Document(), p, noteId);
-        state.AddNote(p, noteId);
+        // Placing the same ordinary note on itself keeps it, with its ID and options.
+        const auto replaced = OverlappedNotes(state.Document(), p, p);
+        if (!IsSameOrdinaryNote(state.Document(), replaced, p, noteId))
+        {
+            ValidatePlacement(state.Document(), p, noteId, {}, {}, replaced);
+            state.AddNote(p, noteId, {}, {}, replaced);
+        }
     }
     state.RequestRebuild();
 }

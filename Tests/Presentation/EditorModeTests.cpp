@@ -136,9 +136,9 @@ namespace
             score.Replace(std::move(p), std::move(e));
         }
         void AddNote(MusicalPosition p, int key, std::optional<MusicalPosition> end,
-                     std::vector<std::string> extra) override
+                     std::vector<std::string> extra, std::span<const std::size_t> replaced) override
         {
-            score.AddNote(p, key, end, std::move(extra));
+            score.AddNote(p, key, end, std::move(extra), replaced);
         }
         void ReplaceTiming(std::vector<TimingDirective> timing) override
         {
@@ -398,45 +398,73 @@ namespace
               "Clicking empty realtime space with the selection tool must preserve the cursor and place no note.");
     }
 
+    // A placement replaces every note whose span shares a position with it (Taiko has
+    // one lane). The replacement is one Undo step; the same ordinary note is kept.
     void TestTaikoPlacementConflicts()
     {
         EditorWorkspace state(CreateEditorMode("Taiko"),
                               std::make_unique<ChartEditor>(PatternDocument{}));
-        state.SelectTool(11);
-        state.PlaceNote({1, {}});
-        state.PlaceNote({3, {}});
-        const auto revision = state.Document().Revision();
-        const auto reject = [&state, revision](MusicalPosition position)
+        const auto keys = [&state]
         {
-            bool rejected = false;
-            try
-            {
-                state.PlaceNote(position);
-            }
-            catch (const std::invalid_argument &)
-            {
-                rejected = true;
-            }
-            Check(rejected && state.Document().Revision() == revision && state.Document().Notes().size() == 2,
-                  "Conflicting placement must preserve the document and its revision.");
+            std::vector<std::pair<MusicalPosition, int>> result;
+            for (const auto &note : state.Document().Notes())
+                result.emplace_back(note.note.position, note.note.keyType);
+            return result;
         };
+        using Notes = std::vector<std::pair<MusicalPosition, int>>;
         state.SelectTool(1);
-        reject({1, {}});
-        reject({2, {}});
-        state.SelectTool(12);
-        state.PlaceNote({2, {}});
-        reject({4, {}});
-        Check(state.Mode().HasPendingPlacement(),
-              "Failed second endpoint must remain available for correction/cancel.");
-        state.Mode().CancelInteraction();
-        state.SelectTool(11);
+        state.PlaceNote({0, {}});
+        const auto revision = state.Document().Revision();
+        state.PlaceNote({0, {}});
+        Check(state.Document().Revision() == revision && keys() == Notes{{{0, {}}, 1}},
+              "Placing the same note on itself must keep the existing note.");
+        state.SelectTool(2);
+        state.PlaceNote({0, {}});
+        Check(keys() == Notes{{{0, {}}, 2}}, "A note placed on an existing note must replace it, not stack.");
+        state.Undo();
+        Check(keys() == Notes{{{0, {}}, 1}}, "One Undo must restore the replaced note.");
+        state.Redo();
+
+        // Ordinary notes on a roll's head, body or tail replace the whole roll.
+        for (const MusicalPosition position : {MusicalPosition{1, {}}, MusicalPosition{1, {1, 2}},
+                                               MusicalPosition{2, {}}})
+        {
+            state.SelectTool(11);
+            state.PlaceNote({1, {}});
+            state.PlaceNote({2, {}});
+            state.SelectTool(1);
+            state.PlaceNote(position);
+            Check(keys() == Notes{{{0, {}}, 2}, {position, 1}},
+                  "An ordinary note touching a roll must replace the entire roll.");
+            state.Undo();
+            Check(state.Document().Notes().size() == 3, "One Undo must restore both roll endpoints.");
+            state.Undo();
+        }
+
+        // A roll replaces the notes it covers, including one on its endpoints.
+        state.SelectTool(1);
         state.PlaceNote({3, {}});
+        state.PlaceNote({3, {1, 2}});
         state.PlaceNote({4, {}});
-        Check(state.Document().Notes().size() == 4, "Adjacent long notes must still be placeable.");
-        state.SelectTool(1);
         state.PlaceNote({5, {}});
         state.SelectTool(11);
-        state.PlaceNote({4, {1, 2}});
+        state.PlaceNote({4, {}});
+        state.PlaceNote({3, {}});
+        Check(keys() == Notes{{{0, {}}, 2}, {{3, {}}, 11}, {{4, {}}, 11}, {{5, {}}, 1}},
+              "A new roll must replace every note between and on its endpoints.");
+        state.Undo();
+        Check(state.Document().Notes().size() == 5, "One Undo must restore every note the roll replaced.");
+        state.Redo();
+        state.SelectTool(12);
+        state.PlaceNote({3, {1, 2}});
+        state.PlaceNote({5, {}});
+        Check(keys() == Notes{{{0, {}}, 2}, {{3, {1, 2}}, 12}, {{5, {}}, 12}},
+              "A roll overlapping another roll must replace it.");
+
+        // A zero-length second click is still rejected and keeps the first endpoint.
+        const auto kept = state.Document().Revision();
+        state.SelectTool(11);
+        state.PlaceNote({6, {}});
         bool rejected = false;
         try
         {
@@ -446,8 +474,8 @@ namespace
         {
             rejected = true;
         }
-        Check(rejected && state.Document().Notes().size() == 5,
-              "New long notes must not swallow already-authored ordinary notes.");
+        Check(rejected && state.Document().Revision() == kept && state.Mode().HasPendingPlacement(),
+              "Failed second endpoint must preserve the document and remain available for correction.");
         state.Mode().CancelInteraction();
         state.SetFirstMeasure(MaximumMeasureCount - 1);
         RecordingCanvas canvas;

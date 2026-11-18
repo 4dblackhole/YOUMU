@@ -35,7 +35,8 @@ class IEditorContext
     virtual void Replace(PatternDocument, EffectDocument) = 0;
     virtual void AddNote(MusicalPosition, int keyType,
                          std::optional<MusicalPosition> end = {},
-                         std::vector<std::string> extra = {}) = 0;
+                         std::vector<std::string> extra = {},
+                         std::span<const std::size_t> replaced = {}) = 0;
     virtual void UpdateNote(std::size_t, PatternNote,
                             std::optional<MusicalPosition>) = 0;
     virtual void DeleteNote(std::size_t sourceOrder) = 0;

@@ -645,7 +645,7 @@ CommitHistory(history);
 }
 
 void ChartEditor::AddNote(MusicalPosition position, int keyType, std::optional<MusicalPosition> end,
-                      std::vector<std::string> extra)
+                      std::vector<std::string> extra, std::span<const std::size_t> replaced)
 {
 if (end && *end <= position)
     throw std::invalid_argument("Long note end must follow its start.");
@@ -655,17 +655,35 @@ auto head = CompileNote({position, keyType, end ? 1 : 0, {}, std::move(extra), {
 std::optional<CompiledPatternNote> tail;
 if (end)
     tail = CompileNote({*end, keyType, 2, {}, {}, {}, nextNoteId_ + 1});
-HistoryState after;
+const auto removed = ReplacedNoteIds(replaced);
+HistoryState before, after;
+for (const auto id : removed)
+    before.notes.push_back(noteTree_.at(noteKeys_.at(id)).note);
 after.notes.push_back(head.note);
 if (tail)
     after.notes.push_back(tail->note);
-auto history = PrepareHistory({}, std::move(after));
+auto history = PrepareHistory(std::move(before), std::move(after));
 std::vector<CompiledPatternNote> changed{std::move(head)};
 if (tail)
     changed.push_back(std::move(*tail));
-ApplyNotePatch({}, changed);
+ApplyNotePatch(removed, changed);
 nextNoteId_ += end ? 2 : 1;
 CommitHistory(history);
+}
+
+std::vector<std::size_t> ChartEditor::ReplacedNoteIds(std::span<const std::size_t> replaced) const
+{
+// Validate every ID before the edit starts; a long-note endpoint takes its partner along.
+std::set<std::size_t> ids;
+for (const auto id : replaced)
+{
+    if (!noteKeys_.contains(id))
+        throw std::out_of_range("Replaced note no longer exists.");
+    ids.insert(id);
+    if (const auto partner = longPartners_.find(id); partner != longPartners_.end())
+        ids.insert(partner->second);
+}
+return {ids.begin(), ids.end()};
 }
 
 void ChartEditor::EraseNote(std::size_t id) noexcept
