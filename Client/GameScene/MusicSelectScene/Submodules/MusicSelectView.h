@@ -109,6 +109,8 @@ class MusicSelectView final
     [[nodiscard]] bool IsAdditionMenuOpen() const { return additionMenu_ && additionMenu_->IsVisible(); }
     void RefreshFilterButton();
     bool ProcessKeyboard(const PhantomCore::InputState &input);
+    // The footer button and F1 open Play options with the current selection's options.
+    void OpenPlayOptions();
     bool ProcessSearchKeyboard(const PhantomCore::InputState &input);
     void SetSearchFocus(bool focused, bool selectAll = false);
     void SynchronizeSearchText();

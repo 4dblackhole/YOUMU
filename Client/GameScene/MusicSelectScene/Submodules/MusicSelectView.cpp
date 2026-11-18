@@ -104,6 +104,15 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         CloseAdditionMenu();
         options_.Toggle();
     }
+    // F1 opens Play options straight away (game song select only). The opening frame ends here so the
+    // panel does not also read this F1 as its close key.
+    const bool playOptionsShortcut = playOptionsButtonId_ != 0 && input.WasKeyPressed(VK_F1);
+    if (playOptionsShortcut && !IsSelectionModalVisible() && !options_.IsVisible())
+    {
+        OpenPlayOptions();
+        UpdateSearchInputVisibility();
+        return command_;
+    }
     ProcessPointer(input);
     // Hints rest while a panel, the options drawer or the addition menu covers the screen.
     const bool covered = IsSelectionModalVisible() || options_.IsVisible();

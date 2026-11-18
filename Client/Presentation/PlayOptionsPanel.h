@@ -23,7 +23,7 @@
 }
 
 // Play options (UI-02 flat modal): Difficulty, Layout and Assist columns. Edits apply when the panel closes
-// (Done, Escape, Enter); there is no cancel. Reset restores PlayOptions{} in the edit.
+// (Done, Escape, Enter, F1); there is no cancel. Reset (or F2) restores PlayOptions{} in the edit.
 class PlayOptionsPanel final
 {
   public:
