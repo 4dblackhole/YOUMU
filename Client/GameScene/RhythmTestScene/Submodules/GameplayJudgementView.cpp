@@ -1,5 +1,6 @@
 #include "GameplayJudgementView.h"
 #include "App/AssetPaths.h"
+#include "GameplaySupport.h"
 #include "Mode/Results/IPlayResultCollector.h"
 #include "Presentation/LaneKeyBeam.h"
 #include "Presentation/UiColors.h"
@@ -45,6 +46,8 @@ namespace
     constexpr float AverageUnitDrop = 3.0F;
     constexpr std::array<std::string_view, 8> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
                                                          "BAD", "MISS",    "POOR",  "OK"};
+    // Judgement words sit just above the judgement circle (screen up), clear of the Kiai ring.
+    constexpr float WordGapAboveCircle = 6.0F;
     constexpr std::size_t PoorImageIndex = 6, OkImageIndex = 7;
     constexpr Color Ink = ui_colors::theme::Ink;
 
@@ -205,21 +208,21 @@ void GameplayJudgementView::CreateHitLines()
 
 void GameplayJudgementView::CreateJudgementImages(ScreenVisual2DManager &visuals, Visual2DNode &judgementCircle)
 {
-    const float size = judgementCircle.NodeSize().width * 1.4F;
+    const auto circle = judgementCircle.NodeSize();
     for (std::size_t index = 0; index < judgementImages_.size(); ++index)
     {
+        // Word-only skin art at its 1080p size, like the other in-game parts.
         const std::string file = "Judgements." + std::string(ImageNames[index]);
         const auto image = visuals.RegisterImage(InGame(file));
-        const auto nativeSize = visuals.GetImageSize(image);
-        if (nativeSize.width <= 0.0F || nativeSize.height <= 0.0F)
-            throw std::logic_error("Judgement skin image must have a non-zero size.");
-        const float height = size * nativeSize.height / nativeSize.width;
-        auto &node = CreateSprite(judgementCircle, {0.0F, 0.0F, size, height}, image,
-                                     "Lane.Judgement." + std::string(ImageNames[index]));
+        const auto size = ScaledImageSize(visuals, image);
+        auto &node = CreateSprite(judgementCircle, {0.0F, 0.0F, size.width, size.height}, image,
+                                  "Lane.Judgement." + std::string(ImageNames[index]));
         node.SetPivot({0.5F, 0.5F});
-        node.SetPosition({judgementCircle.NodeSize().width * 0.5F, judgementCircle.NodeSize().height * 0.5F});
-        // Follow the judgement-circle position/scale but keep the wording
-        // upright inside Taiko's clockwise-rotated lane.
+        // Taiko's lane is turned clockwise, so the circle's local -X is screen up: the word's
+        // centre sits half its height above the circle's top edge plus the gap.
+        const float above = circle.width * 0.5F + WordGapAboveCircle + size.height * 0.5F;
+        node.SetPosition({circle.width * 0.5F - above, circle.height * 0.5F});
+        // Follow the judgement-circle position/scale but keep the wording upright.
         node.Transform().SetRotationRollPitchYaw(0.0F, 0.0F, HalfPi);
         node.SetZIndex(1);
         judgementImages_[index] = &node;
