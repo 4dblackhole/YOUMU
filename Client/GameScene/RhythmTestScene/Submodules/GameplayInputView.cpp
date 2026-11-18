@@ -21,10 +21,9 @@ void GameplayInputView::Initialize(
         {{172.0F, 68.0F, 39.0F, 70.0F}, InputKeyBaseColors[3], L"KeyButtonRightKat"},
     }};
 
-    strongKeyLightImage_ = visuals.RegisterImage(InGameSkinAssetPath(L"KeyLightStrong"));
-    weakKeyLightImage_ = visuals.RegisterImage(InGameSkinAssetPath(L"KeyLightWeak"));
+    keyLightImage_ = visuals.RegisterImage(InGameSkinAssetPath(L"KeyLight"));
     keyPressFlashImage_ = visuals.RegisterImage(InGameSkinAssetPath(L"KeyPressFlash"));
-    const auto lightSize = ScaledImageSize(visuals, strongKeyLightImage_);
+    const auto lightSize = ScaledImageSize(visuals, keyLightImage_);
     const auto pressFlashSize = ScaledImageSize(visuals, keyPressFlashImage_);
     for (std::size_t index = 0; index < keys.size(); ++index)
     {
@@ -36,7 +35,7 @@ void GameplayInputView::Initialize(
                                                  {bounds.x - (lightSize.width - bounds.width) * 0.5F,
                                                   bounds.y - (lightSize.height - bounds.height) * 0.5F, lightSize.width,
                                                   lightSize.height},
-                                                 strongKeyLightImage_, "Input.Key.Glow");
+                                                 keyLightImage_, "Input.Key.Glow");
         RequireComponent<SpriteVisualComponent>(glow).SetTint(keys[index].baseColor);
         glow.SetVisible(false);
         glow.SetZIndex(1);
@@ -53,7 +52,7 @@ void GameplayInputView::Initialize(
                                                         bounds.y - (pressFlashSize.height - bounds.height) * 0.5F,
                                                         pressFlashSize.width, pressFlashSize.height},
                                                        keyPressFlashImage_, "Input.Key.PressFlash");
-        RequireComponent<SpriteVisualComponent>(pressFlash).SetTint(InputKeyStrongGlowColors[index]);
+        RequireComponent<SpriteVisualComponent>(pressFlash).SetTint(KeyPressFlashColor);
         pressFlash.SetVisible(false);
         pressFlash.SetZIndex(3);
         keyPressFlashes_[index] = &pressFlash;
@@ -73,8 +72,8 @@ void GameplayInputView::Update(
         const bool primaryPressed = input.IsKeyDown(keys.front());
         const bool secondaryPressed =
             std::ranges::any_of(auxiliary, [&input](auto key) { return key != 0 && input.IsKeyDown(key); });
-        const bool pressedThisFrame =
-            std::ranges::any_of(keys, [&input](auto key) { return key != 0 && input.WasKeyPressed(key); });
+        // Only the first assigned key flashes; the other assigned keys show the key light alone.
+        const bool primaryPressedThisFrame = input.WasKeyPressed(keys.front());
         const Color &faceColor =
             primaryPressed ? InputKeyPressedColors[index]
                            : (secondaryPressed ? InputKeyWeakColors[index] : InputKeyBaseColors[index]);
@@ -85,14 +84,13 @@ void GameplayInputView::Update(
         if (keyGlows_[index] != nullptr)
         {
             auto &glow = RequireComponent<SpriteVisualComponent>(*keyGlows_[index]);
-            glow.SetImage(primaryPressed ? strongKeyLightImage_ : weakKeyLightImage_);
             glow.SetTint(primaryPressed ? InputKeyStrongGlowColors[index] : InputKeyWeakGlowColors[index]);
             keyGlows_[index]->SetVisible(primaryPressed || secondaryPressed);
         }
         if (keyPressFlashes_[index] != nullptr)
         {
             double &remaining = keyPressFlashRemainingSeconds_[index];
-            if (pressedThisFrame)
+            if (primaryPressedThisFrame)
             {
                 remaining = KeyPressFlashDurationSeconds;
             }
@@ -101,7 +99,7 @@ void GameplayInputView::Update(
                 remaining = std::max(0.0, remaining - std::max(deltaSeconds, 0.0));
             }
             auto &flash = RequireComponent<SpriteVisualComponent>(*keyPressFlashes_[index]);
-            auto color = InputKeyStrongGlowColors[index];
+            auto color = KeyPressFlashColor;
             color.alpha = static_cast<float>(remaining / KeyPressFlashDurationSeconds);
             flash.SetTint(color);
             keyPressFlashes_[index]->SetVisible(remaining > 0.0);
@@ -115,7 +113,6 @@ void GameplayInputView::Shutdown() noexcept
     keyGlows_.fill(nullptr);
     keyPressFlashes_.fill(nullptr);
     keyPressFlashRemainingSeconds_.fill(0.0);
-    strongKeyLightImage_ = {};
-    weakKeyLightImage_ = {};
+    keyLightImage_ = {};
     keyPressFlashImage_ = {};
 }

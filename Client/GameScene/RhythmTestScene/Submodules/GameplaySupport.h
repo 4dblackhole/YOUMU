@@ -57,6 +57,8 @@ constexpr float GearMargin = 20.0F;
 constexpr float GearPadding = 4.0F;
 constexpr float GearRightMargin = 0.0F;
 constexpr double KeyPressFlashDurationSeconds = 0.1;
+// White light without the Don/Kat ambient color; its alpha fades over the flash duration.
+constexpr PhantomCore::Color KeyPressFlashColor{1.0F, 1.0F, 1.0F, 1.0F};
 // A sixteenth note spans 85% of the normal head diameter at scroll 1x.
 constexpr float SixteenthSpacingInHeadDiameters = 0.85F;
 constexpr RhythmDuration MissedTravelDuration{220'000};
