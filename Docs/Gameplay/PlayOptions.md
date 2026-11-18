@@ -31,11 +31,14 @@ HP gauge는 고를 수 있는 HP 게이지 목록(`Gauge/HpGaugeKind.h`의 `HpGa
 (`HpGaugeState::clearPercent`)을 플레이 HP 게이지의 클리어 표시와 결과 HP 그래프의 클리어선이 같이 씁니다. 기록 DB에는
 게이지 종류를 저장하지 않습니다(Default뿐이므로). 게이지를 더할 때 기록 필드와 스키마 마이그레이션을 함께 정해야 합니다.
 
-**닫기와 Reset:** Apply·Cancel은 없습니다. `Done`·Esc·Enter(입력칸 밖, 또는 네이티브 입력의 확정·취소)로 닫는 즉시
+**열기:** 선곡 하단 `Play options` 또는 `F1`(게임 곡 선택, 다른 패널·옵션 서랍이 닫혀 있을 때)로 엽니다. 연 프레임의 F1은
+패널이 닫기 키로 다시 읽지 않습니다.
+
+**닫기와 Reset:** Apply·Cancel은 없습니다. `Done`·`F1`·Esc·Enter(Esc·Enter는 입력칸 밖, 또는 네이티브 입력의 확정·취소)로 닫는 즉시
 편집한 전체 값을 검증하고 선곡 Scene에 한 번 반영합니다. 오류는 창을 열어 둔 채 해당 입력에 포커스를 두고 바닥 위
 빨간 줄에 표시하며 마지막 적용값을 보존합니다. Random을 끈 뒤 숨겨진 입력에 오류가 있으면 Random 자체를 켜지 않고 해당 입력만
-다시 표시해 고칠 수 있습니다. Reset은 편집값 전체를 `PlayOptions{}` 기본값으로 복원하고 오류·펼침을 정리합니다. 복원값도 닫을
-때 적용합니다.
+다시 표시해 고칠 수 있습니다. Reset(또는 패널이 열린 동안 `F2`)은 편집값 전체를 `PlayOptions{}` 기본값으로 복원하고 오류·펼침을
+정리합니다. 패널의 항목만 바꾸며 다른 설정(`Option.ini`)은 건드리지 않습니다. 복원값도 닫을 때 적용합니다.
 
 **배지:** 선곡 하단 Play options 글자 오른쪽에 기본과 다른 옵션 수를 금빛 칸(18×18)으로 표시하고 0이면 숨깁니다.
 스크롤(단위나 값)·Accelerate·음정 유지(둘 중 하나)·JudgeLevel 덮어쓰기·Mirror·Random·Ignore scroll effects·Metronome·
