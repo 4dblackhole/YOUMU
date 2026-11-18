@@ -20,6 +20,8 @@ void GameplaySessionController::PauseAt(std::int64_t ticks, bool menuShown)
     state_ = PlayState::Pause;
     playbackRequested_ = false;
     playbackStart_.reset();
+    // Release edges are not tracked while the pause menu owns the keyboard.
+    restartHoldStart_.reset();
     // Transient samples are discarded, never resumed as background music.
     audio_.PauseMusicAndStopSamples();
     pauseMenuOpen_ = menuShown;

@@ -21,7 +21,7 @@ namespace
     {
     case 27:
     case 32:
-    case 'R':
+    case 0xC0: // VK_OEM_3 (backquote): hold to restart
     case 0x76:
         return true;
     default:
