@@ -7,6 +7,7 @@ using namespace PhantomCore;
 void GameplaySessionController::ResetTimeline()
 {
     feedback_.push_back({true});
+    restartHoldStart_.reset();
     session_->Reset();
     audio_.PauseMusicAndStopSamples();
     audio_.ResetAutomation();
@@ -22,25 +23,54 @@ void GameplaySessionController::ResetTimeline()
     audio_.ResetPollDeadline();
 }
 
-void GameplaySessionController::ProcessControlKeys(const UpdateContext &context)
+namespace
+{
+// The backquote key (`) restarts the attempt, but only after it has been held for half a second.
+constexpr std::uint16_t RestartKey = VK_OEM_3;
+constexpr std::int64_t RestartHoldDivisor = 2;
+} // namespace
+
+bool GameplaySessionController::RestartHoldCompleted(const UpdateContext &context)
 {
     const auto &input = context.input;
-    const auto pressed = [&](std::uint16_t key)
+    // Follow the ordered press/release edges so the hold starts at the physical press time.
+    for (const auto &event : input.Events())
     {
-        return std::ranges::any_of(
-            input.Events(),
-            [&](const auto &event)
-            {
-                if (event.type != InputEventType::KeyPressed || event.code != key)
-                    return false;
-                return state_ != PlayState::Gameplay || event.performanceCounterTicks >= gameplayStartTicks_;
-            });
-    };
-    if (pressed('R'))
-    {
-        ResetTimeline();
-        return;
+        if (event.code != RestartKey)
+            continue;
+        if (event.type == InputEventType::KeyReleased)
+        {
+            restartHoldStart_.reset();
+            continue;
+        }
+        if (event.type != InputEventType::KeyPressed || restartHoldStart_)
+            continue;
+        // A key still held from the previous restart, or from before the clock started, never counts.
+        if (event.performanceCounterTicks <= restartHoldIgnoreTicks_)
+            continue;
+        if (state_ == PlayState::Gameplay && event.performanceCounterTicks < gameplayStartTicks_)
+            continue;
+        restartHoldStart_ = event.performanceCounterTicks;
     }
+    if (!restartHoldStart_ || !input.IsKeyDown(RestartKey))
+    {
+        restartHoldStart_.reset();
+        return false;
+    }
+    const auto now = context.audio.CaptureClockSnapshot();
+    const auto heldTicks = now.performanceCounterTicks - *restartHoldStart_;
+    if (heldTicks < now.performanceCounterFrequency / RestartHoldDivisor)
+        return false;
+    // Holding the key on after the restart must not restart again until it is released and pressed anew.
+    restartHoldIgnoreTicks_ = now.performanceCounterTicks;
+    restartHoldStart_.reset();
+    return true;
+}
+
+void GameplaySessionController::ProcessControlKeys(const UpdateContext &context)
+{
+    if (RestartHoldCompleted(context))
+        ResetTimeline();
 }
 
 void GameplaySessionController::ToggleDebugTimeline(const UpdateContext &context,

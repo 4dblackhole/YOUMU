@@ -807,6 +807,7 @@ namespace
                 CheckConfirmedRewindExample(ctx);
                 CheckAutomaticFocus(ctx);
                 CheckDebugTimeline(ctx);
+                CheckRestartHold(ctx);
                 CheckSharedLifecycle(ctx);
                 CheckCompletionEscape(ctx);
                 CheckTransientVoices(ctx);
@@ -1081,6 +1082,59 @@ namespace
 #endif
                 controller.Shutdown();
             }
+        }
+
+        // The backquote key restarts the attempt only after a half-second hold; a tap, the old R key and a
+        // key held on through a restart must leave the attempt running.
+        void CheckRestartHold(const UpdateContext &ctx)
+        {
+            auto pattern = Pattern();
+            pattern.notes.push_back({.position = {0, {}}, .keyType = 1});
+            auto loaded = TaikoMode(PlaySessionOptions{}).CreateSession(pattern);
+            Check(loaded.Succeeded(), "Restart hold fixture must load.");
+            GameplaySessionController controller({"probe.ymp", {}, "probe-music.mp3", "Taiko"}, playback_, false,
+                                                   std::move(loaded.session));
+            controller.InitializeSession();
+            controller.Start(*services_, RhythmTime{-2'000'000});
+            WaitForGameplay(controller, ctx);
+            InputState input;
+            const auto frame = [&] { controller.Update({0.0, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}}); };
+            const auto edge = [&](std::uint16_t key, bool down)
+            {
+                InputStateTestAccess::Begin(input);
+                const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                if (down) InputStateTestAccess::Press(input, key, ticks);
+                else InputStateTestAccess::Release(input, key, ticks);
+                frame();
+            };
+            const auto idleFrame = [&] { InputStateTestAccess::Begin(input); frame(); };
+            const auto holdFor = [&](std::chrono::milliseconds duration)
+            {
+                std::this_thread::sleep_for(duration);
+                idleFrame();
+            };
+            edge(VK_OEM_3, true);
+            holdFor(std::chrono::milliseconds{100});
+            edge(VK_OEM_3, false);
+            Check(controller.CurrentState() == PlayState::Gameplay, "A short backquote tap must not restart.");
+            edge('R', true);
+            holdFor(std::chrono::milliseconds{700});
+            edge('R', false);
+            Check(controller.CurrentState() == PlayState::Gameplay, "The R key must no longer restart.");
+            edge(VK_OEM_3, true);
+            holdFor(std::chrono::milliseconds{300});
+            Check(controller.CurrentState() == PlayState::Gameplay, "Holding for less than half a second must not restart.");
+            holdFor(std::chrono::milliseconds{300});
+            Check(controller.CurrentState() == PlayState::Loading, "Holding backquote for half a second must restart.");
+            WaitForGameplay(controller, ctx);
+            holdFor(std::chrono::milliseconds{700});
+            Check(controller.CurrentState() == PlayState::Gameplay,
+                  "A key held on through the restart must not restart again.");
+            edge(VK_OEM_3, false);
+            edge(VK_OEM_3, true);
+            holdFor(std::chrono::milliseconds{700});
+            Check(controller.CurrentState() == PlayState::Loading, "Pressing the key anew must restart after a half-second hold.");
+            controller.Shutdown();
         }
 
         void CheckTransientVoices(const UpdateContext &ctx)

@@ -232,6 +232,8 @@ automatically missed in favour of the next Good note, in both configurations.
 A test-only second mode uses the same GameplaySessionController lifecycle and polymorphic result;
 Ending transfers its result exactly once. A separate real FMOD NoSound MP3 test repeats
 source-zero/positive/near-end seeks and checks the actual source end.
+The restart key is the backquote key held for half a second: the native controller must ignore a
+tap, the former R key and a key held on through a restart, and restart on a fresh half-second hold.
 PlayPauseTests also covers rewind inside Buzz, repeated cancellation, preserved input traces,
 and forced zero-score MISS for all seven long-note types. These are automated intents and
 rendering/audio checks, not physical ESC/arrow-key testing, audible listening or manual screen review.

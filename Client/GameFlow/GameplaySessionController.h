@@ -126,6 +126,8 @@ class GameplaySessionController final
                     PlayControlType action);
     void ResetTimeline();
     void ProcessControlKeys(const PhantomCore::UpdateContext &context);
+    // True once the backquote restart key has been held for half a second.
+    bool RestartHoldCompleted(const PhantomCore::UpdateContext &context);
     void ToggleDebugTimeline(const PhantomCore::UpdateContext &context, std::int64_t ticks);
     void ProcessDebugTimeline(const PhantomCore::InputState &input, const PhantomCore::AudioClockSnapshot &clock,
                               const double deltaSeconds);
@@ -149,6 +151,9 @@ class GameplaySessionController final
     std::unique_ptr<IPlayResult> result_;
     std::optional<PhantomCore::AudioClockSnapshot> playbackStart_;
     std::int64_t gameplayStartTicks_{};
+    // QPC time the restart key went down while counting, and the latest restart; earlier presses are ignored.
+    std::optional<std::int64_t> restartHoldStart_;
+    std::int64_t restartHoldIgnoreTicks_{};
     double completedElapsedSeconds_{};
     double playbackRate_{1.0};
     bool playbackRequested_{};
