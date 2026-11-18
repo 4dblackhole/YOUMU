@@ -175,8 +175,12 @@ and clamped markers, all seven overlays, MISS without invented input timing,
 POOR only on red-beam rejection, out-of-range/release/unjudged-tick suppression,
 200ms fade/retrigger/reset, inherited circle centre, resize, node/image reuse,
 and accepted-hit priority over a passive MISS.
-Timing markers retain the latest 32 hits in a fixed ring; up to eight evicted
-markers fade for 200ms. The test checks overflow, lifetime, resizing and node reuse.
+Hit lines are 48 tall on the 12px bar; at most 50 stay live (64 pooled nodes), each fading over 5s,
+and a displaced line fades in 100ms. The test checks overflow, lifetime, resizing and node reuse.
+The translucent `Hud.TimingPanel` is drawn untinted as five abutting pieces (fixed wings and centre,
+stretching columns) that follow the JudgeLevel width with a 300 minimum, with EARLY/LATE in the wings.
+The mean-error tab shows the explicit empty value, a signed tenth-of-a-millisecond mean from the live
+statistics (`+` late, U+2212 early, unsigned zero) and is unaffected by hit-line resets.
 Key-overlay flashes share the Don/Kat red/blue palette. Background tests use real
 PNG metadata to verify aspect-preserving cover and 2D offsets at four viewports.
 It moves the shared ScrollGear parent and checks that every descendant moves together while

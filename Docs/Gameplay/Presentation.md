@@ -86,10 +86,12 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 │  └─ Progress.CurrentTime / Progress.TotalTime
 ├─ Hud.Accuracy                       정확도 텍스트
 ├─ Hud.JudgementGuide                 화면 하단 타이밍 인디케이터
+│  ├─ Judgement.Panel.0~4             반투명 판(Hud.TimingPanel을 날개·띠·가운데·띠·날개로 잘라 붙임)
 │  ├─ Judgement.Margin / Judgement.Band.0~4
-│  ├─ Judgement.Caption.0~2           EARLY / 0 / LATE
+│  ├─ Judgement.Caption.0~1           EARLY / LATE
 │  ├─ Judgement.Zero                  0 기준선
-│  └─ Judgement.HitLine.0~63          타격 막대(판정 색, 반투명)
+│  ├─ Judgement.HitLine.0~63          타격 막대(판정 색, 반투명)
+│  └─ Judgement.Average / Judgement.AverageUnit   평균 오차와 단위
 ├─ Hud.NoteProcessing.{id} *          중앙 풍선/뎅뎅 처리 그림(완료 연출 포함)
 ├─ Hud.NoteCounter.{id} *             롤·큰 롤·풍선·뎅뎅의 남은 타격 수 배지
 │  └─ RemainingHits                   남은 타격 수 텍스트
@@ -247,8 +249,9 @@ HP가 게이지의 클리어 기준(`HpGaugeState::clearPercent`, 기본 60%) �
 그 기준 자리에 두고, 일시정지 메뉴나 Rewind로 그 시도의 HP가 꺼지면 받침 위에 자물쇠(`Lock`)를 표시하고 채움은 그 자리에 멈춥니다.
 숫자는 표시하지 않습니다.
 
-타이밍 인디케이터는 화면 가로 중앙에 두고 0점을 화면 중앙 x에 맞춥니다. 바탕판은 없으며, 색 띠 아래 끝은 기어 아래 54입니다
-([UI-02](../DesignDecisions.md#ui-02-ui-리디자인), 사용자 지시로 판정원 아래 배치와 `Hud.TimingPanel` 판을 대체).
+타이밍 인디케이터는 화면 가로 중앙에 두고 0점을 화면 중앙 x에 맞춥니다. 색 띠 가운데는 기어 아래 72이며, 반투명 판
+(`Hud.TimingPanel`)이 색 띠·타격 막대·EARLY/LATE·평균 오차를 감쌉니다([UI-02](../DesignDecisions.md#ui-02-ui-리디자인),
+사용자 지시로 판정원 아래 배치를 대체하고, 이후 사용자 지시로 막대 높이 두 배·판·평균 오차를 추가).
 하단 진행 막대는 화면 아래 끝 전체 폭의 띠입니다.
 
 Kiai 구간(YME `#Kiai`, `PlaySession::IsKiaiActive`)에서는 판정원을 강화합니다. 같은 판정원 그림을 옅은 금빛(`#FFCF6E` 곱)으로 덧그리고,
@@ -318,9 +321,16 @@ PNG는 진입 때 등록하고 프레임 갱신에서 파일 읽기/노트 전�
 ## 판정 인디케이터와 링·문구
 
 `GameplayJudgementView`가 화면 하단 인디케이터와 판정원의 링·문구 상태를 소유합니다.
-인디케이터는 화면 가로 중앙에 있고 0 기준선이 화면 중앙 x입니다. 바탕판 없이 색 띠 아래 끝을 기어 아래 54에 둡니다.
-Canvas가 노드를 소유하고 Presenter는 초기화·입력 피드백·표시 시간 갱신·종료만 연결합니다.
-기존 NoteEvent의 판정 등급/오차를 사용하며 점수·노트 처리·오디오 동작을 바꾸지 않습니다.
+인디케이터는 화면 가로 중앙에 있고 0 기준선이 화면 중앙 x입니다. 색 띠 아래 끝을 기어 아래 78(가운데 72)에 둡니다.
+Canvas가 노드를 소유하고 Presenter는 초기화·입력 피드백·표시 시간 갱신·평균 오차 갱신·종료만 연결합니다.
+기존 NoteEvent의 판정 등급/오차와 결과 수집기의 실시간 통계를 읽으며 점수·노트 처리·오디오 동작을 바꾸지 않습니다.
+
+판(`InGame/Hud/TimingPanel.png`)은 그림 그대로 그립니다. 반투명도는 PNG 픽셀의 알파이며 게임은 색이나 불투명도를
+곱하지 않습니다. 그림은 판정레벨 50 배치(논리 524×112)입니다. 양쪽 날개에 EARLY/LATE, 가운데 홈 아래로 색 띠
+(판 양쪽 안쪽 52, 위에서 44~56)와 타격 막대, 아래 탭(가운데 128×30)에 평균 오차가 들어갑니다. 게임은 그림을 다섯 조각
+(왼쪽 128 · 늘이는 띠 · 가운데 140 · 늘이는 띠 · 오른쪽 128)으로 잘라 붙여 날개와 탭의 크기는 그대로 두고 그 사이만
+늘이거나 줄입니다. 판 안쪽 폭은 색 띠 폭을 따르되 300보다 좁아지지 않습니다(판정레벨 74 이상에서는 판이 색 띠보다
+조금 넓음). EARLY/LATE는 판 안쪽 끝에 맞춥니다. 0 문구는 없으며 0 기준선(굵기 1)이 타격 막대보다 위아래로 2씩 깁니다.
 
 인디케이터는 MAX/PERFECT/GREAT/GOOD/BAD를 각각 독립적인 색 사각형으로 조합합니다.
 넓은 BAD부터 작은 MAX까지 중심에 겹쳐 구성하며 색은 LaneKeyBeam의 공통 GradeColor와
@@ -328,20 +338,26 @@ Canvas가 노드를 소유하고 Presenter는 초기화·입력 피드백·표�
 판정레벨 50에서 BAD 전체 폭은 논리 378px(±90ms)이고 양쪽에 10ms씩 회색 여유를 두어
 전체 표시 범위는 ±100ms, 폭 420px입니다. 다른 판정레벨의 기본 범위에 비례해 길이가 바뀌되,
 세션 진입 때 정한 범위를 플레이 중 유지합니다. 싱코페이션의 노트별 추가 범위로
-길이나 색 구간을 바꾸지 않습니다. 좁은 창/매우 넓은 범위에서는 좌우 20px 여백 안에
+길이나 색 구간을 바꾸지 않습니다. 좁은 창/매우 넓은 범위에서는 판 전체가 좌우 20px 여백 안에
 들어오도록 배율만 줄입니다.
 
 실제 입력마다 signedError 위치(왼쪽 빠름·오른쪽 늦음)에 세로 타격 막대를 하나 찍고, 범위를 넘으면
-끝점에 제한합니다. 막대는 osu! bar hit error meter의 기본값을 따릅니다. 굵기 4·높이 24(색 띠 12의 위아래로 6씩 더 김)이고,
+끝점에 제한합니다. 막대는 osu! bar hit error meter의 기본값을 따르되 높이를 두 배로 합니다. 굵기 4·높이 48(색 띠 12의 위아래로 18씩 더 김)이고,
 색은 그 입력의 판정 색(색 띠와 같은 `LaneKeyBeam::GradeColor`), POOR는 적색 키빔과 같은 `WrongInputColor`입니다.
 100ms 동안 불투명도 0→0.6, 굵기 0→4로 나타나고(OutQuint) 이어서 5초 동안 불투명도가 선형으로 0이 되며
 굵기도 InQuint로 줄어든 뒤 사라집니다. 막대는 겹쳐 쌓이고 새 막대가 위에 그려집니다. 살아 있는 막대가 50개인데
 새 타격이 오면 가장 오래된 막대를 100ms에 걸쳐 지웁니다. 시간은 플레이 중 표시 시간이므로 일시정지 중에는 멈추고,
-Retry·Rewind·일시정지 메뉴의 재개 이동처럼 표시를 다시 시작할 때(`GameplayFeedback::reset`)는 모두 지웁니다. 평균 오차 표시는 두지 않습니다.
+Retry·Rewind·일시정지 메뉴의 재개 이동처럼 표시를 다시 시작할 때(`GameplayFeedback::reset`)는 모두 지웁니다.
+
+판 아래 탭의 평균 오차는 결과 화면 Mean과 같은 표본입니다. 결과 수집기가 지금 기록에 남긴 실제 타격(MAX~BAD 판정을 받은
+HitAccepted, `PlayStatistics::timingErrorSum/timingErrorCount`)의 signedError 산술 평균을 매 표시 갱신 때 읽습니다.
+POOR·자동 MISS·틱은 넣지 않습니다. Rewind는 되감은 시점 이후의 타격만 빼고 그 전 타격을 남기며, Retry는 비웁니다.
+값은 0.1ms 단위로 반올림한 숫자(늦음 `+`, 빠름 `−`(U+2212), 0은 부호 없음)와 작은 단위(`Gameplay.averageErrorUnit`)이고,
+타격이 없으면 `Gameplay.averageErrorEmpty`(`—`)입니다. 글자는 값이 바뀔 때만 다시 씁니다.
 범위 밖 입력은 백색 키빔만 생성하고 막대/문구를 시작하지 않습니다.
 정확도 없는 Roll/count tick과 키 해제도 타격 막대/일반 판정 문구를 시작하지 않습니다.
 자동 MISS는 MISS 링·문구만 표시하며 입력 시각이 없으므로 막대를 만들지 않습니다.
-빠름/늦음/0 문구는 막대 위 끝보다 4 위에 둡니다.
+빠름/늦음 문구는 판의 날개 안, 색 띠 아래 끝보다 37~53 위에 둡니다.
 
 MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR/OK는 링과 상단 문구를 합친 투명 PNG 8종입니다.
 `InGame/Judgements/<판정명>.png`를 세션 진입 때 등록하고 같은 노드를 재사용합니다.
