@@ -180,7 +180,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | 섹션 | 이미지 항목 |
 | --- | --- |
 | `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
-| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
+| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
@@ -210,7 +210,7 @@ INI를 편집했다면 재실행하거나 다른 스킨을 선택했다 돌아�
 풍선 완료 효과음은 `HitSounds/TaikoMode/pop.wav`입니다. 다른 스킨에서 이 파일을
 제공하면 해당 파일을 사용하고, 없으면 내장 기본 스킨의 소리로 대체합니다.
 판정 링·문구 8종도 `InGame/Judgements/MAX.png`부터 `POOR.png`, `OK.png`까지 같은 파일별
-fallback을 사용합니다. 인디케이터는 별도 색 구간 요소로 구성합니다.
+fallback을 사용합니다. 인디케이터의 색 구간은 별도 요소이고, 감싸는 반투명 판만 `InGame/Hud/TimingPanel.png`입니다.
 판정별 파일명과 표시 계약은 [Presentation](Gameplay/Presentation.md)에 있습니다.
 하단 진행바는 `InGame/Progress/{Background,Track,Fill,Marker}.png` 네 파일을 사용합니다.
 각 요소는 따로 교체할 수 있고 누락 파일만 내장본으로 대체합니다. 시간 문구는 PNG에

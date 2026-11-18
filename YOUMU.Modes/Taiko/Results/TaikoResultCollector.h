@@ -30,4 +30,5 @@ class TaikoResultCollector final : public IPlayResultCollector
     std::unordered_map<NoteId, std::size_t> noteIndices_;
     std::vector<bool> comboEligible_;
     std::size_t combo_{};
+    RhythmDuration timingErrorSum_{}; // Running sum of result_->timingErrors.
 };

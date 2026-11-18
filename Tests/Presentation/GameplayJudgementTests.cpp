@@ -2,6 +2,7 @@
 #include "YOUMUAssets.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplayJudgementView.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplayPresenter.h"
+#include "Mode/Results/IPlayResultCollector.h"
 #include "Parsing/ChartParser.h"
 #include "Presentation/LaneKeyBeam.h"
 #include "MusicSelectTestInput.h"
@@ -132,6 +133,56 @@ namespace
             Check(Node(root, "Lane.Judgement." + std::string(name)).IsVisible() == (word == name),
                   "Exactly the expected judgement image must be visible.");
     }
+    std::wstring LabelText(Visual2DNode &root, std::string_view name)
+    {
+        return std::wstring(Node(root, std::string(name)).GetComponent<TextVisualComponent>()->Text());
+    }
+    // The panel pieces sit edge to edge, keep the wings and the centre at their
+    // authored width and sample the matching columns of the one panel image.
+    void CheckTimingPanel(Visual2DNode &root, const float outerHalf)
+    {
+        constexpr std::array<float, 6> columns{0, 128, 192, 332, 396, 524};
+        const std::array<float, 6> edges{-outerHalf, -outerHalf + 128, -70, 70, outerHalf - 128, outerHalf};
+        for (std::size_t i = 0; i < 5; ++i)
+        {
+            auto &piece = Node(root, "Judgement.Panel." + std::to_string(i));
+            const auto bounds = piece.Bounds();
+            Check(Near(bounds.x, edges[i]) && Near(bounds.width, edges[i + 1] - edges[i]),
+                  "Timing panel pieces must abut and keep wings and centre at their authored width.");
+            Check(Near(bounds.y, 56.0F - 112.0F) && Near(bounds.height, 112.0F),
+                  "The panel spans 56 above to 56 below the bar's bottom.");
+            const auto &sprite = *piece.GetComponent<SpriteVisualComponent>();
+            Check(Near(sprite.UvOffset().x, columns[i] / 524) &&
+                      Near(sprite.UvScale().x, (columns[i + 1] - columns[i]) / 524),
+                  "Each panel piece samples its own columns of Hud.TimingPanel.");
+            Check(Near(sprite.Style().normal.alpha, 1.0F), "The panel PNG is drawn as authored, with no tint.");
+        }
+        const auto early = Node(root, "Judgement.Caption.0").Bounds();
+        const auto late = Node(root, "Judgement.Caption.1").Bounds();
+        Check(Near(early.x, -outerHalf + 52) && Near(late.x + late.width, outerHalf - 52) && Near(early.y, 37.0F),
+              "EARLY and LATE sit in the panel's wings.");
+    }
+    void TestAverageError(GameplayJudgementView &view, Visual2DNode &root)
+    {
+        Check(LabelText(root, "Judgement.Average") == L"—" && LabelText(root, "Judgement.AverageUnit") == L"ms",
+              "Before a graded hit the mean shows the explicit empty value.");
+        PlayStatistics statistics;
+        statistics.timingErrorSum = RhythmDuration{36'300};
+        statistics.timingErrorCount = 3;
+        view.ShowAverageError(statistics);
+        Check(LabelText(root, "Judgement.Average") == L"+12.1", "A late mean shows a plus sign and tenths.");
+        statistics.timingErrorSum = RhythmDuration{-6'850};
+        statistics.timingErrorCount = 2;
+        view.ShowAverageError(statistics);
+        Check(LabelText(root, "Judgement.Average") == L"−3.4", "An early mean shows a typographic minus.");
+        statistics.timingErrorSum = RhythmDuration{-40};
+        view.ShowAverageError(statistics);
+        Check(LabelText(root, "Judgement.Average") == L"0.0", "A mean that rounds to zero has no sign.");
+        view.Reset();
+        Check(LabelText(root, "Judgement.Average") == L"0.0", "The mean follows the statistics, not hit-line resets.");
+        view.ShowAverageError({});
+        Check(LabelText(root, "Judgement.Average") == L"—", "Statistics without graded hits clear the mean.");
+    }
     void TestGuideAndOverlays()
     {
         AssetRenderer renderer;
@@ -151,6 +202,11 @@ namespace
         auto &margin = Node(root, "Judgement.Margin");
         Check(!marker.IsVisible() && Near(bad.NodeSize().width, 378.0F), "Initial guide uses base BAD +/-90ms.");
         Check(Near(margin.NodeSize().width, 420.0F), "Guide includes 10ms margin on each side.");
+        Check(Find(root, "Judgement.Caption.2") == nullptr, "The zero line needs no separate 0 caption.");
+        CheckTimingPanel(root, 262.0F);
+        const auto zero = Node(root, "Judgement.Zero").Bounds();
+        Check(Near(zero.y, -20.0F) && Near(zero.height, 52.0F), "The zero line runs past both ends of the hit lines.");
+        TestAverageError(view, root);
         for (std::size_t index = 0; index < base.Bands().size(); ++index)
         {
             auto &band = Node(root, "Judgement.Band." + std::to_string(index));
@@ -186,7 +242,8 @@ namespace
         Check(marker.Bounds().x > 0.0F, "Late input must place the hit line to the right.");
         Check(Near(Tint(marker).alpha, 0.0F) && Near(marker.NodeSize().width, 0.0F),
               "A hit line starts transparent and zero wide.");
-        Check(Near(marker.NodeSize().height, 24.0F), "A hit line is taller than the 12px colour bar.");
+        Check(Near(marker.NodeSize().height, 48.0F) && Near(marker.Bounds().y, 6.0F),
+              "A hit line is 48 tall, pivoted on the 12px colour bar's centre.");
         view.Update(0.1);
         Check(Near(Node(root, "Lane.Judgement.GOOD").GetComponent<SpriteVisualComponent>()->Style().normal.alpha,
                    0.5F),
@@ -236,9 +293,9 @@ namespace
         view.Reset();
         view.Present(Event(NoteEventType::InputRejected, JudgementGrade::Bad, RhythmDuration{500'000}));
         Check(Near(marker.Bounds().x, margin.NodeSize().width * 0.5F), "Hit lines are clamped to the visible guide.");
-        view.OnResize(200.0F);
-        Check(Near(margin.NodeSize().width, 160.0F), "Wide ranges must fit a narrow viewport.");
-        Check(Near(marker.Bounds().x, 80.0F), "Resize must preserve the timing position.");
+        view.OnResize(400.0F);
+        Check(Near(margin.NodeSize().width, 256.0F), "The panel around a wide range must fit a narrow viewport.");
+        Check(Near(marker.Bounds().x, 128.0F), "Resize must preserve the timing position.");
         view.OnResize(1280.0F);
         Check(Near(bad.NodeSize().width, 378.0F), "Resize restores the fixed time scale.");
         Check(NodeCount(root) == count && renderer.loads == loads, "Repeated hits/resize must reuse nodes and images.");
@@ -272,6 +329,7 @@ namespace
         strictView.Initialize(visuals, strictCanvas, strictCircle, AccuracyRange{"strict", 100}, texts);
         Check(Near(Node(strictCanvas.Root(), "Judgement.Band.4").NodeSize().width, 189.0F),
               "JudgeLevel 100 must halve the base BAD band length.");
+        CheckTimingPanel(strictCanvas.Root(), 202.0F);
         strictView.Shutdown();
     }
     void CheckGearTransform(Visual2DNode &root)

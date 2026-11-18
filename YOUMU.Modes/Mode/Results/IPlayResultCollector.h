@@ -11,6 +11,10 @@ struct PlayStatistics
     std::array<std::size_t, 6> judgements{};
     std::size_t okCount{};
     std::size_t poorCount{};
+    // Signed timing errors of the graded hits behind judgements[0..4] (the
+    // result's timing samples): their sum and count give the live mean error.
+    RhythmDuration timingErrorSum{};
+    std::size_t timingErrorCount{};
 };
 
 class IPlayResultCollector

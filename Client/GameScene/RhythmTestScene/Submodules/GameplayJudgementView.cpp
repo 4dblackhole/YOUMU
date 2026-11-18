@@ -1,11 +1,14 @@
 #include "GameplayJudgementView.h"
 #include "App/AssetPaths.h"
+#include "Mode/Results/IPlayResultCollector.h"
 #include "Presentation/LaneKeyBeam.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
 #include "Texts/GameScene/RhythmTestScene/GameplayTexts.h"
 #include <algorithm>
 #include <cmath>
+#include <format>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -17,14 +20,29 @@ namespace
     // The default JudgeLevel 50 guide (BAD +/-90ms plus a 10ms margin each side) is 420 wide.
     constexpr float ReferencePixelsPerMicrosecond = 420.0F / 200'000.0F;
     constexpr float BarHeight = 12.0F;
-    // The bar's bottom is 54 below the gear, where it sat on the former 490x48 timing panel.
-    constexpr float BarBelowGear = 54.0F;
-    // Hit lines follow osu!'s bar hit error meter defaults: 4 thick, 0.6 peak alpha,
-    // 100ms OutQuint fade-in, 5s fade-out, at most 50 live lines (older ones fade in 100ms).
-    constexpr float LineThickness = 4.0F, LineHeight = 24.0F, LinePeakAlpha = 0.6F;
+    // The guide origin is the bar's bottom, 78 below the gear: the bar centre sits 72
+    // below it, 24 lower than before the hit lines doubled to 48.
+    constexpr float BarBelowGear = 78.0F;
+    // Hit lines follow osu!'s bar hit error meter defaults (4 thick, 0.6 peak alpha,
+    // 100ms OutQuint fade-in, 5s fade-out, at most 50 live lines; older ones fade in
+    // 100ms) at twice the default height, 18 beyond the bar on each side.
+    constexpr float LineThickness = 4.0F, LineHeight = 48.0F, LinePeakAlpha = 0.6F;
     constexpr double LineFadeInSeconds = 0.1, LineFadeOutSeconds = 5.0, LineQuickFadeSeconds = 0.1;
     constexpr std::size_t MaxLiveLines = 50;
-    constexpr float CaptionBottom = BarHeight * 0.5F + LineHeight * 0.5F + 4.0F;
+    constexpr float ZeroLineHeight = LineHeight + 4.0F;
+    // Hud.TimingPanel is drawn as authored (translucency is in the PNG). Its design is
+    // the JudgeLevel 50 guide: 524x112 with the bar 52 in from each side and 44..56 from
+    // the top. Wings (EARLY/LATE) and the centre tab (mean error) keep their size; the
+    // straight columns between them stretch. The inner width never drops below 300.
+    constexpr float PanelWidth = 524.0F, PanelHeight = 112.0F, PanelPad = 52.0F, PanelMinInner = 300.0F;
+    constexpr float PanelTop = 56.0F; // Above the bar's bottom.
+    constexpr float WingWidth = 128.0F, CentreHalf = 70.0F;
+    constexpr float CaptionBottom = PanelTop - 19.0F, CaptionHeight = 16.0F, CaptionWidth = 80.0F;
+    // Mean error in the 128x30 tab under the panel: the number ends right of centre and
+    // the smaller unit follows it, both on roughly the same baseline.
+    constexpr float TabTop = PanelTop - 82.0F, TabHeight = 30.0F;
+    constexpr float AverageNumberLeft = -64.0F, AverageNumberRight = 13.0F, AverageUnitLeft = 15.0F;
+    constexpr float AverageUnitDrop = 3.0F;
     constexpr std::array<std::string_view, 8> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
                                                          "BAD", "MISS",    "POOR",  "OK"};
     constexpr std::size_t PoorImageIndex = 6, OkImageIndex = 7;
@@ -33,6 +51,30 @@ namespace
     void Tint(Visual2DNode &node, const Color color)
     {
         node.GetComponent<SpriteVisualComponent>()->SetTint(color);
+    }
+
+    Visual2DNode &NumberLabel(Visual2DNode &parent, std::string name, std::uint16_t weight, float size, Color color,
+                              TextAlignment alignment)
+    {
+        auto &node = CreateLabel(parent, {}, L"", std::move(name));
+        auto &label = *node.GetComponent<TextVisualComponent>();
+        auto face = ui_fonts::Number(weight, true);
+        label.SetFont(std::move(face.font));
+        label.SetFontWeight(face.weight);
+        label.SetFontSize(size);
+        label.SetTextColor(color);
+        label.SetHorizontalAlignment(alignment);
+        return node;
+    }
+
+    // Rounded to tenths of a millisecond; positive is late.
+    std::optional<std::int64_t> AverageTenths(const PlayStatistics &statistics)
+    {
+        if (statistics.timingErrorCount == 0)
+            return std::nullopt;
+        const double meanMicroseconds = static_cast<double>(statistics.timingErrorSum.count()) /
+                                        static_cast<double>(statistics.timingErrorCount);
+        return std::llround(meanMicroseconds / 100.0);
     }
 
     // Only real timing judgements get a hit line. Roll/count-only ticks have no
@@ -73,9 +115,27 @@ void GameplayJudgementView::CreateTimingGuide(Visual2DNode &root, TextCatalog &t
     guide_ = &root.CreateChild("Hud.JudgementGuide");
     guide_->SetPosition({0.0F, -BarBelowGear});
     guide_->SetZIndex(5);
+    CreateTimingPanel();
     CreateTimingBands();
     CreateTimingCaptions(texts);
+    CreateAverageError(texts);
     CreateHitLines();
+}
+
+void GameplayJudgementView::CreateTimingPanel()
+{
+    const auto image = visuals_->RegisterImage(InGame(L"Hud.TimingPanel"));
+    // Each piece samples its own columns of the one image; OnResize places them.
+    constexpr std::array<float, 6> columns{0.0F, WingWidth, PanelWidth * 0.5F - CentreHalf,
+                                           PanelWidth * 0.5F + CentreHalf, PanelWidth - WingWidth, PanelWidth};
+    for (std::size_t index = 0; index < panelPieces_.size(); ++index)
+    {
+        auto &piece = CreateSprite(*guide_, {}, image, "Judgement.Panel." + std::to_string(index));
+        piece.SetZIndex(-1);
+        const float from = columns[index] / PanelWidth, to = columns[index + 1] / PanelWidth;
+        piece.GetComponent<SpriteVisualComponent>()->SetUvTransform({to - from, 1.0F}, {from, 0.0F});
+        panelPieces_[index] = &piece;
+    }
 }
 
 void GameplayJudgementView::CreateTimingBands()
@@ -95,8 +155,9 @@ void GameplayJudgementView::CreateTimingBands()
 
 void GameplayJudgementView::CreateTimingCaptions(TextCatalog &texts)
 {
+    // EARLY and LATE sit in the panel's wings, aligned with its inner edges.
     const auto &text = Gameplay(texts);
-    const std::array<std::wstring_view, 3> captions{text.early, L"0", text.late};
+    const std::array<std::wstring_view, 2> captions{text.early, text.late};
     for (std::size_t index = 0; index < labels_.size(); ++index)
     {
         labels_[index] =
@@ -107,15 +168,29 @@ void GameplayJudgementView::CreateTimingCaptions(TextCatalog &texts)
         label.SetFontWeight(face.weight);
         label.SetFontSize(12.0F);
         label.SetTextColor(ui_colors::theme::InkSoft);
-        label.SetHorizontalAlignment(index == 0   ? TextAlignment::Leading
-                                     : index == 1 ? TextAlignment::Center
-                                                  : TextAlignment::Trailing);
+        label.SetHorizontalAlignment(index == 0 ? TextAlignment::Leading : TextAlignment::Trailing);
     }
+}
+
+void GameplayJudgementView::CreateAverageError(TextCatalog &texts)
+{
+    const auto &text = Gameplay(texts);
+    averageEmpty_ = std::wstring(text.averageErrorEmpty);
+    averageValue_ = &NumberLabel(*guide_, "Judgement.Average", 800, 22.0F, Ink, TextAlignment::Trailing);
+    const float numberWidth = AverageNumberRight - AverageNumberLeft;
+    averageValue_->SetBounds({AverageNumberLeft, TabTop - TabHeight, numberWidth, TabHeight});
+    averageUnit_ = &NumberLabel(*guide_, "Judgement.AverageUnit", 700, 13.0F, ui_colors::theme::InkSoft,
+                                TextAlignment::Leading);
+    averageUnit_->GetComponent<TextVisualComponent>()->SetText(std::wstring(text.averageErrorUnit));
+    averageUnit_->SetBounds({AverageUnitLeft, TabTop - TabHeight - AverageUnitDrop, 40.0F, TabHeight});
+    averageValue_->GetComponent<TextVisualComponent>()->SetText(averageEmpty_);
+    shownAverage_ = EmptyAverage;
 }
 
 void GameplayJudgementView::CreateHitLines()
 {
-    auto &zero = CreatePanel(*guide_, {-0.5F, -1.0F, 1.0F, BarHeight + 2.0F}, "Judgement.Zero");
+    const float zeroBottom = (BarHeight - ZeroLineHeight) * 0.5F;
+    auto &zero = CreatePanel(*guide_, {-0.5F, zeroBottom, 1.0F, ZeroLineHeight}, "Judgement.Zero");
     zero.SetZIndex(6);
     Tint(zero, Ink);
     for (std::size_t i = 0; i < hitLines_.size(); ++i)
@@ -155,9 +230,10 @@ void GameplayJudgementView::OnResize(const float logicalWidth)
 {
     if (guide_ == nullptr)
         return;
+    // Only the time scale shrinks, so that the whole panel keeps 20 from each screen edge.
     const float totalMicroseconds = static_cast<float>(displayHalfWindow_.count()) * 2.0F;
-    pixelsPerMicrosecond_ =
-        std::min(ReferencePixelsPerMicrosecond, std::max(logicalWidth - 40.0F, 1.0F) / totalMicroseconds);
+    const float available = std::max(logicalWidth - 40.0F - PanelPad * 2.0F, 1.0F);
+    pixelsPerMicrosecond_ = std::min(ReferencePixelsPerMicrosecond, available / totalMicroseconds);
     const float halfWidth = static_cast<float>(displayHalfWindow_.count()) * pixelsPerMicrosecond_;
     margin_->SetBounds({-halfWidth, 0.0F, halfWidth * 2.0F, BarHeight});
     for (std::size_t index = 0; index < bands_.size(); ++index)
@@ -165,11 +241,22 @@ void GameplayJudgementView::OnResize(const float logicalWidth)
         const float width = static_cast<float>(halfWindows_[index].count()) * pixelsPerMicrosecond_ * 2.0F;
         bands_[index]->SetBounds({-width * 0.5F, 0.0F, width, BarHeight});
     }
-    labels_[0]->SetBounds({-halfWidth, CaptionBottom, 80.0F, 16.0F});
-    labels_[1]->SetBounds({-20.0F, CaptionBottom, 40.0F, 16.0F});
-    labels_[2]->SetBounds({halfWidth - 80.0F, CaptionBottom, 80.0F, 16.0F});
+    LayoutTimingPanel(halfWidth);
     for (auto &line : hitLines_)
         PositionLine(line);
+}
+
+void GameplayJudgementView::LayoutTimingPanel(const float halfWidth)
+{
+    const float outer = std::max(halfWidth, PanelMinInner * 0.5F) + PanelPad;
+    // Piece edges, left to right; neighbours share the same computed value.
+    const std::array<float, 6> edges{-outer, -outer + WingWidth, -CentreHalf, CentreHalf, outer - WingWidth, outer};
+    const float bottom = PanelTop - PanelHeight;
+    for (std::size_t index = 0; index < panelPieces_.size(); ++index)
+        panelPieces_[index]->SetBounds({edges[index], bottom, edges[index + 1] - edges[index], PanelHeight});
+    const float inner = outer - PanelPad;
+    labels_[0]->SetBounds({-inner, CaptionBottom, CaptionWidth, CaptionHeight});
+    labels_[1]->SetBounds({inner - CaptionWidth, CaptionBottom, CaptionWidth, CaptionHeight});
 }
 
 void GameplayJudgementView::SetGuidePlacement(const float gearBottom)
@@ -286,6 +373,26 @@ void GameplayJudgementView::Present(const NoteEvent &event)
     }
 }
 
+void GameplayJudgementView::ShowAverageError(const PlayStatistics &statistics)
+{
+    if (averageValue_ == nullptr)
+        return;
+    const auto tenths = AverageTenths(statistics);
+    const std::int64_t shown = tenths.value_or(EmptyAverage);
+    if (shown == shownAverage_)
+        return;
+    shownAverage_ = shown;
+    std::wstring text = averageEmpty_;
+    if (tenths)
+    {
+        // A typographic minus for early, an explicit plus for late, no sign at zero.
+        const wchar_t *sign = *tenths > 0 ? L"+" : (*tenths < 0 ? L"−" : L"");
+        const std::int64_t magnitude = *tenths < 0 ? -*tenths : *tenths;
+        text = std::format(L"{}{}.{}", sign, magnitude / 10, magnitude % 10);
+    }
+    averageValue_->GetComponent<TextVisualComponent>()->SetText(std::move(text));
+}
+
 void GameplayJudgementView::ShowImage(std::size_t index)
 {
     if (activeJudgement_ != nullptr)
@@ -343,9 +450,13 @@ void GameplayJudgementView::Shutdown() noexcept
     if (guide_ != nullptr)
         guide_->SetVisible(false);
     guide_ = nullptr;
+    panelPieces_.fill(nullptr);
     margin_ = nullptr;
     bands_.fill(nullptr);
     labels_.fill(nullptr);
+    averageValue_ = nullptr;
+    averageUnit_ = nullptr;
+    shownAverage_ = EmptyAverage;
     hitLines_ = {};
     judgementImages_.fill(nullptr);
 }

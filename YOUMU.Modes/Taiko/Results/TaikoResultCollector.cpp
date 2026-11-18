@@ -77,6 +77,7 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
         result_->timingErrors.push_back({event.noteId, event.hitIndex, event.eventTime, event.judgement.signedError,
                                          event.judgement.grade,
                                          AccuracyScore::FromRate(event.judgement.scoreRate)});
+        timingErrorSum_ += event.judgement.signedError;
     }
     else if (keyPressed && event.type == NoteEventType::InputRejected &&
              IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good))
@@ -184,6 +185,7 @@ void TaikoResultCollector::ResetJudgements() noexcept
         note.acceptedHits = note.acceptedTicks = 0;
     }
     result_->timingErrors.clear();
+    timingErrorSum_ = {};
     result_->judgements = {};
     result_->okCount = result_->poorCount = result_->acceptedTicks = result_->missedTicks = 0;
     combo_ = result_->summary.maximumCombo = 0;
@@ -191,8 +193,13 @@ void TaikoResultCollector::ResetJudgements() noexcept
 }
 PlayStatistics TaikoResultCollector::Statistics() const noexcept
 {
-    return result_ ? PlayStatistics{combo_, result_->summary.maximumCombo, result_->judgements,
-                                    result_->okCount, result_->poorCount}
+    return result_ ? PlayStatistics{combo_,
+                                    result_->summary.maximumCombo,
+                                    result_->judgements,
+                                    result_->okCount,
+                                    result_->poorCount,
+                                    timingErrorSum_,
+                                    result_->timingErrors.size()}
                    : PlayStatistics{};
 }
 void TaikoResultCollector::Summarize()
