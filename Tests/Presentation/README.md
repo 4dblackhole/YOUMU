@@ -171,9 +171,9 @@ After a solution build, run in an x64 Visual Studio developer PowerShell with
 The test links the production Presenter/JudgementView/key-beam objects and reads
 real fallback PNG metadata. It checks independent band colors, JudgeLevel-based
 lengths, fixed base windows during syncopation, +/-10ms margins, early/late/zero
-and clamped markers, all seven overlays, MISS without invented input timing,
+and clamped markers, the word-only judgement images, MISS without invented input timing,
 POOR only on red-beam rejection, out-of-range/release/unjudged-tick suppression,
-200ms fade/retrigger/reset, inherited circle centre, resize, node/image reuse,
+200ms fade/retrigger/reset, words centred 6 above the inherited circle, resize, node/image reuse,
 and accepted-hit priority over a passive MISS.
 Hit lines are 48 tall on the 12px bar; at most 50 stay live (64 pooled nodes), each fading over 5s,
 and a displaced line fades in 100ms. The test checks overflow, lifetime, resizing and node reuse.
