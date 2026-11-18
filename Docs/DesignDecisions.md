@@ -329,6 +329,7 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
   IEditorMode는 모드별 도구/배치/표시 정책, Workspace는 공통 명령과 수명을 소유합니다.
 - 편집 전체 32동작 Undo/Redo, 선택/다중 선택·복사·붙여넣기를 유지합니다.
   Ctrl+V는 실제 겹침 교체, Ctrl+Shift+V는 복사 영역의 공백까지 교체합니다.
+  클릭 배치도 사용자 결정으로 겹치는 노트(롱노트는 통째로)를 모두 대체하며 Undo 한 번으로 되돌립니다.
 - 실패한 배치/수정/저장은 원본·ID·dirty·Undo/Redo를 보존합니다. 두 파일 staging/backup/
   설치 전에 YMP/YME/tmp/bak 경로의 정규화·대소문자·hardlink 별칭을 검사합니다.
 - 빈/미지원 모드를 Taiko로 대신 열지 않습니다. 모드 context와 분석의 읽기 전용 계약을 분리합니다.
