@@ -37,6 +37,17 @@ namespace tests
                 "Sparse auxiliary slots persist while their assigned keys remain playable.");
         Require(sparse.session->InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 0, 0, 'A'},
                 "Sparse auxiliary slots persist while their assigned keys remain playable.");
+        // A key moved to another slot leaves the old slot, the primary included, unassigned.
+        options.inputKeys["LeftDon"] = {0, 'S', 0, 0};
+        options.inputKeys["RightDon"] = {0, 0, 0, 0};
+        auto unassigned = TaikoMode(options).CreateSession(pattern);
+        Require(unassigned.Succeeded() && unassigned.session->InputMapping().at('S') == 1,
+                "An unassigned primary keeps the binding's assigned auxiliary keys playable.");
+        Require(!unassigned.session->InputMapping().contains(0) && !unassigned.session->InputMapping().contains('J'),
+                "A binding without keys receives no input.");
+        Require(unassigned.session->InputLayout().bindings[2].keys == std::vector<PhysicalKey>(4, 0),
+                "A binding without keys receives no input.");
+        options.inputKeys.erase("RightDon");
         options.inputKeys["LeftDon"] = {'K', 'A'};
         Require(!TaikoMode(options).CreateSession(pattern).Succeeded(),
                 "Conflicting bindings must fail before play.");
@@ -44,6 +55,16 @@ namespace tests
         const auto other = ResolveInputLayout({"SevenKeys", {{"Lane1", "Lane 1", 7, {'S'}}}}, {{"Lane1", {'A'}}});
         Require(other.bindings.front().action == 7 && other.bindings.front().keys.front() == 'A',
                 "Binding resolution does not assume Taiko actions or four rows.");
+        bool emptyPrimaryRejected = false;
+        try
+        {
+            static_cast<void>(ResolveInputLayout({"SevenKeys", {{"Lane1", "Lane 1", 7, {'S'}}}}, {{"Lane1", {0}}}));
+        }
+        catch (const std::invalid_argument &)
+        {
+            emptyPrimaryRejected = true;
+        }
+        Require(emptyPrimaryRejected, "A layout that does not allow unassigned keys still requires its primary key.");
     }
 
     void TestRuntimeGlobalOffset()

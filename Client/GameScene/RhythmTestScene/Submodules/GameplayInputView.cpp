@@ -69,11 +69,13 @@ void GameplayInputView::Update(
             continue;
         const auto &keys = bindings[index].keys;
         const auto auxiliary = std::span(keys).subspan(1);
-        const bool primaryPressed = input.IsKeyDown(keys.front());
+        // An unassigned primary (0) never lights or flashes; auxiliary keys still show the weak light.
+        const PhysicalKey primary = keys.front();
+        const bool primaryPressed = primary != 0 && input.IsKeyDown(primary);
         const bool secondaryPressed =
             std::ranges::any_of(auxiliary, [&input](auto key) { return key != 0 && input.IsKeyDown(key); });
         // Only the first assigned key flashes; the other assigned keys show the key light alone.
-        const bool primaryPressedThisFrame = input.WasKeyPressed(keys.front());
+        const bool primaryPressedThisFrame = primary != 0 && input.WasKeyPressed(primary);
         const Color &faceColor =
             primaryPressed ? InputKeyPressedColors[index]
                            : (secondaryPressed ? InputKeyWeakColors[index] : InputKeyBaseColors[index]);

@@ -21,7 +21,9 @@ struct ModeInputLayout
 {
     std::string modeId;
     std::vector<ModeInputBinding> bindings;
-    bool allowUnassignedAuxiliaryKeys{};
+    // Any slot, the primary included, may hold 0 (unassigned). A binding whose
+    // slots are all unassigned receives no input.
+    bool allowUnassignedKeys{};
 };
 struct PlaySessionOptions
 {
