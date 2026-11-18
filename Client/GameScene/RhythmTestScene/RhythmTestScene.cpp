@@ -53,7 +53,7 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
           debug, request ? request->TakeValidatedSession() : nullptr)),
       view_(std::make_unique<GameplayPresenter>(visuals, texts)),
       pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts)),
-      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals)
+      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals), screenFade_(visuals)
 {
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
 }
@@ -184,6 +184,7 @@ void RhythmTestScene::EndScene() noexcept
 {
     view_->SetVisible(false);
     errorLine_.Hide();
+    screenFade_.Present(0.0, 0, 0);
     static_cast<void>(loadingCanvas_.SetVisible(false));
 }
 void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
@@ -200,8 +201,11 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
         if (controller_->SessionReady() && context.input.WasKeyPressed(VK_ESCAPE))
             controller_->OpenPauseMenu(context);
         UpdatePauseMenu(context, scenes);
+        // A Retry chosen before the play screen exists still fades out first.
+        static_cast<void>(controller_->UpdatePendingRetry(context));
         PresentLoadingScreen();
         PresentScreenError();
+        PresentScreenFade();
         return;
     }
     controller_->Update(context);
@@ -214,8 +218,14 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
     if (controller_->CurrentState() == PlayState::Gameplay)
         view_->UpdateInputPresentation(context.input, context.deltaSeconds);
     PresentScreenError();
+    PresentScreenFade();
     if (controller_->ShouldShowResult())
         ShowResult(scenes);
+}
+void RhythmTestScene::PresentScreenFade()
+{
+    if (services_)
+        screenFade_.Present(controller_->ScreenFade(), services_->windowWidth, services_->windowHeight);
 }
 void RhythmTestScene::PresentLoadingScreen()
 {
@@ -310,6 +320,7 @@ void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
     }
     view_->OnResize(width, height);
     errorLine_.OnResize(width, height);
+    screenFade_.OnResize(width, height);
     UpdateLoadingBackgroundLayout();
     pauseMenu_->OnResize(width, height);
 }
@@ -317,6 +328,7 @@ void RhythmTestScene::Shutdown() noexcept
 {
     pauseMenu_->Shutdown();
     errorLine_.Shutdown();
+    screenFade_.Shutdown();
     loadingBackground_ = nullptr;
     loadingCard_ = nullptr;
     loadingBarPiece_ = nullptr;

@@ -42,6 +42,8 @@ public:
     // The player's volume: music scales the Music bus, effects every other bus.
     // Chart volume automation multiplies on top of it.
     void SetVolumes(float music, float effects);
+    // Extra 0..1 factor on the Music bus only, e.g. while a held restart key fades the screen out.
+    void SetMusicFade(float fade);
 
     // Input-driven cues start immediately. Timeline scheduling remains a
     // separate path for music and other deliberately future playback.
@@ -90,7 +92,7 @@ private:
     void ApplyBusVolume(std::string_view busId, PhantomCore::AudioBus& bus);
 
     float musicPitch_{1.0F}, hitSoundPitch_{1.0F};
-    float musicVolume_{1.0F}, effectsVolume_{1.0F};
+    float musicVolume_{1.0F}, effectsVolume_{1.0F}, musicFade_{1.0F};
     PhantomCore::AudioSystem* audioSystem_{};
     PhantomCore::AudioPlaybackManager& playback_;
     std::map<std::string, std::shared_ptr<PhantomCore::AudioBus>, std::less<>>

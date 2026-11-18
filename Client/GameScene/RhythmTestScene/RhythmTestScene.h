@@ -4,6 +4,7 @@
 #include "Texts/TextCatalog.h"
 #include "Mode/Results/IPlayResult.h"
 #include "Presentation/UiErrorLine.h"
+#include "Submodules/GameplayScreenFade.h"
 #include <memory>
 
 class GameplaySessionController;
@@ -39,6 +40,8 @@ class RhythmTestScene final : public PhantomCore::GameScene
     // before the start or after a failed preparation; its card hides while that menu is open.
     void PresentLoadingScreen();
     void PresentScreenError();
+    // Black over everything while a restart darkens the screen (held restart key or a chosen Retry).
+    void PresentScreenFade();
     std::unique_ptr<IPlayResult> &pendingResult_;
     std::vector<std::unique_ptr<IHpGauge>> hpGauges_;
     std::unique_ptr<GameplaySessionController> controller_;
@@ -55,6 +58,7 @@ class RhythmTestScene final : public PhantomCore::GameScene
     bool loadingBackgroundReady_{};
     std::optional<PhantomCore::EngineServices> services_;
     UiErrorLine errorLine_;
+    GameplayScreenFade screenFade_;
     bool presentationReady_{};
     double nextPreparationPoll_{};
 };

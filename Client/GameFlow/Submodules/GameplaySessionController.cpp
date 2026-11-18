@@ -84,6 +84,12 @@ void GameplaySessionController::Start(const EngineServices &services,
 void GameplaySessionController::Update(const UpdateContext &context)
 {
     feedback_.clear();
+    // While a chosen Retry fades the screen out, the paused attempt takes no input.
+    if (UpdatePendingRetry(context))
+    {
+        audio_.Update();
+        return;
+    }
     const auto previousState = state_;
     switch (state_)
     {
@@ -103,6 +109,8 @@ void GameplaySessionController::Update(const UpdateContext &context)
     // update that finishes Loading/Pause. Earlier preparation input is ignored.
     if (previousState != PlayState::Gameplay && state_ == PlayState::Gameplay)
         UpdateGameplay(context);
+    // The music fades with the screen while the restart key is held, and returns when it is released.
+    audio_.SetMusicFade(static_cast<float>(1.0 - ScreenFade()));
     audio_.Update();
 }
 void GameplaySessionController::UpdateGameplay(const UpdateContext &context)

@@ -1,5 +1,6 @@
 #include "GameFlow/GameplaySessionController.h"
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 using namespace PhantomCore;
@@ -74,17 +75,30 @@ bool GameplaySessionController::RewindFromPause(const UpdateContext &context, st
     session_->RewindJudgements(target);
     return ContinueAt(context, target, PlayControlType::Rewind);
 }
-void GameplaySessionController::RetryFromPause(const UpdateContext &context)
+void GameplaySessionController::RetryFromPause(const UpdateContext &)
 {
-    if (state_ == PlayState::Pause)
+    if (state_ != PlayState::Pause || retryFadeElapsed_)
+        return;
+    // The menu closes now; the attempt restarts once the screen has faded to black.
+    pauseMenuOpen_ = false;
+    retryFadeElapsed_ = 0.0;
+}
+bool GameplaySessionController::UpdatePendingRetry(const UpdateContext &context)
+{
+    if (!retryFadeElapsed_)
+        return false;
+    if (std::isfinite(context.deltaSeconds))
+        *retryFadeElapsed_ += std::max(context.deltaSeconds, 0.0);
+    if (*retryFadeElapsed_ < RetryFadeSeconds)
+        return true;
+    retryFadeElapsed_.reset();
+    if (audio_.Resources() == AudioPreparationState::Failed)
     {
-        if (audio_.Resources() == AudioPreparationState::Failed)
-        {
-            RegisterAudio(context.audio);
-            audio_.RestartResourcePolling();
-        }
-        ResetTimeline();
+        RegisterAudio(context.audio);
+        audio_.RestartResourcePolling();
     }
+    ResetTimeline();
+    return true;
 }
 void GameplaySessionController::RetireFromPause()
 {

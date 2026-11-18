@@ -50,6 +50,7 @@ class GameplayAudioSession final
     void PlayNow(std::span<const AudioCueRequest> cues) { router_.PlayNow(cues); }
     void ApplyAutomation(std::span<const AutomationValue> values) { router_.ApplyAutomation(values); }
     void ResetAutomation() { router_.ResetAutomation(); }
+    void SetMusicFade(float fade) { router_.SetMusicFade(fade); }
     void PauseMusicAndStopSamples() { router_.PauseMusicAndStopSamples(); }
     void StopAllVoices() noexcept { router_.StopAllVoices(); }
     void Update() { router_.Update(); }
