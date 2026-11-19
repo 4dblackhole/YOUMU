@@ -84,13 +84,7 @@ bool MusicSelectView::ProcessActions()
         }
         if (action.type == ActionType::Clicked && playOptionsButtonId_ != 0 && action.source == playOptionsButtonId_)
         {
-            SetSearchFocus(false);
-            if (!options_.IsVisible())
-            {
-                CloseAdditionMenu();
-                playOptionsPanel_.Open(selection_.playOptions_);
-            }
-            inputRouter_.Reset(*canvas_);
+            OpenPlayOptions();
             return true;
         }
         if (options_.IsVisible())
@@ -185,6 +179,17 @@ bool MusicSelectView::ProcessActions()
         }
     }
     return false;
+}
+
+void MusicSelectView::OpenPlayOptions()
+{
+    SetSearchFocus(false);
+    if (!options_.IsVisible())
+    {
+        CloseAdditionMenu();
+        playOptionsPanel_.Open(selection_.playOptions_);
+    }
+    inputRouter_.Reset(*canvas_);
 }
 
 bool MusicSelectView::ProcessKeyboard(const InputState &input)

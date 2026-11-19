@@ -219,6 +219,24 @@ namespace
             Click("PlayOptions.Reset"); Click("PlayOptions.Apply");
             Check(selection_.playOptions_.scrollSpeed == 1 && !Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible(),
                   "Actual pointer Reset then Close applies the default.");
+            // F1 opens the panel straight from song selection; inside it F2 resets and F1 closes and applies.
+            selection_.playOptions_.mirror = true;
+            selection_.playOptions_.scrollSpeed = 2;
+            InputState f1; InputStateTestAccess::Key(f1, VK_F1, true);
+            Check(view_->Update(f1, 0) == SongSelectCommand::None && Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible(),
+                  "F1 opens Play options directly.");
+            Check(GetWindowTextLengthW(Editor("PlayOptions.scrollSpeed.Field")) == 1 && selection_.playOptions_.mirror,
+                  "F1 opens the current options without applying anything.");
+            InputState f2; InputStateTestAccess::Key(f2, VK_F2, true);
+            Check(view_->Update(f2, 0) == SongSelectCommand::None && Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible() &&
+                      selection_.playOptions_.mirror,
+                  "F2 resets the edit inside the open panel without closing or applying it.");
+            InputState close; InputStateTestAccess::Key(close, VK_F1, true);
+            Check(view_->Update(close, 0) == SongSelectCommand::None &&
+                      !Find(canvas_->Root(), "PlayOptions.Overlay").IsVisible(),
+                  "F1 closes the open panel.");
+            Check(!selection_.playOptions_.mirror && selection_.playOptions_.scrollSpeed == 1,
+                  "Closing after F2 applies the defaults to the play options only.");
             Click("PlayOptions"); static_cast<void>(view_->Update({}, .2));
             report_.tested = true;
         }

@@ -337,8 +337,12 @@ void PlayOptionsPanel::ProcessInput(const InputState &input)
             submit |= field->TakeSubmit();
             cancel |= field->TakeCancel();
         }
+    // F2 restores the defaults like Reset, and F1 closes the panel it opened (osu!'s mod select keys).
+    if (input.WasKeyPressed(VK_F2))
+        Reset();
     const bool closeKey = !focused && (input.WasKeyPressed(VK_ESCAPE) || input.WasKeyPressed(VK_RETURN));
-    if (cancel || submit || closeKey)
+    const bool shortcutClose = closeKey || input.WasKeyPressed(VK_F1);
+    if (cancel || submit || shortcutClose)
     {
         Close();
         return;
