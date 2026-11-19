@@ -141,6 +141,43 @@ namespace
               "A successful save must publish the actual YME selected by Save.");
     }
 
+    // Finished tiles stay until the byte limit; then the ones shown longest ago leave first.
+    void TestSpectrumCache()
+    {
+        const auto request = [](std::size_t track, double begin) {
+            return EditorSpectrumRequest{track, {begin, 1, 128, 64, 20, 20'000}};
+        };
+        const auto tile = [] {
+            auto result = std::make_shared<SpectrumTile>();
+            result->columns = 128;
+            result->bands = 64;
+            result->levels.resize(128 * 64);
+            return result;
+        };
+        EditorSpectrumCache one;
+        one.Store(request(0, 0), tile());
+        const auto tileBytes = one.Bytes();
+        Check(tileBytes >= 128 * 64 && EditorSpectrumCache::DefaultByteLimit == 32 * 1024 * 1024,
+              "A stored tile must count at least its levels against the 32 MiB limit.");
+
+        EditorSpectrumCache cache(tileBytes * 3);
+        const auto first = tile();
+        cache.Store(request(0, 0), first);
+        cache.Store(request(0, 1), tile());
+        cache.Store(request(1, 0), tile());
+        Check(cache.Find(request(0, 0)) == first, "A stored tile must be found by its request.");
+        cache.Store(request(1, 1), tile());
+        Check(cache.Count() == 3 && cache.Bytes() <= tileBytes * 3, "The cache must stay within its byte limit.");
+        Check(cache.Contains(request(0, 0)) && !cache.Contains(request(0, 1)),
+              "The tile shown longest ago must leave first; a tile just shown must stay.");
+        cache.ClearTrack(1);
+        Check(cache.Count() == 1 && cache.Contains(request(0, 0)) && cache.Bytes() == tileBytes,
+              "Clearing the expected-hit track must keep the music tiles.");
+        cache.Clear();
+        Check(cache.Count() == 0 && cache.Bytes() == 0 && !cache.Find(request(0, 0)),
+              "A cleared cache must hold nothing.");
+    }
+
     void TestAudioRangeSelection(Visual2DCanvas &canvas, EditorView &view, EditorWorkspace &state,
                                  RecordingRenderer &renderer, const TextCatalog &texts)
     {
@@ -214,6 +251,7 @@ int main(int argc, char** argv)
         TestEditorMenu();
         TestEditorPlayback();
         TestEditorMetronome();
+        TestSpectrumCache();
 
         PatternDocument pattern;
         pattern.baseBpm = 120;
@@ -564,6 +602,8 @@ int main(int argc, char** argv)
               "Changing audio zoom must invalidate the cached tile resolution.");
         state.audioWindow = oldWindow;
         view.Build();
+        Check(state.Analysis().Spectrum(detailRequest) == detail && !state.Analysis().SpectrumRunning(),
+              "Returning to an earlier visible range must reuse its finished tiles without analysing again.");
         waitDetails();
         TestAudioRangeSelection(*canvas, view, state, renderer, texts);
         auto *menuBar = FindNode(canvas->Root(), "Editor.MenuBar");

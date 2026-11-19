@@ -36,10 +36,12 @@ struct SpectrumRegion
     double minimumHz{20}, maximumHz{20'000};
     auto operator<=>(const SpectrumRegion &) const = default;
 };
+inline constexpr std::uint8_t SpectrumLevelMaximum = 255;
 struct SpectrumTile
 {
     std::size_t columns{}, bands{};
-    std::vector<float> levels; // column-major, normalized from SpectrumFloorDb to 0 dB
+    // Column-major. 0 is SpectrumFloorDb and SpectrumLevelMaximum is 0 dB.
+    std::vector<std::uint8_t> levels;
 };
 struct AudioAnalysis
 {
@@ -58,7 +60,9 @@ AudioAnalysis AnalyzeAudio(const std::filesystem::path &path, std::stop_token st
 
 // Queries original sample extrema through the multiresolution peak pyramid.
 std::vector<WaveformPeak> BuildAudioWaveform(const AudioPcm &, double begin, double seconds, std::size_t columns);
-// Reanalyzes the requested pixel grid from PCM. Multiple offset clips may be
+// Reanalyzes the requested pixel grid from PCM. The FFT window follows the grid:
+// about four columns long, but at least four periods of each band's frequency,
+// so a closer view shows attacks more sharply. Multiple offset clips may be
 // max-pooled into the same tile without cancelling opposite stereo phases.
 void AccumulateAudioSpectrum(SpectrumTile &, const AudioPcm &, const SpectrumRegion &,
                              double offset, std::stop_token);

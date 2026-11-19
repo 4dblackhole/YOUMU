@@ -296,7 +296,9 @@ hit sounds. The engine-free domain audio test injects PCM to check the analysis
 algorithm; actual decoder coverage belongs to this Client integration runner.
 Audio range tests drag through actual Canvas receivers (including a narrow resized
 viewport), check ordered source times/localized ms labels and all three overlays,
-and verify FFT tile reuse and unchanged chart revision. Rate tests cover the slider's
+and verify FFT tile reuse and unchanged chart revision. Returning to an earlier visible
+range must reuse its finished tiles, and the tile cache must stay within its byte limit by
+dropping the tiles shown longest ago. Rate tests cover the slider's
 0.25/2.00 endpoints, deterministic DSP/cue timing, negative pre-roll, live changes,
 pending versus already audible hits, pause/resume and invalid values. Actual FMOD
 NoSound playback also changes rates across repeated MP3 pause/seek/resume cycles.

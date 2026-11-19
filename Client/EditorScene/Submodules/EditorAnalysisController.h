@@ -1,5 +1,6 @@
 #pragma once
 #include "Audio/EditorAudioAnalysis.h"
+#include "EditorSpectrumCache.h"
 #include "GameFlow/GameplayLaunchRequest.h"
 #include "Modes/IEditorAudioSource.h"
 #include <map>
@@ -13,12 +14,6 @@ struct AnalysisBatch
 };
 struct EditorAnalysisJob;
 struct EditorSpectrumJob;
-struct EditorSpectrumRequest
-{
-    std::size_t track{};
-    SpectrumRegion region;
-    auto operator<=>(const EditorSpectrumRequest &) const = default;
-};
 class EditorAnalysisController final
 {
   public:
@@ -38,9 +33,13 @@ class EditorAnalysisController final
     void Stop() noexcept;
     bool Update(const IEditorDocument &, const IEditorAudioSource &,
                 const GameplayLaunchRequest &, std::string &status);
+    // Starts the missing tiles and cancels work nobody asks for any more. Finished tiles are kept
+    // across zoom and seek until the analysed files or, for expected hits, the chart change.
     void PrepareSpectrumTiles(std::span<const EditorSpectrumRequest> requests);
-    std::shared_ptr<const SpectrumTile> Spectrum(const EditorSpectrumRequest &) const;
+    // The finished tile, marked as recently shown; empty while it is still being analysed.
+    std::shared_ptr<const SpectrumTile> Spectrum(const EditorSpectrumRequest &);
     bool PollSpectrum(std::string &status);
+    // Cancels unfinished tile work; finished tiles stay available.
     void StopSpectrum() noexcept;
     bool SpectrumRunning() const noexcept;
     void CacheAudioMarkers(const IEditorDocument &, const IEditorAudioSource &);
@@ -70,7 +69,13 @@ class EditorAnalysisController final
     }
 
   private:
+    void ClearSpectrum() noexcept;
+    void RefreshSpectrumSources();
+    void StartSpectrumJob(const EditorSpectrumRequest &);
+    bool StoreFinishedTiles();
+    // Unfinished and failed tile work; a finished tile moves to spectrumTiles_.
     std::map<EditorSpectrumRequest, std::shared_ptr<EditorSpectrumJob>> spectrumJobs_;
+    EditorSpectrumCache spectrumTiles_;
     std::shared_ptr<const std::vector<AudioMarker>> spectrumMarkers_;
     std::uint64_t spectrumAnalysisRevision_{}, spectrumMarkerRevision_{};
     const IEditorDocument *spectrumDocument_{};

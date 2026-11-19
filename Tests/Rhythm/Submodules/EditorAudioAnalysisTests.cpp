@@ -102,12 +102,23 @@ namespace tests
         AccumulateAudioSpectrum(detail, *analysis.pcm, region, 0, {});
         Require(detail.columns == 128 && detail.bands == 212 && detail.levels.size() == 128 * 212,
                 "Detailed STFT must follow the requested time and frequency pixel grid.");
-        const auto levels = std::span(detail.levels).subspan(64 * 212, 212);
-        const auto strongestDetail = std::ranges::max_element(levels);
-        const auto detailBand = std::distance(levels.begin(), strongestDetail);
-        const double detailFrequency = 20 * std::pow(1000.0, (detailBand + .5) / 212.0);
-        Require(std::abs(detailFrequency - 1000) < 60 && *strongestDetail > .88F,
+        // 212 bands from 20 Hz to 20 kHz; -6 dBFS is level 238 of 255.
+        const auto strongestIn = [](const SpectrumTile &tile, std::size_t column) {
+            const auto levels = std::span(tile.levels).subspan(column * 212, 212);
+            const auto strongest = std::ranges::max_element(levels);
+            const auto band = static_cast<double>(std::distance(levels.begin(), strongest));
+            return std::pair{20 * std::pow(1000.0, (band + .5) / 212.0), *strongest};
+        };
+        // A wide view (8 ms per column) keeps the full 2048-point frequency precision.
+        SpectrumTile wide;
+        AccumulateAudioSpectrum(wide, *analysis.pcm, {0, 1.024, 128, 212, 20, 20'000}, 0, {});
+        const auto [wideFrequency, wideLevel] = strongestIn(wide, 37);
+        Require(std::abs(wideFrequency - 1000) < 60 && wideLevel > 224,
                 "PCM detail must preserve the tone and opposite-phase stereo at finer band spacing.");
+        // The closest view trades frequency precision for time: the tone stays within a third of an octave.
+        const auto [closeFrequency, closeLevel] = strongestIn(detail, 64);
+        Require(std::abs(std::log2(closeFrequency / 1000)) < 1.0 / 3 && closeLevel > 224,
+                "A close view must keep the tone at its level near its frequency.");
         SpectrumTile shifted;
         auto shiftedRegion = region;
         shiftedRegion.begin += 1;
@@ -115,8 +126,44 @@ namespace tests
         Require(shifted.levels == detail.levels, "Expected hit offsets must share the exact music time grid.");
         SpectrumTile overviewAttack;
         AccumulateAudioSpectrum(overviewAttack, impulse, {0, .1, 1, 32, 20, 20'000}, 0, {});
-        Require(std::ranges::max(overviewAttack.levels) > .1F,
+        Require(std::ranges::max(overviewAttack.levels) > 25,
                 "A wide spectrum pixel must retain attacks away from its central FFT window.");
+
+        // Closest view: 0.125 ms columns over 4..20 ms; the click at 10 ms is column 48.
+        SpectrumTile attack;
+        AccumulateAudioSpectrum(attack, impulse, {.004, .016, 128, 212, 20, 20'000}, 0, {});
+        const auto levelAt = [&](std::size_t column, std::size_t band) { return attack.levels[column * 212 + band]; };
+        constexpr std::size_t highBand = 190, lowBand = 49; // about 9.9 kHz and 100 Hz
+        Require(levelAt(48, highBand) > 100 && levelAt(40, highBand) == 0 && levelAt(56, highBand) == 0,
+                "A close view must show an attack within a millisecond of its sample in the high bands.");
+        Require(levelAt(0, lowBand) > 0 && levelAt(127, lowBand) > 0,
+                "A low band keeps a window of at least four of its periods instead of following the zoom.");
+
+        // A steady low tone must stay a steady row: a window shorter than its period would pulse with each cycle.
+        AudioPcm bass;
+        bass.channels = 1;
+        bass.sampleRate = rate;
+        bass.samples.resize(rate / 2);
+        for (std::size_t sample = 0; sample < bass.samples.size(); ++sample)
+            bass.samples[sample] = .5F * static_cast<float>(std::sin(2 * std::numbers::pi * 100 * sample / rate));
+        SpectrumTile steady;
+        AccumulateAudioSpectrum(steady, bass, {.2, .016, 128, 212, 20, 20'000}, 0, {});
+        std::uint8_t quietest = 255, loudest = 0;
+        for (std::size_t column = 0; column < 128; ++column)
+        {
+            quietest = std::min(quietest, steady.levels[column * 212 + lowBand]);
+            loudest = std::max(loudest, steady.levels[column * 212 + lowBand]);
+        }
+        Require(quietest > 200 && loudest - quietest <= 4,
+                "A steady low tone must not be drawn as a row of false attacks in a close view.");
+
+        // Neighbouring tiles share one analysis grid: two half-width tiles equal the whole one.
+        SpectrumTile left, right;
+        AccumulateAudioSpectrum(left, *analysis.pcm, {.2, .01, 64, 212, 20, 20'000}, 0, {});
+        AccumulateAudioSpectrum(right, *analysis.pcm, {.21, .01, 64, 212, 20, 20'000}, 0, {});
+        Require(std::ranges::equal(left.levels, std::span(detail.levels).first(64 * 212)) &&
+                    std::ranges::equal(right.levels, std::span(detail.levels).subspan(64 * 212)),
+                "Tiles of one visible range must join without a seam.");
         SpectrumTile aboveNyquist;
         AccumulateAudioSpectrum(aboveNyquist, *analysis.pcm, {.2, .02, 16, 32, 24'000, 30'000}, 0, {});
         Require(std::ranges::all_of(aboveNyquist.levels, [](auto value) { return value == 0; }),

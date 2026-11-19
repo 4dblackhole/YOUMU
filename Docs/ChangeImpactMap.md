@@ -53,7 +53,7 @@
 | 에디터 확인·실패 대화상자 | EditorAlerts(`Presentation/UiAlert`), EditorInput의 Back/Esc | EditorAudioViewTests의 미저장 대화상자 |
 | 에디터 메뉴·공통 이동·선택·붙여넣기 | EditorMenuBar/Input/View/Alerts, EditorSelection/Clipboard, TaikoEditorSelection | EditorMenuTests, EditorModeTests, ChartEditorTests |
 | 노트/타이밍/효과 편집·Undo/Redo·저장 | TaikoEditorNoteInspector/Score/Metadata, EditorForms/PanelView, ChartEditor/History | ChartEditorTests, ChartReviewRegressionTests, EditorModeTests |
-| 파형·FFT·탐색·배속·offset | EditorAnalysisController, EditorAudioView/Selection/Controls, EditorPlayback/Metronome, `YOUMU.Editor/Audio` | EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests, EditorMetronomeTests |
+| 파형·FFT·탐색·배속·offset | EditorAnalysisController, EditorSpectrumCache, EditorAudioView/Selection/Controls, EditorPlayback/Metronome, `YOUMU.Editor/Audio` | EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests, EditorMetronomeTests |
 | YMM/YMP/YME 문법·효과·타이밍 | `Chart/Parsing/Submodules`, Model, MusicalTimeline, EffectValidation, InterpolationExpression/ScrollAutomation | ChartParserTests, YmeEffectsTests, 저장 왕복·캐시 무효화 |
 | 엔진 API·GPU/폰트·장치 수명 | 독립 PhantomCore 저장소의 [EngineOverview](../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 AGENTS/SDK 회귀 |
 
