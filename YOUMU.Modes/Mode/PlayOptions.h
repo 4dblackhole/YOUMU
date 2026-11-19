@@ -23,7 +23,7 @@ struct PlayOptions
     std::uint64_t randomSeed{};
     double randomAttemptProbability{1.0};
     double accelerate{1.0};
-    bool preserveMusicPitch{true};
+    bool preserveMusicPitch{};
     bool preserveHitSoundPitch{true};
     std::optional<JudgeLevel> judgeLevel;
     HpGaugeKind hpGauge{HpGaugeKind::Default};
