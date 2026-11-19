@@ -128,7 +128,8 @@ namespace
             for (std::size_t column = 0; column < tile.columns;)
             {
                 const auto colorAt = [&](std::size_t c) {
-                    return static_cast<std::size_t>(std::lround(tile.levels[c * tile.bands + band] * (SpectrumColors.size() - 1)));
+                    const std::size_t level = tile.levels[c * tile.bands + band];
+                    return (level * (SpectrumColors.size() - 1) + SpectrumLevelMaximum / 2) / SpectrumLevelMaximum;
                 };
                 const auto color = colorAt(column);
                 auto end = column + 1;
@@ -147,7 +148,9 @@ namespace
     {
         SpectrumTile tile{columns.size(), SpectrumBandCount, {}};
         tile.levels.reserve(tile.columns * tile.bands);
-        for (const auto &column : columns) tile.levels.insert(tile.levels.end(), column.bands.begin(), column.bands.end());
+        for (const auto &column : columns)
+            for (const float level : column.bands)
+                tile.levels.push_back(static_cast<std::uint8_t>(std::lround(level * SpectrumLevelMaximum)));
         return tile;
     }
 } // namespace

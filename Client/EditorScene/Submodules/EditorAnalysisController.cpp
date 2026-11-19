@@ -24,11 +24,13 @@ struct EditorSpectrumJob
     std::atomic<bool> ready{};
     std::shared_ptr<const SpectrumTile> result;
     std::exception_ptr failure;
-    bool published{}; // only read/written by the editor thread
+    bool reported{}; // a failure already shown; only read/written by the editor thread
 };
 
 namespace
 {
+    constexpr std::size_t MusicTrack = 0, TrackCount = 2;
+
     // One process-owned worker bounds concurrency. Jobs own only copied paths and
     // result state, so exiting an editor never joins or leaves dangling observers.
     class AudioAnalysisWorker final
@@ -125,7 +127,7 @@ namespace
 
 void EditorAnalysisController::Stop() noexcept
 {
-    StopSpectrum();
+    ClearSpectrum();
     if (job_)
     {
         job_->cancellation.request_stop();
@@ -149,7 +151,7 @@ bool EditorAnalysisController::Update(const IEditorDocument &document, const IEd
         auto files = mode.AudioFiles(document, request);
         if (files != analysisFiles)
         {
-            StopSpectrum();
+            ClearSpectrum();
             if (job_)
             {
                 job_->cancellation.request_stop();
@@ -180,7 +182,7 @@ bool EditorAnalysisController::Update(const IEditorDocument &document, const IEd
         job_.reset();
         return true;
     }
-    StopSpectrum();
+    ClearSpectrum();
     RetireAnalysis(std::move(analysis_));
     analysis_ = std::move(job_->result);
     analyzedFilesRevision_ = filesRevision_;
@@ -218,25 +220,87 @@ void EditorAnalysisController::StopSpectrum() noexcept
 {
     for (auto &[request, job] : spectrumJobs_) job->cancellation.request_stop();
     spectrumJobs_.clear();
+}
+
+void EditorAnalysisController::ClearSpectrum() noexcept
+{
+    StopSpectrum();
+    spectrumTiles_.Clear();
     spectrumMarkers_.reset();
     spectrumDocument_ = nullptr;
+}
+
+// Tiles belong to one analysis result; expected-hit tiles also to one set of chart markers.
+void EditorAnalysisController::RefreshSpectrumSources()
+{
+    if (spectrumAnalysisRevision_ != analysisRevision_)
+    {
+        ClearSpectrum();
+        spectrumAnalysisRevision_ = analysisRevision_;
+    }
+    const bool markersChanged =
+        spectrumDocument_ != audioMarkerDocument || spectrumMarkerRevision_ != audioMarkerRevision;
+    if (!markersChanged && spectrumMarkers_) return;
+    // The music does not depend on the chart: only the expected hits are analysed again.
+    for (auto it = spectrumJobs_.begin(); it != spectrumJobs_.end();)
+        if (it->first.track != MusicTrack)
+        {
+            it->second->cancellation.request_stop();
+            it = spectrumJobs_.erase(it);
+        }
+        else ++it;
+    for (std::size_t track = MusicTrack + 1; track < TrackCount; ++track) spectrumTiles_.ClearTrack(track);
+    spectrumDocument_ = audioMarkerDocument;
+    spectrumMarkerRevision_ = audioMarkerRevision;
+    spectrumMarkers_ = std::make_shared<const std::vector<AudioMarker>>(audioMarkers);
+}
+
+void EditorAnalysisController::StartSpectrumJob(const EditorSpectrumRequest &request)
+{
+    auto job = std::make_shared<EditorSpectrumJob>();
+    AudioAnalysisWorker::Instance().Enqueue([job, request, data = analysis_, markers = spectrumMarkers_] {
+        const auto stop = job->cancellation.get_token();
+        if (stop.stop_requested()) return;
+        try
+        {
+            auto result = std::make_shared<SpectrumTile>();
+            result->columns = request.region.columns;
+            result->bands = request.region.bands;
+            result->levels.resize(result->columns * result->bands);
+            const auto accumulate = [&](const AudioAnalysis &sound, double offset) {
+                if (sound.pcm) AccumulateAudioSpectrum(*result, *sound.pcm, request.region, offset, stop);
+            };
+            if (request.track == MusicTrack)
+            {
+                if (const auto music = data->sounds.find("Music"); music != data->sounds.end())
+                    accumulate(music->second, 0);
+            }
+            else
+            {
+                double longest = 0;
+                for (const auto &[id, sound] : data->sounds)
+                    if (id != "Music") longest = std::max(longest, sound.durationSeconds);
+                for (auto marker = std::ranges::lower_bound(*markers, request.region.begin - longest, {}, &AudioMarker::seconds);
+                     marker != markers->end() && marker->seconds < request.region.begin + request.region.seconds &&
+                     !stop.stop_requested(); ++marker)
+                    if (const auto sound = data->sounds.find(marker->sound); sound != data->sounds.end())
+                        accumulate(sound->second, marker->seconds);
+            }
+            if (stop.stop_requested()) return;
+            job->result = std::move(result);
+        }
+        catch (...) { job->failure = std::current_exception(); }
+        job->ready.store(true, std::memory_order_release);
+    });
+    spectrumJobs_.emplace(request, std::move(job));
 }
 
 void EditorAnalysisController::PrepareSpectrumTiles(std::span<const EditorSpectrumRequest> requests)
 {
     if (!analysis_) return;
-    const bool markersChanged =
-        spectrumDocument_ != audioMarkerDocument || spectrumMarkerRevision_ != audioMarkerRevision;
-    if (spectrumAnalysisRevision_ != analysisRevision_ || markersChanged || !spectrumMarkers_)
-    {
-        StopSpectrum();
-        spectrumAnalysisRevision_ = analysisRevision_;
-        spectrumDocument_ = audioMarkerDocument;
-        spectrumMarkerRevision_ = audioMarkerRevision;
-        spectrumMarkers_ = std::make_shared<const std::vector<AudioMarker>>(audioMarkers);
-    }
-    // A viewport plus one neighbour on either side is the complete cache budget.
-    // Cancel obsolete work before enqueueing new zoom/seek/frequency requests.
+    RefreshSpectrumSources();
+    // Keep what has finished, then cancel obsolete work before enqueueing new zoom/seek/frequency requests.
+    static_cast<void>(StoreFinishedTiles());
     for (auto it = spectrumJobs_.begin(); it != spectrumJobs_.end();)
         if (std::ranges::find(requests, it->first) == requests.end())
         {
@@ -246,67 +310,52 @@ void EditorAnalysisController::PrepareSpectrumTiles(std::span<const EditorSpectr
         else ++it;
     for (const auto &request : requests)
     {
-        if (spectrumJobs_.contains(request)) continue;
-        auto job = std::make_shared<EditorSpectrumJob>();
-        AudioAnalysisWorker::Instance().Enqueue([job, request, data = analysis_, markers = spectrumMarkers_] {
-            const auto stop = job->cancellation.get_token();
-            if (stop.stop_requested()) return;
-            try
-            {
-                auto result = std::make_shared<SpectrumTile>();
-                result->columns = request.region.columns;
-                result->bands = request.region.bands;
-                result->levels.resize(result->columns * result->bands);
-                const auto accumulate = [&](const AudioAnalysis &sound, double offset) {
-                    if (sound.pcm) AccumulateAudioSpectrum(*result, *sound.pcm, request.region, offset, stop);
-                };
-                if (request.track == 0)
-                {
-                    if (const auto music = data->sounds.find("Music"); music != data->sounds.end())
-                        accumulate(music->second, 0);
-                }
-                else
-                {
-                    double longest = 0;
-                    for (const auto &[id, sound] : data->sounds)
-                        if (id != "Music") longest = std::max(longest, sound.durationSeconds);
-                    for (auto marker = std::ranges::lower_bound(*markers, request.region.begin - longest, {}, &AudioMarker::seconds);
-                         marker != markers->end() && marker->seconds < request.region.begin + request.region.seconds &&
-                         !stop.stop_requested(); ++marker)
-                        if (const auto sound = data->sounds.find(marker->sound); sound != data->sounds.end())
-                            accumulate(sound->second, marker->seconds);
-                }
-                if (stop.stop_requested()) return;
-                job->result = std::move(result);
-            }
-            catch (...) { job->failure = std::current_exception(); }
-            job->ready.store(true, std::memory_order_release);
-        });
-        spectrumJobs_.emplace(request, std::move(job));
+        if (spectrumTiles_.Contains(request) || spectrumJobs_.contains(request)) continue;
+        StartSpectrumJob(request);
     }
 }
 
-std::shared_ptr<const SpectrumTile> EditorAnalysisController::Spectrum(const EditorSpectrumRequest &request) const
+std::shared_ptr<const SpectrumTile> EditorAnalysisController::Spectrum(const EditorSpectrumRequest &request)
 {
-    const auto job = spectrumJobs_.find(request);
-    if (job == spectrumJobs_.end() || !job->second->ready.load(std::memory_order_acquire)) return {};
-    return job->second->result;
+    return spectrumTiles_.Find(request);
+}
+
+// Moves every finished tile from its job into the cache. A failed job stays listed, so the same
+// request is not started again every frame.
+bool EditorAnalysisController::StoreFinishedTiles()
+{
+    bool stored = false;
+    for (auto it = spectrumJobs_.begin(); it != spectrumJobs_.end();)
+    {
+        auto &job = *it->second;
+        // The worker writes the result or failure before it publishes `ready`.
+        const bool finished = job.ready.load(std::memory_order_acquire);
+        if (!finished || job.failure)
+        {
+            ++it;
+            continue;
+        }
+        spectrumTiles_.Store(it->first, std::move(job.result));
+        it = spectrumJobs_.erase(it);
+        stored = true;
+    }
+    return stored;
 }
 
 bool EditorAnalysisController::PollSpectrum(std::string &status)
 {
-    bool changed = false;
+    bool changed = StoreFinishedTiles();
     for (auto &[request, job] : spectrumJobs_)
-        if (!job->published && job->ready.load(std::memory_order_acquire))
-        {
-            job->published = changed = true;
-            if (job->failure)
-            {
-                try { std::rethrow_exception(job->failure); }
-                catch (const std::exception &error) { status = error.what(); }
-                catch (...) { status = "Detailed audio analysis failed."; }
-            }
-        }
+    {
+        const bool finished = job->ready.load(std::memory_order_acquire);
+        if (!finished || job->reported) continue;
+        // A tile that finished after the pass above is stored by the next poll; show each failure once.
+        if (!job->failure) continue;
+        job->reported = changed = true;
+        try { std::rethrow_exception(job->failure); }
+        catch (const std::exception &error) { status = error.what(); }
+        catch (...) { status = "Detailed audio analysis failed."; }
+    }
     return changed;
 }
 
