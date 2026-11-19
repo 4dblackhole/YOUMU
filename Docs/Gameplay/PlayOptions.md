@@ -42,7 +42,7 @@ HP gauge는 고를 수 있는 HP 게이지 목록(`Gauge/HpGaugeKind.h`의 `HpGa
 기본이 아닌 HP gauge를 하나씩 셉니다(`ChangedPlayOptionCount`).
 
 기본값은 스크롤 x/1, Accelerate 1.0, Mirror/Random/Ignore scroll effects/Metronome 꺼짐,
-Random 시드 0·시도 확률 100%, BGM/HIT 음정 유지 켜짐, JudgeLevel 덮어쓰기 없음입니다.
+Random 시드 0·시도 확률 100%, BGM 음정 유지 꺼짐(배속에 따라 음높이도 변함)·HIT 음정 유지 켜짐, JudgeLevel 덮어쓰기 없음입니다.
 패널을 다시 열면 마지막 적용값을 표시합니다. 실제 숫자 입력은 기존 엔진의 ITextInput을
 사용하며 접힘·드롭다운·창 축소에 맞춰 네이티브 입력의 표시와 위치·글자 크기도 갱신합니다.
 
