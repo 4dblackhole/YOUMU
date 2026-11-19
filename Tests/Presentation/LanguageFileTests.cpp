@@ -4,6 +4,7 @@
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
 #include "Texts/TextCatalog.h"
 #include "Texts/Submodules/ExplanationKeys.h"
+#include "ScopedTestFolder.h"
 #include <Windows.h>
 #include <format>
 #include <fstream>
@@ -96,10 +97,8 @@ int main()
     {
         static_assert(!std::is_copy_constructible_v<TextCatalog>);
         Parser();
-        const auto directory =
-            std::filesystem::absolute("build/obj/LanguageFileTests/Fixtures") /
-            (std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
-        std::filesystem::create_directories(directory);
+        const ScopedTestFolder fixture(std::filesystem::absolute("build/obj/LanguageFileTests/Fixtures"), L"run");
+        const auto &directory = fixture.Path();
         Catalog(directory);
         TextCatalog shipped("Client/Texts/Languages");
         Check(shipped.Diagnostics().empty() && shipped.Languages().size() == 3 && Logo(shipped).menu[0] == L"Game Start",

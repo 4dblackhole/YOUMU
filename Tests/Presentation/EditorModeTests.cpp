@@ -7,6 +7,7 @@
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorNoteInspector.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorTool.h"
 #include "Parsing/ChartParser.h"
+#include "ScopedTestFolder.h"
 #include "Taiko/TaikoMode.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
 #include <array>
@@ -1225,8 +1226,8 @@ Dip: 1-3*u*(1-u)
     void TestNewDifficultyDraft()
     {
         namespace fs = std::filesystem;
-        const auto root = fs::temp_directory_path() / L"youmu-editor-new" / std::to_wstring(GetCurrentProcessId());
-        fs::remove_all(root);
+        const ScopedTestFolder fixture(fs::temp_directory_path() / L"youmu-editor-new", L"draft");
+        const auto &root = fixture.Path();
         const auto songFolder = root / L"가수 - 음악";
         const auto music = songFolder / L"Music/음악.ymm";
         fs::create_directories(music.parent_path());
@@ -1284,7 +1285,6 @@ Dip: 1-3*u*(1-u)
               "A refused Create must keep the draft unchanged.");
         Check(duplicate->Document().Effects().hitSounds.contains("1"),
               "A refused Create must keep the draft unchanged.");
-        fs::remove_all(root);
     }
     void TestTaikoToolGroups(TextCatalog &texts)
     {

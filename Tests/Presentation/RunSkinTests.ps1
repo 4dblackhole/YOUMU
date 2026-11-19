@@ -27,4 +27,6 @@ try {
         & $testExe $repoRoot
         if ($LASTEXITCODE -ne 0) { throw 'Skin tests failed.' }
     } finally { Pop-Location }
+    # Remove this run's folder (<guid>/deployment/game) after a pass; a failing run keeps it for diagnosis.
+    Remove-Item -LiteralPath (Split-Path -Parent (Split-Path -Parent $testRoot)) -Recurse -Force
 } finally { Pop-Location }
