@@ -134,9 +134,9 @@ void EditorWorkspace::Replace(PatternDocument pattern, EffectDocument effects)
     DocumentChanged();
 }
 void EditorWorkspace::AddNote(MusicalPosition position, int keyType, std::optional<MusicalPosition> end,
-                              std::vector<std::string> extra)
+                              std::vector<std::string> extra, std::span<const std::size_t> replaced)
 {
-    editor_->AddNote(position, keyType, end, std::move(extra));
+    editor_->AddNote(position, keyType, end, std::move(extra), replaced);
     DocumentChanged();
 }
 void EditorWorkspace::UpdateNote(std::size_t id, PatternNote note, std::optional<MusicalPosition> end)

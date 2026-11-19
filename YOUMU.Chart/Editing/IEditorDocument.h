@@ -1,6 +1,7 @@
 #pragma once
 #include "Timing/MusicalTimeline.h"
 #include <optional>
+#include <span>
 #include <string>
 
 struct EditorNoteSelection
@@ -42,8 +43,10 @@ class IEditorDocument
     virtual void Replace(PatternDocument pattern, EffectDocument effects) = 0;
     virtual void ReplaceTiming(std::vector<TimingDirective> timing) = 0;
     virtual void ReplaceEffects(EffectDocument effects) = 0;
+    // Removes the replaced notes (with their long-note partners) and adds the
+    // new note as one edit. The mode decides which notes a placement replaces.
     virtual void AddNote(MusicalPosition position, int keyType, std::optional<MusicalPosition> end = {},
-                         std::vector<std::string> extra = {}) = 0;
+                         std::vector<std::string> extra = {}, std::span<const std::size_t> replaced = {}) = 0;
     // Returns copies with stable IDs; selecting a tail resolves its head.
     virtual std::optional<EditorNoteSelection> FindNote(std::size_t sourceOrder) const = 0;
     virtual void UpdateNote(std::size_t sourceOrder, PatternNote head, std::optional<MusicalPosition> end) = 0;

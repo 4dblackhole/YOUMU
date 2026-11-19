@@ -57,7 +57,7 @@ class ChartEditor final : public IEditorDocument
     void ReplaceTiming(std::vector<TimingDirective> timing) override;
     void ReplaceEffects(EffectDocument effects) override;
     void AddNote(MusicalPosition position, int keyType, std::optional<MusicalPosition> end = {},
-                 std::vector<std::string> extra = {}) override;
+                 std::vector<std::string> extra = {}, std::span<const std::size_t> replaced = {}) override;
     std::optional<EditorNoteSelection> FindNote(std::size_t sourceOrder) const override;
     void UpdateNote(std::size_t sourceOrder, PatternNote head, std::optional<MusicalPosition> end) override;
     void DeleteNote(std::size_t sourceOrder) override;
@@ -107,6 +107,7 @@ class ChartEditor final : public IEditorDocument
     CompiledPatternNote CompileNote(PatternNote) const;
     void InvalidateNoteSnapshots() noexcept;
     void EraseNote(std::size_t) noexcept;
+    std::vector<std::size_t> ReplacedNoteIds(std::span<const std::size_t>) const;
     std::map<std::size_t, std::size_t> BuildLongPartners(
         std::span<const std::size_t> excluded = {}, std::span<const CompiledPatternNote> replacements = {}) const;
     std::vector<CompiledPatternNote> IncludeLongNotePartners(std::map<std::size_t, const CompiledPatternNote *>) const;

@@ -11,7 +11,7 @@
 Taiko는 한 레인에서 먼저 열린 롱노트 head를 유지합니다. 열린 동안의 중복 head/일반
 노트, 짝 없는 tail 및 끝까지 닫히지 않은 head는 `ModeLoadResult.diagnostics`에
 원래 파일/행의 Warning을 남깁니다. 유효 노트의 기존 플레이 결과는 유지합니다.
-새 배치의 겹침 거부는 [Taiko 에디터](../ChartEditor.md)가 담당합니다.
+새 배치가 겹치는 노트를 대체하는 규칙은 [Taiko 에디터](../ChartEditor.md)가 담당합니다.
 유지 중인 물리 키의 action 목록은 바인딩 설정 시 예약한 버퍼를 재사용합니다.
 PlaySession이 모든 mapped 물리 키를 소유하고, 각 입력 직후 해당 action의 유지 여부를
 노트에 전달합니다. Buzz 시작 전에 눌린 보조 키도 같은 action의 유지 입력에 포함되며,

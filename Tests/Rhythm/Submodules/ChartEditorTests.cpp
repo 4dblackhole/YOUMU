@@ -24,9 +24,49 @@ namespace tests
                     "Redo to a saved state must restore exactly the saved metadata, including automatic YME paths.");
         }
 
+        // A placement that replaces existing notes is one edit: removal and insertion
+        // undo/redo together, and a stale ID rejects the edit before anything changes.
+        void CheckReplacingAddNote()
+        {
+            ChartEditor document(PatternDocument{});
+            document.AddNote({0, {}}, 1);
+            document.AddNote({1, {}}, 11, MusicalPosition{2, {}});
+            const auto don = document.Notes().front().note.sourceOrder;
+            const auto roll = document.FindNote(don + 1);
+            Require(roll && roll->tail.has_value(), "The roll fixture must have both endpoints.");
+            const std::array replaced{don, roll->tail->note.sourceOrder};
+            document.AddNote({0, {}}, 12, MusicalPosition{1, {1, 2}}, {}, replaced);
+            const auto &notes = document.Notes();
+            const bool replacedAll = !document.FindNote(don) && !document.FindNote(roll->head.note.sourceOrder);
+            Require(replacedAll && notes.size() == 2 && notes.front().note.keyType == 12,
+                    "Replacing placement must remove the Don and both roll endpoints and add only the new note.");
+            document.Undo();
+            Require(document.Notes().size() == 3 && document.FindNote(don) &&
+                        document.FindNote(roll->head.note.sourceOrder)->tail.has_value(),
+                    "One Undo must restore every replaced note and its long-note pairing.");
+            document.Redo();
+            Require(document.Notes().size() == 2 && !document.FindNote(don),
+                    "Redo must apply the replacement as one action again.");
+
+            const auto revision = document.Revision();
+            const std::array stale{don};
+            bool rejected = false;
+            try
+            {
+                document.AddNote({3, {}}, 1, {}, {}, stale);
+            }
+            catch (const std::out_of_range &)
+            {
+                rejected = true;
+            }
+            Require(rejected && document.Revision() == revision && document.Notes().size() == 2,
+                    "A stale replaced ID must reject the placement without changing the document.");
+        }
+
         void CheckEditorHistory()
         {
             CheckSavedMetadataHistory();
+            CheckReplacingAddNote();
             ChartEditor bounded(PatternDocument{});
             for (int i = 0; i < 40; ++i)
                 bounded.AddNote({0, {i, 64}}, 1);
