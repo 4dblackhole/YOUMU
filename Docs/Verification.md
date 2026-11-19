@@ -9,14 +9,38 @@
 
 ## 환경과 필수 검사
 
-저장소 루트의 x64 Developer PowerShell에서 실행합니다. Visual Studio 2022/v143,
-Windows SDK, FMOD SDK, `../OsuTaikoConverter` checkout과 PATH의 ripgrep(`rg`)이 필요합니다.
-`Scripts/CheckArchitecture.ps1`은 `rg`로 프로젝트·소스 목록을 만듭니다.
+Visual Studio 2022/v143(C++ 데스크톱), Windows SDK, FMOD SDK, `../OsuTaikoConverter` checkout,
+ripgrep(`rg`), Python 3이 필요합니다. `Scripts/CheckArchitecture.ps1`은 `rg`로 프로젝트·소스 목록을 만듭니다.
 `FmodRoot`는 `FMOD_ROOT` 또는 `Directory.Build.props`의 기본 설치 경로를 사용합니다.
 Presentation 실행기에는 `-FmodRoot`를 전달하거나 `FMOD_ROOT`를 설정합니다.
 
 코드 변경은 두 구성의 솔루션 빌드, 로직·카탈로그, 네 smoke, 변경 기능의 회귀,
-실제 프로젝트 설정의 정적 분석과 아키텍처 검사를 완료합니다.
+실제 프로젝트 설정의 정적 분석, 아키텍처 검사와 조건식 검사를 완료합니다.
+
+### 검증 스크립트
+
+`Scripts/Verify`의 스크립트가 아래 절차를 그대로 실행합니다. 일반 PowerShell에서 실행해도 Visual Studio 개발자 환경을
+스스로 열고, 모든 워크트리가 함께 쓰는 잠금을 잡아 다른 세션의 빌드·게임 실행과 겹치지 않게 합니다.
+잠금과 세션 이름 설정은 [작업 방식](Contributing/Workflow.md#검증과-공유-잠금)에 있습니다. 로그는 `build/verify/`입니다.
+
+```powershell
+# 전체: Debug/Release 빌드·로직·smoke·러너 → 두 구성 Client 코드 분석 → 아키텍처 → 조건식
+powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/VerifyAll.ps1
+# 러너를 골라서(쉼표로 구분), 분석을 빼고
+powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/VerifyAll.ps1 -Runners "GameplayPauseTests,ResultPresentationTests" -SkipAnalysis
+# 부분 실행
+powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/Build.ps1 -Configuration Release
+powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/Test.ps1 -Configuration Debug -Core -Runners GameplayPauseTests
+python Scripts/Verify/count_conditions.py --check
+python Scripts/Verify/check_links.py
+```
+
+`-Runners`의 이름은 `Tests/Presentation/Run<이름>.ps1`의 `<이름>`입니다. 비우면 측정 하네스
+`RunGameplayTimingProbe`를 뺀 전부를 돌립니다. `SyntaxCheck.ps1 -Files a.cpp,b.cpp`는 잠금 없이 `cl /Zs`로 문법만 봅니다.
+
+### 직접 실행
+
+스크립트 없이 x64 Developer PowerShell에서 같은 검사를 할 때의 명령입니다.
 
 ```powershell
 git submodule update --init --recursive
@@ -118,9 +142,9 @@ smoke는 초기화/실행/정리 검사입니다. 시각 지정 replay·자동 U
 
 변경 코드와 직접 호출부의 정확성·수명·오류/경계·동시성·책임을 검토합니다.
 실행한 구성·분석 도구·검사·미검증 범위와 사용자 데이터 보존 여부를 보고합니다.
-기능 계약은 해당 문서에 갱신하고 인수인계에 완료 로그를 덧붙이지 않습니다.
+기능 계약은 해당 문서에 갱신하고 문서에 완료 로그를 덧붙이지 않습니다.
 
-main 직접 작업은 검증 후 commit/push합니다. Client/엔진을 fetch하여 upstream과 비교하고,
-엔진 변경은 원격 게시 → Client gitlink 갱신 순서를 지킵니다. gitlink와 submodule HEAD,
-최종 status를 확인하고 정확한 커밋을 보고합니다. 태스크 브랜치는 사용자 요청 때만 사용하며
-PR/병합 절차는 [AGENTS.md](../AGENTS.md)를 따릅니다.
+작업은 최신 `origin/main`에서 만든 작업 브랜치에서 하고, PR을 연 뒤 지휘 세션에 병합 요청을 보냅니다.
+지휘 세션이 병합 묶음을 `VerifyAll.ps1`로 검증한 뒤 main에 병합·push합니다. 엔진 변경은 엔진 PR 병합 →
+YOUMU gitlink 갱신 순서를 지키고, 병합 뒤 `git ls-files -s Dependencies/PhantomCore`가 서브모듈 HEAD와 같은지
+확인합니다. 자세한 절차는 [작업 방식](Contributing/Workflow.md)입니다.
