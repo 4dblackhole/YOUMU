@@ -230,8 +230,10 @@ namespace
             const auto overlay = Node(root, "Lane.Judgement." + std::string(words[index])).BoundsInCanvas();
             const auto target = circle.BoundsInCanvas();
             Check(Near(overlay.x + overlay.width * 0.5F, target.x + target.width * 0.5F) &&
-                      Near(overlay.y + overlay.height * 0.5F, target.y + target.height * 0.5F),
-                  "Overlay and judgement circle must have the same world centre.");
+                      Near(overlay.y, target.y + target.height + 6.0F),
+                  "The judgement word sits centred just above the judgement circle, 6 clear of it.");
+            Check(overlay.height < target.height * 0.5F && overlay.width < target.width * 1.5F,
+                  "Only the word is shown: no ring around the judgement circle.");
             const auto& world = Node(root, "Lane.Judgement." + std::string(words[index])).Transform().WorldMatrix();
             const auto right = TransformDirection({1, 0, 0}, world);
             Check(Near(right.x, 1.0F) && Near(right.y, 0.0F),

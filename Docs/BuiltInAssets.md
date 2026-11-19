@@ -209,7 +209,7 @@ INI를 편집했다면 재실행하거나 다른 스킨을 선택했다 돌아�
 
 풍선 완료 효과음은 `HitSounds/TaikoMode/pop.wav`입니다. 다른 스킨에서 이 파일을
 제공하면 해당 파일을 사용하고, 없으면 내장 기본 스킨의 소리로 대체합니다.
-판정 링·문구 8종도 `InGame/Judgements/MAX.png`부터 `POOR.png`, `OK.png`까지 같은 파일별
+판정 글자 8종도 `InGame/Judgements/MAX.png`부터 `POOR.png`, `OK.png`까지 같은 파일별
 fallback을 사용합니다. 인디케이터의 색 구간은 별도 요소이고, 감싸는 반투명 판만 `InGame/Hud/TimingPanel.png`입니다.
 판정별 파일명과 표시 계약은 [Presentation](Gameplay/Presentation.md)에 있습니다.
 하단 진행바는 `InGame/Progress/{Background,Track,Fill,Marker}.png` 네 파일을 사용합니다.

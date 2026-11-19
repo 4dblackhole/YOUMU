@@ -37,7 +37,7 @@
 | Lane·노트/롱노트·마디선·키빔·진행바 | `RhythmTestScene/Submodules`: GameplayPresenter/Layout, GameplayNoteView(노트·tick·마디선·focus 연출), ScreenMarkThinning(겹치는 tick 솎기, ClientLogic), GameplayNoteVisibility, GameplayInputView, GameplayProgressView; LaneKeyBeam | RunGameplayJudgementTests, RunAllNotesGameplayTests, ScreenMarkThinningTests |
 | Kiai 판정원·풍선/뎅뎅 그림·남은 타격 배지·기어 띠 | `RhythmTestScene/Submodules`: GameplayKiaiView, GameplayNoteView(헤드 세우기·처리 그림·배지), GameplayLayout; 스킨 `Gear.Band`·`Kiai.*`·`Hud.HitCountBadge`; 에디터 TaikoEditorScore의 풍선·뎅뎅 비율 | RunGameplayJudgementTests(TestKiaiJudgementCircle·TestCountOnlyHeadsAndCounters), RunSkinTests, RunEditorPresentationTests |
 | 화면 오류 줄·로딩 준비 실패 흐름 | `Client/Presentation/UiErrorLine`, RhythmTestScene(PresentScreenError·PresentLoadingScreen), GameplaySessionController(ErrorSource·AttemptStarted·PreparationFailed), PlaySession(AutomationErrorLocation), GameplayPauseMenu(SetPreparationFailed) | RunGameplayJudgementTests(TestScreenErrorLine), RunGameplayPauseTests, RunLanguageFileTests |
-| 판정 인디케이터·링·문구 | GameplayJudgementView, GameplayFeedbackVisuals | GameplayJudgementTests |
+| 판정 인디케이터·판정 글자 | GameplayJudgementView, GameplayFeedbackVisuals | GameplayJudgementTests |
 | 정확도·POOR·Buzz·물리 키 유지 | `YOUMU.Rhythm/Note`, Judgement, Lane; `Modes/Mode/Submodules/PlaySession` | AccuracyTests, InputOrderingTests, BuzzReplayTests, PlayPauseTests |
 | Taiko 노트 종류·사운드 정책 | `YOUMU.Modes/Taiko/Submodules`: TaikoNoteDefinition, SessionBuilder, LongNoteFactory, SoundPolicy, NoteOptions | TaikoModeTests, SoundPolicyTests, EditorModeTests |
 | 판정 난이도·JudgeLevel | `Rhythm/Judgement`, PatternDocument/Parser, TaikoSessionBuilder | RhythmCoreTests, ChartParserTests, NewDifficultyTests |
