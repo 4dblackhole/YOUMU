@@ -18,23 +18,26 @@ OnResize에서 창 크기를 갱신하고 Shutdown에서 해제합니다. worker
 
 ```mermaid
 flowchart TD
-    Entry["Client/App/Main.cpp\nwWinMain"] --> Assets["RCDATA asset pack 확인 · cache 준비"]
-    Assets --> Game["YOUMUGame · Option.ini 복원"]
-    Game --> Run["Run"]
-    Run --> Systems["Win32 · D3D12 · Raw Input · Audio"]
-    Game --> Manager["SceneManager"]
-    Manager --> Logo["YOUMULogoScene"]
-    Logo --> Lobby["MusicSelectScene · Music Select"]
-    Logo --> EditorSelect["MusicSelectScene · Editor Song Select"]
-    EditorSelect --> Editor["EditorScene · ChartEditor / YMP + YME"]
-    Editor --> EditorSelect
-    Lobby --> Request["GameplayLaunchStore · 진입 시 Snapshot"]
-    Request --> Manager
-    Manager --> Test["RhythmTestScene · transient Taiko play"]
-    Test --> Result["ResultScene · moved IPlayResult / mode view"]
-    Result --> Lobby
-    Result -->|Retry · fresh session| Test
+    A["wWinMain<br/>Client/App/Main.cpp"] --> B["내장 자산 묶음 준비<br/>%LOCALAPPDATA%/YOUMU/BuiltInAssets"]
+    B --> C["YOUMUGame 생성<br/>Option.ini 읽기"]
+    C --> D["Run<br/>창 · D3D12 · Raw Input · 오디오"]
+    D --> E["RegisterScenes<br/>Scene 6개 등록"]
+    E --> L["타이틀<br/>YOUMULogoScene"]
+    L -->|Game Start| S["곡 선택<br/>MusicSelectScene"]
+    S -->|Back| L
+    L -->|Editor| ES["에디터 곡 선택<br/>MusicSelectScene"]
+    ES -->|Back| L
+    ES -->|난이도 확정 · 새 난이도| ED["차트 에디터<br/>EditorScene"]
+    ED -->|Esc| ES
+    S -->|"GO: worker가 세션 검증"| P["플레이<br/>RhythmTestScene"]
+    P -->|"끝 · Retire · 남은 노트 없이 ESC"| R["결과<br/>ResultScene"]
+    R -->|"Retry: 새 세션"| P
+    R -->|Back| S
+    L -->|Exit| X["종료<br/>Scene → 오디오 → 렌더러"]
 ```
+
+근거: `Client/App/Main.cpp`, `Client/App/YOUMUGame.cpp`(`RegisterScenes`·`CreateResultScene`), 각 Scene의 `ChangeScene` 호출.
+Scene 클래스와 수명 정책은 [전체 구조](Architecture/Overview.md#화면scene), 플레이 안쪽은 [플레이 구조](Architecture/Gameplay.md)에 있습니다.
 
 ## 시작
 
@@ -158,3 +161,43 @@ D3D12 command 기록과 present는 엔진이 담당합니다. 종료 시 활성 
 값을 바꿉니다. 이 표시는 Scene이나 엔진 루프의 소유물이 아니므로 Scene 전환과 관계없이 유지됩니다.
 
 플레이 옵션은 launch/session/result에 값으로 고정합니다. Accelerate는 공통 시계의 QPC/DSP 비율과 BGM/샘플 음정 정책을 함께 적용합니다. 결과의 비동기 기록 저장과 선택 화면의 비동기 조회는 [PlayOptions](Gameplay/PlayOptions.md)을 참고합니다.
+
+## 플레이 한 프레임
+
+엔진은 `Update`를 가능한 한 자주, `Render`는 주사율에 맞춰서만 부릅니다. 판정은 `Update` 안에서 입력 이벤트의
+QPC 시각과 세션의 `RhythmTimer` 하나로만 하며, 그리기 시각은 판정에 쓰지 않습니다([TIME-01](DesignDecisions.md#time-01-시간과-입력)).
+
+```mermaid
+sequenceDiagram
+    participant En as 엔진(PhantomCore)
+    participant Sc as RhythmTestScene
+    participant Co as GameplaySessionController
+    participant Ps as PlaySession
+    participant Au as GameplayAudioSession
+    participant Pr as GameplayPresenter
+    En->>Sc: Update(Raw Input 이벤트와 QPC 시각)
+    Sc->>Co: Update
+    Co->>Co: 재시작 키 · ESC 처리
+    loop 입력 이벤트마다(시각 순서)
+        Co->>Ps: ProcessInput(키, 누름/뗌, 이벤트 시각)
+        Ps-->>Co: NoteProcessResult
+        Co->>Au: PlayNow(히트사운드 즉시 재생)
+    end
+    Co->>Ps: Update(현재 시각, 누르고 있는 키)
+    Ps-->>Co: NoteProcessResult(지나간 노트 MISS 등)
+    Co->>Au: YME 자동화 적용 · 메트로놈 예약(DSP 시각)
+    Co-->>Sc: 피드백 목록
+    Sc->>Pr: ApplyFeedback · AdvanceEffects · 입력 표시
+    Sc->>Sc: 일시정지 메뉴 · 결과 전환 확인
+    En->>Sc: Render
+    Sc->>Pr: UpdateHp · UpdatePresentation(현재 시각)
+    En->>En: Canvas 제출 · D3D12 기록 · Present
+```
+
+근거: `RhythmTestScene::Update`/`Render`, `GameplaySessionController::Update`/`UpdateGameplay`,
+`Client/GameFlow/Submodules/GameplayInput.cpp`(`ProcessRhythmInput`), `GameplaySessionController.cpp`(`UpdateSession`·`ConsumeResult`).
+
+- 한 입력 묶음의 첫 이벤트 전 키 상태는 Raw Input의 마지막 상태에서 거꾸로 계산합니다. 입력 사이에 완전히 지나간 노트는
+  그 입력보다 먼저 처리합니다([Rules](Gameplay/Rules.md)).
+- 히트사운드는 판정 직후 바로 울립니다. 음악·메트로놈처럼 미래 시각에 울릴 소리만 DSP 시각으로 예약합니다.
+- ESC가 눌린 묶음에서는 ESC 시각에서 판정을 멈추고, 그 뒤의 입력은 노트에 넣지 않습니다.
