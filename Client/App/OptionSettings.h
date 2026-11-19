@@ -23,6 +23,8 @@ struct OptionValues
     std::uint32_t windowWidth{1280}, windowHeight{720};
     // Song, artist, chart and maker texts: the first notation, or the romanized line.
     TextNotation notation{TextNotation::First};
+    // Key beam opacity for every mode, 0..100%; 100 draws the beam as it always was.
+    int keyBeamOpacity{100};
     std::int32_t globalOffsetMs{};
     std::filesystem::path songsPath; // Empty selects the development/deployment default.
     std::uint16_t restartKey{DefaultRestartKey}; // [Controls] RestartKey; a missing entry keeps the default.

@@ -156,6 +156,8 @@ namespace
             throw std::runtime_error("Only the FMOD audio middleware is installed.");
         if (!values.volumes.IsValid())
             throw std::runtime_error("Volumes must be whole percentages within 0..100.");
+        if (!AudioVolumes::IsValidPercent(values.keyBeamOpacity))
+            throw std::runtime_error("Key beam opacity must be a whole percentage within 0..100.");
         static_cast<void>(OutputName(values.audioOutput));
         if (!IsValidWindowExtent(values.windowWidth) || !IsValidWindowExtent(values.windowHeight))
             throw std::runtime_error("Window dimensions must be within 1..16384 pixels.");
@@ -218,6 +220,8 @@ namespace
                 else if (value == "romanized") values.notation = TextNotation::Romanized;
                 else throw std::runtime_error("Notation must be first or romanized.");
             }
+            else if (key == "KeyBeamOpacity")
+                values.keyBeamOpacity = ReadInteger<int>(value);
         }
         else if (section == "Controls")
         {
@@ -350,6 +354,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nSongsPath=" << EncodeUtf8(values.songsPath.wstring())
              << "\r\n\r\n[Display]\r\nWidth=" << values.windowWidth << "\r\nHeight=" << values.windowHeight
              << "\r\nNotation=" << (values.notation == TextNotation::Romanized ? "romanized" : "first")
+             << "\r\nKeyBeamOpacity=" << values.keyBeamOpacity
              << "\r\n\r\n[Audio]\r\nMiddleware=" << values.audioMiddleware
              << "\r\nOutput=" << OutputName(values.audioOutput) << "\r\nDriverIndex=" << values.driverIndex
              << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master

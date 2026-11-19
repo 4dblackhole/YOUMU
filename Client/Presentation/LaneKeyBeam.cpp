@@ -103,10 +103,16 @@ Color LaneKeyBeam::InputColor(
     return White;
 }
 
+void LaneKeyBeam::SetOpacity(const float opacity) noexcept
+{
+    opacity_ = std::clamp(opacity, 0.0F, 1.0F);
+}
+
 void LaneKeyBeam::OnKeyPressed(const NoteProcessResult& result)
 {
     if (node_ == nullptr) return;
     color_ = InputColor(result);
+    color_.alpha *= opacity_;
     elapsedSeconds_ = 0;
     node_->GetComponent<SpriteVisualComponent>()->SetTint(color_);
     node_->SetVisible(true);
@@ -117,7 +123,7 @@ void LaneKeyBeam::Update(const double deltaSeconds)
     if (node_ == nullptr || elapsedSeconds_ >= FadeSeconds) return;
     elapsedSeconds_ = std::min(FadeSeconds,
         elapsedSeconds_ + std::max(deltaSeconds, 0.0));
-    color_.alpha = static_cast<float>(1.0 - elapsedSeconds_ / FadeSeconds);
+    color_.alpha = opacity_ * static_cast<float>(1.0 - elapsedSeconds_ / FadeSeconds);
     node_->GetComponent<SpriteVisualComponent>()->SetTint(color_);
     node_->SetVisible(elapsedSeconds_ < FadeSeconds);
 }

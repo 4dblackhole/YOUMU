@@ -58,8 +58,8 @@ void OptionsPanel::LayoutSections()
 {
     std::array<std::vector<float>, SectionCount> controls{
         std::vector<float>{ControlHeight, SongsControlHeight},
-        std::vector<float>{ControlHeight, ControlHeight, ControlHeight}, // Skin, resolution, notation.
-        std::vector<float>(volumes_.size() + 4, ControlHeight),
+        std::vector<float>(4, ControlHeight), // Skin, resolution, notation, key beam opacity.
+        std::vector<float>(VolumeSliderCount + 4, ControlHeight),
         std::vector<float>{ControlHeight}}; // Input: the restart key, then each mode's keys.
     for (const auto &layout : inputLayouts_)
     {

@@ -28,6 +28,11 @@ class GameplayPresenter final
     void Initialize(const PhantomCore::EngineServices &services,
                     const PlaySession &session);
     bool PrepareAssets(const PhantomCore::EngineServices &services);
+    // Percent from the launch request, shared by every mode's lane key beam.
+    void ConfigureKeyBeamOpacity(const int percent) noexcept
+    {
+        keyBeam_.SetOpacity(static_cast<float>(percent) / 100.0F);
+    }
     void ConfigureBackground(std::filesystem::path path, double x, double y)
     {
         backgroundPath_ = std::move(path);

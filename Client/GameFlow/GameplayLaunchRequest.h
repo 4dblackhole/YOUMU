@@ -33,6 +33,7 @@ struct GameplayLaunchRequest
     AudioVolumes volumes;
     std::map<std::string, std::vector<std::uint16_t>> inputKeys;
     std::uint16_t restartKey{DefaultRestartKey}; // Held for half a second to restart the attempt.
+    int keyBeamOpacity{100}; // Percent applied to the lane key beam of every mode.
     std::wstring songArtist;
     std::filesystem::path songsRoot;
     std::filesystem::path backgroundPath;
@@ -75,6 +76,7 @@ struct GameplayLaunchRequest
         playOptions = {};
         inputKeys.clear();
         restartKey = DefaultRestartKey;
+        keyBeamOpacity = 100;
         songArtist.clear();
         songsRoot.clear();
         backgroundPath.clear();

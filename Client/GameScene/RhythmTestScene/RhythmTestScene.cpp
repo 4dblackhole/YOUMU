@@ -56,6 +56,7 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
       visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals), screenFade_(visuals)
 {
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
+    view_->ConfigureKeyBeamOpacity(launch_.keyBeamOpacity);
 }
 RhythmTestScene::~RhythmTestScene() = default;
 void RhythmTestScene::Initialize(const EngineServices &services)
