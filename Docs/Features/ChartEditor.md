@@ -1,8 +1,8 @@
 # 차트 에디터
 
-설계 기준: [EDIT-01·02](DesignDecisions.md#edit-01-에디터),
-[UI-01](DesignDecisions.md#ui-01-화면과-키-설정), [UI-02](DesignDecisions.md#ui-02-ui-리디자인).
-화면은 UI-02 리디자인의 차트 에디터([UI 리디자인](UIRedesign.md#차트-에디터))입니다. 탭은 Compose·Audio·Metadata이고
+설계 기준: [EDIT-01·02](../Design/Decisions.md#edit-01-에디터),
+[UI-01](../Design/Decisions.md#ui-01-화면과-키-설정), [UI-02](../Design/Decisions.md#ui-02-ui-리디자인).
+화면은 UI-02 리디자인의 차트 에디터([UI 리디자인](../Design/UI.md#차트-에디터))입니다. 탭은 Compose·Audio·Metadata이고
 예전 Pattern·Timing·Effects 탭과 Test 플레이 화면은 없습니다. 플레이 모습은 Compose의 Preview로 확인합니다.
 
 ## 화면 구성
@@ -82,7 +82,7 @@ Esc는 문서 값으로 되돌립니다. 확정이 거부되면(형식·범위 �
 입력칸에 포커스가 있는 동안 에디터 단축키(Space·Delete·도구 키·Z/X·←/→)는 동작하지 않습니다.
 여러 줄인 히트사운드 표만 Windows 글 편집 창을 씁니다.
 
-확인과 실패는 공용 경고 대화상자([경고·오류](UIRedesign.md#경고오류))입니다. 저장하지 않은 변경이 있을 때 Back·Esc는
+확인과 실패는 공용 경고 대화상자([경고·오류](../Design/UI.md#경고오류))입니다. 저장하지 않은 변경이 있을 때 Back·Esc는
 `Discard`·`Cancel`·`Save`를 묻고, Save가 실패하면 에디터에 남습니다. 저장 실패와 채보 형식이 아닌 클립보드의
 `Paste failed`도 같은 대화상자로 알립니다.
 
@@ -232,7 +232,7 @@ PCM/FFT 자체는 `YOUMU.Editor/Audio/EditorAudioAnalysis`만 읽으면 됩니�
   롱노트 시작과 끝이 역전되거나 같은 위치가 되는 변경도 전체 취소하고 원본을 보존합니다.
 - Metadata에서 이름, 제작자(여러 줄, 첫 줄이 대표), 태그, offset, 기본 BPM,
   Accuracy Difficulty(JudgeLevel 1.00~100.00, 0.01 단위), HP(1.00~100.00), BG와 x·y, 히트사운드 표를 편집합니다.
-  YMM 파일과 Effect file은 표시만 합니다. YMM은 편집 중인 [곡 폴더](BuiltInAssets.md#곡-폴더-배치)의 것이며
+  YMM 파일과 Effect file은 표시만 합니다. YMM은 편집 중인 [곡 폴더](Assets.md#곡-폴더-배치)의 것이며
   BG는 그 곡 폴더의 `BG` 기준입니다. 새 난이도의 Create는 고른 곡의 곡 폴더에 파일을 만듭니다.
   표의 소유 파일은 YME이며 사운드 상대경로도 YME 폴더 기준입니다.
 - 효과 패널의 목록에서 행을 골라 Apply로 바꾸거나 Delete로 지웁니다. 동/캇 변경은 각각
@@ -257,7 +257,7 @@ PCM/FFT 자체는 `YOUMU.Editor/Audio/EditorAudioAnalysis`만 읽으면 됩니�
 YME `[Interpolation]`의 사용자 곡선을 순환하고, 식·베지어는 `Curves…` 창에서 등록·수정합니다. 목록의 지점형 효과는
 변경값 하나만 표시하고, Area 효과만 시작값 → 끝값으로 표시합니다. Kiai·Syncopation은 On/Off로, Syncopation의 Exclude 분할은
 `−1/8|1/16`처럼 표시합니다. Kiai는 내부 숫자 대신 언어파일의 이름으로 표시합니다. 모드의 사운드 대상에 없는 히트사운드 변경은
-목록에 남아 지울 수 있고 다른 수정/저장에서도 보존합니다. 문법은 [YME](Formats/Yme.md)가 기준입니다.
+목록에 남아 지울 수 있고 다른 수정/저장에서도 보존합니다. 문법은 [YME](../Formats/Yme.md)가 기준입니다.
 
 ## 내부 구조와 검증 경계
 
@@ -403,7 +403,7 @@ Info/LAME 패딩 처리를 적용하며 Vorbis/Windows 코덱은 기존 경로�
 내부 창 채우기·복소수·전력 계산은 같은 연산 순서를 유지하며, PCM sample 0·10ms 개요 간격·
 96대역·상세 타일 픽셀 규격과 채널별 전력 평균은 유지합니다.
 형식 오류와 취소는 기존 상태 메시지/worker 경로로 전달합니다. 디코더 출처와 수명은
-[엔진 오디오 문서](../Dependencies/PhantomCore/Docs/AudioPlayback.md#공통-pcm-시간축)를 참고합니다.
+[엔진 오디오 문서](../../Dependencies/PhantomCore/Docs/AudioPlayback.md#공통-pcm-시간축)를 참고합니다.
 프로세스 수명의 단일 worker가 복사한 파일 목록/취소 토큰만 소유합니다. Scene 종료는
 취소를 요청하고 결과 참조를 내려놓으며 worker 완료를 기다리지 않습니다. 큰 분석 결과의
 해제도 worker에 넘깁니다. 실제 프로세스 종료에서는 worker를 정리합니다.
@@ -474,7 +474,7 @@ YME의 볼륨/DSP 효과를 미리 듣는 기능은 제공하지 않습니다.
 동·캇 변경 경계 및 실제 MP3 분석을 포함합니다. 등록한 보간식 수정 후 이전 컴파일된
 식이 남지 않는 것도 검사합니다.
 오디오 분석 회귀는 반대 위상의 스테레오 1kHz 신호의 Hz/dBFS와 무음을 검사합니다.
-별도 [오디오 뷰 회귀](../Tests/Presentation/README.md)는 Client object를 사용해 실제 곡의
+별도 [오디오 뷰 회귀](../../Tests/Presentation/README.md)는 Client object를 사용해 실제 곡의
 세 영역 draw packet, 타임라인 범위/슬라이더 action, 탭별 숨김, 언어 전환과 정리를 검사합니다.
 같은 실행 파일의 `EditorModeTests`는 Taiko 전체 도구의 ID/롱노트/버즈 옵션/예상
 히트사운드, 악보 스냅/삭제/취소를 검사합니다. 테스트에만 존재하는 다른 모드와
@@ -487,7 +487,7 @@ YME의 볼륨/DSP 효과를 미리 듣는 기능은 제공하지 않습니다.
 
 ## delay 표시와 편집 원본
 
-음수 delay의 무효화/끝점 처리 계약은 [공유 타이밍 규칙](Formats/Timing.md#delay와-잘린-시간-구간)을
+음수 delay의 무효화/끝점 처리 계약은 [공유 타이밍 규칙](../Formats/Timing.md#delay와-잘린-시간-구간)을
 따릅니다. `ChartEditor`의 원본 위치 트리/ID/롱노트 연결은 유지하고, `ReplaceTiming`은
 노트의 실제 시각·유효성·효과 시간 인덱스·스크롤 캐시를 후보에서 재계산해 함께 반영합니다.
 실패하면 기존 소유 객체와 상태가 유지됩니다. `CompiledPatternNote::positionActive`는

@@ -1,11 +1,11 @@
 # 전체 구조
 
 세 저장소와 빌드 프로젝트가 어떻게 이어지는지, 화면(Scene)이 어떤 클래스로 이루어지는지를 그림으로 보여 줍니다.
-영역별 책임과 경계 규칙은 [설계 기준의 시스템 경계](../Design.md#시스템-경계), 시작·전환·종료 순서는
-[실행 흐름](../ExecutionFlow.md), 플레이 화면 안쪽은 [플레이 구조](Gameplay.md)에 있습니다.
+영역별 책임과 경계 규칙은 [아래 표](#영역별-책임과-경계), 시작·전환·종료 순서는
+[실행 흐름](ExecutionFlow.md), 플레이 화면 안쪽은 [플레이 구조](Gameplay.md)에 있습니다.
 
 그림은 코드에서 옮겼습니다. 각 그림 아래의 근거 파일이 바뀌면 그림도 같이 고칩니다
-([변경 영향 지도](../ChangeImpactMap.md#구조-그림)).
+([변경 영향 지도](../Contributing/ChangeImpactMap.md#구조-그림)).
 
 ## 저장소와 프로젝트 의존
 
@@ -52,6 +52,37 @@ flowchart LR
 - 변환기는 YOUMU를 형제 폴더 `../YOUMU/`로 찾아 형식 계약(`YOUMU.Chart`, `YOUMU.Rhythm`)만 씁니다.
 - Presentation 회귀 러너(`Tests/Presentation/Run*.ps1`)는 솔루션 프로젝트가 아니라, 실제 Client 오브젝트를 링크한
   테스트 실행 파일을 스크립트가 직접 만듭니다.
+
+## 영역별 책임과 경계
+
+| 영역 | 소유하는 것 | 경계 |
+| --- | --- | --- |
+| PhantomCore | Win32·D3D12·Raw Input·오디오 장치·GPU/음성 자원·엔진 루프 | 재사용 엔진. 게임 규칙·곡·Scene ID는 Client 소유 |
+| YOUMU.Rhythm | RhythmTimer·AccuracyRange·INote/규칙·Lane·ScrollGear | 엔진/UI에 독립적인 시간·판정·이벤트 값 |
+| YOUMU.Chart | YMM/YMP/YME·타이밍 컴파일·카탈로그·편집 원본/저장 | 모드별 노트 의미와 화면/장치 구현을 역참조하지 않음 |
+| YOUMU.Modes | IPlayGameMode·PlaySession·Taiko 구성/사운드/결과 정책 | 파일 데이터를 실제 모드 노트로 구성, 순수 세션 상태 소유 |
+| YOUMU.Editor | 주입받은 PCM의 파형·FFT 분석 | 엔진 디코더·Scene·UI를 직접 소유하지 않음 |
+| Client | App·Scene·Controller·Presenter·전역/플레이 옵션·기록·자산 연결 | 엔진은 PhantomCore.h/PhantomCore.vcxproj로 사용 |
+| YOUMU.Assets | 기본 스킨·글꼴·라이선스·기본 제공곡 | 사용자 편집본·개인 곡·설정·기록과 분리 |
+| OsuTaikoConverter | `.osu` 하나를 YMM·YMP·YME 세 파일로 변환 | 공통 포맷/노트 계약만 사용. Songs 배치·음원/배경 복사·플레이 검증은 Client |
+
+구체 의존성·소스/필터 검사는 [ChangeImpactMap](../Contributing/ChangeImpactMap.md), 실행 소유권은
+[ExecutionFlow](ExecutionFlow.md), 변환 경계는 [osu! 가져오기](../Features/OsuImport.md)가 기준입니다.
+
+### 실행과 소유권
+
+- `YOUMUGame`/`SceneGameClient`는 Scene factory와 공통 서비스를 조립합니다.
+  전환은 지연 `ChangeScene`이며 gameplay Scene은 `DestroyOnExit`입니다.
+- 곡 선택은 경로·옵션을 값으로 복사하고 선택 패턴을 worker에서 검증합니다.
+  성공한 PlaySession만 진입 store로 넘기며 이전 선택의 늦은 결과는 게시하지 않습니다.
+- `RhythmTestScene`은 Controller·Presenter·Pause 메뉴를 소유하고 전환만 요청합니다.
+  Controller는 시계·세션·오디오 연결, Presenter는 Canvas/노드·표시 상태를 담당합니다.
+- 세션은 Loading → Gameplay → Pause/Ending 상태를 사용합니다. 준비 중에는
+  시각·판정을 진행시키지 않으며 실제 Gameplay 전에는 플레이 Canvas를 노출하지 않습니다.
+- 노트 처리 결과는 `NoteEvent`/`AudioCueRequest`/확정 정확도 값입니다.
+  UI·음원·장치 호출을 노트 규칙에 넣지 않습니다. 결과는 값으로 넘기고 플레이 자원을 정리합니다.
+- EditorWorkspace는 문서·모드·분석·재생 수명을 소유합니다. 모드는 제한된
+  `IEditorContext`, 분석은 읽기 전용 `IEditorAudioSource`를 사용합니다.
 
 ## 층과 소유
 

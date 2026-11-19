@@ -1,10 +1,8 @@
-# stb_vorbis provenance
+# stb_vorbis 출처
 
-The decoder implementation has moved to the engine shared PCM reader:
-`Dependencies/PhantomCore/Engine/Audio/ThirdParty/stb`.
-This directory retains the original license/provenance for the existing
-embedded Assets/Licenses/stb-vorbis.txt attribution. YOUMU.Editor no longer
-builds a codec; its host supplies the engine PCM reader.
+디코더 구현은 엔진의 공유 PCM reader(`Dependencies/PhantomCore/Engine/Audio/ThirdParty/stb`)로 옮겼습니다.
+이 폴더는 내장 `Assets/Licenses/stb-vorbis.txt` 고지의 원래 라이선스와 출처를 보존하려고 남겨 둡니다.
+YOUMU.Editor는 더 이상 코덱을 빌드하지 않고, 호스트가 엔진 PCM reader를 넘겨 줍니다.
 
 Upstream: https://github.com/nothings/stb
 Revision: `2c980bb59875b0d32144a71867fbdebb2f77cd20`

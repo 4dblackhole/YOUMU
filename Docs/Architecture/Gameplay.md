@@ -1,9 +1,9 @@
 # 플레이 구조
 
 플레이 화면(`RhythmTestScene`)을 이루는 클래스와 플레이 상태가 바뀌는 길을 그림으로 보여 줍니다.
-한 프레임 안의 호출 순서는 [실행 흐름](../ExecutionFlow.md#플레이-한-프레임), 동작 계약은
-[Rules](../Gameplay/Rules.md)·[Pause](../Gameplay/Pause.md)·[Presentation](../Gameplay/Presentation.md)에 있습니다.
-근거 파일이 바뀌면 그림도 같이 고칩니다([변경 영향 지도](../ChangeImpactMap.md#구조-그림)).
+한 프레임 안의 호출 순서는 [실행 흐름](ExecutionFlow.md#플레이-한-프레임), 동작 계약은
+[Rules](../Features/Gameplay/Rules.md)·[Pause](../Features/Gameplay/Pause.md)·[Presentation](../Features/Gameplay/Presentation.md)에 있습니다.
+근거 파일이 바뀌면 그림도 같이 고칩니다([변경 영향 지도](../Contributing/ChangeImpactMap.md#구조-그림)).
 
 ## 클래스
 
@@ -91,7 +91,7 @@ classDiagram
 | `HoldInputRule` | Buzz |
 | `TimedSequenceInputRule` | 풍선(동 반복)·뎅뎅(동·캇 교대) |
 
-근거: `YOUMU.Modes/Taiko/Submodules/TaikoSessionBuilder.cpp`, `TaikoLongNoteFactory.cpp`. 세부 판정은 [Rules](../Gameplay/Rules.md#교체-가능한-노트-규칙).
+근거: `YOUMU.Modes/Taiko/Submodules/TaikoSessionBuilder.cpp`, `TaikoLongNoteFactory.cpp`. 세부 판정은 [Rules](../Features/Gameplay/Rules.md#교체-가능한-노트-규칙).
 
 ### 화면 부품
 
@@ -131,4 +131,4 @@ stateDiagram-v2
 - Loading 동안은 시각·판정이 흐르지 않고 플레이 화면 대신 로딩 화면을 보여 줍니다.
 - Pause에서 Resume·Rewind를 고르면 메뉴는 바로 닫히지만, 음악 탐색과 시작 예약이 끝날 때까지 상태는 Pause입니다.
 - 재시작과 Retry는 불러온 채보·Clip을 다시 쓰고 노트·점수·기록만 새로 시작합니다. 준비에 실패한 뒤의 Retry는 파일을 다시 읽습니다.
-- 상태별 반복 작업과 복원 규칙은 [Pause의 실행 상태](../Gameplay/Pause.md#모든-모드의-실행-상태)가 기준입니다.
+- 상태별 반복 작업과 복원 규칙은 [Pause의 실행 상태](../Features/Gameplay/Pause.md#모든-모드의-실행-상태)가 기준입니다.

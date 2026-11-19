@@ -2,11 +2,11 @@
 
 `YOUMUGame`은 현재 Client의 게임 진입점이며, 첫 Scene은
 `YOUMULogoScene`이다. 배경 clear color는 AliceBlue (`#F0F8FF`)다.
-제품 표시 이름은 [GameIdentity.h](../Client/Texts/GameIdentity.h)의 `GameName`을 참조한다.
+제품 표시 이름은 [GameIdentity.h](../../Client/Texts/GameIdentity.h)의 `GameName`을 참조한다.
 창/오류창/에디터 확인창의 이름 변경 방법과 내부 식별자와의 구분은
 [문구 관리](TextManagement.md#게임-이름-변경)를 따른다.
 
-화면은 [UI-02](DesignDecisions.md#ui-02-ui-리디자인) 설계([UI 리디자인](UIRedesign.md#타이틀))를 따른다.
+화면은 [UI-02](../Design/Decisions.md#ui-02-ui-리디자인) 설계([UI 리디자인](../Design/UI.md#타이틀))를 따른다.
 하늘 배경·깃털·메뉴와 메뉴 위 음악 플레이어가 구현돼 있다. 주파수 시각화와 음량 조절은 두지 않는다(음량은 옵션 패널의 Music volume이 타이틀 플레이어에도 적용된다).
 
 ## 화면과 배치
@@ -18,7 +18,7 @@
 - 메뉴는 사선 막대 네 개(309×52, 간격 64, 위 344)다. 고른 항목은 오른쪽으로 12 밀리고 코발트 막대(`Menu.ButtonSelected`)
   안 왼쪽에 금빛 깃털 커서(`SelectionCursor`)가 들어온다. 나머지는 옅은 막대(`Menu.Button`과 `.Hovered`·`.Pressed`)다.
   글자는 Nunito 20(한글·일본어는 Noto Sans KR)이다.
-- 문법·기본본 대체 규칙은 [skin.ini](BuiltInAssets.md#skinini와-씬별-이미지)를 따른다.
+- 문법·기본본 대체 규칙은 [skin.ini](Assets.md#skinini와-씬별-이미지)를 따른다.
 
 ## 음악 플레이어
 

@@ -1,6 +1,6 @@
 # 설계 결정
 
-[설계 기준](Design.md)의 판단 순서·상태·변경 규칙을 따릅니다. ID는 문서를 정리하거나
+[설계 기준](Principles.md)의 판단 순서·상태·변경 규칙을 따릅니다. ID는 문서를 정리하거나
 코드를 재배치해도 보존합니다. 아래의 구현 여부와 미정점을 하나의 상태로 합치지 않습니다.
 수치·예시는 별도 표기가 없으면 현재 계약의 회귀 사례이며 새 기능 제안이 아닙니다.
 검증 항목은 확인할 기존 검사 위치입니다. 문서 작성만으로 그 검사를 새로 실행했다는 뜻은 아닙니다.
@@ -19,13 +19,13 @@
   내부 링크·충돌 방지 UI 상수·외부 라이브러리의 이름 범위는 허용합니다.
   이전 이름을 유지하는 호환 별칭/전달 헤더를 복원하지 않습니다.
 
-상세: [TextManagement](TextManagement.md#게임-이름-변경). 검증: 빌드·네 smoke와 CheckArchitecture.
+상세: [TextManagement](../Features/TextManagement.md#게임-이름-변경). 검증: 빌드·네 smoke와 CheckArchitecture.
 
 ## ARC-01 구조와 소유권
 
 근거: 프로젝트 계약. 구현: 구현.
 
-- 저장소/도메인 경계는 [Design](Design.md#시스템-경계)을 따릅니다. 엔진 변경은 독립 저장소,
+- 저장소/도메인 경계는 [전체 구조](../Architecture/Overview.md#영역별-책임과-경계)를 따릅니다. 엔진 변경은 독립 저장소,
   Client는 단일 공개 SDK를 사용합니다. 노트·포맷·분석에 UI/엔진 역의존성을 넣지 않습니다.
 - Scene은 수명/조립/전환, Controller는 세션/시계/오디오, Presenter는 Canvas/노드를 소유합니다.
   Controller의 오디오 등록·준비·메트로놈은 GameplayAudioSession, Presenter의 노트 표시는
@@ -36,11 +36,11 @@
   모드 생성·지원 여부는 PlayGameModeFactory의 등록 표, 키 정책은 ModeInputLayout, Client의
   효과음 파일·키 편집 형태·바인딩 문구는 ModePresentation 데이터로 등록합니다. 공통 코드는
   이 등록 지점과 에디터·결과 화면 factory 밖에서 모드 이름으로 분기하지 않습니다.
-  절차는 [AddingGameMode](AddingGameMode.md)입니다.
+  절차는 [AddingGameMode](../Contributing/AddingGameMode.md)입니다.
 - 기능별 파일/물리 폴더/필터를 맞추며 큰 클래스의 함수만 여러 cpp로 옮기는 것을 책임 분리로
   간주하지 않습니다. 기존 소유권을 바꾸는 리팩터링은 별도의 설계 변경입니다.
 
-상세: [ExecutionFlow](ExecutionFlow.md), [ChangeImpactMap](ChangeImpactMap.md).
+상세: [ExecutionFlow](../Architecture/ExecutionFlow.md), [ChangeImpactMap](../Contributing/ChangeImpactMap.md).
 검증: CheckArchitecture, SceneStateTests와 관련 Scene 회귀.
 
 ## TIME-01 시간과 입력
@@ -55,13 +55,13 @@
   수락되지 않은 mapped 입력도 물리 상태와 입력 기록에는 반영합니다.
 - 모드의 각 행동은 한 레인으로 전달되며, 여러 행동은 한 레인을 공유할 수 있습니다.
   세션 준비에서 레인 번호를 검증합니다. 라이브 입력과 되감기는 레인 선택을 공유하고
-  각 경로의 기존 물리 상태 반영 순서를 따릅니다. [모드 입력 계약](AddingGameMode.md#세션과-입력)
+  각 경로의 기존 물리 상태 반영 순서를 따릅니다. [모드 입력 계약](../Contributing/AddingGameMode.md#세션과-입력)
 - 음악/미래 cue는 DSP로 예약하고, 입력 히트사운드는 판정 후 즉시 재생합니다.
   Pause/seek 후에는 새 DSP 기준을 잡습니다. BPM/박자/효과 시각은 로딩 시 컴파일합니다.
 - DSP 기준점과 그 기준으로 읽는 재생 위치는 같은 clock snapshot 추정값을 쓰고,
-  예약 시각을 mixer가 지났는지는 날 DSP clock과 비교합니다. [시계 구분](Gameplay/Rules.md#한-개의-타이머)
+  예약 시각을 mixer가 지났는지는 날 DSP clock과 비교합니다. [시계 구분](../Features/Gameplay/Rules.md#한-개의-타이머)
 
-상세: [Rules](Gameplay/Rules.md#한-개의-타이머), [Audio](Gameplay/Audio.md).
+상세: [Rules](../Features/Gameplay/Rules.md#한-개의-타이머), [Audio](../Features/Gameplay/Audio.md).
 검증: InputOrderingTests, PlayPauseTests, GameplayPauseTests와 전체 노트 replay.
 
 ## FMT-01 파일 형식과 편집 원본
@@ -83,15 +83,15 @@
 - YMM의 곡명·아티스트, YMP의 난이도명·제작자 묶음은 맨 윗줄에 로마자 전용 줄을 둡니다(사용자 확정:
   `Romanized Music Name`·`Romanized Artist`·`Romanized Pattern Name`·`Romanized Pattern Maker`).
   옵션에서 로마자 표시와 첫 표기 표시를 고르며, 로마자 줄이 비어 있으면 이미 로마자인 표기가 대신합니다
-  (사용자 확정). 그래서 첫 표기가 이미 로마자인 곳은 줄을 비워 둡니다. 규칙은 [YMM](Formats/Ymm.md#로마자-줄과-표시)에 있습니다.
+  (사용자 확정). 그래서 첫 표기가 이미 로마자인 곳은 줄을 비워 둡니다. 규칙은 [YMM](../Formats/Ymm.md#로마자-줄과-표시)에 있습니다.
 - 원본 마디/박자는 정확한 유리수와 안정 ID로 보존하고 실행용 시간/구간/스크롤은 파생 데이터입니다.
   음수 delay로 무효화된 구간도 원본을 삭제하거나 끝점을 잘린 경계로 옮기지 않습니다.
 - 파서·직접 DTO·편집 저장은 같은 의미 검증을 사용합니다. 실패한 수정/저장은 원본과 이력을 보존합니다.
 - 원본 Version, 목록 parser revision, 캐시 schema, 기록 DB schema는 별도 계약입니다.
   문법/기본값/진단/목록 해석 변경은 parser revision, 캐시 배치 변경은 cache schema를 갱신합니다.
 
-상세: [ChartFormats](ChartFormats.md), [Timing](Formats/Timing.md), [ResourceLoading](ResourceLoading.md),
-[곡 폴더 배치](BuiltInAssets.md#곡-폴더-배치).
+상세: [채보 형식](../Formats/README.md), [Timing](../Formats/Timing.md), [ResourceLoading](../Features/ResourceLoading.md),
+[곡 폴더 배치](../Features/Assets.md#곡-폴더-배치).
 검증: ChartParserTests, YmeEffectsTests, ChartReviewRegressionTests, SongCatalogTests(TestSongLayout 포함).
 
 ## LOAD-01 로딩과 캐시
@@ -113,7 +113,7 @@
   새 난이도 생성·가져오기는 전체 탐색 후 허용합니다. 최신 루트만 게시하고 부분/최종 갱신은
   선택 경로·검색·필터를 보존합니다. 파싱·컴파일·세션 구성은 협력 취소하며 UI에서 join하지 않습니다.
 
-상세: [ResourceLoading](ResourceLoading.md), [Audio](Gameplay/Audio.md).
+상세: [ResourceLoading](../Features/ResourceLoading.md), [Audio](../Features/Gameplay/Audio.md).
 검증: SongCatalogTests, MusicSelectViewTests, GameplayPauseTests의 cold-start/실패/Retry.
 
 ## CONV-01 변환과 검증
@@ -137,7 +137,7 @@
   배치 결과는 [FMT-01](#fmt-01-파일-형식과-편집-원본)의 곡 폴더 배치를 따릅니다.
   +25ms 보정·격자·BG 좌표·지원 범위는 변환 문서의 현재 계약을 따릅니다.
 
-상세: [OsuTaikoConverter](OsuTaikoConverter.md), [EditorSongSelect](EditorSongSelect.md).
+상세: [osu! 가져오기](../Features/OsuImport.md), [EditorSongSelect](../Features/EditorSongSelect.md).
 검증: 변환기 단위/CLI + Client OsuImportValidationTests(결과 검사·배치·잠금·되돌리기)/MusicSelectViewTests(실제 변환기 프로세스·난이도 목록).
 
 ## GAME-01 RPG 포커스
@@ -149,7 +149,7 @@
 
 RPG 참조 위치는 Client 루트 기준 형제 경로 `../RPG/RPG/GameScene/PlayScene.cpp`입니다.
 NoteUpdateTaikoMode는 키 검사 전에 MoveTargetNote(..., Good)를 호출합니다.
-YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/GoodFocusIndex이며,
+YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/GoodFocusIndex이며,
 적용 근거 커밋은 [6786b9c](https://github.com/4dblackhole/YOUMU/commit/6786b9c416389a03c3bc5785fe12034a755b99f4)입니다.
 
 - 시간순 첫 미처리 노트에 우선권을 줍니다. 현재 타이밍 노트가 LATE BAD이고 뒤에 GOOD 이상
@@ -173,10 +173,10 @@ YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/
 | 0 / 200ms | 90ms / 90.001ms | 후보가 없다면 앞 유지 / 앞 MISS |
 | 0 / 0ms | 0ms, 입력 하나 | 안정 순서의 첫 노트만 HIT, 다음은 별도 입력 대기 |
 
-상세: [Rules](Gameplay/Rules.md#lane과-배드말림-방지).
-검증: [TestLaneFocusRules](../Tests/Rhythm/Submodules/RhythmCoreTests.cpp),
-[TestExpiredInputOrdering](../Tests/Rhythm/Submodules/InputOrderingTests.cpp),
-[GameplayPauseTests.CheckAutomaticFocus](../Tests/Presentation/GameplayPauseTests.cpp).
+상세: [Rules](../Features/Gameplay/Rules.md#lane과-배드말림-방지).
+검증: [TestLaneFocusRules](../../Tests/Rhythm/Submodules/RhythmCoreTests.cpp),
+[TestExpiredInputOrdering](../../Tests/Rhythm/Submodules/InputOrderingTests.cpp),
+[GameplayPauseTests.CheckAutomaticFocus](../../Tests/Presentation/GameplayPauseTests.cpp).
 
 ## GAME-02 판정과 정확도
 
@@ -192,7 +192,7 @@ YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/
   HUD는 확정된 노트 평균, 최종 결과는 미처리 0점을 포함한 전체 노트 평균입니다.
 - 정확도 없는 연타 입력에 가상의 타이밍 등급/오차 표본을 만들지 않습니다.
 
-상세: [Rules](Gameplay/Rules.md#노트별-정확도와-세션-집계), [Results](Gameplay/Results.md).
+상세: [Rules](../Features/Gameplay/Rules.md#노트별-정확도와-세션-집계), [Results](../Features/Gameplay/Results.md).
 검증: RhythmCoreTests, AccuracyTests, PlayResultTests.
 
 ## GAME-03 POOR
@@ -209,8 +209,8 @@ YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/
 - HP 설계에서는 POOR 발생 즉시 감소하지 않고 대상 판정이 확정될 때 MISS에 해당하는
   감소를 반영합니다.
 
-상세: [Rules](Gameplay/Rules.md), [HP 설계](Formats/Ymp.md#hp-게이지).
-검증: [TestPoorSingleNoteAccuracy·TestPoorLargeNoteAccuracy·TestBuzzTickColorFocus](../Tests/Rhythm/Submodules/AccuracyTests.cpp).
+상세: [Rules](../Features/Gameplay/Rules.md), [HP 설계](../Formats/Ymp.md#hp-게이지).
+검증: [TestPoorSingleNoteAccuracy·TestPoorLargeNoteAccuracy·TestBuzzTickColorFocus](../../Tests/Rhythm/Submodules/AccuracyTests.cpp).
 
 ## GAME-04 Buzz와 틱
 
@@ -227,11 +227,11 @@ YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/
   마지막 유지 키를 놓으면 그 틱은 실패합니다. 보조 키가 남아 있는 경우는 TIME-01을 따릅니다.
 - 정상 진행에서 확정 틱을 소급 변경하지 않습니다. 명시적 Rewind의 이력 복원은 별도 계약입니다.
 
-상세: [Rules](Gameplay/Rules.md), [Timing](Formats/Timing.md).
-검증: [AccuracyTests](../Tests/Rhythm/Submodules/AccuracyTests.cpp),
-[BuzzReplayTests](../Tests/Rhythm/Submodules/BuzzReplayTests.cpp),
-[InputOrderingTests](../Tests/Rhythm/Submodules/InputOrderingTests.cpp),
-[PlayPauseTests](../Tests/Rhythm/Submodules/PlayPauseTests.cpp).
+상세: [Rules](../Features/Gameplay/Rules.md), [Timing](../Formats/Timing.md).
+검증: [AccuracyTests](../../Tests/Rhythm/Submodules/AccuracyTests.cpp),
+[BuzzReplayTests](../../Tests/Rhythm/Submodules/BuzzReplayTests.cpp),
+[InputOrderingTests](../../Tests/Rhythm/Submodules/InputOrderingTests.cpp),
+[PlayPauseTests](../../Tests/Rhythm/Submodules/PlayPauseTests.cpp).
 
 ## PERF-01 밀집 틱의 표시와 소리
 
@@ -251,9 +251,9 @@ YOUMU의 적용 코드는 [Lane](../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFocus/
 - 두 규칙은 노트 뷰와 오디오 라우터 아래의 일반 기능입니다. 게임플레이 Scene·Controller와
   Taiko 모드는 틱 밀도나 Buzz를 위한 분기·상수를 갖지 않습니다.
 
-상세: [Presentation](Gameplay/Presentation.md#표시-객체의-생성과-재사용), [Audio](Gameplay/Audio.md).
-검증: [SampleRestartGateTests](../Tests/Rhythm/Submodules/SampleRestartGateTests.cpp),
-[ScreenMarkThinningTests](../Tests/Rhythm/Submodules/ScreenMarkThinningTests.cpp),
+상세: [Presentation](../Features/Gameplay/Presentation.md#표시-객체의-생성과-재사용), [Audio](../Features/Gameplay/Audio.md).
+검증: [SampleRestartGateTests](../../Tests/Rhythm/Submodules/SampleRestartGateTests.cpp),
+[ScreenMarkThinningTests](../../Tests/Rhythm/Submodules/ScreenMarkThinningTests.cpp),
 AllNotesGameplayTests, GameplayJudgementTests와 GameplayTimingProbe 전후 비교.
 
 ## PLAY-01 플레이 옵션
@@ -279,7 +279,7 @@ Difficulty / Layout / Assist 분류와 하위 설정 펼침을 사용하며, Dif
 오류 시에는 닫지 않고 마지막 적용값을 유지합니다. Reset은 전체 편집값을 기존 PlayOptions
 기본값으로 복원하고 닫을 때 적용합니다. 별도 취소·파일 저장·새 플레이 옵션은 추가하지 않습니다.
 
-상세: [PlayOptions](Gameplay/PlayOptions.md). 검증: PlayOptionsTests, MusicSelectViewTests의
+상세: [PlayOptions](../Features/Gameplay/PlayOptions.md). 검증: PlayOptionsTests, MusicSelectViewTests의
 PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화면 축소·모달 격리·실 네이티브 입력), GameplayPauseTests.
 
 ## PAUSE-01 일시정지와 복원
@@ -303,7 +303,7 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 - 일시정지 메뉴 또는 Rewind 사용 시 HP 처리를 비활성화하고 이전 값·이력은 보존합니다.
   Resume·Rewind·Retire는 이후 HP를 누적/재계산하지 않으며 Retry만 0%로 다시 활성화합니다.
 
-상세: [Pause](Gameplay/Pause.md), [Audio](Gameplay/Audio.md).
+상세: [Pause](../Features/Gameplay/Pause.md), [Audio](../Features/Gameplay/Audio.md).
 검증: PlayPauseTests, GameplayPauseTests, ResultPresentationTests.
 
 ## DEBUG-01 디버그 조작
@@ -319,9 +319,9 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 - 공통 GOOD 우선 포커스는 정지 중 시간 탐색에도 적용합니다. Space 재개는 음악 준비와 시계를
   재정렬합니다. Space/1~4/타이머 표시 기능은 Release에 활성화하지 않습니다.
 
-상세: [Debugging](Gameplay/Debugging.md).
-검증: [GameplayPauseTests](../Tests/Presentation/GameplayPauseTests.cpp),
-[GameplayJudgementTests](../Tests/Presentation/GameplayJudgementTests.cpp).
+상세: [Debugging](../Features/Gameplay/Debugging.md).
+검증: [GameplayPauseTests](../../Tests/Presentation/GameplayPauseTests.cpp),
+[GameplayJudgementTests](../../Tests/Presentation/GameplayJudgementTests.cpp).
 
 ## EDIT-01 에디터
 
@@ -347,7 +347,7 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 - 새 난이도는 파일 없는 초안으로 에디터 Metadata에서 시작하고 Create가 처음 파일을 씁니다.
   파일은 고른 곡 폴더의 `Chart/<첫 제작자> - <난이도명>`에 만듭니다([FMT-01](#fmt-01-파일-형식과-편집-원본)).
 
-상세: [ChartEditor](ChartEditor.md). 검증: ChartEditorTests, ChartReviewRegressionTests, EditorModeTests.
+상세: [ChartEditor](../Features/ChartEditor.md). 검증: ChartEditorTests, ChartReviewRegressionTests, EditorModeTests.
 
 ## EDIT-02 오디오 뷰
 
@@ -364,7 +364,7 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 - 음악 재생과 분석은 같은 유효 PCM의 sample 0을 사용합니다. MP3 패딩은 공통 디코더에서 한 번
   제거하고 의도된 무음은 보존합니다. 분석 메모리/FFT 창 한계를 감추려고 시간 보정을 덧붙이지 않습니다.
 
-상세: [ChartEditor](ChartEditor.md), [Audio](Gameplay/Audio.md).
+상세: [ChartEditor](../Features/ChartEditor.md), [Audio](../Features/Gameplay/Audio.md).
 검증: EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests.
 
 ## UI-01 화면과 키 설정
@@ -412,13 +412,13 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 - 선곡 필터는 별도 창에서 모드와 노트 수·기본 BPM·JudgeLevel·난이도·HP·채보 길이 범위, 태그 하나를 고릅니다.
   줄마다 스위치가 있어 값을 남긴 채 끌 수 있습니다(UI-02, 직접 조건식은 사용자 결정으로 두지 않음).
   같은 패턴에서 모든 조건을 만족해야 하며 일치하는 패턴만 표시합니다. 빈 경계는 무제한,
-  양 끝을 포함하고 적용 전 편집은 취소할 수 있습니다. 세부 동작과 회귀는 [선곡](SongSelect.md)에 있습니다.
+  양 끝을 포함하고 적용 전 편집은 취소할 수 있습니다. 세부 동작과 회귀는 [선곡](../Features/SongSelect.md)에 있습니다.
   난이도는 향후 클라이언트에서 계산하며 현재 catalog 내부 optional 필드만 미계산으로 둡니다.
   YMP 형식과 디스크 인덱스는 유지하고 미계산을 0으로 해석하지 않습니다.
 - 패턴별 즐겨찾기는 복수 폴더 소속을 지원하며 폴더 생성·이름 변경·삭제와 소속을 편집합니다.
   곡 목록 상단에 전체/폴더 탭을 두고 넘치면 가로 스크롤합니다. 검색·필터와 AND로 결합하고
   별도 `favorites.json`에 저장합니다. YMP는 유지합니다. 관리 패널은 전체 편집을 적용/취소하며
-  파일 손상·저장 실패 시 사용자 파일과 적용 상태를 보존합니다. 상세 계약은 [선곡](SongSelect.md)에 있습니다.
+  파일 손상·저장 실패 시 사용자 파일과 적용 상태를 보존합니다. 상세 계약은 [선곡](../Features/SongSelect.md)에 있습니다.
 - 플레이 모드/플레이 옵션은 선곡 하단, 전역 설정은 별도 패널입니다.
 - 기록은 사용자가 지정한 기존 왼쪽 기록 영역에서 표시하며 별도 넓은 열람 창으로 옮기지 않습니다.
   기록 필터만 별도 패널에서 편집합니다. 적용/닫기 뒤 검색·선택 곡/패턴·목록 스크롤을 유지합니다.
@@ -442,77 +442,35 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 - Lane 요소는 로컬 부모 Transform을 함께 회전합니다. UI/표시 변경은 판정 시각과 점수 규칙을 바꾸지 않습니다.
   시안의 모든 장식을 자동으로 기능 요구로 승격하지 않습니다.
 
-상세: [SongSelect](SongSelect.md), [TextManagement](TextManagement.md), [ChartEditor](ChartEditor.md),
-[Presentation](Gameplay/Presentation.md), [DesignReferences](DesignReferences.md).
+상세: [SongSelect](../Features/SongSelect.md), [TextManagement](../Features/TextManagement.md), [ChartEditor](../Features/ChartEditor.md),
+[Presentation](../Features/Gameplay/Presentation.md), [DesignReferences](References.md).
 검증: MusicSelectViewTests, OptionsPanelTests, EditorMenuTests, GameplayJudgementTests와 해당 시각 검증.
 
 ## UI-02 UI 리디자인
 
-근거: 사용자 확정(rhythmgameUI/redesign 시안 검토 결정과 이후 구현 지시). 구현: **일부 구현**.
+근거: 사용자 확정(rhythmgameUI/redesign 시안 검토 결정과 이후 구현 지시). 구현: 구현(리플레이와 [UI 리디자인](UI.md)에 "미구현"으로 적은 항목 제외).
 
 - 타이틀·곡 선택·에디터 곡 선택·플레이 옵션·옵션 패널·로딩·플레이 HUD·일시정지·결과·리플레이·
-  차트 에디터와 공용 부품·경고 대화상자의 화면 설계를 확정했습니다. 세부는 [UI 리디자인](UIRedesign.md)입니다.
-- 사용자가 설계 전체의 게임 적용을 지시했습니다. 화면·기능 묶음 순서대로 구현하고, 구현한 묶음은 해당
-  기능 문서의 현재 계약으로 옮기며 아래 목록을 갱신합니다. 구현하지 않은 묶음은 기존 계약대로 동작합니다.
-- 구현한 묶음:
-  - 표시 규칙: 정확도 표시는 소수 둘째 자리 버림(계산·저장·랭크 판정은 0.000001% 단위 그대로),
-    랭크 이름과 skin.ini 키·PNG는 X·SS·S·AA, 기록이 없는 패턴은 `NO RECORD`.
-  - 결과 화면: 배너·왼쪽 HP/요약/판정 열·판정 비율 원 안의 랭크와 점수·오른쪽 Timing 그래프·하단 띠,
-    16:9 미만 레터박스와 32:9 초과 좌우 띠(결과 화면에 한함), 시안 글꼴, 기록 저장 실패 대화상자(Close·Retry).
-    게이지는 클리어 기준(`HpGaugeState::clearPercent`)을 보고합니다.
-  - 플레이 HUD: HP 게이지 다섯 부품(틀·채움 두 종류·클리어 표시·자물쇠), 오른쪽 위 정확도·점수 판, 화면 가로 중앙의 타이밍
-    인디케이터(판정 색 반투명 타격 막대가 5초에 걸쳐 사라짐. 사용자 지시로 판정원 아래 배치와 흰 마커를 대체. 이후 사용자 지시로
-    막대 높이를 48로 두 배·그만큼 아래로, 양쪽 날개에 EARLY/LATE와 아래 탭에 평균 오차를 둔 반투명 판 `Hud.TimingPanel`을 추가),
-    오른쪽 아래 판정 수 판, 키 레이아웃 안 콤보, 화면 아래 진행 띠. 숫자는 시안 글꼴로 그립니다.
-  - 플레이 화면: 화면 왼쪽 끝부터의 기어 띠, 기어 바탕색 색조의 입력 패널, 2px·50% 마디선, 밝고 선명한 키 누름 색,
-    Kiai 판정원(옅은 금빛 원·호박색 빛·금빛 고리, 박 맥동, 250ms 페이드), 원판과 매듭·손잡이의 풍선·뎅뎅 그림(레인과 중앙 처리,
-    풍선 터짐), 남은 타격 배지 하나(롤은 판정원 오른쪽 위, 풍선·뎅뎅은 중앙 그림 아래), 일시정지 위에 뜨는 플레이·로딩 공용 화면 오류 줄.
-    `BalloonBurst`·`HitCounterCloud` 그림과 `Gameplay.errorPrefix` 문구는 없앴습니다. 이후 사용자 지시로 판정원을 둘러싸던
-    판정 링을 없애고 판정 글자만 판정원 바로 위에 둡니다(글자 그림·색·200ms 페이드는 그대로).
-  - 일시정지: `PAUSED` 제목, 사선 행과 값 선택기, Retry·Retire 설명과 구분선, 준비 중 진행 띠와 꺼진 행 모양.
-    로딩 준비 실패 때는 같은 꺼짐 모양을 진행 띠 없이 쓰고 Retry를 고릅니다.
-  - 로딩: 화면 가로 띠의 곡·채보 소개와 준비 막대. 시도가 시작되기 전에는 로딩 화면이 남고, 메뉴가 열리면 소개 띠를 숨기며,
-    준비 실패 때는 화면 오류 줄과 일시정지 메뉴를 함께 띄웁니다.
-  - 곡 선택·에디터 곡 선택: 곡 정보·곡 목록 아래의 한 면과 패널 없는 세 열, 재킷·대표 이름 한 줄(아티스트 앞 음표, 제작자 앞 깃펜)·난이도 블록·구분선 있는 수치 여섯 칸, 랭크·상태 칩이 있는
-    기록 줄, 밑줄 폴더 탭과 ★, 튀어나온 선택 카드(곡 카드·난이도 행·곡 목록 스크롤바는 사용자 결정으로 화면 오른쪽 끝까지, 시안과 다름)와 세로 난이도 행, 하단 띠(Back·모드·Play options·톱니·GO)와
-    GO 위 오류 말풍선, 16:9 미만 레터박스. `↑`는 이전 곡의 마지막 난이도로 가고 난이도 행은 다른 행이면 선택,
-    선택된 행이면 시작입니다. 에디터 곡 선택은 기록 열만 빠진 같은 화면입니다.
-    키보드 포커스 그림, 기록 파일 손상 안내,
-    검색 결과가 빌 때의 기록·정보 칸 유지, 패턴 없는 곡의 `+` 금빛 밑줄은 아직 없습니다. BEST 칸은 사용자 결정으로 두지 않습니다.
-    면 배치는 구현 뒤 사용자가 다시 정한 것입니다([UIRedesign](UIRedesign.md#곡-선택)). 곡 정보·곡 목록은 불투명도 0.65의 한 면 위에 있고
-    기록 열 자리는 BG가 보이며, 기록 줄·기록 안내·페이지 표시는 뒤집은 막대 모양의 판으로 화면 왼쪽 끝에서 같은 너비로 놓입니다.
-    처음 구현한 양옆 막은 없앴습니다. 곡 선택의 스킨 부품과 타이틀 메뉴 막대는 그림의 불투명도 그대로 그립니다(대체 색의 알파를 한 번 더 곱하지 않음).
-  - 타이틀: 화면 전체 하늘과 떠도는 깃털, 사선 막대 메뉴(고른 항목이 오른쪽으로 밀리고 금빛 깃털 커서가 들어옴),
-    16:9 미만 레터박스. 예전 YOUMU 로고 띠는 없앴습니다. 메뉴 위 음악 플레이어(앨범 아트·아티스트/곡명·진행 막대 클릭/끌기·
-    재생/일시정지·정지·다음 곡, ←/→ 이전·다음 곡, Space 재생/일시정지, Enter만 메뉴 실행). 곡 목록·선택 상태·미리듣기는
-    타이틀과 게임 곡 선택이 함께 쓰며(`SongLibrary`), 두 화면을 오갈 때 곡과 소리가 이어집니다. 에디터 곡 선택은 따로입니다.
-  - 옵션 패널·키 설정: 폭 432 서랍(분류 막대 64와 0.3초 머물면 펼쳐지는 이름, 이어진 네 섹션과 섹션 추적, `↑`/`↓` 분류 이동,
-    본문 밖 안내 칸), 가운데 폭 432 키 설정 창(입력 패널 키 그림 열 머리, 큰 메인 칸과 보조 세 칸, 빈 칸 `+`,
-    마우스를 올릴 때만 보이는 ×, 입력 대기·오류일 때만 안내). 음량은 전체·음악·효과음 세 개(사용자 결정)이며 0–100%를
-    Option.ini `[Audio]`에 저장합니다. 음악은 플레이 음원·미리듣기·타이틀 플레이어·에디터의 곡, 효과음은 그 밖의 bus와 에디터
-    히트사운드·메트로놈에 곱하고 YME `#Volume`은 그 위에 곱합니다.
-  - 공용 부품 중 툴팁: 남색 면·흰 글자·단축키 칩, 0.5초 대기와 바로 옮기기, 누르기·휠·키에 숨김. 곡 선택 하단 띠와 이름 줄,
-    곡 목록 카드의 곡명·아티스트(이름이 여러 개이거나 잘릴 때), 타이틀 플레이어 버튼, 옵션 분류 막대, 결과 화면의 Back·점수·옵션 칩·
-    채보 제작자에 붙였습니다. 검색칸은 Windows 편집기라 두지 않고, 키보드 포커스 표시는 아직 없습니다.
-  - 공용 부품 중 스크롤바·F7 띠·재생 중 표시: 곡 목록·옵션 서랍·폴더 탭(가로)·드롭다운 목록이 같은 스크롤바(잡는 폭 12·막대 6·
-    가로 8, 끌기와 레일 누르기)를 씁니다. F7은 오른쪽 아래 남색 사선 띠 `FPS | UPS`이며 `Draws`는 Debug 빌드에서만 덧붙입니다
-    (사용자 결정). 선택 곡이 재생 중이면 카드 곡명 앞에 금빛 막대 표시가 있습니다.
-  - 플레이 옵션과 필터: Play options·곡 필터·기록 필터를 키 설정 창과 같은 평평한 모달(공용 `UiModal`)로 바꿨습니다.
-    Play options는 `Done` 하나와 Difficulty 열의 HP gauge 선택(`Clear 60%`, 지금은 Default 하나)이고 선곡 Play options 글자 옆에
-    기본과 다른 옵션 수 배지를 둡니다. 시안의 직접 조건식·조건식 편집 창은 사용자 결정으로 두지 않고, 곡 필터는 HP·Length(채보 길이, 초)·
-    Tag 줄을, 기록 필터는 Completed·Cleared·Pause menu used 줄을 더했습니다. 값 줄은 스위치로 켜고 끄며 빈 줄에 값을 넣으면
-    저절로 켜지고 끈 줄은 값을 고쳐도 꺼진 채입니다. 세 창은 16:9 미만 화면에서 곡 선택 화면처럼 줄어듭니다.
-  - 공용 부품 중 드롭다운: 게임 화면의 엔진 ComboBox를 모두 공용 드롭다운으로 바꿨습니다(Canvas 맨 위 층의 펼친 목록, 체크·가리킨 줄,
-    위로 열기, 바깥 누르기·Esc·Tab 닫기, 열린 동안 키 가로채기). 키보드로 열기와 목록 안 이동은 키보드 포커스와 함께 구현합니다.
-    곡 선택의 영어 항목명은 첫 글자만 대문자로 바꿨습니다.
-  - 공용 부품 중 경고 대화상자: 심각도 띠·아이콘, 영어 제목과 선택 언어 설명, 고정폭 진단 상자(휠 스크롤, Ctrl+C 복사),
-    오른쪽 끝 주 버튼(Enter)·왼쪽 끝 되돌릴 수 없는 동작·Esc 취소. 결과 기록 저장 실패, osu! 가져오기 실패,
-    에디터의 미저장 확인(Discard·Cancel·Save)·저장/Create 실패·붙여넣기 실패에 씁니다.
-  - 차트 에디터: 1280×720 배치(메뉴 줄·밑줄 탭 Compose·Audio·Metadata·아래 띠의 Back/재생/시각/재생 속도/타임라인/Save),
-    Compose의 Realtime(채널 Music·Timing·Scroll speed·Volume·Audio FX·Hit sounds·Zones, 음수 delay 빗금, 구간 선택)·Score(4마디 줄)·
-    Preview, 채널별 오른쪽 편집 패널(Delete·Add·Apply, Delay·Kiai·Syncopation Exclude·Audio FX), 곡선 편집 창, Metadata 여러 제작자,
-    화면 위 입력칸. 새 난이도는 입력 창 없이 Metadata의 만들기 전 상태로 열고, osu! 가져오기 완료 안내와 Test 플레이 화면은 없앴습니다.
-- 구현되면 대체하는 현재 계약(미구현 묶음):
+  차트 에디터와 공용 부품·경고 대화상자의 화면 설계를 확정했습니다. 세부는 [UI 리디자인](UI.md)입니다.
+- 사용자가 설계 전체의 게임 적용을 지시했고 화면 묶음은 모두 구현했습니다. 현재 계약은 각 기능 문서이며,
+  남은 항목을 구현하면 계약을 기능 문서로 옮기고 [진행 상황](../Status.md)을 고칩니다.
+- 표시 규칙: 정확도 표시는 소수 둘째 자리 버림(계산·저장·랭크 판정은 0.000001% 단위 그대로),
+  랭크 이름과 skin.ini 키·PNG는 X·SS·S·AA, 기록이 없는 패턴은 `NO RECORD`.
+- 구현하면서 사용자가 시안과 다르게 정한 것(되돌리지 않음):
+  - 타이밍 인디케이터: 판정원 아래 배치와 흰 마커를 판정 색 반투명 타격 막대(5초에 걸쳐 사라짐)로 대체.
+    막대 높이 48(두 배)과 그만큼 아래 배치, 양쪽 날개의 EARLY/LATE와 아래 탭의 평균 오차를 담은 반투명 판 `Hud.TimingPanel`.
+  - 판정원을 둘러싸던 판정 링을 없애고 판정 글자만 판정원 바로 위에 둡니다(글자 그림·색·200ms 페이드는 그대로).
+  - 곡 선택: 곡 카드·난이도 행·곡 목록 스크롤바는 화면 오른쪽 끝까지(시안과 다름). BEST 칸은 두지 않습니다.
+    면 배치는 구현 뒤 다시 정했습니다: 곡 정보·곡 목록은 불투명도 0.65의 한 면, 기록 열 자리는 BG가 보이고 기록 줄·기록 안내·
+    페이지 표시는 화면 왼쪽 끝에서 같은 너비의 판. 곡 선택의 스킨 부품과 타이틀 메뉴 막대는 그림의 불투명도 그대로 그립니다.
+  - 음량은 전체·음악·효과음 세 개이며 0–100%를 Option.ini `[Audio]`에 저장합니다. 음악은 플레이 음원·미리듣기·타이틀 플레이어·
+    에디터의 곡, 효과음은 그 밖의 bus와 에디터 히트사운드·메트로놈에 곱하고 YME `#Volume`은 그 위에 곱합니다.
+  - F7 띠는 `FPS | UPS`이며 `Draws`는 Debug 빌드에서만 덧붙입니다.
+  - 플레이 옵션·필터: 시안의 직접 조건식·조건식 편집 창은 두지 않습니다. 곡 필터에 HP·Length(채보 길이, 초)·Tag 줄을,
+    기록 필터에 Completed·Cleared·Pause menu used 줄을 더했습니다. 값 줄은 스위치로 켜고 끄며, 빈 줄에 값을 넣으면 저절로 켜지고
+    끈 줄은 값을 고쳐도 꺼진 채입니다.
+  - 차트 에디터: 새 난이도는 입력 창 없이 Metadata의 만들기 전 상태로 엽니다. osu! 가져오기 완료 안내와 Test 플레이 화면은 없앴습니다.
+- UI-02가 대체한 이전 계약:
   - UI-01: 옵션 네 탭 전환은 분류 막대와 이어진 섹션으로, 타이틀의 YOUMU 로고 띠는 하늘·메뉴로 대체했습니다(캐러셀 폐기는 유지).
     선곡 패널 바탕 90%·복수 이름 여러 줄 표시·상단 `ALL` 바는 곡 선택 묶음으로 대체했습니다.
   - 표시 규칙: 좁은 화면 축소 → 16:9 미만 레터박스·32:9 초과 좌우 띠(결과·곡 선택·타이틀 화면은 구현됨).
@@ -528,7 +486,7 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 - 판정·정확도 계산·점수·HP 규칙은 바꾸지 않습니다. HP 게이지 선택 자리(Default 하나)는 구현했지만 추가 게이지는 HP-02대로 미정입니다.
 - 미정점: 난이도 계산식·척도, 추가 HP 게이지, 영어·일본어 문구 길이, 새 부품의 skin.ini 키 이름.
 
-상세: [UIRedesign](UIRedesign.md). 검증: 구현 묶음마다 해당 기능의 기존 회귀와 시각 검증을 정합니다. 표시 규칙은 ResultPresentationTests(정확도 버림·랭크 21개 경계),
+상세: [UIRedesign](UI.md). 검증: 구현 묶음마다 해당 기능의 기존 회귀와 시각 검증을 정합니다. 표시 규칙은 ResultPresentationTests(정확도 버림·랭크 21개 경계),
 GameplayJudgementTests, MusicSelectViewTests, LanguageFileTests. 결과 화면은 ResultPresentationTests(배치·판정 비율 원 계산·
 그래프 영역·버튼)와 화면 캡처 확인. 곡 선택은 MusicSelectViewTests(열·면·기록 줄 판·레터박스·대표 이름·난이도 클릭·수치·재킷·기록 줄·하단 띠),
 SceneStateTests(↑ 이동), SkinTests(스킨 그림 교체와 복귀)와 화면 캡처 확인. 타이틀은 SkinTests(하늘·메뉴 그림 교체와 복귀), TitlePlayerTests(플레이어 키·버튼·진행 막대 끌기·빈 목록·Space/Enter 분리), SceneStateTests(재생 상태·재생 목록 순환·재탐색 뒤 같은 곡 유지), EditorAudioViewTests(실제 미리듣기의 일시정지·이동·정지·곡 끝)와 화면 캡처 확인.
@@ -553,7 +511,7 @@ SceneStateTests(↑ 이동), SkinTests(스킨 그림 교체와 복귀)와 화면
 - 입력/제어 로그와 현재 가지의 최종 통계를 구분합니다. 취소된 입력도 로그에 남지만
   제어 마커를 무시한 전체 재판정으로 결과 통계를 재구성하지 않습니다.
 
-상세: [Results](Gameplay/Results.md), [PlayOptions](Gameplay/PlayOptions.md#로컬-기록).
+상세: [Results](../Features/Gameplay/Results.md), [PlayOptions](../Features/Gameplay/PlayOptions.md#로컬-기록).
 검증: PlayResultTests, PlayPauseTests, MusicSelectViewTests, ResultPresentationTests.
 
 ## HP-01 기본 HP 설계
@@ -576,7 +534,7 @@ SceneStateTests(↑ 이동), SkinTests(스킨 그림 교체와 복귀)와 화면
   Buzz 헤드는 헤드 가중치만 감소, 몸통 POOR 틱은 해당 틱의 회복만 없습니다.
 - 나쁜 판정 5%는 밸런스 참고값입니다. 별도 실패/합격 조건으로 추가하지 않습니다.
 
-상세: [YMP HP 설계](Formats/Ymp.md#hp-게이지).
+상세: [YMP HP 설계](../Formats/Ymp.md#hp-게이지).
 검증: HpGaugeTests의 타이밍/구성요소/POOR/상한/되감기/종료 판정·빈 채보와 GameplayJudgementTests의 두 사각형 표시 회귀.
 
 ## HP-02 HP 구조와 미정점
@@ -595,7 +553,7 @@ SceneStateTests(↑ 이동), SkinTests(스킨 그림 교체와 복귀)와 화면
   HP 그래프는 실제 이력을 표시하고 사용한 조작만 내부에 요약으로 겹쳐 표시합니다.
   곡선은 비활성화 이후에도 유지합니다. 추가 게이지의 규칙과 등급 순서는 여전히 미정입니다.
 
-상세: [YMP](Formats/Ymp.md#hp-게이지). 검증: HpGaugeTests, GameplayJudgementTests, GameplayPauseTests.
+상세: [YMP](../Formats/Ymp.md#hp-게이지). 검증: HpGaugeTests, GameplayJudgementTests, GameplayPauseTests.
 
 ## PLAN-01 제안과 미구현 범위
 

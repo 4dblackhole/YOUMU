@@ -12,7 +12,7 @@ Canvas를 구성한 후에도 실제 Gameplay 시작 전에는 플레이 화면�
 Clip/음악 탐색 준비가 끝나면 Controller가 같은 미래 QPC/DSP 시점에 타이머와 음악을 시작합니다.
 Pause는 살아 있는 음악 Voice를 유지하고 복귀 시 위치를 재정렬합니다. transient 샘플은 정지하며
 Ending은 모든 세션 음성을 정리하고 모드별 결과 소유권을 한 번 넘깁니다.
-세부 전환과 Retry 자원 재사용은 [플레이 상태](Gameplay/Pause.md#모든-모드의-실행-상태)를 참고합니다.
+세부 전환과 Retry 자원 재사용은 [플레이 상태](../Features/Gameplay/Pause.md#모든-모드의-실행-상태)를 참고합니다.
 대기 중 Scene이 보관하는 EngineServices 사본은 Run 소유 서비스의 비소유 참조이며,
 OnResize에서 창 크기를 갱신하고 Shutdown에서 해제합니다. worker는 경로/데이터만 소유합니다.
 
@@ -37,7 +37,7 @@ flowchart TD
 ```
 
 근거: `Client/App/Main.cpp`, `Client/App/YOUMUGame.cpp`(`RegisterScenes`·`CreateResultScene`), 각 Scene의 `ChangeScene` 호출.
-Scene 클래스와 수명 정책은 [전체 구조](Architecture/Overview.md#화면scene), 플레이 안쪽은 [플레이 구조](Architecture/Gameplay.md)에 있습니다.
+Scene 클래스와 수명 정책은 [전체 구조](Overview.md#화면scene), 플레이 안쪽은 [플레이 구조](Gameplay.md)에 있습니다.
 
 ## 시작
 
@@ -47,7 +47,7 @@ Scene 클래스와 수명 정책은 [전체 구조](Architecture/Overview.md#화
 2. 일반 실행과 YOUMU smoke는 `YOUMUGame`을 생성합니다. EXE 옆
    `Option.ini`에서 언어·스킨·오디오 미들웨어/출력 방식/드라이버·창 크기·모드별 키·글로벌 오프셋을 읽습니다.
    파일이 없으면 기본 설정을 저장합니다. 저장된 스킨
-   폴더가 없으면 `Default Skin`을 사용합니다. 상세 형식은 [TextManagement](TextManagement.md)입니다.
+   폴더가 없으면 `Default Skin`을 사용합니다. 상세 형식은 [TextManagement](../Features/TextManagement.md)입니다.
 3. `Run`이 `GetEngineConfig`를 읽어 창, 렌더러, Raw Input과 오디오를
    초기화합니다. 창 제목은 공통 `Texts/GameIdentity.h`의 `GameName`을 사용합니다.
 4. `RegisterScenes`가 Logo, Lobby, EditorSongSelect, Editor, RhythmTest, Result route를 등록합니다.
@@ -63,7 +63,7 @@ Scene 클래스와 수명 정책은 [전체 구조](Architecture/Overview.md#화
 선택한 루트의 `Songs`를 읽습니다. 개발 실행은 `Client/Assets`, 배포는 EXE 옆 `Asset`을
 사용합니다. 기본 AngelDream 및 효과 테스트 파일은 외부 파일로 배포하며, 개발 폴더의
 `Songs` 안에서 Git이 직접 추적합니다.
-세부 계약은 [내장 자산](BuiltInAssets.md)에 있습니다.
+세부 계약은 [내장 자산](../Features/Assets.md)에 있습니다.
 
 `SceneGameClient`는 SceneManager, 공통 AudioPlaybackManager와 화면
 ScreenVisual2DManager를 함께 소유합니다. `YOUMUGame`은 여기에 Client 소유
@@ -82,7 +82,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 
 - Logo에서 Game Start를 누르면 Lobby로 이동합니다. 타이틀 플레이어의 곡이 선택된 채로 들어가며 소리가 끊기지 않고,
   Lobby의 Back으로 돌아올 때도 같습니다. 그 밖의 출구(Editor·Exit, 로딩·플레이·결과·에디터)는 `EndScene`에서
-  소리를 멈추되 곡 선택은 남깁니다([곡 선택](SongSelect.md#미리듣기와-타이틀-플레이어)).
+  소리를 멈추되 곡 선택은 남깁니다([곡 선택](../Features/SongSelect.md#미리듣기와-타이틀-플레이어)).
 - Logo의 옵션 버튼 또는 Logo/Lobby의 `Ctrl+O`는 공통 왼쪽 옵션 패널을 열며,
   언어 변경은 `TextCatalog` revision을 통해 활성 화면과 이후 Scene에 반영됩니다.
   스킨 변경은 폴더 이름을 저장하고 이후 자산 로드에 적용합니다.
@@ -108,7 +108,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
   모드와 문서는 Workspace와 함께 파기되고 worker는 복사한 파일 경로만 참조합니다.
   Scene 종료 시 worker 완료를 기다리지 않고 취소를 요청합니다. worker 자체는 프로세스 수명입니다.
   Ctrl+S는 같은 폴더에 저장하며 Escape는 미저장 변경을 확인한 뒤 돌아갑니다.
-- Lobby는 [곡 선택](SongSelect.md) 화면(UI-02 설계)을 Visual2D 트리로 구성합니다.
+- Lobby는 [곡 선택](../Features/SongSelect.md) 화면(UI-02 설계)을 Visual2D 트리로 구성합니다.
   `SongCatalog`가 외부 Songs의 곡 폴더마다 YMM과 그 폴더의 YMP(AngelDream은 5개)를
   묶어 표시합니다.
   포커스된 곡 카드만 난이도 목록을 펼치며 좌우키는 곡, 상하키는 난이도를
@@ -128,7 +128,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
 - Logo와 Lobby는 `KeepAlive`, gameplay route는 `DestroyOnExit`입니다.
   gameplay 등록 시에는 factory만 보관하고 곡 선택 후 `ChangeScene`이 호출될
   때 해당 모드의 객체를 동적으로 생성합니다.
-- gameplay에서 Escape는 타겟이 남아 있으면 [일시정지 메뉴](Gameplay/Pause.md)를 열고,
+- gameplay에서 Escape는 타겟이 남아 있으면 [일시정지 메뉴](../Features/Gameplay/Pause.md)를 열고,
   모든 레인이 끝났으면 즉시 Result 전환을 요청합니다. Retire 또는 모든 노트 처리 후 3초에도
   Result로 이동합니다. update가 끝난 다음 `EndScene → Shutdown → delete` 순서로
   gameplay 객체가 파기되므로 다음 곡이나 모드의 상태가 남지 않습니다.
@@ -138,7 +138,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
   결과는 카탈로그/채보를 다시 읽거나 gameplay 객체를 유지하지 않고 같은 배경 이미지를 표시합니다.
   BACK·Escape·Enter는 Lobby로 돌아갑니다. Retry는 플레이 선택 snapshot을 복원하고
   RhythmTest factory에서 새 세션을 생성하며 Replay는 비활성입니다. 수집/정밀도/입력 로그는
-  [플레이 결과](Gameplay/Results.md)가 기준입니다.
+  [플레이 결과](../Features/Gameplay/Results.md)가 기준입니다.
 
 ## 프레임과 종료
 
@@ -160,12 +160,12 @@ D3D12 command 기록과 present는 엔진이 담당합니다. 종료 시 활성 
 띠는 `YOUMUGame`이 초기화 때 만드는 자기 Canvas(모든 Scene Canvas 위 z 순서)에 있고, 측정이 새로 오면
 값을 바꿉니다. 이 표시는 Scene이나 엔진 루프의 소유물이 아니므로 Scene 전환과 관계없이 유지됩니다.
 
-플레이 옵션은 launch/session/result에 값으로 고정합니다. Accelerate는 공통 시계의 QPC/DSP 비율과 BGM/샘플 음정 정책을 함께 적용합니다. 결과의 비동기 기록 저장과 선택 화면의 비동기 조회는 [PlayOptions](Gameplay/PlayOptions.md)을 참고합니다.
+플레이 옵션은 launch/session/result에 값으로 고정합니다. Accelerate는 공통 시계의 QPC/DSP 비율과 BGM/샘플 음정 정책을 함께 적용합니다. 결과의 비동기 기록 저장과 선택 화면의 비동기 조회는 [PlayOptions](../Features/Gameplay/PlayOptions.md)을 참고합니다.
 
 ## 플레이 한 프레임
 
 엔진은 `Update`를 가능한 한 자주, `Render`는 주사율에 맞춰서만 부릅니다. 판정은 `Update` 안에서 입력 이벤트의
-QPC 시각과 세션의 `RhythmTimer` 하나로만 하며, 그리기 시각은 판정에 쓰지 않습니다([TIME-01](DesignDecisions.md#time-01-시간과-입력)).
+QPC 시각과 세션의 `RhythmTimer` 하나로만 하며, 그리기 시각은 판정에 쓰지 않습니다([TIME-01](../Design/Decisions.md#time-01-시간과-입력)).
 
 ```mermaid
 sequenceDiagram
@@ -198,6 +198,6 @@ sequenceDiagram
 `Client/GameFlow/Submodules/GameplayInput.cpp`(`ProcessRhythmInput`), `GameplaySessionController.cpp`(`UpdateSession`·`ConsumeResult`).
 
 - 한 입력 묶음의 첫 이벤트 전 키 상태는 Raw Input의 마지막 상태에서 거꾸로 계산합니다. 입력 사이에 완전히 지나간 노트는
-  그 입력보다 먼저 처리합니다([Rules](Gameplay/Rules.md)).
+  그 입력보다 먼저 처리합니다([Rules](../Features/Gameplay/Rules.md)).
 - 히트사운드는 판정 직후 바로 울립니다. 음악·메트로놈처럼 미래 시각에 울릴 소리만 DSP 시각으로 예약합니다.
 - ESC가 눌린 묶음에서는 ESC 시각에서 판정을 멈추고, 그 뒤의 입력은 노트에 넣지 않습니다.

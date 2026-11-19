@@ -6,10 +6,10 @@
 
 - 지금 상태는 `Docs/Status.md`, 일하는 절차(역할·브랜치·PR·병합 요청·검증 잠금)는
   `Docs/Contributing/Workflow.md`에서 먼저 확인합니다.
-- 기능을 바꾸기 전에 `Docs/Design.md`와 `Docs/DesignDecisions.md`의 관련 ID를 읽고,
-  이어서 `Docs/README.md`에서 해당 기능 문서를 찾습니다. 소스·테스트 소유는 `Docs/ChangeImpactMap.md`입니다.
+- 기능을 바꾸기 전에 `Docs/Design/Principles.md`와 `Docs/Design/Decisions.md`의 관련 ID를 읽고,
+  이어서 `Docs/README.md`에서 해당 기능 문서를 찾습니다. 소스·테스트 소유는 `Docs/Contributing/ChangeImpactMap.md`입니다.
   선언과 직접 호출부부터 읽고 검색을 넓힙니다. 모든 문서나 SDK를 읽지 않습니다.
-- 시작·화면 전환·수명을 바꿀 때는 `Docs/ExecutionFlow.md`, Canvas·입력·렌더링 작업은 Visual2D 문서,
+- 시작·화면 전환·수명을 바꿀 때는 `Docs/Architecture/ExecutionFlow.md`, Canvas·입력·렌더링 작업은 Visual2D 문서,
   엔진 API·소유권 작업일 때만 엔진의 `Docs/EngineOverview.md`를 읽습니다.
 - 요청한 동작만 구현합니다. 기존 소유와 인터페이스를 재사용하고 리팩터링은 국소적으로 합니다.
   기능·데이터·화면·추상화를 짐작해 만들지 않습니다.
@@ -55,7 +55,7 @@
 ## 검증과 문서
 
 - 바꾼 코드와 직접 호출부의 정확성·수명·오류 처리·경계·변환·동시성·중복·읽기 쉬운 책임을 검토합니다.
-- `Docs/Verification.md`를 따릅니다. 코드 변경은 Debug/Release x64 솔루션 빌드, 로직·카탈로그 테스트, 구성마다 smoke 4종,
+- `Docs/Contributing/Verification.md`를 따릅니다. 코드 변경은 Debug/Release x64 솔루션 빌드, 로직·카탈로그 테스트, 구성마다 smoke 4종,
   관련 회귀, 영향 받는 Client 소유 C++ 프로젝트의 MSVC Code Analysis 또는 clang-tidy(실제 include·define·C++ 설정)가
   필요합니다. 파싱 오류는 실패입니다. `Scripts/Verify`의 스크립트가 이 절차와 공유 잠금을 처리합니다.
 - 코드·프로젝트 변경은 `Scripts/CheckArchitecture.ps1`, 모든 변경은 `git diff --check`를 실행합니다.

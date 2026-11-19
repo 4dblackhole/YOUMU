@@ -9,14 +9,14 @@ View와 조립하고 View의 전환 의도를 처리합니다([미리듣기와 �
 노트 종류 비율 그래프와 NPS(초당 노트 수) 그래프는 사용자 지시로 폐기했습니다.
 두 그래프 및 이를 위한 분석 버튼/패널은 선곡 화면의 구현 범위에서 제외합니다.
 
-화면은 [UI-02](DesignDecisions.md#ui-02-ui-리디자인) 설계([UI 리디자인](UIRedesign.md#곡-선택))를 따른다.
+화면은 [UI-02](../Design/Decisions.md#ui-02-ui-리디자인) 설계([UI 리디자인](../Design/UI.md#곡-선택))를 따른다.
 1280×720 논리 화면(좌상단 원점)의 좌표를 그대로 쓰는 `FixedHeight` Canvas이며 논리 높이는 720으로 유지한다.
 글자는 Nunito(한글·일본어가 있으면 Noto Sans KR), 숫자는 Barlow Semi Condensed다.
 
 배경·면·버튼·곡 카드·기록 줄 판 등의 그림은 선택 스킨의 `[MusicSelect]`에서 지정한다.
 내장 `Default Skin`이 모든 부품의 PNG를 갖고 있고, 스킨이 그림을 주지 않은 부품은 내장 그림을 쓴다.
 문구·곡 정보·선택/입력·배치는 스킨과 무관하다.
-폴더와 상태별 이미지 계약은 [skin.ini](BuiltInAssets.md#skinini와-씬별-이미지)에 있다.
+폴더와 상태별 이미지 계약은 [skin.ini](Assets.md#skinini와-씬별-이미지)에 있다.
 
 ## 배치
 
@@ -56,7 +56,7 @@ View와 조립하고 View의 전환 의도를 처리합니다([미리듣기와 �
   HP 미지정 채보는 기존 파서/모델의 기본값 `9.00`이다.
   난이도 값은 `SongCatalogPattern::calculatedDifficulty`를 소수 둘째 자리로 표시하고 미계산은 `—`다.
 - 곡명·아티스트·난이도명·채보 제작자는 이름 하나만 한 줄로 표시한다. 어느 표기를 쓸지는 옵션의 `Song text`가 정한다
-  (`First notation`: 첫 번째로 등록된 비어 있지 않은 이름, `Romanized`: 로마자 줄. 규칙은 [YMM](Formats/Ymm.md#로마자-줄과-표시)).
+  (`First notation`: 첫 번째로 등록된 비어 있지 않은 이름, `Romanized`: 로마자 줄. 규칙은 [YMM](../Formats/Ymm.md#로마자-줄과-표시)).
   곡명이 없으면 YMM 파일명을 쓰고 아티스트·제작자가 없으면 그 줄을 비운다. 긴 이름은 칸에서 잘린다.
   각 줄에 포인터를 올리면 로마자 줄과 등록된 모든 이름을 ` · `로 이은 툴팁이 나온다([툴팁](TextManagement.md#툴팁)).
   검색은 로마자 줄과 모든 이름을 대상으로 한다. 곡명·아티스트 정렬과 플레이·결과·타이틀 재생기에 넘기는 이름도
@@ -167,7 +167,7 @@ RunMusicSelectViewTests는 숨김 D3D12 창의 실제 편집기에 Unicode를 �
 SceneStateTests와 RunMusicSelectViewTests가 숫자 순서·동률·첫 패턴 기준·검색 결합,
 드롭다운의 실제 선택과 언어 전환을 검사한다.
 
-정렬 옆 `필터` 버튼은 곡 필터 창(평평한 모달, 폭 560, [UI-02](DesignDecisions.md#ui-02-ui-리디자인))을 연다.
+정렬 옆 `필터` 버튼은 곡 필터 창(평평한 모달, 폭 560, [UI-02](../Design/Decisions.md#ui-02-ui-리디자인))을 연다.
 맨 위 Game mode는 실제 catalog에 등록된 값 중 하나 또는 전체를 고르는 드롭다운이다. 그 아래 줄마다 스위치·이름·Minimum·Maximum이 있다.
 
 | 줄 | 값 | 빈 값·모름 |
@@ -294,4 +294,4 @@ MusicSelectView는 행 배치 metadata와 실제 카드를 구분하여 viewport
 - 화면 간 연결: 타이틀 → 게임 곡 선택(Game Start)과 게임 곡 선택 → 타이틀(Back)은 곡과 소리를 그대로 이어 간다.
   로딩·플레이·결과·에디터 곡 선택·에디터·`.osu` 가져오기·새 난이도로 갈 때는 소리를 멈추되 곡 선택은 남긴다.
   결과에서 곡 선택으로 돌아오면 그 곡을 처음부터 다시 재생한다.
-- 곡 목록의 "재생 중" 표시는 아직 없다(공용 부품 묶음 몫).
+- 곡 목록의 "재생 중" 표시는 선택 카드의 금빛 막대다(위의 카드 절).

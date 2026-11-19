@@ -1,16 +1,16 @@
 # 작업 방식
 
 새로 참여하는 사람과 AI 세션이 같은 순서로 일하도록 정한 절차입니다. 지금 무엇이 되어 있는지는
-[진행 상황](../Status.md), 검사 명령은 [빌드와 검증](../Verification.md)에 있습니다.
+[진행 상황](../Status.md), 검사 명령은 [빌드와 검증](Verification.md)에 있습니다.
 
 ## 처음 읽는 순서
 
 1. 저장소 루트 [AGENTS.md](../../AGENTS.md): 지켜야 할 규칙.
 2. [진행 상황](../Status.md): 구현된 것, 미구현·보류, 열린 작업.
 3. [전체 구조](../Architecture/Overview.md)와 [용어집](../Glossary.md): 저장소·프로젝트·Scene 그림과 용어.
-4. [설계 기준](../Design.md)과 바꿀 기능의 [설계 결정](../DesignDecisions.md) ID.
-5. [기능 문서](../README.md) 중 해당 문서, [실행 흐름](../ExecutionFlow.md)·[플레이 구조](../Architecture/Gameplay.md)(시작·화면 전환·수명·플레이를 바꿀 때).
-6. [변경 영향 지도](../ChangeImpactMap.md): 소유 코드와 돌려야 할 회귀 검사.
+4. [설계 기준](../Design/Principles.md)과 바꿀 기능의 [설계 결정](../Design/Decisions.md) ID.
+5. [기능 문서](../README.md) 중 해당 문서, [실행 흐름](../Architecture/ExecutionFlow.md)·[플레이 구조](../Architecture/Gameplay.md)(시작·화면 전환·수명·플레이를 바꿀 때).
+6. [변경 영향 지도](ChangeImpactMap.md): 소유 코드와 돌려야 할 회귀 검사.
 
 모든 문서나 엔진 SDK를 처음부터 읽지 않습니다. 선언과 직접 호출부부터 읽고 필요할 때만 넓힙니다.
 

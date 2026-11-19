@@ -3,28 +3,28 @@
 화면 디자인 작업에만 읽습니다. 디자인의 미구현 항목은 기능 추가 지시가 아닙니다.
 
 - 확정 UI 리디자인 시안: YOUMU 저장소 밖 `rhythmgameUI/redesign`(`index.html`, 부품 상태표 `kit.html`).
-  아래 Penpot 시안 다음의 화면 설계이며 일부 구현입니다(구현한 묶음은 UI-02 참조). [UI-02](DesignDecisions.md#ui-02-ui-리디자인), [UI 리디자인](UIRedesign.md).
+  아래 Penpot 시안 다음의 화면 설계이며 일부 구현입니다(구현한 묶음은 UI-02 참조). [UI-02](Decisions.md#ui-02-ui-리디자인), [UI 리디자인](UI.md).
 - Penpot 파일: `3be9e5e1-190f-8090-8008-7468d9cc1bc8`.
 - `Music Select · Sky`: 페이지 `3be9e5e1-190f-8090-8008-7468d9cc1bc9`.
 - 곡 상세 JudgeLevel/BPM 범위/길이: 보드 `e6833909-d4a4-8067-8008-dc78ac88d495`.
 - Taiko 키 설정: 보드 `e6833909-d4a4-8067-8008-dc77adeae44a`.
 - `Gameplay · Sky`: 페이지 `618d0170-ff55-8025-8008-80646ceaa9d9`.
   콤보·점수·판정 누적과 리절트 점수·최대 콤보에 사용합니다. 표시·집계는
-  [플레이 HUD](Gameplay/Presentation.md#콤보점수판정-누적-hud)를 따릅니다.
+  [플레이 HUD](../Features/Gameplay/Presentation.md#콤보점수판정-누적-hud)를 따릅니다.
 - 기본 HP 게이지 시안: 플레이 화면 배치 보드 `e6833909-d4a4-8067-8008-dcc40a6d3d00`,
   회색 트랙 `0f40110e-65a3-80e0-8008-e3131e64b3e5`와 청록 채움
   `0f40110e-65a3-80e0-8008-e3131e7b09c2` 두 사각형입니다.
-  게임 내 기본 HP 게이지도 같은 두 사각형으로 표시합니다. 규칙은 [YMP](Formats/Ymp.md#hp-게이지)를 참고합니다.
+  게임 내 기본 HP 게이지도 같은 두 사각형으로 표시합니다. 규칙은 [YMP](../Formats/Ymp.md#hp-게이지)를 참고합니다.
 - 같은 페이지의 일시정지 시안: 보드 `b0134a97-87eb-801a-8008-cca341851088`
   (`인게임 일시정지 · Pause Controls · 1920×1080`). 720×336px 중앙 메뉴,
-  네 액션 행과 Resume/Rewind 값 선택기를 사용합니다. [일시정지 UI](Gameplay/Pause.md#일시정지-화면).
+  네 액션 행과 Resume/Rewind 값 선택기를 사용합니다. [일시정지 UI](../Features/Gameplay/Pause.md#일시정지-화면).
 - `Result · Sky`: 페이지 `3ef1606b-c70d-804e-8008-c87342f13d4e`,
   보드 `3ef1606b-c70d-804e-8008-c87343546e9d` (리절트 화면 · Result · 1920×1080).
   짙은 상단 정보 배너, 중앙 랭크·제작자, 오른쪽 528px 그래프/버튼 열.
-  표시·리트라이·미구현 데이터의 계약은 [플레이 결과](Gameplay/Results.md)에 있습니다.
+  표시·리트라이·미구현 데이터의 계약은 [플레이 결과](../Features/Gameplay/Results.md)에 있습니다.
 - `Special Note Focus · PNG Sources · Export Ready`: BalloonProcessing,
   BalloonBurst, DengDengProcessing 투명 PNG와 200ms 처리 성공 상태. UI-02 이후 게임은
-  [플레이](UIRedesign.md#플레이) 시안 그림을 쓰고 `BalloonBurst` 없이 같은 처리 그림으로 터짐을 그립니다.
+  [플레이](UI.md#플레이) 시안 그림을 쓰고 `BalloonBurst` 없이 같은 처리 그림으로 터짐을 그립니다.
 - 에디터: `Editor UI`, 페이지 `85e98a9d-d3bd-80e7-8008-a3ca1370f7ea`의
   Pattern / Realtime View / Time Signature / Metadata / Effects.
   편집 탭 시안:

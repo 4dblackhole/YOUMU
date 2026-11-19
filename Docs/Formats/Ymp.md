@@ -56,8 +56,8 @@ HP: 9.00
 
 ### HP 게이지
 
-설계 결정: [HP-01](../DesignDecisions.md#hp-01-기본-hp-설계),
-[HP-02](../DesignDecisions.md#hp-02-hp-구조와-미정점). 기본 게이지는 구현되어 있으며 추가 게이지·등급은 미정입니다.
+설계 결정: [HP-01](../Design/Decisions.md#hp-01-기본-hp-설계),
+[HP-02](../Design/Decisions.md#hp-02-hp-구조와-미정점). 기본 게이지는 구현되어 있으며 추가 게이지·등급은 미정입니다.
 
 `[Difficulty]`의 `JudgeLevel` 바로 아래에 `HP: 9.00`을 기록합니다. HP는 감소 배율인
 체력 레벨이며, 판정 범위를 정하는 `JudgeLevel`과 별개입니다. 허용 범위·정밀도는
@@ -84,7 +84,7 @@ JudgeLevel과 같은 1.00~100.00, 0.01 단위이고 저장은 소수 둘째 자�
 - 나쁜 판정 5%는 밸런스 참고값이며 별도의 합격 조건이 아닙니다. GREAT·GOOD,
   상한·하한에 버려진 변화량과 판정 순서에 따라 종료 HP가 달라집니다.
 
-HP 반영 가중치는 [노트별 정확도](../Gameplay/Rules.md#노트별-정확도와-세션-집계)와
+HP 반영 가중치는 [노트별 정확도](../Features/Gameplay/Rules.md#노트별-정확도와-세션-집계)와
 동일하게 논리 노트마다 1로 나누며, `N`은 그 노트 수입니다. 큰 노트의 두 입력은
 각각 1/2입니다. 연타형 노트의 목표 입력과 틱형 노트의 각 틱은 해당 노트 정확도의
 비율을 따르며, Buzz는 헤드와 몸통 틱에 각각 1/2을 배분합니다. 몸통 틱이 없는 Buzz는
@@ -125,21 +125,21 @@ HP 감소를 반영합니다. 노트 처리 전까지 기다리는 이유는 배
 세션은 비소유 포인터로 판정 결과를 순서대로 전달하고, Presenter는 현재 HP만 표시합니다.
 표시는 최신 Penpot의 회색 트랙(#CBD5E1)·청록 채움(#32CBE0) 사각형 두 개입니다.
 1920×1080 기준 (231,251), 620×20 배치를 높이 기준으로 맞추며 숫자나 장식은 없습니다.
-확정 리디자인([UI-02](../DesignDecisions.md#ui-02-ui-리디자인), 미구현)은 표시를 틀·채움 두 종류·클리어 표시·자물쇠로 바꾸며 규칙은 그대로입니다
-([HP 게이지 표시](../UIRedesign.md#hp-게이지-표시)).
+확정 리디자인([UI-02](../Design/Decisions.md#ui-02-ui-리디자인), 미구현)은 표시를 틀·채움 두 종류·클리어 표시·자물쇠로 바꾸며 규칙은 그대로입니다
+([HP 게이지 표시](../Design/UI.md#hp-게이지-표시)).
 일시정지 메뉴 또는 Rewind를 사용하면 해당 시도의 HP 시스템을 비활성화합니다. 기존 HP 값과
 이력은 보존하며 이후 판정·Resume·Rewind·Retire로 HP를 변경하거나 자격을 복구하지 않습니다.
 Retry만 HP 0%·빈 이력·활성 상태로 시작합니다. 기존 Debug 전용 정지 예외는 유지하며,
 HP가 활성인 Debug 뒤로 탐색은 대상 이전의 작업을 재적용해 값과 이력을 복원합니다.
 마지막 판정 후 종료 HP와 자격으로 기존 cleared 기록을 결정합니다.
-실제 HP 곡선과 사용 요약은 [리절트](../Gameplay/Results.md#hp-곡선과-사용-요약)에 표시합니다.
+실제 HP 곡선과 사용 요약은 [리절트](../Features/Gameplay/Results.md#hp-곡선과-사용-요약)에 표시합니다.
 추가 게이지·등급 순서는 아직 미정입니다.
 
 검증: `Tests/Rhythm/Submodules/HpGaugeTests.cpp`, `SongCatalogTests.cpp`,
 `Tests/Presentation/GameplayJudgementTests.cpp`, `GameplayPauseTests.cpp`.
 
 YMP에는 곡(YMM)을 가리키는 항목이 없습니다. `Songs/<곡 폴더>/Chart/<차트 세트>/`에 놓인 YMP는 그 곡 폴더의
-`Music`에 있는 YMM에 속합니다([곡 폴더 배치](../BuiltInAssets.md#곡-폴더-배치)). 예전 파일에 남은
+`Music`에 있는 YMM에 속합니다([곡 폴더 배치](../Features/Assets.md#곡-폴더-배치)). 예전 파일에 남은
 `Music metadata:` 줄은 알 수 없는 항목 경고만 남기며 곡 연결에 쓰지 않고, 에디터 저장 때 사라집니다.
 
 `Version`, `JudgeLevel`, `HP`, BPM·offset 등의 숫자 형식이 잘못된 YMP는 진단을 남기고
@@ -203,7 +203,7 @@ N/D,KeyType,ActionType,HitSound,ExtraData...
 TickRoll은 시작점도 하나의 틱이며 모든 틱은 Good 범위 내 성공/실패만
 판정합니다. 세부 등급이나 BAD 감점은 없습니다. Buzz는 시작점을 별도의
 타이밍 판정으로 처리하고, 이후 틱만 유지 비율의 분모에 포함합니다.
-정확도 계산 및 Debug 표시 계약은 [판정과 정확도](../Gameplay/Rules.md)를 참조합니다.
+정확도 계산 및 Debug 표시 계약은 [판정과 정확도](../Features/Gameplay/Rules.md)를 참조합니다.
 
 예시는 다음과 같습니다.
 

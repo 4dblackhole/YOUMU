@@ -1,7 +1,7 @@
 # 플레이 디버그와 테스트
 
-설계 기준: [DEBUG-01](../DesignDecisions.md#debug-01-디버그-조작).
-포커스/판정은 [GAME-01~04](../DesignDecisions.md#game-01-rpg-포커스)의 공통 규칙을 유지합니다.
+설계 기준: [DEBUG-01](../../Design/Decisions.md#debug-01-디버그-조작).
+포커스/판정은 [GAME-01~04](../../Design/Decisions.md#game-01-rpg-포커스)의 공통 규칙을 유지합니다.
 
 ## Debug 빌드의 정지·시간 탐색
 
@@ -52,7 +52,7 @@ Debug 빌드에서는 실행 인자와 무관하게 좌측 상단에 현재 타�
 큰 노트/보라 노트는 Hit1, Hit2, Final, Buzz는 시작 입력·유지 틱 비율·Final,
 연타는 실제/목표 횟수·Final로 표시하여 최종값에 가려진 부분 항목도 확인할 수 있습니다.
 
-상세 YMM, YMP와 롱노트 옵션은 [차트 문법](../ChartFormats.md)을 참고합니다.
+상세 YMM, YMP와 롱노트 옵션은 [차트 문법](../../Formats/README.md)을 참고합니다.
 
 순수 로직 회귀 테스트는 `YOUMU.Rhythm.Tests.exe`이며 판정 scaling,
 보간 점수, Lane focus, 큰 노트 사운드, tick 중복 방지, YMP 타이밍과 YME를
@@ -81,6 +81,6 @@ TickRoll, BigTickRoll, Balloon, DengDeng, Don Buzz, Kat Buzz 순서로 등장합
 `BuzzReplayTests.cpp`는 GOOD 경계와 틱 시각 ±1µs, Don/Kat, 프레임 분할을
 63개 조건으로 검사합니다. `--catalog-root`는 실제 위 YMP의 19개 논리 노트를
 플레이 세션에 입력하여 완료/정확도/틱 순서와 시각을 검사합니다.
-[별도 실제 엔진 replay](../../Tests/Presentation/README.md)는 같은 입력을 QPC 시간에
+[별도 실제 엔진 replay](../../../Tests/Presentation/README.md)는 같은 입력을 QPC 시간에
 맞춰 기존 GameplayPresenter/GameplayAudioRouter로 D3D12/FMOD에서 실행합니다.
 자동 입력 검사이며 실제 키보드 Raw Input, 픽셀 배치와 청음 수동 확인을 대체하지 않습니다.

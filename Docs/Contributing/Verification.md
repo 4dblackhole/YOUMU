@@ -3,7 +3,7 @@
 이 문서는 재현 가능한 현재 절차입니다. 날짜별 완료 로그는 Git 이력에서 확인합니다.
 문서만 바꾸면 로컬 링크·앵커와 `git diff --check`를 검사하며 C++ 빌드는 필요하지 않습니다.
 
-검사 결과는 [관련 설계 결정](DesignDecisions.md)의 조건·예외·회귀 사례와 대조합니다.
+검사 결과는 [관련 설계 결정](../Design/Decisions.md)의 조건·예외·회귀 사례와 대조합니다.
 통과한 코드/테스트가 확정 설계와 다르면 차이를 먼저 확인하며, 테스트 통과 자체를
 설계 변경 근거로 사용하지 않습니다. 명시적으로 승인된 변경은 결정과 기능 문서도 함께 갱신합니다.
 
@@ -21,7 +21,7 @@ Presentation 실행기에는 `-FmodRoot`를 전달하거나 `FMOD_ROOT`를 설�
 
 `Scripts/Verify`의 스크립트가 아래 절차를 그대로 실행합니다. 일반 PowerShell에서 실행해도 Visual Studio 개발자 환경을
 스스로 열고, 모든 워크트리가 함께 쓰는 잠금을 잡아 다른 세션의 빌드·게임 실행과 겹치지 않게 합니다.
-잠금과 세션 이름 설정은 [작업 방식](Contributing/Workflow.md#검증과-공유-잠금)에 있습니다. 로그는 `build/verify/`입니다.
+잠금과 세션 이름 설정은 [작업 방식](Workflow.md#검증과-공유-잠금)에 있습니다. 로그는 `build/verify/`입니다.
 
 ```powershell
 # 전체: Debug/Release 빌드·로직·smoke·러너 → 두 구성 Client 코드 분석 → 아키텍처 → 조건식
@@ -87,7 +87,7 @@ foreach ($configuration in 'Debug', 'Release') {
 clang-analyzer/bugprone/performance 규칙이 있습니다. 일괄 서식 변경·진단 억제는 하지 않습니다.
 새 경고는 해결하고 범위 밖 기존 경고·도구 제한은 별도로 보고합니다.
 
-[Tests/Presentation/README](../Tests/Presentation/README.md)에 실제 Client object를 연결하는
+[Tests/Presentation/README](../../Tests/Presentation/README.md)에 실제 Client object를 연결하는
 실행기가 있습니다. [변경 영향 지도](ChangeImpactMap.md)에서 관련 검사를 골라 두 구성으로
 실행합니다. 에디터·옵션·키 설정·기록·변환 결과·Pause·결과·판정 표시·전체 노트 replay를
 포함하며, `RunGameplayPauseTests.ps1`은 Debug 정지 중 입력과 Release 비활성화도 검사합니다.
@@ -99,7 +99,7 @@ Pause transport 10초)는 멈춤을 잡기 위한 고정 시간입니다.
 Release 빌드의 띠에는 FPS와 UPS만 있습니다.
 같은 파이프라인과 텍스처 페이지를 쓰는 연속 primitive는 draw 하나로 묶이므로, 사각형·이미지·
 글자가 번갈아 나오는 화면일수록 값이 커집니다. 자세한 의미는 엔진
-[PerformanceStatistics](../Dependencies/PhantomCore/Docs/PerformanceStatistics.md)를 따릅니다.
+[PerformanceStatistics](../../Dependencies/PhantomCore/Docs/PerformanceStatistics.md)를 따릅니다.
 
 엔진 변경은 독립 저장소의 AGENTS/SDK 회귀를 따릅니다. 엔진 코드 분석은 SDK와 공개 SDK
 테스트 프로젝트의 결과를 모두 확인합니다. 변환기 변경은 전용 저장소의
@@ -147,4 +147,4 @@ smoke는 초기화/실행/정리 검사입니다. 시각 지정 replay·자동 U
 작업은 최신 `origin/main`에서 만든 작업 브랜치에서 하고, PR을 연 뒤 지휘 세션에 병합 요청을 보냅니다.
 지휘 세션이 병합 묶음을 `VerifyAll.ps1`로 검증한 뒤 main에 병합·push합니다. 엔진 변경은 엔진 PR 병합 →
 YOUMU gitlink 갱신 순서를 지키고, 병합 뒤 `git ls-files -s Dependencies/PhantomCore`가 서브모듈 HEAD와 같은지
-확인합니다. 자세한 절차는 [작업 방식](Contributing/Workflow.md)입니다.
+확인합니다. 자세한 절차는 [작업 방식](Workflow.md)입니다.
