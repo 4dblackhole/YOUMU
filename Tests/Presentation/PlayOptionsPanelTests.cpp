@@ -103,7 +103,7 @@ namespace
         Check(applied->ignoreScrollEffects && applied->randomSeed == UINT64_MAX &&
               applied->randomAttemptProbability == .35,
               "Done preserves every independent existing option and uint64 precision.");
-        Check(applied->accelerate == 1.5 && !applied->preserveMusicPitch && applied->preserveHitSoundPitch,
+        Check(applied->accelerate == 1.5 && applied->preserveMusicPitch && applied->preserveHitSoundPitch,
               "Done preserves every independent existing option and uint64 precision.");
         Check(applied->judgeLevel == JudgeLevel{60} && applied->hpGauge == HpGaugeKind::Default,
               "Done preserves every independent existing option and uint64 precision.");
@@ -144,7 +144,7 @@ namespace
               "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
         Check(!defaults->metronome && !defaults->ignoreScrollEffects && defaults->randomSeed == 0,
               "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
-        Check(defaults->randomAttemptProbability == 1 && defaults->preserveMusicPitch &&
+        Check(defaults->randomAttemptProbability == 1 && !defaults->preserveMusicPitch &&
               defaults->preserveHitSoundPitch,
               "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
         Check(!defaults->judgeLevel,
