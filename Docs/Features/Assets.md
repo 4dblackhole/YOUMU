@@ -11,7 +11,7 @@
   BoldItalic·ExtraBoldItalic). Nunito와 Barlow Semi Condensed는 UI 리디자인 글꼴이며
   [Google Fonts 저장소](https://github.com/google/fonts/tree/main/ofl)의 파일을 수정 없이 넣었습니다.
 
-`Default Skin`의 그림은 확정 리디자인(UI-02)의 부품입니다. 세부는 [스킨 부품](UIRedesign.md#스킨-부품)입니다.
+`Default Skin`의 그림은 확정 리디자인(UI-02)의 부품입니다. 세부는 [스킨 부품](../Design/UI.md#스킨-부품)입니다.
 
 AngelDream Handshaking MP3 1개·YMM 1개·YMP/YME 5쌍과 이펙트 테스트 WAV 2개는
 EXE에 넣지 않습니다. 추가 WAV는 기본 스킨의 Don/Kat 원본을 재사용한 테스트 파일입니다.
@@ -128,7 +128,7 @@ FMOD DLL을 동봉할 수 있는 조건과 크레딧/로고는 [FMOD 라이선�
 
 스킨 루트에 UTF-8 `skin.ini`를 두고 씬별 폴더를 같은 레벨에 둡니다.
 전체 이미지 키와 기본 경로는
-[`Default Skin/skin.ini`](../YOUMU.Assets/Assets/Skins/Default%20Skin/skin.ini)가 원본입니다.
+[`Default Skin/skin.ini`](../../YOUMU.Assets/Assets/Skins/Default%20Skin/skin.ini)가 원본입니다.
 사용자 스킨은 `<자산 루트>/Skins/<스킨 이름>`에 INI를 복사하고 필요한 PNG를 넣습니다.
 기본 스킨과 INI는 EXE에 포함되므로 외부 파일이 없어도 실행됩니다.
 
@@ -254,9 +254,48 @@ Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54,
 히트사운드 표의 경로는 YME 폴더 기준입니다. 내장 글꼴은 캐시 경로에서
 직접 읽으며 라이선스도 같은 팩에 보존됩니다.
 
+### 판정 글자 그림
+
+경로: `YOUMU.Assets/Assets/Skins/Default Skin/InGame/Judgements`.
+각 PNG는 판정 글자 하나만 담은 RGBA이며 1080p 기준 크기입니다(높이 27~30px, 폭은 글자 길이를 따름).
+예전의 1254×1254 링·문구 그림에서 글자 상자만 잘라 판정원 지름 96에 맞던 크기 그대로 줄였습니다.
+링은 없앴습니다. 예전 그림은 링 중심이 그림 중심보다 18px(1.4%) 아래에 있어, 판정원 1.4배 크기로 그리면
+화면에서 판정원보다 약 2.7 아래로 어긋났습니다.
+
+| 파일 | 색상 |
+| --- | --- |
+| MAX.png | 흰색 |
+| PERFECT.png | 밝은 청록색(cyan) |
+| GREAT.png, OK.png | 초록 |
+| GOOD.png | 노랑 |
+| BAD.png | 보라 |
+| MISS.png | 회색 |
+| POOR.png | 빨강 |
+
+교체 시 정확한 대문자 문구, 짙은 남색 글자 윤곽과 투명 알파를 유지하고 글자 둘레에 여백을 두지 않습니다.
+런타임은 1080p 기준 크기(픽셀 ÷ 1.5)로 그리고 글자 아래 끝을 판정원 위 끝보다 6 위에 둡니다.
+표시 조건·크기·수명은 [Presentation](Gameplay/Presentation.md#판정-인디케이터와-판정-글자)이 기준입니다.
+
+### 진행 막대 그림
+
+경로: `YOUMU.Assets/Assets/Skins/Default Skin/InGame/Progress`.
+네 요소는 투명 배경의 RGBA PNG이며 시간 문구는 런타임 텍스트로 표시합니다.
+
+| 파일 | 크기 | 형태·색상 |
+| --- | --- | --- |
+| Background.png | 1920×54 | 화면 아래 끝 전체 폭의 옅은 띠 |
+| Track.png | 1670×9 | 옅은 남색 레일 |
+| Fill.png | 1670×9 | 코발트 채움(잘라 보임) |
+| Marker.png | 21×21 | 흰 원형 마커 |
+
+UI 시안에서 1080p 기준(논리 × 1.5)으로 뽑은 부품입니다.
+교체 시 비율·투명 여백·요소 분리를 유지하고 문구·그림자·장식을 이미지에 합치지 않습니다.
+색상은 제작 기준이며 모든 픽셀을 강제하는 값은 아닙니다.
+배치·진행률·현재/전체 시간 계약은 [Presentation](Gameplay/Presentation.md#하단-플레이-진행바)을 따릅니다.
+
 ## 곡 폴더 배치
 
-Songs의 바로 아래 폴더 하나가 곡 하나입니다([FMT-01](DesignDecisions.md#fmt-01-파일-형식과-편집-원본)).
+Songs의 바로 아래 폴더 하나가 곡 하나입니다([FMT-01](../Design/Decisions.md#fmt-01-파일-형식과-편집-원본)).
 코드: `YOUMU.Chart/Catalog/SongLayout`, `SongCatalog`.
 
 ```text
@@ -283,7 +322,7 @@ Songs/
   `Effect file`에 같은 폴더의 YME 파일명을 적습니다.
 - 곡 폴더·YMM·차트 세트 이름은 사람이 찾기 쉽게 하는 관례이며 프로그램은 뜻을 해석하지 않습니다. 에디터의
   새 난이도와 osu! 가져오기가 이 규칙으로 이름을 만듭니다. 제작자가 없으면 `Unknown`, 파일명에 쓸 수 없는 문자는
-  `_`입니다. osu! 가져오기는 곡 폴더와 YMM 이름에 [로마자 표시 규칙](Formats/Ymm.md#로마자-줄과-표시)의 `Artist - Title`을 씁니다.
+  `_`입니다. osu! 가져오기는 곡 폴더와 YMM 이름에 [로마자 표시 규칙](../Formats/Ymm.md#로마자-줄과-표시)의 `Artist - Title`을 씁니다.
 - 곡·YMM·YMP·YME 파일에는 해시나 곡 ID를 적지 않습니다.
 
 내장 AngelDream은 아래와 같습니다. 제작자가 없는 검증 채보는 `Unknown`을 씁니다.
@@ -304,7 +343,7 @@ Songs/
 
 예전 배치(`Songs/Music`, `Songs/Patterns`, `Songs/BG`)의 곡은 읽지 않으며 자동으로 옮기지도 않습니다.
 옮기는 도구는 없습니다. 기록·즐겨찾기는 YMP 절대 경로로 이어지므로 곡 폴더를 옮기거나 이름을 바꾸면
-끊깁니다([PLAN-01](DesignDecisions.md#plan-01-제안과-미구현-범위)). 에디터는 선택한 쌍을 같은 위치에 저장합니다.
+끊깁니다([PLAN-01](../Design/Decisions.md#plan-01-제안과-미구현-범위)). 에디터는 선택한 쌍을 같은 위치에 저장합니다.
 
 ## 자산 변경
 

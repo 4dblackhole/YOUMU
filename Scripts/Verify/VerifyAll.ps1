@@ -1,5 +1,5 @@
 ﻿param([string]$Runners = '', [switch]$SkipAnalysis)
-# 코드 변경의 전체 검증을 차례로 실행합니다. 첫 실패 단계에서 멈춥니다(Docs/Verification.md).
+# 코드 변경의 전체 검증을 차례로 실행합니다. 첫 실패 단계에서 멈춥니다(Docs/Contributing/Verification.md).
 #   Debug 빌드 → Debug 테스트 → Release 빌드 → Release 테스트 → Client 코드 분석 Debug/Release → 아키텍처 검사
 #   → 조건식 검사(count_conditions/count_expressions)
 # -Runners를 비우면 Presentation 러너 전부, 'A,B'를 주면 그 러너만 돌립니다.

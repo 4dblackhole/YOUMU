@@ -1,7 +1,7 @@
 # Taiko 플레이 옵션과 로컬 기록
 
-설계 기준: [PLAY-01](../DesignDecisions.md#play-01-플레이-옵션),
-[DATA-01](../DesignDecisions.md#data-01-결과와-기록).
+설계 기준: [PLAY-01](../../Design/Decisions.md#play-01-플레이-옵션),
+[DATA-01](../../Design/Decisions.md#data-01-결과와-기록).
 
 게임용 곡 선택 하단에는 실제 등록 모드를 선택하는 Game mode와 Play options가 있습니다.
 현재 등록 모드는 Taiko입니다. 전역 창/장치/키 설정은 기존 Ctrl+O로 엽니다.
@@ -13,7 +13,7 @@ YMM/YMP/YME 파일은 수정하지 않습니다.
 
 ## 플레이 옵션 패널
 
-선곡 하단 Play options는 게임 내 평평한 모달(폭 960, [UI-02](../DesignDecisions.md#ui-02-ui-리디자인))을 엽니다.
+선곡 하단 Play options는 게임 내 평평한 모달(폭 960, [UI-02](../../Design/Decisions.md#ui-02-ui-리디자인))을 엽니다.
 남색 막이 화면 전체를 덮고 가운데 창의 왼쪽 위에 제목, 바닥 왼쪽에 Reset, 오른쪽에 `Done` 하나가 있습니다(✕·Cancel 없음).
 본문은 Difficulty(Scroll speed·Accelerate·JudgeLevel 덮어쓰기·HP gauge), Layout(Mirror·Random), Assist(Ignore scroll effects·
 Metronome)의 세 열이고 열 사이에 가는 세로줄이 있습니다. Game mode는 선곡 화면에 남습니다. 펼친 내용이 늘면 창이 아래로
@@ -26,7 +26,7 @@ Scroll speed는 밑줄 탭 `x`·`BPM`과 숫자 칸입니다. Random을 켜면 �
 입력에는 기존 단위·범위·파서를 유지하며 x/BPM 전환 시 입력 숫자를 자동 환산하지 않습니다.
 
 HP gauge는 고를 수 있는 HP 게이지 목록(`Gauge/HpGaugeKind.h`의 `HpGauges`)의 드롭다운이고 이름 옆에 그 게이지의 클리어 기준
-(`Clear 60%`)을 둡니다. 지금은 Default 하나이며 추가 게이지는 [HP-02](../DesignDecisions.md#hp-02-hp-구조와-미정점)대로 미정입니다.
+(`Clear 60%`)을 둡니다. 지금은 Default 하나이며 추가 게이지는 [HP-02](../../Design/Decisions.md#hp-02-hp-구조와-미정점)대로 미정입니다.
 고른 게이지는 `PlayOptions::hpGauge`로 플레이에 복사되고 플레이 Scene이 그 게이지를 만듭니다. 게이지가 보고하는 클리어 기준
 (`HpGaugeState::clearPercent`)을 플레이 HP 게이지의 클리어 표시와 결과 HP 그래프의 클리어선이 같이 씁니다. 기록 DB에는
 게이지 종류를 저장하지 않습니다(Default뿐이므로). 게이지를 더할 때 기록 필드와 스키마 마이그레이션을 함께 정해야 합니다.

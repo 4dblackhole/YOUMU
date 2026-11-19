@@ -6,10 +6,10 @@
 
 ## 시작과 빌드
 
-작업은 [AGENTS.md](AGENTS.md), [설계 기준](Docs/Design.md),
-[관련 설계 결정](Docs/DesignDecisions.md)에서 시작합니다. 지금 상태는
+작업은 [AGENTS.md](AGENTS.md), [설계 기준](Docs/Design/Principles.md),
+[관련 설계 결정](Docs/Design/Decisions.md)에서 시작합니다. 지금 상태는
 [진행 상황](Docs/Status.md), 일하는 절차는 [작업 방식](Docs/Contributing/Workflow.md), 상세 계약은 [기능별 문서](Docs/README.md), 필요한 코드·회귀 검사는
-[변경 영향 지도](Docs/ChangeImpactMap.md)에서 찾습니다.
+[변경 영향 지도](Docs/Contributing/ChangeImpactMap.md)에서 찾습니다.
 
 Visual Studio 2022/MSVC v143, Windows SDK, FMOD Studio API for Windows가 필요합니다.
 아키텍처 검사 스크립트는 PATH의 ripgrep(`rg`)을 사용합니다.
@@ -25,7 +25,7 @@ msbuild YOUMU.sln /m /p:Configuration=Debug /p:Platform=x64
 FMOD 경로는 `FMOD_ROOT` 또는 MSBuild의 `FmodRoot`로 지정합니다.
 기본 설치 경로는 `Directory.Build.props`가 찾습니다. 생성된 게임 EXE는
 `bin/x64/<Configuration>/Y's Orchestral Unison - Melodic Ultimatum.exe`입니다.
-Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Verification.md)에 있습니다.
+Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Contributing/Verification.md)에 있습니다.
 
 ## 코드와 기능
 
@@ -40,24 +40,24 @@ Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Verificatio
 | `Dependencies/PhantomCore/` | Win32·D3D12·Raw Input·오디오 엔진 |
 | `../OsuTaikoConverter/` | 파일 형식과 Taiko 노트 계약을 사용하는 독립 변환기 |
 
-- 로고에서 플레이/에디터 곡 선택으로 진입합니다. [곡 선택](Docs/SongSelect.md)은
+- 로고에서 플레이/에디터 곡 선택으로 진입합니다. [곡 선택](Docs/Features/SongSelect.md)은
   실제 메타데이터·배경·JudgeLevel/BPM 범위/길이를 표시하고 목록/세션을 비동기 준비합니다.
-- Taiko의 [플레이 옵션과 영속 기록](Docs/Gameplay/PlayOptions.md)은 배속·스크롤·
+- Taiko의 [플레이 옵션과 영속 기록](Docs/Features/Gameplay/PlayOptions.md)은 배속·스크롤·
   Mirror/Random·JudgeLevel·메트로놈·개별 음정 유지와 기록 조건식 조회를 지원합니다.
-- [ESC 메뉴](Docs/Gameplay/Pause.md)는 Resume/Rewind/Retry/Retire를 제공합니다.
-  노트는 입력 없이도 [GOOD 우선 포커스 규칙](Docs/Gameplay/Rules.md#lane과-배드말림-방지)으로 갱신합니다.
-  [Debug 조작](Docs/Gameplay/Debugging.md)은 타이머 표시, Space 정지 중 입력과 1~4 시간 탐색입니다.
-- [에디터](Docs/ChartEditor.md)는 노트/타이밍/효과 편집, 선택·복사·붙여넣기,
+- [ESC 메뉴](Docs/Features/Gameplay/Pause.md)는 Resume/Rewind/Retry/Retire를 제공합니다.
+  노트는 입력 없이도 [GOOD 우선 포커스 규칙](Docs/Features/Gameplay/Rules.md#lane과-배드말림-방지)으로 갱신합니다.
+  [Debug 조작](Docs/Features/Gameplay/Debugging.md)은 타이머 표시, Space 정지 중 입력과 1~4 시간 탐색입니다.
+- [에디터](Docs/Features/ChartEditor.md)는 노트/타이밍/효과 편집, 선택·복사·붙여넣기,
   32단계 Undo/Redo, 고해상도 파형·비동기 스펙트로그램과 미리듣기를 제공합니다.
-  [새 난이도·osu 가져오기](Docs/EditorSongSelect.md)도 곡 선택에서 시작합니다.
-- [결과](Docs/Gameplay/Results.md)는 정확도·랭크·판정 통계·오차 그래프·옵션을 표시합니다.
-  [기본 HP 게이지](Docs/Formats/Ymp.md#hp-게이지)와 [SCORE 계산](Docs/Gameplay/Results.md)은 구현되어 있습니다. 결과 화면의 리플레이 버튼은 비활성 상태입니다.
+  [새 난이도·osu 가져오기](Docs/Features/EditorSongSelect.md)도 곡 선택에서 시작합니다.
+- [결과](Docs/Features/Gameplay/Results.md)는 정확도·랭크·판정 통계·오차 그래프·옵션을 표시합니다.
+  [기본 HP 게이지](Docs/Formats/Ymp.md#hp-게이지)와 [SCORE 계산](Docs/Features/Gameplay/Results.md)은 구현되어 있습니다. 결과 화면의 리플레이 버튼은 비활성 상태입니다.
 
 ## 설정과 자산
 
 전역 설정은 `Option.ini`, UI 번역은 UTF-8 언어 INI를 사용합니다.
-오디오 장치·해상도·Taiko 키 설정은 [TextManagement](Docs/TextManagement.md),
-음악 재생과 PCM 시간축은 [Audio](Docs/Gameplay/Audio.md)를 참고합니다.
+오디오 장치·해상도·Taiko 키 설정은 [TextManagement](Docs/Features/TextManagement.md),
+음악 재생과 PCM 시간축은 [Audio](Docs/Features/Gameplay/Audio.md)를 참고합니다.
 개발 자산은 `Client/Assets`, 배포 자산은 EXE 옆 `Asset`을 사용하며 Songs 루트는
 옵션에서 변경할 수 있습니다. 기본 제공곡은 `Client/Assets/Songs` 안에서 추적합니다. 스킨·기본본 대체·라이선스·배포 절차는
-[BuiltInAssets](Docs/BuiltInAssets.md), 파일 문법은 [ChartFormats](Docs/ChartFormats.md)가 기준입니다.
+[BuiltInAssets](Docs/Features/Assets.md), 파일 문법은 [ChartFormats](Docs/Formats/README.md)가 기준입니다.

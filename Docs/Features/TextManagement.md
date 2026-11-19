@@ -93,7 +93,7 @@ EXE TargetName도 같은 속성에서 계산하며 Windows 파일명에 사용�
 지정할 수 있습니다. 파일 글꼴을 배포할 때는 글꼴 파일 옆에 라이선스를 함께 둡니다.
 리절트는 Penpot 지정 글꼴인 내장 Noto Sans KR을 별도로 사용합니다.
 경로는 `Client/App/AssetPaths.h`의 `NotoSansKR()`, 굵기·크기는 TaikoResultView의 Label/Button 호출에서
-정하며 두 언어에 같은 글꼴을 적용합니다. 파일·라이선스는 [BuiltInAssets](BuiltInAssets.md)에 있습니다.
+정하며 두 언어에 같은 글꼴을 적용합니다. 파일·라이선스는 [BuiltInAssets](Assets.md)에 있습니다.
 
 언어를 추가할 때는 다음을 함께 변경합니다.
 
@@ -114,13 +114,13 @@ TextCatalog는 문구와 글꼴 선택을 소유하고, 엔진 TextVisual/ComboB
 글꼴과 배치 handle을 유지하므로 Client에 DirectWrite 객체나 아틀라스 UV를 저장하지 않습니다.
 직접 DrawPacket을 만드는 에디터도 `packet.text`에 이 payload를 전달합니다.
 자세한 배치·측정·아틀라스 수명은
-[엔진 텍스트 계약](../Dependencies/PhantomCore/Docs/TextRendering.md)에 있습니다.
+[엔진 텍스트 계약](../../Dependencies/PhantomCore/Docs/TextRendering.md)에 있습니다.
 긴 제목은 원본 Unicode와 같은 payload를 유지하고 실제 측정 폭이 영역을 넘을 때만
 픽셀 단위로 순환합니다. 스크롤 단계마다 문자열이나 글리프 배치를 다시 만들지 않습니다.
 
 ## 옵션 패널
 
-UI-02 리디자인([UI-02](DesignDecisions.md#ui-02-ui-리디자인), [옵션 패널](UIRedesign.md#옵션-패널))이 현재 계약입니다.
+UI-02 리디자인([UI-02](../Design/Decisions.md#ui-02-ui-리디자인), [옵션 패널](../Design/UI.md#옵션-패널))이 현재 계약입니다.
 `Client/Presentation/OptionsPanel.*`은 로고와 곡 선택 View가 조립하는 공통 Visual2D 서랍입니다.
 
 - 로고의 `옵션` 버튼, 곡 선택 하단 띠의 톱니 버튼 또는 두 화면의 `Ctrl+O`로 열고 닫습니다.
@@ -151,7 +151,7 @@ UI-02 리디자인([UI-02](DesignDecisions.md#ui-02-ui-리디자인), [옵션 �
   드라이버 선택을 비활성화합니다.
 - 언어 선택은 즉시 활성 화면의 문구를 다시 그리고, 스킨 선택은
   외부 자산 루트의 `Skins` 폴더 이름을 저장합니다. 스킨 자산의
-  경로와 파일별 기본본 대체 규칙은 [BuiltInAssets](BuiltInAssets.md)에 있습니다.
+  경로와 파일별 기본본 대체 규칙은 [BuiltInAssets](Assets.md)에 있습니다.
 - Songs 폴더는 경로 상자와 `Browse…`(둘 다 OS 폴더 선택 창), 그 아래 `Use default folder` 글자 버튼입니다.
 
 ### 음량
@@ -173,7 +173,7 @@ Audio 섹션 맨 위의 `Master volume`·`Music volume`·`Effects volume`은 0�
 [RulesetBindingsSection](https://github.com/ppy/osu/blob/master/osu.Game/Overlays/Settings/Sections/Input/RulesetBindingsSection.cs)과
 [VariantBindingsSubsection](https://github.com/ppy/osu/blob/master/osu.Game/Overlays/Settings/Sections/Input/VariantBindingsSubsection.cs)입니다.
 모드/variant 단위로 모드가 제공한 입력과 기본 binding을 씁니다.
-키 편집 형태는 [모드 표현 등록부](../Client/Presentation/ModePresentation.cpp)가 정합니다. 키 오버레이를
+키 편집 형태는 [모드 표현 등록부](../../Client/Presentation/ModePresentation.cpp)가 정합니다. 키 오버레이를
 등록한 모드는 Input 섹션의 카드 하나(모드 이름 위, 안에 `Key settings`와 메인 키 · 첫 보조 키 요약)로 오버레이를 열고,
 등록하지 않은 모드는 Input 섹션에 바인딩·칸마다 한 줄을 둡니다.
 
@@ -201,7 +201,7 @@ Input 섹션 맨 위의 재시작 키 칸은 플레이 중 0.5초 길게 누르�
 PlaySession이 해결된 목록을 소유하며 판정·held·키 불빛·입력 기록에 같은 매핑을 사용합니다.
 빈 칸(메인 키 포함) 허용 같은 키 정책은 레이아웃의 `allowUnassignedKeys`로 모드가 선언합니다.
 허용하지 않는 레이아웃에서는 키를 옮기면 옛 칸을 비울 수 없으므로 저장이 거부됩니다.
-새 모드를 연결하는 전체 절차는 [게임 모드 추가](AddingGameMode.md)를 따릅니다.
+새 모드를 연결하는 전체 절차는 [게임 모드 추가](../Contributing/AddingGameMode.md)를 따릅니다.
 
 ### 해상도·오프셋과 책임
 
@@ -223,11 +223,11 @@ OptionsVolume, OptionsDisplay, OptionsSongs, OptionsOffset, OptionsKeys(키 카�
 OptionsPanelStyle은 서랍 치수·색과 글자 모양을 모읍니다. OptionSettings는 지속 값의
 검증/원자적 저장을 맡으며 창·오디오 핸들은 소유하지 않습니다.
 서랍 바탕·분류 막대·분류 버튼·키 카드·키 칸은 스킨 `[Options]` 그림이고 아이콘은 `[Common]`의 `Icons.*`입니다
-([BuiltInAssets](BuiltInAssets.md)).
+([BuiltInAssets](Assets.md)).
 
 ## 툴팁
 
-`Client/Presentation/UiTooltip.*`은 UI-02 공용 툴팁입니다([UI 리디자인](UIRedesign.md#공용-부품)). 화면(View)마다 하나를
+`Client/Presentation/UiTooltip.*`은 UI-02 공용 툴팁입니다([UI 리디자인](../Design/UI.md#공용-부품)). 화면(View)마다 하나를
 Canvas 위 가장 높은 Z 순서로 두고, 컨트롤에 이름·옅은 보조 글자·단축키를 등록합니다.
 
 - 진한 남색 면에 흰 글자(13px), 컨트롤 아래 8px에 놓고 아래 공간이 없으면 위로 엽니다. 화살표는 컨트롤 가운데를 가리킵니다.
@@ -266,7 +266,7 @@ Canvas 위 가장 높은 Z 순서로 두고, 컨트롤에 이름·옅은 보조 
 
 ## 스크롤바
 
-`Client/Presentation/UiScrollbar.*`은 UI-02 공용 스크롤바입니다([UI 리디자인](UIRedesign.md#공용-부품)). 곡 목록,
+`Client/Presentation/UiScrollbar.*`은 UI-02 공용 스크롤바입니다([UI 리디자인](../Design/UI.md#공용-부품)). 곡 목록,
 옵션 서랍 본문, 즐겨찾기 폴더 탭(가로), 드롭다운의 펼친 목록이 같은 부품을 씁니다. 스크롤 위치는 쓰는 화면이 갖고,
 스크롤바는 범위를 받아 그리고 끌기·레일 누르기가 요청한 위치를 돌려줍니다.
 

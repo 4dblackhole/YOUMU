@@ -8,7 +8,7 @@
 ## 판단 순서와 상태
 
 1. 사용자의 가장 최근 명시적 지시·정정이 우선합니다. 이미 지시한 변경을 다시 승인받지 않습니다.
-2. [설계 결정](DesignDecisions.md)의 사용자 확정 사항과 프로젝트 계약을 확인합니다.
+2. [설계 결정](Decisions.md)의 사용자 확정 사항과 프로젝트 계약을 확인합니다.
 3. 기능 문서는 그 결정의 세부 문법·동작·소유권을 정의합니다. 충돌하면 자의적으로 고치지 않고
    근거를 대조하고, 해소되지 않는 부분만 사용자에게 확인합니다.
 4. RPG는 플레이 규칙의 코드베이스입니다. 사용자 변경 사항과 현재 프로젝트의 구조를 함께
@@ -34,8 +34,8 @@
 | YOUMU.Assets | 기본 스킨·글꼴·라이선스·기본 제공곡 | 사용자 편집본·개인 곡·설정·기록과 분리 |
 | OsuTaikoConverter | `.osu` 하나를 YMM·YMP·YME 세 파일로 변환 | 공통 포맷/노트 계약만 사용. Songs 배치·음원/배경 복사·플레이 검증은 Client |
 
-구체 의존성·소스/필터 검사는 [ChangeImpactMap](ChangeImpactMap.md), 실행 소유권은
-[ExecutionFlow](ExecutionFlow.md), 변환 경계는 [OsuTaikoConverter](OsuTaikoConverter.md)가 기준입니다.
+구체 의존성·소스/필터 검사는 [ChangeImpactMap](../Contributing/ChangeImpactMap.md), 실행 소유권은
+[ExecutionFlow](../Architecture/ExecutionFlow.md), 변환 경계는 [OsuTaikoConverter](../Features/OsuImport.md)가 기준입니다.
 
 ## 실행과 소유권
 
@@ -56,27 +56,27 @@
 
 | ID | 보존할 결정 | 세부 기준 |
 | --- | --- | --- |
-| ID-01 | PhantomCore/YOUMU 이름·EXE·이름 범위 | [제품](DesignDecisions.md#id-01-제품과-이름) |
-| ARC-01 | 저장소·모듈·Scene·소유권 | [구조](DesignDecisions.md#arc-01-구조와-소유권) |
-| TIME-01 | 단일 시계·Raw Input·DSP·판정 순서 | [시간](DesignDecisions.md#time-01-시간과-입력) |
-| FMT-01 | 포맷 분리·원본 좌표·자동화·문법 변경 | [포맷](DesignDecisions.md#fmt-01-파일-형식과-편집-원본) |
-| LOAD-01 | 비동기 목록/세션·자원 준비·캐시 무효화 | [로딩](DesignDecisions.md#load-01-로딩과-캐시) |
-| CONV-01 | 변환기의 독립성·Client의 배치와 검증·OD 대응 | [변환](DesignDecisions.md#conv-01-변환과-검증) |
-| GAME-01 | RPG의 입력 없는 GOOD 우선 포커스 | [포커스](DesignDecisions.md#game-01-rpg-포커스) |
-| GAME-02 | 판정 범위·논리 노트 정확도·정밀도 | [정확도](DesignDecisions.md#game-02-판정과-정확도) |
-| GAME-03 | POOR 거부와 최종 0점 패널티 | [POOR](DesignDecisions.md#game-03-poor) |
-| GAME-04 | Buzz 헤드/몸통 분리·색 유지·틱 확정 | [Buzz](DesignDecisions.md#game-04-buzz와-틱) |
-| PERF-01 | 밀집 틱: 2 화면 px 띠 그리기·믹서 주기 중복 재시작 생략 | [밀집 틱](DesignDecisions.md#perf-01-밀집-틱의-표시와-소리) |
-| PLAY-01 | Scroll/Mirror/Random/Accelerate/JudgeLevel | [플레이 옵션](DesignDecisions.md#play-01-플레이-옵션) |
-| PAUSE-01 | ESC 메뉴·재개/되감기/재시도·자격 | [Pause](DesignDecisions.md#pause-01-일시정지와-복원) |
-| DEBUG-01 | Debug 전용 Space·1~4·시간 표시·복원 | [Debug](DesignDecisions.md#debug-01-디버그-조작) |
-| EDIT-01 | 편집 원본·32단계 이력·저장 실패 보존 | [편집](DesignDecisions.md#edit-01-에디터) |
-| EDIT-02 | 공통 탐색·원본 PCM·확대 파형/STFT | [분석](DesignDecisions.md#edit-02-오디오-뷰) |
-| UI-01 | 선곡 정보·키 패널·메뉴·표시 계약 | [화면](DesignDecisions.md#ui-01-화면과-키-설정) |
-| DATA-01 | 결과·영속 기록·기록 필터·사용자 데이터 | [데이터](DesignDecisions.md#data-01-결과와-기록) |
-| HP-01 | 기본 게이지 수치/가중치·체력 레벨 | [HP 수치](DesignDecisions.md#hp-01-기본-hp-설계) |
-| HP-02 | 게이지 인터페이스/씬 소유 방향과 미정점 | [HP 구조](DesignDecisions.md#hp-02-hp-구조와-미정점) |
-| PLAN-01 | 제안·미구현 기능을 확정 기능과 구분 | [미구현](DesignDecisions.md#plan-01-제안과-미구현-범위) |
+| ID-01 | PhantomCore/YOUMU 이름·EXE·이름 범위 | [제품](Decisions.md#id-01-제품과-이름) |
+| ARC-01 | 저장소·모듈·Scene·소유권 | [구조](Decisions.md#arc-01-구조와-소유권) |
+| TIME-01 | 단일 시계·Raw Input·DSP·판정 순서 | [시간](Decisions.md#time-01-시간과-입력) |
+| FMT-01 | 포맷 분리·원본 좌표·자동화·문법 변경 | [포맷](Decisions.md#fmt-01-파일-형식과-편집-원본) |
+| LOAD-01 | 비동기 목록/세션·자원 준비·캐시 무효화 | [로딩](Decisions.md#load-01-로딩과-캐시) |
+| CONV-01 | 변환기의 독립성·Client의 배치와 검증·OD 대응 | [변환](Decisions.md#conv-01-변환과-검증) |
+| GAME-01 | RPG의 입력 없는 GOOD 우선 포커스 | [포커스](Decisions.md#game-01-rpg-포커스) |
+| GAME-02 | 판정 범위·논리 노트 정확도·정밀도 | [정확도](Decisions.md#game-02-판정과-정확도) |
+| GAME-03 | POOR 거부와 최종 0점 패널티 | [POOR](Decisions.md#game-03-poor) |
+| GAME-04 | Buzz 헤드/몸통 분리·색 유지·틱 확정 | [Buzz](Decisions.md#game-04-buzz와-틱) |
+| PERF-01 | 밀집 틱: 2 화면 px 띠 그리기·믹서 주기 중복 재시작 생략 | [밀집 틱](Decisions.md#perf-01-밀집-틱의-표시와-소리) |
+| PLAY-01 | Scroll/Mirror/Random/Accelerate/JudgeLevel | [플레이 옵션](Decisions.md#play-01-플레이-옵션) |
+| PAUSE-01 | ESC 메뉴·재개/되감기/재시도·자격 | [Pause](Decisions.md#pause-01-일시정지와-복원) |
+| DEBUG-01 | Debug 전용 Space·1~4·시간 표시·복원 | [Debug](Decisions.md#debug-01-디버그-조작) |
+| EDIT-01 | 편집 원본·32단계 이력·저장 실패 보존 | [편집](Decisions.md#edit-01-에디터) |
+| EDIT-02 | 공통 탐색·원본 PCM·확대 파형/STFT | [분석](Decisions.md#edit-02-오디오-뷰) |
+| UI-01 | 선곡 정보·키 패널·메뉴·표시 계약 | [화면](Decisions.md#ui-01-화면과-키-설정) |
+| DATA-01 | 결과·영속 기록·기록 필터·사용자 데이터 | [데이터](Decisions.md#data-01-결과와-기록) |
+| HP-01 | 기본 게이지 수치/가중치·체력 레벨 | [HP 수치](Decisions.md#hp-01-기본-hp-설계) |
+| HP-02 | 게이지 인터페이스/씬 소유 방향과 미정점 | [HP 구조](Decisions.md#hp-02-hp-구조와-미정점) |
+| PLAN-01 | 제안·미구현 기능을 확정 기능과 구분 | [미구현](Decisions.md#plan-01-제안과-미구현-범위) |
 
 ## 변경 규칙
 
@@ -94,6 +94,6 @@
 - 결정 문서는 무엇을/왜 선택했는지, 기능 문서는 상세 사용법·문법·실행 계약을 소유합니다.
   완료 로그·개인 PC 상태는 여기에 누적하지 않습니다.
 
-현재 미정 항목은 [HP-02](DesignDecisions.md#hp-02-hp-구조와-미정점)와
-[PLAN-01](DesignDecisions.md#plan-01-제안과-미구현-범위)에 명시합니다.
+현재 미정 항목은 [HP-02](Decisions.md#hp-02-hp-구조와-미정점)와
+[PLAN-01](Decisions.md#plan-01-제안과-미구현-범위)에 명시합니다.
 결정이 없다는 이유로 임의 기본값·파일 문법·새 기능을 확정하지 않습니다.

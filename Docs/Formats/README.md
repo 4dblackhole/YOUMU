@@ -1,14 +1,14 @@
 # 차트 문법 진입점
 
-설계 기준: [FMT-01](DesignDecisions.md#fmt-01-파일-형식과-편집-원본).
-기본 HP 필드·런타임과 추가 게이지의 미정점은 [HP-01·02](DesignDecisions.md#hp-01-기본-hp-설계)로 구분합니다.
+설계 기준: [FMT-01](../Design/Decisions.md#fmt-01-파일-형식과-편집-원본).
+기본 HP 필드·런타임과 추가 게이지의 미정점은 [HP-01·02](../Design/Decisions.md#hp-01-기본-hp-설계)로 구분합니다.
 
 문법·기본값·진단/검증 규칙을 변경하면 `Catalog/SongCatalogCacheVersion.h`의
 `SongCatalogParserRevision`도 올립니다. 캐시 자체의 저장 배치를 변경할 때에는
 `SongCatalogCacheSchema`를 올립니다. 원본 파일의 `Version:`과 독립적이며,
-이전 캐시는 재구축합니다. [캐시 무효화 규칙](ResourceLoading.md)을 참고합니다.
+이전 캐시는 재구축합니다. [캐시 무효화 규칙](../Features/ResourceLoading.md)을 참고합니다.
 
-외부 osu!taiko 채보 가져오기는 별도 [변환기 EXE](OsuTaikoConverter.md)를 사용합니다.
+외부 osu!taiko 채보 가져오기는 별도 [변환기 EXE](../Features/OsuImport.md)를 사용합니다.
 
 YMP의 타이밍 명령은 `#measure`, `#bpm`, `#delay`만 허용합니다.
 효과 명령은 YME에 작성하며 YMP의 알 수 없는 명령은 오류로 처리합니다.
@@ -17,11 +17,11 @@ YMP의 타이밍 명령은 `#measure`, `#bpm`, `#delay`만 허용합니다.
 
 | 요청 | 문서 | 파서 구현 |
 | --- | --- | --- |
-| 음악 이름·아티스트·음원 경로 | [YMM](Formats/Ymm.md) | MusicParser.cpp |
-| 패턴 metadata·노트·연타수 | [YMP](Formats/Ymp.md) | PatternParser.cpp |
-| 분수 문법·BPM·마디 길이 | [Timing](Formats/Timing.md) | PatternTiming.h / MusicalPositionParser.cpp |
-| 히트사운드 표/볼륨·Whole/Separate·보간·싱코페이션/Kiai | [YME](Formats/Yme.md) | EffectParser.cpp / Automation |
-| 디버그 채보·1ms 이동 | [Debugging](Gameplay/Debugging.md) | GameplayInput.cpp |
+| 음악 이름·아티스트·음원 경로 | [YMM](Ymm.md) | MusicParser.cpp |
+| 패턴 metadata·노트·연타수 | [YMP](Ymp.md) | PatternParser.cpp |
+| 분수 문법·BPM·마디 길이 | [Timing](Timing.md) | PatternTiming.h / MusicalPositionParser.cpp |
+| 히트사운드 표/볼륨·Whole/Separate·보간·싱코페이션/Kiai | [YME](Yme.md) | EffectParser.cpp / Automation |
+| 디버그 채보·1ms 이동 | [Debugging](../Features/Gameplay/Debugging.md) | GameplayInput.cpp |
 
 파서 경로는 `YOUMU.Chart/Parsing/Submodules`입니다.
 `ChartParser.h/.cpp`는 파일 입출력 facade, `ParserSupport.h`는 공통 토큰/숫자 처리입니다.
@@ -29,7 +29,7 @@ YMP의 타이밍 명령은 `#measure`, `#bpm`, `#delay`만 허용합니다.
 세 형식 모두 UTF-8 BOM을 허용합니다. YMM/YMP의 알 수 없는 metadata 항목은
 행 번호가 있는 Warning으로 반환합니다. `Parse*File`의 파일 읽기 실패도 해당 경로의
 Error 진단으로 반환하며, 경로 문자열은 UTF-8을 사용합니다. 메모리 할당 등 예기치 않은
-실패까지 정상 파싱 오류로 숨기지는 않습니다. 마디 상한은 [Timing](Formats/Timing.md)이 기준입니다.
+실패까지 정상 파싱 오류로 숨기지는 않습니다. 마디 상한은 [Timing](Timing.md)이 기준입니다.
 저장 문법 변경 시 `Editing/ChartEditor.cpp`와 왕복 테스트를 함께 확인합니다.
 YMP가 `Effect file`로 YME를 참조하고 YME가 사운드 표를 소유합니다.
 YME의 효과 명령은 Speed/Sounds/Zone 세 섹션이며 음악 볼륨 명령은 지원하지 않습니다.

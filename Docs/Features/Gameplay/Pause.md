@@ -1,7 +1,7 @@
 # 플레이 일시정지와 되감기
 
-설계 기준: [PAUSE-01](../DesignDecisions.md#pause-01-일시정지와-복원).
-Space 디버그 정지는 [DEBUG-01](../DesignDecisions.md#debug-01-디버그-조작)과 구분합니다.
+설계 기준: [PAUSE-01](../../Design/Decisions.md#pause-01-일시정지와-복원).
+Space 디버그 정지는 [DEBUG-01](../../Design/Decisions.md#debug-01-디버그-조작)과 구분합니다.
 
 플레이 중 ESC는 해당 Raw Input QPC 시각까지 판정한 뒤 타이머와 오디오를 멈춥니다.
 모든 레인의 다음 타겟 노트가 비어 있으면 즉시 정상 종료 결과로 이동합니다.
@@ -48,7 +48,7 @@ Space 정지/재개는 Debug 빌드에서만 디버그 조작으로 사용하며
 
 ## 일시정지 화면
 
-[UI-02](../DesignDecisions.md#ui-02-ui-리디자인)의 배치입니다. 사선 결이 있는 남색 덮개(`PauseBackdrop`) 위, 화면 가운데의 폭 520 카드에
+[UI-02](../../Design/Decisions.md#ui-02-ui-리디자인)의 배치입니다. 사선 결이 있는 남색 덮개(`PauseBackdrop`) 위, 화면 가운데의 폭 520 카드에
 큰 기울인 `PAUSED` 제목과 네 행을 둡니다. 행은 533×52이고 카드 왼쪽으로 6.5 튀어나옵니다. Resume·Rewind 사이는 10,
 Rewind와 Retry 사이에는 구분선을 두고 Retry·Retire를 떨어뜨립니다. 선택 행은 코발트 면과 금빛 왼쪽 줄(`Pause.Row.Selected`)에
 흰 글자, 나머지는 밝은 면(`Pause.Row`)에 짙은 글자이며 Retire 이름은 위험 색입니다. Retry·Retire 행 오른쪽에는
@@ -137,8 +137,8 @@ Ready일 때 새 QPC/DSP 기준으로 시작합니다. 파일 로딩 실패도 �
 - Rewind로 취소한 입력도 `summary.inputs`에 남습니다. 제어 마커를 무시한 전체 입력 재판정으로
   최종 통계를 재구성하면 안 됩니다. 결과 통계는 현재 가지, 원본 로그는 시도 전체입니다.
 - 리플레이에는 Pause의 위치와 Resume/Rewind의 출발·도착 위치를 표시해야 합니다.
-  표시 모양은 [리플레이](../UIRedesign.md#리플레이) 확정 설계(UI-02, 미구현)를 따릅니다.
+  표시 모양은 [리플레이](../../Design/UI.md#리플레이) 확정 설계(UI-02, 미구현)를 따릅니다.
   정지 시간이나 되감기 애니메이션을 재현할 필요는 없습니다. 현재 마커는 실제 정지 지속시간을
   저장하지 않으며 UI 메뉴 조작은 노트 입력으로 기록하지 않습니다.
 
-검증 명령과 실제 수동 확인 구분은 [Verification](../Verification.md)에 기록합니다.
+검증 명령과 실제 수동 확인 구분은 [Verification](../../Contributing/Verification.md)에 기록합니다.

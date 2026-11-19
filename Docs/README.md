@@ -2,42 +2,42 @@
 
 처음이면 [진행 상황](Status.md), [작업 방식](Contributing/Workflow.md), [전체 구조](Architecture/Overview.md)부터 봅니다.
 모르는 말은 [용어집](Glossary.md)에 있습니다.
-먼저 [설계 기준](Design.md)과 [관련 결정 ID](DesignDecisions.md)를 확인한 뒤
+먼저 [설계 기준](Design/Principles.md)과 [관련 결정 ID](Design/Decisions.md)를 확인한 뒤
 요청에 해당하는 기능 문서를 읽습니다. 소유 파일·직접 호출부·회귀 검사는
-[ChangeImpactMap](ChangeImpactMap.md), 공통 검증은 [Verification](Verification.md)에서 찾습니다.
+[ChangeImpactMap](Contributing/ChangeImpactMap.md), 공통 검증은 [Verification](Contributing/Verification.md)에서 찾습니다.
 
 | 작업 | 기준 문서 |
 | --- | --- |
-| 확정 설계·판단 순서·시스템 경계·설계 변경 규칙 | [Design](Design.md) |
-| 결정별 근거·조건·예외·구현 상태·재현 사례 | [DesignDecisions](DesignDecisions.md) |
+| 확정 설계·판단 순서·시스템 경계·설계 변경 규칙 | [Design](Design/Principles.md) |
+| 결정별 근거·조건·예외·구현 상태·재현 사례 | [DesignDecisions](Design/Decisions.md) |
 | 지금 구현된 것·진행 중·미구현·알려진 문제 | [Status](Status.md) |
 | 역할·브랜치와 PR·병합 요청·검증 잠금·지켜야 할 것 | [Workflow](Contributing/Workflow.md) |
 | 저장소·프로젝트 의존·층·Scene 구성(그림) | [Architecture/Overview](Architecture/Overview.md) |
 | 플레이 화면 클래스·노트 규칙·상태 전이(그림) | [Architecture/Gameplay](Architecture/Gameplay.md) |
-| 시작·Scene 전환·한 프레임·종료·소유권(그림) | [ExecutionFlow](ExecutionFlow.md) |
+| 시작·Scene 전환·한 프레임·종료·소유권(그림) | [ExecutionFlow](Architecture/ExecutionFlow.md) |
 | 용어(YMM/YMP/YME, 노트·판정 이름, QPC·DSP 등) | [Glossary](Glossary.md) |
-| 곡 선택·검색·필터·정렬·즐겨찾기 폴더·배경·기록 영역·난이도 정보 | [SongSelect](SongSelect.md) |
-| 목록 캐시·비동기 세션/자원 준비·포맷 변경 시 무효화 | [ResourceLoading](ResourceLoading.md) |
-| 새 난이도·osu 가져오기 UI | [EditorSongSelect](EditorSongSelect.md) |
-| 독립 변환기·격자·OD·BG·Client 검증 | [OsuTaikoConverter](OsuTaikoConverter.md) |
-| 에디터 조작·메뉴·선택·편집 이력·PCM/FFT | [ChartEditor](ChartEditor.md) |
-| YMM/YMP/YME·타이밍·진단 | [ChartFormats](ChartFormats.md) → 해당 형식 |
-| 노트·GOOD 우선 자동 포커스·정확도·POOR·Buzz 틱 | [Rules](Gameplay/Rules.md) |
-| 모드 등록·레인 입력·모드별 화면 연결 | [AddingGameMode](AddingGameMode.md) |
-| 플레이 옵션 패널·HP gauge 선택·배속·스크롤·Random·로컬 기록·기록 필터 | [PlayOptions](Gameplay/PlayOptions.md) |
-| 노트·Lane·키빔·판정 표시·진행바·콤보·점수·누적 판정 | [Presentation](Gameplay/Presentation.md) |
-| Clip·사운드 정책·공통 PCM·DSP 예약 | [Audio](Gameplay/Audio.md) |
-| ESC 메뉴·재개·되감기·Retire | [Pause](Gameplay/Pause.md) |
-| 정확도 랭크·통계·그래프·입력 로그·Retry | [Results](Gameplay/Results.md) |
-| Debug 타이머 표시·정지·탐색·전체 노트/Buzz 재현 | [Debugging](Gameplay/Debugging.md) |
-| 표시 이름·번역·글꼴·옵션·Taiko 키·Option.ini | [TextManagement](TextManagement.md) |
-| 스킨·Songs 곡 폴더 배치·내장 자산·배포 | [BuiltInAssets](BuiltInAssets.md) |
-| 로고·타이틀 | [YOUMU](YOUMU.md) |
-| Canvas·PNG·입력·Z-order | [Visual2DGuide](Visual2DGuide.md) |
-| Penpot 페이지·보드·자산 제작 | [DesignReferences](DesignReferences.md) |
-| 확정 UI 리디자인(일부 구현)·공용 부품·스킨 부품 | [UIRedesign](UIRedesign.md) |
+| 곡 선택·검색·필터·정렬·즐겨찾기 폴더·배경·기록 영역·난이도 정보 | [SongSelect](Features/SongSelect.md) |
+| 목록 캐시·비동기 세션/자원 준비·포맷 변경 시 무효화 | [ResourceLoading](Features/ResourceLoading.md) |
+| 새 난이도·osu 가져오기 UI | [EditorSongSelect](Features/EditorSongSelect.md) |
+| 독립 변환기·격자·OD·BG·Client 검증 | [OsuTaikoConverter](Features/OsuImport.md) |
+| 에디터 조작·메뉴·선택·편집 이력·PCM/FFT | [ChartEditor](Features/ChartEditor.md) |
+| YMM/YMP/YME·타이밍·진단 | [ChartFormats](Formats/README.md) → 해당 형식 |
+| 노트·GOOD 우선 자동 포커스·정확도·POOR·Buzz 틱 | [Rules](Features/Gameplay/Rules.md) |
+| 모드 등록·레인 입력·모드별 화면 연결 | [AddingGameMode](Contributing/AddingGameMode.md) |
+| 플레이 옵션 패널·HP gauge 선택·배속·스크롤·Random·로컬 기록·기록 필터 | [PlayOptions](Features/Gameplay/PlayOptions.md) |
+| 노트·Lane·키빔·판정 표시·진행바·콤보·점수·누적 판정 | [Presentation](Features/Gameplay/Presentation.md) |
+| Clip·사운드 정책·공통 PCM·DSP 예약 | [Audio](Features/Gameplay/Audio.md) |
+| ESC 메뉴·재개·되감기·Retire | [Pause](Features/Gameplay/Pause.md) |
+| 정확도 랭크·통계·그래프·입력 로그·Retry | [Results](Features/Gameplay/Results.md) |
+| Debug 타이머 표시·정지·탐색·전체 노트/Buzz 재현 | [Debugging](Features/Gameplay/Debugging.md) |
+| 표시 이름·번역·글꼴·옵션·Taiko 키·Option.ini | [TextManagement](Features/TextManagement.md) |
+| 스킨·Songs 곡 폴더 배치·내장 자산·배포 | [BuiltInAssets](Features/Assets.md) |
+| 로고·타이틀 | [YOUMU](Features/Title.md) |
+| Canvas·PNG·입력·Z-order | [Visual2DGuide](Features/Visual2DGuide.md) |
+| Penpot 페이지·보드·자산 제작 | [DesignReferences](Design/References.md) |
+| 확정 UI 리디자인(일부 구현)·공용 부품·스킨 부품 | [UIRedesign](Design/UI.md) |
 | 기본 HP 게이지·HP 필드 | [YMP](Formats/Ymp.md#hp-게이지) |
-| 공용 미디어·랭크 무결성 제안(미구현) | [RankedContentProposal](RankedContentProposal.md) |
+| 공용 미디어·랭크 무결성 제안(미구현) | [RankedContentProposal](Design/Proposals/RankedContent.md) |
 | 엔진 API/수명 자체 변경 | 엔진 [EngineOverview](../Dependencies/PhantomCore/Docs/EngineOverview.md) |
 
 설계 결정은 선택과 이유를, 기능 문서는 상세 계약을 소유하며 함께 일치시킵니다.

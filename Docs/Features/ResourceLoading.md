@@ -1,8 +1,8 @@
 # 목록·패턴·자원 로딩
 
-설계 기준: [LOAD-01](DesignDecisions.md#load-01-로딩과-캐시),
-[FMT-01](DesignDecisions.md#fmt-01-파일-형식과-편집-원본),
-[DATA-01](DesignDecisions.md#data-01-결과와-기록).
+설계 기준: [LOAD-01](../Design/Decisions.md#load-01-로딩과-캐시),
+[FMT-01](../Design/Decisions.md#fmt-01-파일-형식과-편집-원본),
+[DATA-01](../Design/Decisions.md#data-01-결과와-기록).
 
 목록용 메타데이터와 실제 플레이 세션을 분리합니다. 목록 표시를 위해 모든 노트를
 상주시킬 필요가 없으며, 플레이 직전에는 선택한 원본을 다시 검증합니다.
@@ -84,5 +84,5 @@ YOUMU는 자체 파생 캐시를 사용합니다. 최초 생성/파서 revision 
 
 회귀는 캐시 재사용·원본/의존성 변경·삭제·버전/체크섬 손상·쓰기 불가,
 선택 변경 중 세션 게시, 첫 화면의 자원 준비와 최초 Don/Kat 출력을 검사합니다.
-실행기는 [변경 영향 지도](ChangeImpactMap.md)와 [Presentation tests](../Tests/Presentation/README.md)가 기준입니다.
+실행기는 [변경 영향 지도](../Contributing/ChangeImpactMap.md)와 [Presentation tests](../../Tests/Presentation/README.md)가 기준입니다.
 성능 수치는 데이터 규모·하드웨어·OS 파일 캐시 조건을 함께 기록하고 실행 시간 보장으로 사용하지 않습니다.

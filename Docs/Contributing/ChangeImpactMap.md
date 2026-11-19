@@ -1,6 +1,6 @@
 # 변경 영향 지도
 
-[설계 기준](Design.md)과 [관련 결정 ID](DesignDecisions.md), [기능 문서](README.md)에서
+[설계 기준](../Design/Principles.md)과 [관련 결정 ID](../Design/Decisions.md), [기능 문서](../README.md)에서
 유지할 계약을 확인한 뒤 아래 소유자와 직접 호출부·관련 테스트만
 확인합니다. 경로의 `Submodules/`는 해당 Scene 또는 기능의 구현 폴더입니다.
 모든 코드 변경의 공통 빌드·분석·smoke 절차는 [Verification](Verification.md)을 따릅니다.
@@ -55,7 +55,7 @@
 | 노트/타이밍/효과 편집·Undo/Redo·저장 | TaikoEditorNoteInspector/Score/Metadata, EditorForms/PanelView, ChartEditor/History | ChartEditorTests, ChartReviewRegressionTests, EditorModeTests |
 | 파형·FFT·탐색·배속·offset | EditorAnalysisController, EditorSpectrumCache, EditorAudioView/Selection/Controls, EditorPlayback/Metronome, `YOUMU.Editor/Audio` | EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests, EditorMetronomeTests |
 | YMM/YMP/YME 문법·효과·타이밍 | `Chart/Parsing/Submodules`, Model, MusicalTimeline, EffectValidation, InterpolationExpression/ScrollAutomation | ChartParserTests, YmeEffectsTests, 저장 왕복·캐시 무효화 |
-| 엔진 API·GPU/폰트·장치 수명 | 독립 PhantomCore 저장소의 [EngineOverview](../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 AGENTS/SDK 회귀 |
+| 엔진 API·GPU/폰트·장치 수명 | 독립 PhantomCore 저장소의 [EngineOverview](../../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 AGENTS/SDK 회귀 |
 
 ## 소유권 경계
 
@@ -76,11 +76,11 @@
 
 | 그림 | 문서 | 근거 코드 |
 | --- | --- | --- |
-| 저장소와 프로젝트 의존 · 층 | [Overview](Architecture/Overview.md#저장소와-프로젝트-의존) | 각 `.vcxproj`의 `ProjectReference`, `Scripts/CheckArchitecture.ps1` |
-| 화면(Scene) 클래스와 수명 | [Overview](Architecture/Overview.md#화면scene) | `Client/App/YOUMUGame.*`, `Client/GameFlow/YOUMUSceneIds.h`, 각 Scene 헤더 |
-| 플레이 클래스 · 노트 규칙 · 화면 부품 | [Gameplay](Architecture/Gameplay.md#클래스) | RhythmTestScene, GameplaySessionController, GameplayAudioSession, GameplayPresenter, PlaySession, ScrollGear/Lane/RuleBasedNote, TaikoSessionBuilder·TaikoLongNoteFactory |
-| 플레이 상태 전이 | [Gameplay](Architecture/Gameplay.md#상태-전이) | `PlayState`, GameplaySessionController, GameplayInput(재시작 키·ESC), GameplayPause |
-| 프로그램 실행 순서도 | [ExecutionFlow](ExecutionFlow.md) | `Client/App/Main.cpp`, YOUMUGame, 각 Scene의 `ChangeScene` |
-| 플레이 한 프레임 | [ExecutionFlow](ExecutionFlow.md#플레이-한-프레임) | `RhythmTestScene::Update/Render`, GameplaySessionController, GameplayInput |
-| 작업 흐름 | [Workflow](Contributing/Workflow.md) | 작업 규칙(코드 없음) |
-| 엔진 소유 구조 | 엔진 [EngineOverview](../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 `Engine/Core/App/Engine.cpp`, `SceneGameClient.h` |
+| 저장소와 프로젝트 의존 · 층 | [Overview](../Architecture/Overview.md#저장소와-프로젝트-의존) | 각 `.vcxproj`의 `ProjectReference`, `Scripts/CheckArchitecture.ps1` |
+| 화면(Scene) 클래스와 수명 | [Overview](../Architecture/Overview.md#화면scene) | `Client/App/YOUMUGame.*`, `Client/GameFlow/YOUMUSceneIds.h`, 각 Scene 헤더 |
+| 플레이 클래스 · 노트 규칙 · 화면 부품 | [Gameplay](../Architecture/Gameplay.md#클래스) | RhythmTestScene, GameplaySessionController, GameplayAudioSession, GameplayPresenter, PlaySession, ScrollGear/Lane/RuleBasedNote, TaikoSessionBuilder·TaikoLongNoteFactory |
+| 플레이 상태 전이 | [Gameplay](../Architecture/Gameplay.md#상태-전이) | `PlayState`, GameplaySessionController, GameplayInput(재시작 키·ESC), GameplayPause |
+| 프로그램 실행 순서도 | [ExecutionFlow](../Architecture/ExecutionFlow.md) | `Client/App/Main.cpp`, YOUMUGame, 각 Scene의 `ChangeScene` |
+| 플레이 한 프레임 | [ExecutionFlow](../Architecture/ExecutionFlow.md#플레이-한-프레임) | `RhythmTestScene::Update/Render`, GameplaySessionController, GameplayInput |
+| 작업 흐름 | [Workflow](Workflow.md) | 작업 규칙(코드 없음) |
+| 엔진 소유 구조 | 엔진 [EngineOverview](../../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 `Engine/Core/App/Engine.cpp`, `SceneGameClient.h` |

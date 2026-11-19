@@ -65,7 +65,7 @@ Import osu! folder는 Client의 EditorOsuImport가 EXE를 백그라운드에서 
 YMM의 첫 표기는 osu!의 `TitleUnicode`·`ArtistUnicode`(없으면 `Title`·`Artist`)입니다. osu!의 로마자
 `Title`·`Artist`는 첫 표기와 다를 때만 `Romanized Music Name`·`Romanized Artist` 줄에 적고, 같으면 그 줄을
 비워 둡니다. osu!에는 난이도명·제작자의 로마자 표기가 없으므로 YMP의 두 로마자 줄은 비어 있습니다.
-줄의 뜻과 표시 규칙은 [YMM](Formats/Ymm.md#로마자-줄과-표시)에 있습니다.
+줄의 뜻과 표시 규칙은 [YMM](../Formats/Ymm.md#로마자-줄과-표시)에 있습니다.
 
 ## OD와 JudgeLevel
 
@@ -178,7 +178,7 @@ Taiko lane이 노트를 누락시킬 겹침은 실패합니다. 첫 빨간 포�
 변환기는 저장 왕복과 파서 진단까지 확인합니다. 실제 Taiko 세션의 생성과 원본 객체 대비
 플레이 노트 개수 검증은 Client의 OsuImportValidation이 변환 결과 폴더에서, Songs에 배치하기 전에 수행합니다.
 변환기 테스트는 `..\OsuTaikoConverter\bin\x64\<구성>\OsuTaikoConverter.Tests.exe`입니다.
-전체 Client 검증 명령은 [Verification](Verification.md)을 사용합니다.
+전체 Client 검증 명령은 [Verification](../Contributing/Verification.md)을 사용합니다.
 
 실제 맵 복사본과 음원은 변환기 저장소의 gitignore 대상 `TestData/`에만 둡니다.
 게임 기본곡이나 원격 저장소에 추가하지 않습니다.

@@ -6,12 +6,12 @@
 있으므로 헤더에서 `PhantomCore::`를 명시한다. 구현 파일은 include 뒤에
 `using namespace PhantomCore;`를 둘 수 있다.
 수학 값과 행렬은 `Float2/3/4`, `Float4x4`를 사용한다. 좌표·행렬 연산은
-엔진 [수학 계약](../Dependencies/PhantomCore/Docs/Math.md)을 따른다.
+엔진 [수학 계약](../../Dependencies/PhantomCore/Docs/Math.md)을 따른다.
 Win32 키 상수·API를 쓰는 Client는 `Windows.h`를 직접 포함한다. Client PCH가 이 의존을 소유하며
 엔진 공개 헤더의 간접 include에 기대지 않는다.
 
 Update 중 추가·삭제의 방문 시점과 지연 파괴, 사용자 충돌 콜백의 예외 전달은
-엔진 [Visual2D 트리 계약](../Dependencies/PhantomCore/Docs/Visual2DArchitecture.md#update-중-트리-변경과-콜백-오류)을 따릅니다.
+엔진 [Visual2D 트리 계약](../../Dependencies/PhantomCore/Docs/Visual2DArchitecture.md#update-중-트리-변경과-콜백-오류)을 따릅니다.
 
 ## 좌표계와 아홉 앵커
 
@@ -19,8 +19,8 @@ Update 중 추가·삭제의 방문 시점과 지연 파괴, 사용자 충돌 �
 `viewportHeight / 720`이며, 화면비가 넓어지면 논리 폭만 늘어난다. 따라서 1440p
 화면의 논리 크기는 `1280x720`, 배율은 2이고, 2560x1080 화면의 논리 크기는
 약 `1706.67x720`, 배율은 1.5다.
-확정 리디자인([UI-02](DesignDecisions.md#ui-02-ui-리디자인))은 16:9보다 좁은 화면을 16:9 배치 그대로 레터박스로, 32:9보다 넓은
-화면을 좌우 띠로 표시한다([공통 규칙](UIRedesign.md#공통-규칙)). 현재 결과 화면만 이렇게 동작한다.
+확정 리디자인([UI-02](../Design/Decisions.md#ui-02-ui-리디자인))은 16:9보다 좁은 화면을 16:9 배치 그대로 레터박스로, 32:9보다 넓은
+화면을 좌우 띠로 표시한다([공통 규칙](../Design/UI.md#공통-규칙)). 현재 결과 화면만 이렇게 동작한다.
 
 Canvas 논리 원점은 화면 정중앙이며 `+X`는 오른쪽, `+Y`는 위쪽이다. 따라서
 1280×720 Canvas의 범위는 X `[-640,640]`, Y `[-360,360]`이다. Win32 마우스와
@@ -281,7 +281,7 @@ context.visual2DRendering->SubmitScreen(audioCanvas, context, {}, 1); // 전체�
 화면은 `SubmitScreen`, 평면은 `SubmitPlane`을 쓴다. 평면은 Canvas 논리 크기의 내부
 타깃에 사각형·이미지·글자를 트리 순서로 합성하고 한 장의 패널로 제출한다.
 자식 Z를 외부 가림 층으로 사용하지 않고 3D 물체는 패널 평면 기준으로 가린다.
-해상도·반투명·snapshot 수명은 엔진 [월드 평면 계약](../Dependencies/PhantomCore/Docs/Visual2DArchitecture.md#월드-평면-canvas)을 따른다.
+해상도·반투명·snapshot 수명은 엔진 [월드 평면 계약](../../Dependencies/PhantomCore/Docs/Visual2DArchitecture.md#월드-평면-canvas)을 따른다.
 곡면에서는 Canvas를 RGBA8
 렌더 텍스처로 먼저 그린 뒤 그 텍스처를 mesh UV로 샘플링한다. Sprite, 사각형,
 회전 Transform, 글자가 모두 같은 off-screen 결과에 포함된다.

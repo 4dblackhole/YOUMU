@@ -1,7 +1,7 @@
 # 타이머·판정·노트 규칙
 
-설계 기준: [TIME-01](../DesignDecisions.md#time-01-시간과-입력) 및
-[GAME-01~04](../DesignDecisions.md#game-01-rpg-포커스).
+설계 기준: [TIME-01](../../Design/Decisions.md#time-01-시간과-입력) 및
+[GAME-01~04](../../Design/Decisions.md#game-01-rpg-포커스).
 포커스·POOR·Buzz 변경 전에 각 결정의 조건·예외·재현 사례를 확인합니다.
 
 코드: `YOUMU.Rhythm/Note/Submodules/<규칙명>.*`, `Lane`, `Judgement`, `Time`.
@@ -62,7 +62,7 @@ Taiko 세션은 기본과 싱코페이션 전용 AccuracyRange를 각각 한 개
 YME의 Syncopation ON~OFF에 속한 노트는 전용 객체를 참조하며, 레벨 배율 적용 후
 모든 반범위에 정확히 10ms를 더합니다. 롱노트는 head 위치로 적용 여부를 결정합니다.
 `Exclude=1|2|4`이면 마디 시작 기준 4분/8분/16분음표 격자 위의 노트는 기본 객체를
-사용합니다. 정확한 유리수 위치로 검사합니다. 문법·경계는 [YME](../Formats/Yme.md)를 참고합니다.
+사용합니다. 정확한 유리수 위치로 검사합니다. 문법·경계는 [YME](../../Formats/Yme.md)를 참고합니다.
 
 ## Lane과 배드말림 방지
 
