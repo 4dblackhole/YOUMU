@@ -25,18 +25,19 @@ void GameplaySessionController::ResetTimeline()
 
 namespace
 {
-// The backquote key (`) restarts the attempt, but only after it has been held for half a second.
-constexpr std::uint16_t RestartKey = VK_OEM_3;
+// The restart key (the options' choice, frozen in the launch request) restarts the attempt, but only
+// after it has been held for half a second.
 constexpr std::int64_t RestartHoldDivisor = 2;
 } // namespace
 
 bool GameplaySessionController::RestartHoldCompleted(const UpdateContext &context)
 {
     const auto &input = context.input;
+    const auto restartKey = launchRequest_.restartKey;
     // Follow the ordered press/release edges so the hold starts at the physical press time.
     for (const auto &event : input.Events())
     {
-        if (event.code != RestartKey)
+        if (event.code != restartKey)
             continue;
         if (event.type == InputEventType::KeyReleased)
         {
@@ -52,7 +53,7 @@ bool GameplaySessionController::RestartHoldCompleted(const UpdateContext &contex
             continue;
         restartHoldStart_ = event.performanceCounterTicks;
     }
-    if (!restartHoldStart_ || !input.IsKeyDown(RestartKey))
+    if (!restartHoldStart_ || !input.IsKeyDown(restartKey))
     {
         restartHoldStart_.reset();
         return false;

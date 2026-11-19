@@ -12,23 +12,22 @@ namespace
         return false;
     return allowUnassignedKeys || keyCount == slots;
 }
+} // namespace
 
-[[nodiscard]] bool IsReservedKey(PhysicalKey key)
+bool IsReservedGameControlKey(PhysicalKey key) noexcept
 {
     if (key < 8 || key > 254)
         return true;
     switch (key)
     {
-    case 27:
-    case 32:
-    case 0xC0: // VK_OEM_3 (backquote): hold to restart
-    case 0x76:
+    case 27:   // ESC: pause
+    case 32:   // Space
+    case 0x76: // F7: performance display
         return true;
     default:
         return false;
     }
 }
-} // namespace
 
 ModeInputLayout ResolveInputLayout(ModeInputLayout layout, const InputKeyOverrides &overrides)
 {
@@ -52,8 +51,9 @@ ModeInputLayout ResolveInputLayout(ModeInputLayout layout, const InputKeyOverrid
         for (const auto key : binding.keys)
         {
             if (key == 0 && layout.allowUnassignedKeys) continue;
-            // Preserve pause/reset controls and the global performance-display shortcut.
-            if (IsReservedKey(key))
+            // Preserve the pause control and the global performance-display shortcut. The Client keeps its
+            // configurable restart key apart from every play key itself.
+            if (IsReservedGameControlKey(key))
                 throw std::invalid_argument("This key is reserved for game controls.");
             if (!used.insert(key).second)
                 throw std::invalid_argument("Each input in a mode must use a different key.");

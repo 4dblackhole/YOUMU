@@ -68,6 +68,7 @@ namespace
 
 void OptionsPanel::CreateKeyControls()
 {
+    CreateRestartKeyControl();
     for (const auto &layout : inputLayouts_)
     {
         const auto *presentation = FindModePresentation(layout.modeId);
@@ -262,8 +263,40 @@ void OptionsPanel::RefreshKeyImages()
         }
 }
 
+void OptionsPanel::CreateRestartKeyControl()
+{
+    const float top = NextField(ControlHeight);
+    restartKeyLabel_ = &CreateFieldLabel(*content_, top, "Options.RestartKey.Label");
+    restartKeyButton_ = &CreateButton(
+        *content_, TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_), L"",
+        "Options.RestartKey");
+    StyleFieldButton(*restartKeyButton_, true);
+    AddFieldLine(*content_, *restartKeyButton_, "Options.RestartKey.Line");
+}
+
+void OptionsPanel::RefreshRestartKeyControl()
+{
+    if (!restartKeyButton_)
+        return;
+    SetCaption(*restartKeyLabel_, std::wstring(Options(texts_).restartKey));
+    RequireComponent<TextVisualComponent>(*restartKeyButton_)
+        .SetText(capturingRestartKey_ ? std::wstring(L"···") : KeyName(options_.Values().restartKey, texts_));
+}
+
+void OptionsPanel::CaptureRestartKey(const std::uint16_t key)
+{
+    auto candidate = options_.Values();
+    candidate.restartKey = key;
+    // OptionSettings refuses a play key of any mode and the fixed game controls; the wait then continues.
+    if (SaveOptions(candidate))
+        capturingRestartKey_ = false;
+    RefreshRestartKeyControl();
+    RefreshStatus();
+}
+
 void OptionsPanel::RefreshKeyControls()
 {
+    RefreshRestartKeyControl();
     const auto &text = Options(texts_);
     std::size_t rowIndex = 0;
     for (std::size_t i = 0; i < inputLayouts_.size(); ++i)
@@ -465,6 +498,13 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
     {
         CancelKeyboardEdit();
         ChooseSongsFolder();
+        return true;
+    }
+    if (action.source == restartKeyButton_->Id())
+    {
+        CancelKeyboardEdit();
+        capturingRestartKey_ = true;
+        RefreshRestartKeyControl();
         return true;
     }
     if (action.source == songsDefault_->Id())

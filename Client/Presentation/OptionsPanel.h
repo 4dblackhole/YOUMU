@@ -36,7 +36,7 @@ class OptionsPanel final
     void RefreshTexts();
     [[nodiscard]] bool OwnsKeyboard() const noexcept
     {
-        return captureRow_.has_value() || editingOffset_;
+        return captureRow_.has_value() || capturingRestartKey_ || editingOffset_;
     }
     [[nodiscard]] bool IsVisible() const noexcept;
 
@@ -132,6 +132,10 @@ class OptionsPanel final
     void ShowKeyOverlay(KeyOverlay &overlay);
     void UpdateKeyClearButtons(PhantomCore::NodeId hoveredNode);
     void CaptureKey(std::uint16_t key);
+    // The restart key row heads the Input section; a play key or a fixed game control is refused.
+    void CreateRestartKeyControl();
+    void RefreshRestartKeyControl();
+    void CaptureRestartKey(std::uint16_t key);
     [[nodiscard]] KeyOverlay *VisibleKeyOverlay() noexcept;
     [[nodiscard]] const KeyOverlay *VisibleKeyOverlay() const noexcept;
     void HideKeyOverlays() noexcept;
@@ -193,6 +197,8 @@ class OptionsPanel final
     PhantomCore::Visual2DNode *middlewareCombo_{}, *outputCombo_{}, *driverCombo_{};
     PhantomCore::Visual2DNode *offsetLabel_{}, *offsetField_{}, *offsetUnit_{};
     std::optional<std::size_t> captureRow_;
+    PhantomCore::Visual2DNode *restartKeyLabel_{}, *restartKeyButton_{};
+    bool capturingRestartKey_{};
     std::wstring offsetDraft_;
     bool editingOffset_{}, replaceOffsetDraft_{};
 

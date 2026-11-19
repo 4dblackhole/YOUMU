@@ -279,6 +279,16 @@ namespace
         }
         Check(settings.Save(settings.Values(), error) && settings.LoadWarning().empty(),
               "A successful user save must clear the startup warning.");
+        // An existing file without the [Controls] section keeps the default restart key.
+        { std::ofstream file(path); file << "[General]\nLanguage=en\n"; }
+        Check(settings.Load(error) && settings.Values().restartKey == DefaultRestartKey,
+              "A missing restart key entry must read as the default backquote.");
+        for (const std::string content : {"[Controls]\nRestartKey=32\n", "[Controls]\nRestartKey=75\n"})
+        {
+            { std::ofstream file(path); file << content; }
+            Check(!settings.Load(error) && settings.Values().restartKey == DefaultRestartKey,
+                  "A restart key on a fixed game control or a play key must be refused.");
+        }
         OptionSettings unavailable(folder / "missing-directory" / "Option.ini");
         Check(!unavailable.Load(error) && unavailable.Values().driverIndex == -1 && !unavailable.LoadWarning().empty(),
               "Failure creating a first-run INI must still provide defaults.");
@@ -523,6 +533,22 @@ namespace
         Section(panel, canvas, "Input");
         Check(!panel.OwnsKeyboard() && settings.Values().globalOffsetMs == -5,
               "Switching away from an invalid offset draft cancels only its edit state.");
+        // The restart key refuses a play key and a fixed game control, then saves another key.
+        const auto restartText = [&] {
+            return FindNode(canvas.Root(), "Options.RestartKey").GetComponent<TextVisualComponent>()->Text();
+        };
+        Check(settings.Values().restartKey == DefaultRestartKey, "The restart key starts on backquote.");
+        click("Options.RestartKey");
+        Check(panel.OwnsKeyboard() && restartText() == L"···", "The restart key row waits for a key.");
+        panel.HandleKey('K', router);
+        Check(panel.OwnsKeyboard() && settings.Values().restartKey == DefaultRestartKey,
+              "A play key cannot become the restart key.");
+        panel.HandleKey(VK_SPACE, router);
+        Check(panel.OwnsKeyboard() && settings.Values().restartKey == DefaultRestartKey,
+              "A fixed game control cannot become the restart key.");
+        panel.HandleKey(VK_F8, router);
+        Check(!panel.OwnsKeyboard() && settings.Values().restartKey == VK_F8 && restartText() != L"···",
+              "Another key becomes the restart key at once.");
         click("Options.Taiko.OpenKeys");
         canvas.Update(0);
         {
@@ -563,6 +589,11 @@ namespace
         panel.HandleKey('S', router);
         Check(settings.Values().modeKeys.at("Taiko").at("LeftDon")[0] == 'S' && !panel.OwnsKeyboard(),
               "Primary key saved.");
+        click("Options.Key.Taiko.LeftDon.2");
+        panel.HandleKey(VK_F8, router);
+        Check(panel.OwnsKeyboard() && savedKey("LeftDon", 2) != VK_F8, "The restart key cannot become a play key.");
+        panel.HandleKey(VK_ESCAPE, router);
+        Check(!panel.OwnsKeyboard(), "ESC cancels the refused play key wait.");
         click("Options.Key.Taiko.LeftDon.1");
         panel.HandleKey('A', router);
         Check(settings.Values().modeKeys.at("Taiko").at("LeftDon")[1] == 'A', "Auxiliary key saved independently.");
@@ -602,6 +633,7 @@ namespace
         Check(restored.Values().modeKeys == candidate.modeKeys,
               "Resolution, offset and all mode profiles survive restart.");
         Check(restored.Values().notation == TextNotation::Romanized, "The notation choice survives restart.");
+        Check(restored.Values().restartKey == VK_F8, "The restart key survives restart.");
         candidate.windowWidth = 0;
         Check(!settings.Save(candidate, error), "Invalid saved resolution rejected.");
         candidate = settings.Values();

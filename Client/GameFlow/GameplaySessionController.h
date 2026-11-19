@@ -141,7 +141,7 @@ class GameplaySessionController final
                     PlayControlType action);
     void ResetTimeline();
     void ProcessControlKeys(const PhantomCore::UpdateContext &context);
-    // True once the backquote restart key has been held for half a second.
+    // True once the launch request's restart key has been held for half a second.
     bool RestartHoldCompleted(const PhantomCore::UpdateContext &context);
     void ToggleDebugTimeline(const PhantomCore::UpdateContext &context, std::int64_t ticks);
     void ProcessDebugTimeline(const PhantomCore::InputState &input, const PhantomCore::AudioClockSnapshot &clock,

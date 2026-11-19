@@ -60,7 +60,7 @@ void OptionsPanel::LayoutSections()
         std::vector<float>{ControlHeight, SongsControlHeight},
         std::vector<float>{ControlHeight, ControlHeight, ControlHeight}, // Skin, resolution, notation.
         std::vector<float>(volumes_.size() + 4, ControlHeight),
-        std::vector<float>{}};
+        std::vector<float>{ControlHeight}}; // Input: the restart key, then each mode's keys.
     for (const auto &layout : inputLayouts_)
     {
         const auto *presentation = FindModePresentation(layout.modeId);
