@@ -181,8 +181,8 @@ void OptionsPanel::Shutdown() noexcept
     inputLayouts_.clear();
     resolutions_.clear();
     icons_.clear();
-    volumes_ = {};
-    volumeDrag_.reset();
+    sliders_ = {};
+    sliderDrag_.reset();
     window_ = nullptr;
     sections_ = {};
     activeSection_ = 0;
@@ -232,7 +232,7 @@ void OptionsPanel::Toggle()
     HideKeyOverlays();
     CancelKeyboardEdit();
     CollapseCombos();
-    volumeDrag_.reset();
+    sliderDrag_.reset();
     scrollbar_.Release();
     railKeyboard_ = railPointerInside_ = false;
     railHoverSeconds_ = 0.0F;
@@ -279,7 +279,7 @@ void OptionsPanel::Close(Visual2DInputRouter *inputRouter)
     dragging_ = false;
     previousDragPoint_.reset();
     scrollbar_.Release();
-    volumeDrag_.reset();
+    sliderDrag_.reset();
     railKeyboard_ = railPointerInside_ = false;
     CollapseCombos();
     if (inputRouter)
@@ -377,7 +377,7 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
     if (consumedKey)
         inputRouter.InvalidateHitTest();
 
-    if (ProcessVolumePointer(input, canvasPointer, hoveredNode))
+    if (ProcessSliderPointer(input, canvasPointer, hoveredNode))
         return consumedKey;
     // The shared scrollbar follows its drag even when the pointer leaves the panel.
     if (const auto offset = scrollbar_.Track(canvasPointer, input.IsMouseButtonDown(MouseButton::Left)))
@@ -540,7 +540,7 @@ void OptionsPanel::RefreshTexts()
     if (selected != skinNames_.end())
         skinCombo.SetSelectedIndex(static_cast<std::size_t>(selected - skinNames_.begin()));
     RefreshAudioControls();
-    RefreshVolumeControls();
+    RefreshSliderControls();
     RefreshDisplayControls();
     RefreshOffsetControls();
     RefreshSongsControls();

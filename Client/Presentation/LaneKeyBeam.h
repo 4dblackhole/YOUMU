@@ -10,6 +10,8 @@ class LaneKeyBeam final
     void Initialize(PhantomCore::Visual2DNode &lane, PhantomCore::ImageHandle image,
                     PhantomCore::Size imageSize);
     void SetLayout(float laneWidth, float laneLength);
+    // The player's key beam opacity (0..1) for every mode; it scales the beam's fading alpha.
+    void SetOpacity(float opacity) noexcept;
     void OnKeyPressed(const NoteProcessResult &result);
     void Update(double deltaSeconds);
     void Reset() noexcept;
@@ -29,6 +31,7 @@ class LaneKeyBeam final
   private:
     PhantomCore::Visual2DNode *node_{};
     PhantomCore::Color color_{1, 1, 1, 1};
+    float opacity_{1};
     float aspectRatio_{1};
     double elapsedSeconds_{0.2};
 };

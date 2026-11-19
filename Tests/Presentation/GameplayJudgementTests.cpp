@@ -906,6 +906,18 @@ namespace
         const auto beam = Node(root, "Lane.KeyBeam").GetComponent<SpriteVisualComponent>()->Style().normal;
         Check(Near(beam.red, 1.0F) && Near(beam.green, 1.0F) && Near(beam.blue, 1.0F),
               "Out-of-range input must only produce the white key beam.");
+        Check(Near(beam.alpha, 1.0F), "The default key beam opacity draws the beam as before.");
+        // The player's opacity scales the beam of every mode, through its fade.
+        presenter.ConfigureKeyBeamOpacity(40);
+        presenter.ApplyFeedback({.keyPressed = true, .result = empty});
+        const auto dimmed = [&] { return Node(root, "Lane.KeyBeam").GetComponent<SpriteVisualComponent>()->Style().normal; };
+        Check(Near(dimmed().alpha, 0.4F) && Near(dimmed().red, 1.0F), "A 40% key beam starts at 40% alpha.");
+        presenter.AdvanceEffects(0.1);
+        Check(Near(dimmed().alpha, 0.2F), "The fade keeps the chosen opacity as its ceiling.");
+        presenter.ConfigureKeyBeamOpacity(0);
+        presenter.ApplyFeedback({.keyPressed = true, .result = empty});
+        Check(Near(dimmed().alpha, 0.0F), "A 0% key beam is invisible.");
+        presenter.ConfigureKeyBeamOpacity(100);
         NoteProcessResult wrong;
         wrong.events.push_back(Event(NoteEventType::InputRejected, JudgementGrade::Perfect));
         presenter.ApplyFeedback({.keyPressed = false, .result = wrong});

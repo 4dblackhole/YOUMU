@@ -68,12 +68,15 @@ class OptionsPanel final
         std::vector<PhantomCore::Visual2DNode *> faces;
         std::size_t firstRow{}, rowCount{};
     };
-    struct VolumeSlider
+    // A 0..100% slider: the three volumes (Audio) and the key beam opacity (Display) share it.
+    struct PercentSlider
     {
-        int AudioVolumes::*percent{};
+        int (*read)(const OptionValues &){};
+        void (*write)(OptionValues &, int){};
         const char *textKey{};
         PhantomCore::Visual2DNode *label{}, *track{}, *fill{}, *knob{}, *value{};
     };
+    static constexpr std::size_t VolumeSliderCount = 3, KeyBeamOpacitySlider = 3, SliderCount = 4;
 
     // Drawer frame, rail and section navigation (OptionsRail).
     void CreateFrame();
@@ -113,11 +116,13 @@ class OptionsPanel final
     void SelectResolution(std::size_t index);
     void SelectNotation(std::size_t index);
     void CreateVolumeControls();
-    void RefreshVolumeControls();
-    void ShowVolume(const VolumeSlider &slider, int percent);
-    bool ProcessVolumePointer(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
+    void CreateKeyBeamOpacityControl();
+    void CreatePercentSlider(std::size_t index, const std::string &name);
+    void RefreshSliderControls();
+    void ShowSlider(const PercentSlider &slider, int percent);
+    bool ProcessSliderPointer(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
                               PhantomCore::NodeId hoveredNode);
-    void SaveVolume();
+    void SaveSlider();
     void CreateAudioControls();
     void RefreshAudioControls();
     void CreateOffsetControls();
@@ -184,9 +189,9 @@ class OptionsPanel final
     std::vector<KeyOverlay> keyOverlays_;
     std::vector<PhantomCore::Visual2DNode *> modeLabels_;
     std::vector<PhantomCore::WindowResolution> resolutions_;
-    std::array<VolumeSlider, 3> volumes_{};
-    std::optional<std::size_t> volumeDrag_;
-    AudioVolumes volumeDraft_;
+    std::array<PercentSlider, SliderCount> sliders_{};
+    std::optional<std::size_t> sliderDrag_;
+    int sliderDraft_{}; // The dragged slider's shown percentage until the release saves it.
     PhantomCore::IWindowControl *window_{};
     PhantomCore::Visual2DNode *languageLabel_{}, *languageCombo_{};
     PhantomCore::Visual2DNode *songsLabel_{}, *songsField_{}, *songsBrowse_{}, *songsDefault_{};

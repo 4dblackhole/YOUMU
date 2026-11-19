@@ -1118,6 +1118,39 @@ namespace
         OptionSettings invalid(folder / "BadVolume.ini");
         Check(!invalid.Load(error) && invalid.Values().volumes == AudioVolumes{} && !invalid.LoadWarning().empty(),
               "A volume outside its range falls back to defaults with a warning.");
+
+        // The key beam opacity slider (Display) shares the volume slider: 100% at first, saved on release.
+        Section(panel, canvas, "Display");
+        auto &beamTrack = FindNode(canvas.Root(), "Options.KeyBeamOpacity");
+        auto &beamValue = *FindNode(canvas.Root(), "Options.KeyBeamOpacity.Value").GetComponent<TextVisualComponent>();
+        const auto beamBounds = beamTrack.BoundsInCanvas();
+        Check(settings.Values().keyBeamOpacity == 100 && beamValue.Text() == L"100%",
+              "The key beam starts fully opaque, as it always looked.");
+        const Point beamQuarter{beamBounds.x + 5 + (beamBounds.width - 10) * .25F, beamBounds.y + beamBounds.height / 2};
+        InputStateTestAccess::Press(input);
+        static_cast<void>(panel.ProcessInput(input, beamQuarter, beamTrack.Id(), router));
+        Check(beamValue.Text() == L"25%" && settings.Values().keyBeamOpacity == 100,
+              "Dragging the key beam slider shows its value but saves only on release.");
+        InputStateTestAccess::Release(input);
+        static_cast<void>(panel.ProcessInput(input, beamQuarter, {}, router));
+        Check(settings.Values().keyBeamOpacity == 25 && settings.Values().volumes == AudioVolumes{100, 25, 100},
+              "Releasing saves only the key beam opacity.");
+        OptionSettings restoredBeam(settings.Path());
+        Check(restoredBeam.Load(error) && restoredBeam.Values().keyBeamOpacity == 25, "The key beam opacity survives restart.");
+        {
+            std::ofstream file(folder / "BadBeam.ini");
+            file << "[Display]\nKeyBeamOpacity=101\n";
+        }
+        OptionSettings invalidBeam(folder / "BadBeam.ini");
+        Check(!invalidBeam.Load(error) && invalidBeam.Values().keyBeamOpacity == 100,
+              "A key beam opacity outside 0..100 falls back to defaults.");
+        {
+            std::ofstream file(folder / "NoBeam.ini");
+            file << "[Display]\nWidth=1280\n";
+        }
+        OptionSettings missingBeam(folder / "NoBeam.ini");
+        Check(missingBeam.Load(error) && missingBeam.Values().keyBeamOpacity == 100,
+              "A file without the entry keeps the default key beam opacity.");
         panel.Shutdown();
     }
 }
