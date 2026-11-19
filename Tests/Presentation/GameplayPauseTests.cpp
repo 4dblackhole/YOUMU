@@ -813,6 +813,7 @@ namespace
                 CheckTransientVoices(ctx);
                 controller_->OpenPauseMenu(ctx);
                 controller_->RetryFromPause(ctx);
+                CheckRetryFade(*controller_, ctx);
                 Check(session_->CanUseHp() && session_->FinalizedNoteCount() == 0,
                       "Retry must start a clean eligible attempt.");
                 Check(controller_->CurrentState() == PlayState::Loading, "Retry must re-enter Loading.");
@@ -845,6 +846,7 @@ namespace
                       "Rewind before the first measure must not move the clock forwards.");
                 controller_->OpenPauseMenu(ctx);
                 controller_->RetryFromPause(ctx);
+                CompleteRetryFade(*controller_, ctx);
                 WaitForGameplay(*controller_, ctx);
                 controller_->OpenPauseMenu(ctx);
                 controller_->RetireFromPause();
@@ -1086,6 +1088,35 @@ namespace
 
         // The backquote key restarts the attempt only after a half-second hold; a tap, the old R key and a
         // key held on through a restart must leave the attempt running.
+        // A pause-menu Retry restarts only after its screen fade; advance past it in one frame.
+        static void CompleteRetryFade(GameplaySessionController &controller, const UpdateContext &ctx)
+        {
+            InputState empty;
+            controller.Update({GameplaySessionController::RetryFadeSeconds, ctx.totalSeconds, ctx.updateIndex, empty,
+                               ctx.audio, {}});
+        }
+        // Retry closes the menu at once, darkens the frozen screen over 0.3s while ignoring input
+        // (ESC must not reopen the menu), then restarts and shows the new attempt without a fade.
+        static void CheckRetryFade(GameplaySessionController &controller, const UpdateContext &ctx)
+        {
+            Check(!controller.PauseMenuOpen() && controller.CurrentState() == PlayState::Pause &&
+                      controller.ScreenFade() == 0.0,
+                  "Retry closes the pause menu and starts its fade from a clear screen.");
+            InputState input;
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Press(input, VK_ESCAPE, ctx.audio.CaptureClockSnapshot().performanceCounterTicks);
+            controller.Update({GameplaySessionController::RetryFadeSeconds * 0.5, ctx.totalSeconds, ctx.updateIndex,
+                               input, ctx.audio, {}});
+            Check(std::abs(controller.ScreenFade() - 0.5) < 1e-9 && !controller.PauseMenuOpen() &&
+                      controller.CurrentState() == PlayState::Pause,
+                  "Halfway through the Retry fade the screen is half black and input is ignored.");
+            InputStateTestAccess::Begin(input);
+            controller.Update({GameplaySessionController::RetryFadeSeconds * 0.5, ctx.totalSeconds, ctx.updateIndex,
+                               input, ctx.audio, {}});
+            Check(controller.CurrentState() == PlayState::Loading && controller.ScreenFade() == 0.0,
+                  "At the end of the fade the attempt restarts and the new one is shown at once.");
+        }
+
         void CheckRestartHold(const UpdateContext &ctx)
         {
             auto pattern = Pattern();
@@ -1115,8 +1146,11 @@ namespace
             };
             edge(VK_OEM_3, true);
             holdFor(std::chrono::milliseconds{100});
+            Check(controller.ScreenFade() > 0.0 && controller.ScreenFade() < 1.0,
+                  "Holding the restart key darkens the screen in proportion to the hold.");
             edge(VK_OEM_3, false);
             Check(controller.CurrentState() == PlayState::Gameplay, "A short backquote tap must not restart.");
+            Check(controller.ScreenFade() == 0.0, "Releasing the restart key early clears the screen at once.");
             edge('R', true);
             holdFor(std::chrono::milliseconds{700});
             edge('R', false);
@@ -1126,6 +1160,7 @@ namespace
             Check(controller.CurrentState() == PlayState::Gameplay, "Holding for less than half a second must not restart.");
             holdFor(std::chrono::milliseconds{300});
             Check(controller.CurrentState() == PlayState::Loading, "Holding backquote for half a second must restart.");
+            Check(controller.ScreenFade() == 0.0, "The restarted attempt is shown at once, without a fade-in.");
             WaitForGameplay(controller, ctx);
             holdFor(std::chrono::milliseconds{700});
             Check(controller.CurrentState() == PlayState::Gameplay,
@@ -1226,6 +1261,7 @@ namespace
                   "Failed resources must not be bypassed with Resume.");
             failSampleLoads = false;
             failed.RetryFromPause(ctx);
+            CompleteRetryFade(failed, ctx);
             WaitForGameplay(failed, ctx);
             Check(failed.ErrorMessage().empty() && failed.Session().CanUseHp() && failed.AttemptStarted(),
                   "Retry must reload failed resources and begin a clean attempt after recovery.");
@@ -1272,6 +1308,7 @@ namespace
             Check(!common->ErrorMessage().empty(),
                   "Audio failure must keep a frozen clock and expose the pause menu/error.");
             common->RetryFromPause(ctx);
+            CompleteRetryFade(*common, ctx);
             Check(common->CurrentState() == PlayState::Loading, "Retry must use Loading for every mode.");
             WaitForGameplay(*common, ctx);
             Check(common->ErrorMessage().empty(), "A successful Retry must clear the resolved music error.");

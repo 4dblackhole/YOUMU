@@ -311,9 +311,19 @@ void GameplayAudioRouter::SetVolumes(const float music, const float effects)
         ApplyBusVolume(name, *bus);
 }
 
+void GameplayAudioRouter::SetMusicFade(const float fade)
+{
+    const float clamped = std::clamp(fade, 0.0F, 1.0F);
+    if (clamped == musicFade_)
+        return;
+    musicFade_ = clamped;
+    if (const auto found = buses_.find("Music"); found != buses_.end())
+        ApplyBusVolume(found->first, *found->second);
+}
+
 float GameplayAudioRouter::BusGain(const std::string_view busId) const noexcept
 {
-    return busId == "Music" ? musicVolume_ : effectsVolume_;
+    return busId == "Music" ? musicVolume_ * musicFade_ : effectsVolume_;
 }
 
 void GameplayAudioRouter::ApplyBusVolume(const std::string_view busId, AudioBus &bus)

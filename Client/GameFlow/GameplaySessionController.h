@@ -7,7 +7,9 @@
 #include "GameFlow/Submodules/GameplaySessionFactory.h"
 #include "PhantomCore.h"
 #include "Time/RhythmTimer.h"
+#include <algorithm>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -58,8 +60,21 @@ class GameplaySessionController final
     // until background-music preparation and the shared start deadline finish.
     bool ResumeFromPause(const PhantomCore::UpdateContext &context, RhythmDuration leadIn);
     bool RewindFromPause(const PhantomCore::UpdateContext &context, std::size_t measures);
+    // Closes the menu and fades the screen to black for RetryFadeSeconds before the attempt restarts.
     void RetryFromPause(const PhantomCore::UpdateContext &context);
+    // Advances a chosen Retry's fade and restarts at its end; true while one is pending. Update calls
+    // it; the Scene also calls it while the play screen is still being prepared.
+    bool UpdatePendingRetry(const PhantomCore::UpdateContext &context);
     void RetireFromPause();
+    // Black over the whole screen, 0..1: the restart key's hold progress, or a chosen Retry's fade.
+    // The music volume follows it down. A completed restart drops it to 0 at once.
+    [[nodiscard]] double ScreenFade() const noexcept
+    {
+        if (retryFadeElapsed_)
+            return std::min(*retryFadeElapsed_ / RetryFadeSeconds, 1.0);
+        return restartHoldStart_ ? restartHoldProgress_ : 0.0;
+    }
+    static constexpr double RetryFadeSeconds = 0.3;
     bool PauseMenuOpen() const noexcept
     {
         return pauseMenuOpen_;
@@ -154,6 +169,8 @@ class GameplaySessionController final
     // QPC time the restart key went down while counting, and the latest restart; earlier presses are ignored.
     std::optional<std::int64_t> restartHoldStart_;
     std::int64_t restartHoldIgnoreTicks_{};
+    double restartHoldProgress_{}; // Fraction of the hold reached while restartHoldStart_ is set.
+    std::optional<double> retryFadeElapsed_; // Seconds since a pause-menu Retry was chosen.
     double completedElapsedSeconds_{};
     double playbackRate_{1.0};
     bool playbackRequested_{};

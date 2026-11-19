@@ -59,7 +59,9 @@ bool GameplaySessionController::RestartHoldCompleted(const UpdateContext &contex
     }
     const auto now = context.audio.CaptureClockSnapshot();
     const auto heldTicks = now.performanceCounterTicks - *restartHoldStart_;
-    if (heldTicks < now.performanceCounterFrequency / RestartHoldDivisor)
+    const auto holdTicks = std::max<std::int64_t>(now.performanceCounterFrequency / RestartHoldDivisor, 1);
+    restartHoldProgress_ = std::clamp(static_cast<double>(heldTicks) / static_cast<double>(holdTicks), 0.0, 1.0);
+    if (heldTicks < holdTicks)
         return false;
     // Holding the key on after the restart must not restart again until it is released and pressed anew.
     restartHoldIgnoreTicks_ = now.performanceCounterTicks;
