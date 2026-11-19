@@ -43,7 +43,7 @@ namespace tests
         auto unassigned = TaikoMode(options).CreateSession(pattern);
         Require(unassigned.Succeeded() && unassigned.session->InputMapping().at('S') == 1,
                 "An unassigned primary keeps the binding's assigned auxiliary keys playable.");
-        Require(!unassigned.session->InputMapping().contains(0) && !unassigned.session->InputMapping().contains('J'),
+        Require(!unassigned.session->InputMapping().contains(0) && !unassigned.session->InputMapping().contains('M'),
                 "A binding without keys receives no input.");
         Require(unassigned.session->InputLayout().bindings[2].keys == std::vector<PhysicalKey>(4, 0),
                 "A binding without keys receives no input.");
