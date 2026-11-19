@@ -11,7 +11,9 @@ function Stage([string]$name, [scriptblock]$body) {
     & $body
     if ($LASTEXITCODE -ne 0) { "STAGE FAILED: $name"; exit 1 }
 }
-$runnerArgs = if ($Runners) { @('-Runners', $Runners) } else { @('-AllRunners') }
+# if/else 식으로 고르면 원소 하나짜리 배열이 문자열로 풀려 스플래팅이 깨지므로 배열을 직접 대입합니다.
+$runnerArgs = @('-AllRunners')
+if ($Runners) { $runnerArgs = @('-Runners', $Runners) }
 Stage 'Debug build' { powershell -NoProfile -ExecutionPolicy Bypass -File "$here/Build.ps1" -Configuration Debug }
 Stage 'Debug tests' { powershell -NoProfile -ExecutionPolicy Bypass -File "$here/Test.ps1" -Configuration Debug -Core @runnerArgs }
 Stage 'Release build' { powershell -NoProfile -ExecutionPolicy Bypass -File "$here/Build.ps1" -Configuration Release }
