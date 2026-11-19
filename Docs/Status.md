@@ -8,9 +8,9 @@
 
 | 저장소 | main | 비고 |
 | --- | --- | --- |
-| YOUMU | `d1d8887` (#81) | 게임 |
-| PhantomCore | `374510e` | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
-| OsuTaikoConverter | `305ec5f` | YOUMU 솔루션이 형제 폴더로 참조 |
+| YOUMU | `018aa16` (#82) | 게임 |
+| PhantomCore | `c9380d7` (#22) | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
+| OsuTaikoConverter | `35bda07` (#4) | YOUMU 솔루션이 형제 폴더로 참조 |
 
 ## 한눈에
 
@@ -58,8 +58,6 @@
 
 ## 알려진 문제·주의
 
-- 엔진 `Docs/AudioOutput.md`의 깨진 한글은 엔진 저장소에서 복원했습니다. YOUMU의 엔진 gitlink가 그 커밋 이후를 가리키기
-  전까지 `Dependencies/PhantomCore` 안의 사본은 깨진 채로 보입니다.
 - 검증 도구는 `Scripts/Verify`가 기준입니다. 저장소 밖의 옛 사본(`build/ui02`)은 모든 세션이 새 도구로 바꾼 뒤 지웁니다.
   그때까지는 새 도구가 옛 잠금 폴더(`build/ui02/locks`)를 함께 쓰므로 두 도구가 동시에 돌아도 잠금은 하나입니다
   ([작업 방식](Contributing/Workflow.md#검증과-공유-잠금)).
