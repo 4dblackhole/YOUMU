@@ -1,10 +1,8 @@
-# Editor audio fixture
+# 에디터 오디오 예제
 
-`OppositePhase.ogg` is generated test data, not a user song. It contains one
-second of 48 kHz stereo: a half-scale 1 kHz sine wave for 0.7 seconds, then
-silence. The right channel is the inverse of the left channel.
+`OppositePhase.ogg`는 사용자 곡이 아니라 생성한 테스트 데이터입니다. 48 kHz 스테레오 1초 길이이며, 0.7초 동안 절반 크기의
+1 kHz 사인파가 나온 뒤 조용합니다. 오른쪽 채널은 왼쪽 채널을 뒤집은 것입니다.
 
-It was encoded from signed 16-bit PCM with FFmpeg's libvorbis encoder (default
-quality). Tests require no installed FFmpeg or Windows Vorbis codec. The test
-compares decoded sample rate/duration, waveform, spectral frequency/level and
-silence, and copies the same bytes to Unicode/uppercase/renamed file paths.
+부호 있는 16비트 PCM을 FFmpeg의 libvorbis 인코더(기본 품질)로 인코딩했습니다. 테스트에는 설치된 FFmpeg나 Windows Vorbis 코덱이
+필요 없습니다. 테스트는 디코딩한 sample rate·길이, 파형, 스펙트럼 주파수·레벨과 무음을 비교하고, 같은 바이트를 Unicode·대문자·
+이름 바꾼 파일 경로로 복사해 확인합니다.
