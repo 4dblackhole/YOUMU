@@ -16,3 +16,11 @@ New-Item -ItemType Directory -Path $objectDirectory -Force | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Gameplay judgement test build failed.' }
 & "./bin/x64/$Configuration/GameplayJudgementTests.exe"
 if ($LASTEXITCODE -ne 0) { throw 'Gameplay judgement test failed.' }
+# The lane key beam's own regression (fade, grade colours, POOR, layout, clip and node reuse) links only its unit.
+$beamObjects = @('Pch', 'LaneKeyBeam') | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
+$beamDirectory = "build/obj/LaneKeyBeamTests/$Configuration"
+New-Item -ItemType Directory -Path $beamDirectory -Force | Out-Null
+& cl /nologo /utf-8 /std:c++20 /EHsc /W4 /analyze @runtime /DNOMINMAX /IClient /IYOUMU.Rhythm /IYOUMU.Chart /IYOUMU.Modes /IYOUMU.Assets/Public /IDependencies/PhantomCore/Engine/SDK Tests/Presentation/LaneKeyBeamTests.cpp @beamObjects @libraries "Dependencies/PhantomCore/bin/x64/$Configuration/PhantomCore.lib" "/Fo$beamDirectory/" "/Febin/x64/$Configuration/LaneKeyBeamTests.exe" /link /OPT:NOICF /OPT:NOREF "/LIBPATH:$FmodRoot/api/core/lib/x64" user32.lib gdi32.lib ole32.lib
+if ($LASTEXITCODE -ne 0) { throw 'Lane key beam test build failed.' }
+& "./bin/x64/$Configuration/LaneKeyBeamTests.exe"
+if ($LASTEXITCODE -ne 0) { throw 'Lane key beam test failed.' }

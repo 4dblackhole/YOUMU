@@ -37,7 +37,6 @@
     <Filter Include="Assets\Skins\Default Skin\MusicSelect\Detail" />
     <Filter Include="Assets\Skins\Default Skin\MusicSelect\Panels" />
     <Filter Include="Assets\Skins\Default Skin\MusicSelect\Records" />
-    <Filter Include="Assets\Skins\Default Skin\NumberImage" />
     <Filter Include="Assets\Skins\Default Skin\Result" />
     <Filter Include="Assets\Skins\Default Skin\Result\Background" />
     <Filter Include="Assets\Skins\Default Skin\Result\Mode" />
@@ -45,8 +44,6 @@
     <Filter Include="Assets\Skins\Default Skin\Result\Rank" />
     <Filter Include="Assets\Skins\Default Skin\Common" />
     <Filter Include="Assets\Skins\Default Skin\Common\Icons" />
-    <Filter Include="Assets\Skins\Default Skin\TitleImage" />
-    <Filter Include="Assets\Skins\Default Skin\TitleImage\Widget" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\YOUMUAssets.h"><Filter>Public</Filter></ClInclude>
@@ -73,14 +70,12 @@
     <None Include="Assets\Skins\Default Skin\MusicSelect\Detail\*.*"><Filter>Assets\Skins\Default Skin\MusicSelect\Detail</Filter></None>
     <None Include="Assets\Skins\Default Skin\MusicSelect\Panels\*.*"><Filter>Assets\Skins\Default Skin\MusicSelect\Panels</Filter></None>
     <None Include="Assets\Skins\Default Skin\MusicSelect\Records\*.*"><Filter>Assets\Skins\Default Skin\MusicSelect\Records</Filter></None>
-    <None Include="Assets\Skins\Default Skin\NumberImage\*.*"><Filter>Assets\Skins\Default Skin\NumberImage</Filter></None>
     <None Include="Assets\Skins\Default Skin\Common\Icons\*.*"><Filter>Assets\Skins\Default Skin\Common\Icons</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\*.*"><Filter>Assets\Skins\Default Skin\Result</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Background\*.*"><Filter>Assets\Skins\Default Skin\Result\Background</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Mode\*.*"><Filter>Assets\Skins\Default Skin\Result\Mode</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Panels\*.*"><Filter>Assets\Skins\Default Skin\Result\Panels</Filter></None>
     <None Include="Assets\Skins\Default Skin\Result\Rank\*.*"><Filter>Assets\Skins\Default Skin\Result\Rank</Filter></None>
-    <None Include="Assets\Skins\Default Skin\TitleImage\Widget\*.*"><Filter>Assets\Skins\Default Skin\TitleImage\Widget</Filter></None>
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Skins\Default Skin\Editor\*.*"><Filter>Assets\Skins\Default Skin\Editor</Filter></None>

@@ -8,7 +8,7 @@
 
 - `Assets/Skins/Default Skin` 전체
 - `Assets/Fonts`의 글꼴과 각각의 OFL 라이선스: Noto Sans KR, Nunito, Barlow Semi Condensed(Medium·Bold·ExtraBold·
-  BoldItalic·ExtraBoldItalic), Rajdhani, Press Start 2P. Nunito와 Barlow Semi Condensed는 UI 리디자인 글꼴이며
+  BoldItalic·ExtraBoldItalic). Nunito와 Barlow Semi Condensed는 UI 리디자인 글꼴이며
   [Google Fonts 저장소](https://github.com/google/fonts/tree/main/ofl)의 파일을 수정 없이 넣었습니다.
 
 `Default Skin`의 그림은 확정 리디자인(UI-02)의 부품입니다. 세부는 [스킨 부품](UIRedesign.md#스킨-부품)입니다.
