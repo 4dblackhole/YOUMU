@@ -3,6 +3,7 @@
 #include "Catalog/SongCatalog.h"
 #include "Editing/ChartEditor.h"
 #include "Parsing/ChartParser.h"
+#include "ScopedTestFolder.h"
 #include <Windows.h>
 #include <filesystem>
 #include <fstream>
@@ -362,13 +363,11 @@ int wmain(int count, wchar_t *arguments[])
             std::cout << "Saved converter result accepted by YOUMU.\n";
             return 0;
         }
-        const auto root = fs::absolute(fs::path("build/osu-import-validation") / std::to_string(GetCurrentProcessId()));
-        Check(!fs::exists(root), "Fixture must be new.");
+        const ScopedTestFolder fixture(fs::absolute("build/osu-import-validation"), L"run");
+        const auto &root = fixture.Path();
         TestValidation(root);
         TestPlacement(root);
         TestNamesLockAndRollback(root);
-        std::error_code ignored;
-        fs::remove_all(root, ignored);
         std::cout << "Osu import: converter result validation, song folder placement, audio/background reuse, "
                      "name rules, lock and rollback passed.\n";
         return 0;

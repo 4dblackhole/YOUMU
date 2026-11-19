@@ -489,7 +489,8 @@ The test source uses MSVC Code Analysis. Native captures/manual input are report
 
 After building the solution, run `RunNewDifficultyTests.ps1 -Configuration Debug` and `Release`.
 The test links production creation/dialog objects with MSVC `/W4 /analyze`. It uses an isolated
-ignored `build/new-difficulty-tests/<pid>` Songs fixture. It checks Unicode metadata, default
+ignored Songs fixture under `build/new-difficulty-tests`; its folder name is unique per run and the folder is removed
+when the test ends (`ScopedTestFolder.h`, shared by the fixture-writing presentation tests). It checks Unicode metadata, default
 empty Taiko timing, sibling YME and Songs-relative YMM paths, no overwrites, invalid names/BPM,
 JudgeLevel 1.00..100.00 in 0.01 steps, cancellation, correcting invalid fields in the same native
 dialog, and rediscovery by SongCatalog. Timers drive the owned dialog automatically; this is

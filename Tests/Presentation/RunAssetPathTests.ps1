@@ -45,5 +45,7 @@ try {
         & (Join-Path $deploymentExe 'AssetPathTests.exe') $deploymentAssets $deploymentExe
         if ($LASTEXITCODE -ne 0) { throw 'Deployment path selection failed.' }
     } finally { Pop-Location }
-    Write-Output "Asset path tests passed; retained fixtures: $testRoot"
+    # A passing run leaves nothing behind; a failing run keeps its fixtures (the throw above skips this) for diagnosis.
+    Remove-Item -LiteralPath $testRoot -Recurse -Force
+    Write-Output 'Asset path tests passed; fixtures removed.'
 } finally { Pop-Location }

@@ -11,6 +11,7 @@
 #include "EditorScene/Submodules/EditorView.h"
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "GameScene/MusicSelectScene/Submodules/SongPreviewController.h"
+#include "ScopedTestFolder.h"
 #include <chrono>
 #include <cmath>
 #include <atomic>
@@ -124,7 +125,8 @@ namespace
     // Save publishes the YME it actually wrote, so the session keeps opening that file.
     void TestSavePublishesEffectPath()
     {
-        const auto root = std::filesystem::absolute("build/fixtures/EditorSaveEffectPath");
+        const ScopedTestFolder fixture(std::filesystem::absolute("build/fixtures"), L"EditorSaveEffectPath");
+        const auto &root = fixture.Path();
         const auto music = root / "Song/Music", set = root / "Song/Chart/Set";
         std::filesystem::create_directories(music);
         std::filesystem::create_directories(set);

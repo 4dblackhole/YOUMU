@@ -1,6 +1,7 @@
 #include "Editing/ChartEditor.h"
 #include "EditorScene/Submodules/EditorPatternCreation.h"
 #include "Parsing/ChartParser.h"
+#include "ScopedTestFolder.h"
 #include <Windows.h>
 #include <fstream>
 #include <iostream>
@@ -32,8 +33,8 @@ int main()
 {
     try
     {
-        const auto root = fs::absolute(fs::path("build/new-difficulty-tests") / std::to_string(GetCurrentProcessId()));
-        Check(!fs::exists(root), "Use a fresh fixture root.");
+        const ScopedTestFolder fixture(fs::absolute("build/new-difficulty-tests"), L"run");
+        const auto &root = fixture.Path();
         const auto songFolder = root / L"가수 - 음악";
         const auto music = songFolder / L"Music/음악.ymm";
         Write(music, "Version: 1\nFile: sample.wav\nMusic Name 1: Test\nArtist 1: Test\n");

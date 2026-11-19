@@ -17,11 +17,9 @@ namespace tests
     }
     void TestSongFavoritesPersistence()
     {
-        const auto root = std::filesystem::path{"build"} / ("favorites-logic-" + std::to_string(GetCurrentProcessId()));
-        std::filesystem::create_directories(root);
+        const TemporaryDirectory fixture("favorites-logic");
+        const auto &root = fixture.Path();
         const auto path = root / L"favorites.json";
-        std::error_code ignored;
-        std::filesystem::remove(path, ignored);
         const auto pattern = root / L"天使の夢 한글.ymp";
         WriteTextFile(pattern, "chart bytes must remain untouched");
         const auto key = SongFavorites::PatternKey(pattern);
@@ -84,9 +82,6 @@ namespace tests
         const auto escaped = ReadSongFavoritesJson("{\"folders\":[{\"patterns\":[],\"name\":\"\\uD83C\\uDFB5\\uD55C\",\"id\":1}],\"nextId\":2,\"version\":1}");
         Require(escaped.folders[0].name == L"🎵한", "JSON member order and Unicode surrogate pairs are supported.");
         Require(serialized.find("\\\"A\\\"") != std::string::npos, "Writer escapes quotation marks.");
-        std::filesystem::remove(path, ignored);
-        std::filesystem::remove(pattern, ignored);
-        std::filesystem::remove(root, ignored);
     }
 
     void TestSongFavoriteSelection()
