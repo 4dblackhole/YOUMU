@@ -1,5 +1,6 @@
 # 기능별 문서
 
+처음이면 [진행 상황](Status.md)과 [작업 방식](Contributing/Workflow.md)부터 봅니다.
 먼저 [설계 기준](Design.md)과 [관련 결정 ID](DesignDecisions.md)를 확인한 뒤
 요청에 해당하는 기능 문서를 읽습니다. 소유 파일·직접 호출부·회귀 검사는
 [ChangeImpactMap](ChangeImpactMap.md), 공통 검증은 [Verification](Verification.md)에서 찾습니다.
@@ -8,7 +9,8 @@
 | --- | --- |
 | 확정 설계·판단 순서·시스템 경계·설계 변경 규칙 | [Design](Design.md) |
 | 결정별 근거·조건·예외·구현 상태·재현 사례 | [DesignDecisions](DesignDecisions.md) |
-| 작업 위치·현재 제약·미구현 설계 | [SessionHandoff](SessionHandoff.md) |
+| 지금 구현된 것·진행 중·미구현·알려진 문제 | [Status](Status.md) |
+| 역할·브랜치와 PR·병합 요청·검증 잠금·지켜야 할 것 | [Workflow](Contributing/Workflow.md) |
 | 시작·Scene 전환·종료·소유권 | [ExecutionFlow](ExecutionFlow.md) |
 | 곡 선택·검색·필터·정렬·즐겨찾기 폴더·배경·기록 영역·난이도 정보 | [SongSelect](SongSelect.md) |
 | 목록 캐시·비동기 세션/자원 준비·포맷 변경 시 무효화 | [ResourceLoading](ResourceLoading.md) |
