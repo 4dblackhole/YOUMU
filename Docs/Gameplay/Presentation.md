@@ -8,6 +8,9 @@
 수동 입력 결과만 빔을 시작하므로 자동 Miss나 키 해제는 빔을 생성하지 않습니다.
 재입력은 같은 스프라이트의 색상과 알파를 초기화하고 200ms 후 숨깁니다.
 페이드는 표시용 deltaSeconds로 진행되며 판정 타이머를 변경하지 않습니다.
+옵션 Display 섹션의 키빔 불투명도(0~100%, 기본 100%)는 모든 모드에 공통이며, 시작 요청에 복사된 값을
+`GameplayPresenter::ConfigureKeyBeamOpacity`가 `LaneKeyBeam::SetOpacity`로 넘깁니다. 빔의 시작 알파와 페이드 전체에
+이 값을 곱하므로 100%는 기존 모습, 0%는 보이지 않습니다. 모드 클래스는 이 값을 다루지 않습니다.
 `InGame/LaneLight.png`는 Lane 폭에 맞춰 비율을 유지하고 로컬 Y=0에서 시작하며,
 Lane 끝에서 clip됩니다. PNG 원본 알파에 1→0의 표시 알파를 곱합니다.
 Scene 종료 전에 빔의 observer를 해제하고 Canvas가 노드를 파기합니다.
