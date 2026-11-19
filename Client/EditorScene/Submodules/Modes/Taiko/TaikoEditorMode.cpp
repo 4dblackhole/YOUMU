@@ -99,8 +99,9 @@ void TaikoEditorMode::PlaceNote(IEditorContext &state, MusicalPosition p)
             pending_ = p;
         else
         {
-            const auto begin = std::min(*pending_, p);
-            const auto end = std::max(*pending_, p);
+            // References into pending_/p; both stay alive until pending_ is reset below.
+            const auto &begin = std::min(*pending_, p);
+            const auto &end = std::max(*pending_, p);
             const auto replaced = OverlappedNotes(state.Document(), begin, end);
             ValidatePlacement(state.Document(), begin, noteId, end, {}, replaced);
             state.AddNote(begin, noteId, end, ExtraData(*selected), replaced);
