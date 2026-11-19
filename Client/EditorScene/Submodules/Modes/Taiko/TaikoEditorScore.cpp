@@ -41,17 +41,9 @@ namespace
 
 void TaikoEditorMode::ScrollScore(IEditorContext &state, int direction)
 {
-    // Realtime and Preview step one beat grid; the score, which follows the cursor, steps a measure.
-    if (state.Score().realtime || state.Score().preview)
-    {
-        state.Seek(StepEditorTimeline(state.Document().Timeline(), state.TimeMilliseconds(),
-                                      state.Score().division, direction).count() / 1000.0);
-        return;
-    }
-    const auto &timeline = state.Document().Timeline();
-    const auto measure = std::clamp<std::int64_t>(MeasureNearTime(timeline, state.TimeMilliseconds()) + direction, 0,
-                                                  MaximumMeasureCount - 1);
-    state.Seek(timeline.MeasureSpan(measure).begin.count() / 1000.0);
+    // Every Compose sub view (Realtime, Score, Preview) steps one grid division, the same step the Audio view uses.
+    state.Seek(StepEditorTimeline(state.Document().Timeline(), state.TimeMilliseconds(),
+                                  state.Score().division, direction).count() / 1000.0);
 }
 
 void TaikoEditorMode::DrawChart(IEditorModeCanvas &canvas, IEditorContext &state,
