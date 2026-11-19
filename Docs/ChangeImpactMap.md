@@ -69,3 +69,18 @@
 - Scene과 기능의 `.h/.cpp`를 함께 두고 물리 경로와 `.vcxproj.filters`를 맞춥니다.
   로직 테스트는 `Tests/Rhythm/Submodules`, Client 표시 검사는 `Tests/Presentation`에 둡니다.
   ClientLogic의 공통 상태를 재사용하며 테스트에서 Client 구현 `.cpp`를 include하지 않습니다.
+
+## 구조 그림
+
+아래 클래스·흐름을 바꾸면 해당 그림과 근거 줄도 같은 PR에서 고칩니다. 그림은 Mermaid 코드라서 문서 안에서 바로 고칠 수 있습니다.
+
+| 그림 | 문서 | 근거 코드 |
+| --- | --- | --- |
+| 저장소와 프로젝트 의존 · 층 | [Overview](Architecture/Overview.md#저장소와-프로젝트-의존) | 각 `.vcxproj`의 `ProjectReference`, `Scripts/CheckArchitecture.ps1` |
+| 화면(Scene) 클래스와 수명 | [Overview](Architecture/Overview.md#화면scene) | `Client/App/YOUMUGame.*`, `Client/GameFlow/YOUMUSceneIds.h`, 각 Scene 헤더 |
+| 플레이 클래스 · 노트 규칙 · 화면 부품 | [Gameplay](Architecture/Gameplay.md#클래스) | RhythmTestScene, GameplaySessionController, GameplayAudioSession, GameplayPresenter, PlaySession, ScrollGear/Lane/RuleBasedNote, TaikoSessionBuilder·TaikoLongNoteFactory |
+| 플레이 상태 전이 | [Gameplay](Architecture/Gameplay.md#상태-전이) | `PlayState`, GameplaySessionController, GameplayInput(재시작 키·ESC), GameplayPause |
+| 프로그램 실행 순서도 | [ExecutionFlow](ExecutionFlow.md) | `Client/App/Main.cpp`, YOUMUGame, 각 Scene의 `ChangeScene` |
+| 플레이 한 프레임 | [ExecutionFlow](ExecutionFlow.md#플레이-한-프레임) | `RhythmTestScene::Update/Render`, GameplaySessionController, GameplayInput |
+| 작업 흐름 | [Workflow](Contributing/Workflow.md) | 작업 규칙(코드 없음) |
+| 엔진 소유 구조 | 엔진 [EngineOverview](../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 `Engine/Core/App/Engine.cpp`, `SceneGameClient.h` |
