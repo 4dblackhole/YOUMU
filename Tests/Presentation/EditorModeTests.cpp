@@ -750,6 +750,14 @@ namespace
             state.Mode().ScrollScore(state, -1);
             Check(state.TimeMilliseconds() == 0 && state.Document().Revision() == revision,
                   "Realtime wheel must clamp at the chart start and preserve the score.");
+            state.SetRealtime(false);
+            Check(!state.Score().realtime && !state.Score().preview, "The score view must be selected for the wheel check.");
+            state.Mode().ScrollScore(state, 1);
+            Check(state.TimeMilliseconds() == 125,
+                  "Score wheel must advance the same one-division grid step as the realtime view, not one measure.");
+            state.Mode().ScrollScore(state, -1);
+            Check(state.TimeMilliseconds() == 0, "Score wheel must step back by the same grid division.");
+            state.SetRealtime(true);
             bool rejected = false;
             try
             {
