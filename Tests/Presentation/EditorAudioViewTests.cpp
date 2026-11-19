@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include "App/AssetPaths.h"
+#include "Automation/InterpolationExpression.h"
 #include "Catalog/SongCatalog.h"
 #include "Editing/ChartEditor.h"
 #include "EditorMenuTests.h"
@@ -11,6 +12,7 @@
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "GameScene/MusicSelectScene/Submodules/SongPreviewController.h"
 #include <chrono>
+#include <cmath>
 #include <atomic>
 #include <iostream>
 #include <fstream>
@@ -682,6 +684,55 @@ int main(int argc, char** argv)
         clickFrame(rateLeft + 30 + 31, rateY);
         Check(state.PlaybackRate() == 1.0, "Clicking the rate value must return to 1.00x.");
         state.SetPlaybackRate(1);
+        // A hit-sound Volume Area: the Curve button cycles Linear → Exponential → Harmonic and wraps.
+        // Its click runs after the frame that listed the curves, so it must not hold an iterator into it.
+        {
+            state.SelectTab(EditorTab::Compose);
+            state.OpenPanel(EditorPanel::Volume);
+            auto &form = state.effectForm;
+            form.selection = EffectCommandType::BusVolume;
+            form.audioBus = "HitSound";
+            form.endMeasure = "3";
+            form.endFraction = "0/1";
+            form.curve = AutomationCurve::Linear;
+            form.curveName.clear();
+            const auto clickCurve = [&] {
+                view.Build();
+                visuals.Render({});
+                const auto label = std::ranges::find_if(
+                    renderer.packets, [](const auto &packet) { return packet.text && packet.text->value == L"Curve"; });
+                Check(label != renderer.packets.end(), "The Volume Area panel must show its Curve row.");
+                const auto center = TransformPoint({label->bounds.x + label->bounds.width * .5F,
+                                                    label->bounds.y + label->bounds.height * .5F, 0},
+                                                   label->nodeTransform);
+                // The button starts 26px right of the 44px label's center.
+                clickFrame(center.x + 640 + 56, 360 - center.y);
+            };
+            for (const auto expected : {AutomationCurve::Exponential, AutomationCurve::Harmonic, AutomationCurve::Linear,
+                                        AutomationCurve::Exponential})
+            {
+                clickCurve();
+                Check(form.curve == expected && form.curveName.empty(),
+                      "The Curve button must step to the next built-in curve and wrap to Linear.");
+            }
+            form.startMeasure = "2";
+            form.startFraction = "0/1";
+            form.beginValue = "0.25";
+            form.endValue = "1";
+            state.ApplyEffect();
+            const auto &commands = state.Document().Effects().commands;
+            const auto volume = std::ranges::find_if(commands, [](const EffectCommand &command) {
+                return command.type == EffectCommandType::BusVolume && command.position == MusicalPosition{1, {}};
+            });
+            Check(volume != commands.end() && volume->curve == AutomationCurve::Exponential,
+                  "Applying the Volume Area must keep the chosen curve.");
+            Check(std::abs(EvaluateInterpolation(*volume, .5) - .5) < 1e-9,
+                  "The Volume Area must follow its curve (Exponential .25 to 1 is .5 halfway).");
+            state.Undo();
+            state.ClosePanel();
+            state.SelectTab(EditorTab::Audio);
+            view.Build();
+        }
         // Leaving with unsaved changes asks through the shared alert. Nothing here saves the bundled chart.
         {
             const auto frame = [&](std::uint16_t key) {

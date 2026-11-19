@@ -518,12 +518,11 @@ void EditorView::DrawCurveRow(Rect row)
                             : std::wstring(text.curves[static_cast<std::size_t>(current - curves.begin())]);
     const float buttonWidth = 84;
     Label({row.x, row.y, 44, row.height}, std::wstring(texts_.Get("Editor.curve")), {12, theme::Caption, TextAlignment::Leading, 700});
-    Button({row.x + 48, row.y, row.width - 48 - buttonWidth - 8, row.height}, name, [this, curves, current] {
-        auto next = current == curves.end() ? curves.begin() : current + 1;
-        if (next == curves.end())
-            next = curves.begin();
-        state_.effectForm.curve = next->first;
-        state_.effectForm.curveName = next->second;
+    // The click runs after this frame's list is gone: capture the next index, never an iterator into it.
+    const auto next = current == curves.end() ? 0 : static_cast<std::size_t>(current - curves.begin() + 1) % curves.size();
+    Button({row.x + 48, row.y, row.width - 48 - buttonWidth - 8, row.height}, name, [this, choice = curves[next]] {
+        state_.effectForm.curve = choice.first;
+        state_.effectForm.curveName = choice.second;
         state_.RequestRebuild();
     });
     Button({row.x + row.width - buttonWidth, row.y, buttonWidth, row.height}, std::wstring(texts_.Get("Editor.curvesButton")),
