@@ -505,7 +505,7 @@ namespace
         Check(loaded.Succeeded(), "Result fixture must load.");
         loaded.session->SetResultInitialTime(RhythmTime{-2'000'000});
         for (const std::int64_t us : {0, 510'000, 990'000})
-            static_cast<void>(loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{us}));
+            static_cast<void>(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{us}));
         return loaded.session->TakeResult(PlayEndReason::Completed, RhythmTime{1'000'000});
     }
     void TestMillisecondHistogram()
