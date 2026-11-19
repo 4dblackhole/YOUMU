@@ -21,36 +21,10 @@
 미정점도 함께 적습니다. 설계가 존재한다는 이유만으로 구현됐다고 보고하거나
 미구현 설계를 새 작업 지시로 해석하지 않습니다.
 
-## 시스템 경계
+## 구조와 소유권
 
-| 영역 | 소유하는 것 | 경계 |
-| --- | --- | --- |
-| PhantomCore | Win32·D3D12·Raw Input·오디오 장치·GPU/음성 자원·엔진 루프 | 재사용 엔진. 게임 규칙·곡·Scene ID는 Client 소유 |
-| YOUMU.Rhythm | RhythmTimer·AccuracyRange·INote/규칙·Lane·ScrollGear | 엔진/UI에 독립적인 시간·판정·이벤트 값 |
-| YOUMU.Chart | YMM/YMP/YME·타이밍 컴파일·카탈로그·편집 원본/저장 | 모드별 노트 의미와 화면/장치 구현을 역참조하지 않음 |
-| YOUMU.Modes | IPlayGameMode·PlaySession·Taiko 구성/사운드/결과 정책 | 파일 데이터를 실제 모드 노트로 구성, 순수 세션 상태 소유 |
-| YOUMU.Editor | 주입받은 PCM의 파형·FFT 분석 | 엔진 디코더·Scene·UI를 직접 소유하지 않음 |
-| Client | App·Scene·Controller·Presenter·전역/플레이 옵션·기록·자산 연결 | 엔진은 PhantomCore.h/PhantomCore.vcxproj로 사용 |
-| YOUMU.Assets | 기본 스킨·글꼴·라이선스·기본 제공곡 | 사용자 편집본·개인 곡·설정·기록과 분리 |
-| OsuTaikoConverter | `.osu` 하나를 YMM·YMP·YME 세 파일로 변환 | 공통 포맷/노트 계약만 사용. Songs 배치·음원/배경 복사·플레이 검증은 Client |
-
-구체 의존성·소스/필터 검사는 [ChangeImpactMap](../Contributing/ChangeImpactMap.md), 실행 소유권은
-[ExecutionFlow](../Architecture/ExecutionFlow.md), 변환 경계는 [OsuTaikoConverter](../Features/OsuImport.md)가 기준입니다.
-
-## 실행과 소유권
-
-- `YOUMUGame`/`SceneGameClient`는 Scene factory와 공통 서비스를 조립합니다.
-  전환은 지연 `ChangeScene`이며 gameplay Scene은 `DestroyOnExit`입니다.
-- 곡 선택은 경로·옵션을 값으로 복사하고 선택 패턴을 worker에서 검증합니다.
-  성공한 PlaySession만 진입 store로 넘기며 이전 선택의 늦은 결과는 게시하지 않습니다.
-- `RhythmTestScene`은 Controller·Presenter·Pause 메뉴를 소유하고 전환만 요청합니다.
-  Controller는 시계·세션·오디오 연결, Presenter는 Canvas/노드·표시 상태를 담당합니다.
-- 세션은 Loading → Gameplay → Pause/Ending 상태를 사용합니다. 준비 중에는
-  시각·판정을 진행시키지 않으며 실제 Gameplay 전에는 플레이 Canvas를 노출하지 않습니다.
-- 노트 처리 결과는 `NoteEvent`/`AudioCueRequest`/확정 정확도 값입니다.
-  UI·음원·장치 호출을 노트 규칙에 넣지 않습니다. 결과는 값으로 넘기고 플레이 자원을 정리합니다.
-- EditorWorkspace는 문서·모드·분석·재생 수명을 소유합니다. 모드는 제한된
-  `IEditorContext`, 분석은 읽기 전용 `IEditorAudioSource`를 사용합니다.
+영역별 책임·경계와 실행 소유권은 [전체 구조](../Architecture/Overview.md#영역별-책임과-경계)로 옮겼습니다.
+구조를 바꾸는 결정은 [ARC-01](Decisions.md#arc-01-구조와-소유권)이 기준입니다.
 
 ## 설계 결정 찾아보기
 

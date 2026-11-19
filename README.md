@@ -4,28 +4,40 @@
 재사용 엔진은 `Dependencies/PhantomCore` submodule입니다. 표시 이름과 EXE 이름은
 [GameIdentity.props](Client/Texts/GameIdentity.props)의 `GameDisplayName`에서 생성합니다.
 
-## 시작과 빌드
+## 문서 지도
 
-작업은 [AGENTS.md](AGENTS.md), [설계 기준](Docs/Design/Principles.md),
-[관련 설계 결정](Docs/Design/Decisions.md)에서 시작합니다. 지금 상태는
-[진행 상황](Docs/Status.md), 일하는 절차는 [작업 방식](Docs/Contributing/Workflow.md), 상세 계약은 [기능별 문서](Docs/README.md), 필요한 코드·회귀 검사는
-[변경 영향 지도](Docs/Contributing/ChangeImpactMap.md)에서 찾습니다.
+| 알고 싶은 것 | 문서 |
+| --- | --- |
+| 지켜야 할 규칙 | [AGENTS.md](AGENTS.md) |
+| 지금 어디까지 왔나 | [진행 상황](Docs/Status.md) |
+| 어떻게 일하나(브랜치·PR·검증 잠금) | [작업 방식](Docs/Contributing/Workflow.md) |
+| 코드가 어떻게 짜여 있나(그림) | [전체 구조](Docs/Architecture/Overview.md), [실행 흐름](Docs/Architecture/ExecutionFlow.md), [플레이 구조](Docs/Architecture/Gameplay.md) |
+| 왜 이렇게 정했나 | [설계 기준](Docs/Design/Principles.md), [설계 결정](Docs/Design/Decisions.md) |
+| 기능별 계약·문서 전체 목록 | [문서 지도](Docs/README.md) |
+| 고칠 코드와 돌릴 회귀 검사 | [변경 영향 지도](Docs/Contributing/ChangeImpactMap.md) |
+| 낯선 용어 | [용어집](Docs/Glossary.md) |
 
-Visual Studio 2022/MSVC v143, Windows SDK, FMOD Studio API for Windows가 필요합니다.
-아키텍처 검사 스크립트는 PATH의 ripgrep(`rg`)을 사용합니다.
+## 5분 시작
+
+Visual Studio 2022(C++ 데스크톱, MSVC v143), Windows SDK, FMOD Studio API for Windows, ripgrep(`rg`), Python 3이 필요합니다.
 전체 솔루션은 형제 폴더의 비공개 변환기 저장소도 참조합니다.
 
 ```powershell
 git clone --recurse-submodules https://github.com/4dblackhole/YOUMU.git
 cd YOUMU
 git clone https://github.com/4dblackhole/OsuTaikoConverter.git ../OsuTaikoConverter
-msbuild YOUMU.sln /m /p:Configuration=Debug /p:Platform=x64
+# 빌드(개발자 환경을 스스로 열고 공유 잠금을 잡음)
+powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/Build.ps1
+# 실행
+& "./bin/x64/Debug/Y's Orchestral Unison - Melodic Ultimatum.exe"
+# 로직 테스트·smoke와 러너 하나
+powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/Test.ps1 -Core -Runners GameplayPauseTests
 ```
 
-FMOD 경로는 `FMOD_ROOT` 또는 MSBuild의 `FmodRoot`로 지정합니다.
-기본 설치 경로는 `Directory.Build.props`가 찾습니다. 생성된 게임 EXE는
+FMOD 경로는 `FMOD_ROOT` 또는 MSBuild의 `FmodRoot`로 지정하며, 기본 설치 경로는 `Directory.Build.props`가 찾습니다.
+Visual Studio에서 `YOUMU.sln`을 열어 빌드해도 됩니다. 생성된 게임 EXE는
 `bin/x64/<Configuration>/Y's Orchestral Unison - Melodic Ultimatum.exe`입니다.
-Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Contributing/Verification.md)에 있습니다.
+전체 검증(`VerifyAll.ps1`)·분석·도메인 CI는 [빌드와 검증](Docs/Contributing/Verification.md)에 있습니다.
 
 ## 코드와 기능
 
@@ -60,4 +72,4 @@ Release/분석/도메인 CI·테스트 명령은 [Verification](Docs/Contributin
 음악 재생과 PCM 시간축은 [Audio](Docs/Features/Gameplay/Audio.md)를 참고합니다.
 개발 자산은 `Client/Assets`, 배포 자산은 EXE 옆 `Asset`을 사용하며 Songs 루트는
 옵션에서 변경할 수 있습니다. 기본 제공곡은 `Client/Assets/Songs` 안에서 추적합니다. 스킨·기본본 대체·라이선스·배포 절차는
-[BuiltInAssets](Docs/Features/Assets.md), 파일 문법은 [ChartFormats](Docs/Formats/README.md)가 기준입니다.
+[자산·스킨](Docs/Features/Assets.md), 파일 문법은 [채보 형식](Docs/Formats/README.md)이 기준입니다.

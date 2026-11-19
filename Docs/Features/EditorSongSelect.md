@@ -112,4 +112,4 @@ Songs/
 난이도 목록을, `OsuSongPlacement`가 이름·복사·잠금·게시를 소유합니다.
 Scene은 결과에 따라 목록 창을 열고 카탈로그만 갱신하며 프레임에서 변환/음원 비교를 기다리지 않습니다.
 worker는 복사한 경로만 사용하고 프로그램 종료 시 진행 중인 작업이 끝날 때까지 기다릴 수 있습니다.
-변환기의 출력 규칙과 CLI는 [OsuTaikoConverter](OsuImport.md)를 참고합니다.
+Client의 검사·배치는 [osu! 가져오기](OsuImport.md), 변환기의 출력 규칙과 CLI는 변환기 README를 참고합니다.
