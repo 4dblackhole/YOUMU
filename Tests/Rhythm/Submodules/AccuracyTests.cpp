@@ -17,20 +17,20 @@ namespace tests
             auto &session = *loaded.session;
             if (type == 5)
             {
-                static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
-                static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{1}));
+                static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
+                static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{1}));
                 static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{2}));
             }
             else
             {
-                static_cast<void>(session.ProcessInput(type == 3 ? 'D' : 'F', InputEdge::Pressed, RhythmTime{-1'000}));
-                static_cast<void>(session.ProcessInput(type == 3 ? 'F' : 'D', InputEdge::Pressed, {}));
-                static_cast<void>(session.ProcessInput(type == 3 ? 'J' : 'K', InputEdge::Pressed, RhythmTime{1}));
+                static_cast<void>(session.ProcessInput(type == 3 ? 'D' : 'C', InputEdge::Pressed, RhythmTime{-1'000}));
+                static_cast<void>(session.ProcessInput(type == 3 ? 'C' : 'D', InputEdge::Pressed, {}));
+                static_cast<void>(session.ProcessInput(type == 3 ? 'M' : 'K', InputEdge::Pressed, RhythmTime{1}));
             }
             Require(session.AccuracyRate() == 0.0, "A POOR poisons the entire large or purple note.");
             session.Reset();
-            static_cast<void>(session.ProcessInput(type == 4 ? 'D' : 'F', InputEdge::Pressed, {}));
-            static_cast<void>(session.ProcessInput(type == 4 ? 'K' : type == 5 ? 'D' : 'J',
+            static_cast<void>(session.ProcessInput(type == 4 ? 'D' : 'C', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput(type == 4 ? 'K' : type == 5 ? 'D' : 'M',
                                                   InputEdge::Pressed, RhythmTime{1}));
             Require(session.AccuracyRate() == 1.0, "Retry must clear the large-note POOR state.");
         }
@@ -47,7 +47,7 @@ namespace tests
             auto loaded = TaikoMode{}.CreateSession(pattern);
             Require(loaded.Succeeded(), "Buzz POOR fixture must load.");
             auto &session = *loaded.session;
-            const PhysicalKey correct = kat ? 'D' : 'F', wrong = kat ? 'F' : 'D';
+            const PhysicalKey correct = kat ? 'D' : 'C', wrong = kat ? 'C' : 'D';
             const std::array held{correct};
             const std::array both{correct, wrong};
             NoteProcessResult log;
@@ -98,7 +98,7 @@ namespace tests
     {
         auto profile = std::make_shared<AccuracyRange>();
         PlaySession session;
-        session.SetInputMapping({{'F', 1}, {'D', 2}});
+        session.SetInputMapping({{'C', 1}, {'D', 2}});
         auto &lane = session.Gear().CreateLane();
         lane.AddNote(MakeTap(1, RhythmTime{0}, profile));
         session.Gear().Finalize();
@@ -106,7 +106,7 @@ namespace tests
         const auto rejected = session.ProcessInput('D', InputEdge::Pressed, RhythmTime{-10'000});
         Require(HasEvent(rejected, NoteEventType::InputRejected) && rejected.finalizedAccuracies.empty(),
                 "A POOR must leave the note available for a subsequent correct input.");
-        const auto accepted = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
+        const auto accepted = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
         Require(HasEvent(accepted, NoteEventType::HitAccepted) && accepted.finalizedAccuracies.size() == 1 &&
                 accepted.finalizedAccuracies.front().Score().Units() == 0,
                 "A POOR followed by a MAX must finalize the logical note with zero accuracy.");
@@ -116,14 +116,14 @@ namespace tests
         session.Reset();
         static_cast<void>(session.ProcessInput('D', InputEdge::Released, RhythmTime{-10'000}));
         static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{-100'000}));
-        const auto clean = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
+        const auto clean = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
         Require(clean.finalizedAccuracies.size() == 1 && clean.finalizedAccuracies.front().Score().Rate() == 1.0,
                 "Reset, releases, and out-of-range inputs must not poison a clean note.");
 
         session.Reset();
         static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{-10'000}));
         session.RewindJudgements(RhythmTime{-15'000});
-        const auto rewound = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
+        const auto rewound = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
         Require(rewound.finalizedAccuracies.size() == 1 && rewound.finalizedAccuracies.front().Score().Rate() == 1.0,
                 "Rewind must remove the POOR penalty when it removes the rejected input.");
     }
@@ -132,7 +132,7 @@ namespace tests
     {
         auto profile = std::make_shared<AccuracyRange>();
         PlaySession session;
-        session.SetInputMapping({{'F', 1}, {'J', 1}});
+        session.SetInputMapping({{'C', 1}, {'M', 1}});
         auto &lane = session.Gear().CreateLane();
         lane.AddNote(std::make_unique<RuleBasedNote>(
             1, RhythmTime{0}, profile,
@@ -141,10 +141,10 @@ namespace tests
         session.Gear().Finalize();
         Require(!session.AccuracyRate(), "Accuracy must be unavailable before a final note.");
         const auto first =
-            session.ProcessInput('F', InputEdge::Pressed, RhythmTime{0});
+            session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
         Require(first.finalizedAccuracies.empty(), "Big first hit must not finalize accuracy.");
         const auto second =
-            session.ProcessInput('J', InputEdge::Pressed, RhythmTime{16'500});
+            session.ProcessInput('M', InputEdge::Pressed, RhythmTime{16'500});
         const double hit2 = profile->Evaluate({}, RhythmTime{16'500}).scoreRate;
         const double bigRate = AccuracyScore::FromRate((1.0 + hit2) * 0.5).Rate();
         const auto bigAccuracyRate = session.AccuracyRate();
@@ -163,7 +163,7 @@ namespace tests
         session.Reset();
         Require(!session.AccuracyRate() && !session.LastNoteAccuracy(),
                 "Reset must clear totals and the last-note details.");
-        static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
+        static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
         const auto partial = session.Update(RhythmTime{60'000});
         Require(partial.finalizedAccuracies.size() == 1 &&
                     partial.finalizedAccuracies.front().ScoreRate() == 0.5 &&
@@ -191,8 +191,8 @@ namespace tests
             Require(loaded.Succeeded() && loaded.session->FindNotePresentation(1)->visualKind ==
                                               NoteVisualKind::Purple,
                     "ID 5 must create a purple large-note presentation.");
-            const auto firstKey = katFirst ? 'D' : 'F';
-            const auto secondKey = katFirst ? 'F' : 'D';
+            const auto firstKey = katFirst ? 'D' : 'C';
+            const auto secondKey = katFirst ? 'C' : 'D';
             const auto first =
                 loaded.session->ProcessInput(firstKey, InputEdge::Pressed, {});
             const auto repeat = loaded.session->ProcessInput(firstKey, InputEdge::Pressed,
@@ -228,7 +228,7 @@ namespace tests
                 for (int hit = 0; hit < 8; ++hit)
                 {
                     const auto key =
-                        type == TaikoNoteType::DengDeng && hit % 2 != 0 ? 'D' : 'F';
+                        type == TaikoNoteType::DengDeng && hit % 2 != 0 ? 'D' : 'C';
                     static_cast<void>(loaded.session->ProcessInput(
                         key, InputEdge::Pressed, RhythmTime{hit * 10'000}));
                 }
@@ -259,7 +259,7 @@ namespace tests
             TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::Roll, {"2"}));
         for (int hit = 0; hit < 5; ++hit)
         {
-            static_cast<void>(roll.session->ProcessInput('F', InputEdge::Pressed,
+            static_cast<void>(roll.session->ProcessInput('C', InputEdge::Pressed,
                                                          RhythmTime{hit * 1'000}));
         }
         static_cast<void>(roll.session->Update(RhythmTime{1'000'000}));
@@ -273,7 +273,7 @@ namespace tests
     {
         auto tickRoll =
             TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::TickRoll));
-        const auto early = tickRoll.session->ProcessInput('F', InputEdge::Pressed,
+        const auto early = tickRoll.session->ProcessInput('C', InputEdge::Pressed,
                                                           RhythmTime{-70'000});
         Require(std::ranges::none_of(early.events,
                                      [](const auto &event) {
@@ -283,7 +283,7 @@ namespace tests
                 "TickRoll must not emit a head BAD judgement.");
         for (const int time : {-54'500, 70'500})
         {
-            const auto hit = tickRoll.session->ProcessInput('F', InputEdge::Pressed,
+            const auto hit = tickRoll.session->ProcessInput('C', InputEdge::Pressed,
                                                             RhythmTime{time});
             Require(std::ranges::any_of(hit.events,
                                         [](const auto &event) {
@@ -310,9 +310,9 @@ namespace tests
             std::make_unique<HoldInputRule>(1, RhythmTime{10'100'000}, ticks));
         // Default interpolation: 14,166 us is approximately 96 percent.
         static_cast<void>(
-            hold.ProcessInput({RhythmTime{14'166}, 1, 'F', InputEdge::Pressed}));
+            hold.ProcessInput({RhythmTime{14'166}, 1, 'C', InputEdge::Pressed}));
         static_cast<void>(hold.ProcessInput(
-            {RhythmTime{9'850'000}, 1, 'F', InputEdge::Released}));
+            {RhythmTime{9'850'000}, 1, 'C', InputEdge::Released}));
         const auto done = hold.Update({RhythmTime{10'100'000}, {}});
         const double head = profile->Evaluate({}, RhythmTime{14'166}).scoreRate;
         Require(done.finalizedAccuracies.size() == 1 && hold.Accuracy().acceptedTicks == 98 &&
@@ -323,13 +323,13 @@ namespace tests
         Require(hold.Update({RhythmTime{11'000'000}, {}}).finalizedAccuracies.empty(),
                 "An ended hold must not emit its accuracy twice.");
         hold.Reset();
-        static_cast<void>(hold.ProcessInput({{}, 1, 'F', InputEdge::Pressed}));
+        static_cast<void>(hold.ProcessInput({{}, 1, 'C', InputEdge::Pressed}));
         static_cast<void>(
-            hold.ProcessInput({RhythmTime{1}, 1, 'J', InputEdge::Pressed}));
+            hold.ProcessInput({RhythmTime{1}, 1, 'M', InputEdge::Pressed}));
         static_cast<void>(
-            hold.ProcessInput({RhythmTime{2}, 1, 'F', InputEdge::Released}));
+            hold.ProcessInput({RhythmTime{2}, 1, 'C', InputEdge::Released}));
         static_cast<void>(
-            hold.ProcessInput({RhythmTime{150'000}, 1, 'J', InputEdge::Released}));
+            hold.ProcessInput({RhythmTime{150'000}, 1, 'M', InputEdge::Released}));
         Require(hold.Accuracy().acceptedTicks == 1,
                 "Releasing one physical key must not cancel another held key of the same action.");
 

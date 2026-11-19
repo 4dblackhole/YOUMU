@@ -426,7 +426,7 @@ namespace
             InputStateTestAccess::Key(input, key, true);
             presenter.UpdateInputPresentation(input, 0.0);
         };
-        pressOnly('C');
+        pressOnly('F');
         Check(leftKatGlow.IsVisible(), "Another assigned key must show KeyLight.");
         Check(!leftKatFlash.IsVisible(), "Another assigned key must not show the key press flash.");
         pressOnly('D');
@@ -702,7 +702,7 @@ namespace
             Check(!counter.IsVisible(), "A hit counter must stay hidden before the first accepted hit.");
             for (int index = 0; index < 3; ++index)
             {
-                const char key = type == 16 && index == 1 ? 'D' : 'F';
+                const char key = type == 16 && index == 1 ? 'D' : 'C';
                 presenter.ApplyFeedback({.keyPressed = true,
                                          .result = loaded.session->ProcessInput(
                                              key, InputEdge::Pressed, RhythmTime{900'000 + index * 100'000})});
@@ -724,7 +724,7 @@ namespace
                 Check(!Find(root, "Hud.NoteProcessing.1"), "Roll counters must not replace the moving roll head.");
                 presenter.ApplyFeedback(
                     {.keyPressed = true,
-                     .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{1'200'000})});
+                     .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{1'200'000})});
                 presenter.UpdatePresentation(RhythmTime{1'200'000});
                 Check(counter.IsVisible() && remaining.Text() == L"0",
                       "Extra roll hits must not underflow the counter.");
@@ -763,11 +763,11 @@ namespace
         GameplayPresenter presenter(visuals, texts);
         presenter.Initialize({meshes, textRendering, renderer, audio, 1280, 720}, *loaded.session);
         auto &root = visuals.FindCanvas(1)->Root();
-        for (const char first : {'F', 'D'})
+        for (const char first : {'C', 'D'})
         {
             loaded.session->Reset();
             presenter.ApplyFeedback({.reset = true});
-            const char other = first == 'F' ? 'D' : 'F';
+            const char other = first == 'C' ? 'D' : 'C';
             const std::array<char, 5> keys{first, first, other, other, first};
             const std::array<std::size_t, 5> counts{1, 1, 2, 2, 3};
             for (std::size_t index = 0; index < keys.size(); ++index)
@@ -948,23 +948,23 @@ namespace
         presenter.UpdatePresentation(RhythmTime{});
         Check(visibleTicks() == 4, "All body ticks, including the aligned tail, must start visible.");
         presenter.ApplyFeedback(
-            {.keyPressed = true, .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{})});
+            {.keyPressed = true, .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{})});
         presenter.ApplyFeedback(
             {.keyPressed = true,
-             .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{75'000})});
+             .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{75'000})});
         presenter.UpdatePresentation(RhythmTime{75'000});
         Check(visibleTicks() == 3, "An early accepted tick must disappear before its scheduled time.");
         presenter.ApplyFeedback(
             {.keyPressed = true,
-             .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{250'000})});
+             .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000})});
         presenter.ApplyFeedback(
             {.keyPressed = true,
-             .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{375'000})});
+             .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{375'000})});
         presenter.UpdatePresentation(RhythmTime{375'000});
         Check(visibleTicks() == 1, "The unprocessed tail tick must remain visible after the other ticks.");
         presenter.ApplyFeedback(
             {.keyPressed = true,
-             .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{500'000})});
+             .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{500'000})});
         presenter.UpdatePresentation(RhythmTime{500'000});
         Check(visibleTicks() == 0, "An accepted tail tick must disappear immediately.");
         presenter.ApplyFeedback({.result = loaded.session->Update(RhythmTime{500'000})});
@@ -1001,14 +1001,14 @@ namespace
             return minimum;
         };
         presenter.ApplyFeedback(
-            {.keyPressed = true, .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{})});
+            {.keyPressed = true, .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{})});
         presenter.UpdatePresentation(RhythmTime{200'000});
         const auto firstY = minimumTickY();
         Check(visibleDelayedTicks() == 5,
               "Overwritten ticks must not be presented or judged; the active tail remains.");
         presenter.ApplyFeedback(
             {.keyPressed = true,
-             .result = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{200'000})});
+             .result = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{200'000})});
         presenter.UpdatePresentation(RhythmTime{200'000});
         Check(std::isfinite(firstY) && minimumTickY() > firstY && visibleDelayedTicks() == 4,
               "Surviving processed ticks must disappear after overwritten ticks have been excluded.");
@@ -1053,13 +1053,13 @@ namespace
             if (child->Name() == "Input.Key.Face")
                 Check(combo.y + combo.height <= child->Bounds().y,
                       "Combo must fit beneath the existing key faces.");
-        hit('F', 0);
+        hit('C', 0);
         presenter.UpdatePresentation({});
         Check(Number(root, "Hud.Score") == "33333333" && Number(root, "Hud.Combo") == "1" &&
                   Number(root, "Hud.JudgementCount0") == "1",
               "One perfect note out of three earns one third of the maximum score, one combo and one MAX.");
         hit('D', 500'000);
-        hit('F', 500'000);
+        hit('C', 500'000);
         static_cast<void>(loaded.session->Update(RhythmTime{1'200'000}));
         presenter.UpdatePresentation(RhythmTime{1'200'000});
         Check(Number(root, "Hud.Score") == "33333333" && Number(root, "Hud.Combo") == "0" &&

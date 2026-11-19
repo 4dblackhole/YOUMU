@@ -936,7 +936,7 @@ namespace
         const auto purpleMarkers = editorMode->AudioMarkers(purpleDocument);
         auto purplePlay = TaikoMode{}.CreateSession(purple);
         Check(purplePlay.Succeeded(), "Explicit Taiko Purple fixture failed to load.");
-        const auto don = purplePlay.session->ProcessInput('F', InputEdge::Pressed, {});
+        const auto don = purplePlay.session->ProcessInput('C', InputEdge::Pressed, {});
         const auto kat = purplePlay.session->ProcessInput('D', InputEdge::Pressed, {});
         Check(purpleMarkers.size() == 2 && purpleMarkers[0].sound == don.audioCues.front().sound &&
                   purpleMarkers[1].sound == kat.audioCues.front().sound,
@@ -951,7 +951,7 @@ namespace
         const auto changed = editorMode->AudioMarkers(purpleDocument);
         auto changedPlay = TaikoMode{}.CreateSession(purple, effects);
         Check(changedPlay.Succeeded(), "Explicit Taiko sound override fixture failed to load.");
-        const auto changedDon = changedPlay.session->ProcessInput('F', InputEdge::Pressed, {});
+        const auto changedDon = changedPlay.session->ProcessInput('C', InputEdge::Pressed, {});
         const auto changedKat = changedPlay.session->ProcessInput('D', InputEdge::Pressed, {});
         Check(changed[0].sound == changedDon.audioCues.front().sound &&
                   changed[1].sound == changedKat.audioCues.front().sound,

@@ -29,7 +29,7 @@ namespace tests
                                                         view.visualKind == NoteVisualKind::BigKat ||
                                                         view.visualKind == NoteVisualKind::KatBuzz
                                                     ? PhysicalKey{'D'}
-                                                    : PhysicalKey{'F'};
+                                                    : PhysicalKey{'C'};
                 const auto &target = note->Accuracy().target;
                 if (target.kind == NoteAccuracyKind::Hold)
                 {
@@ -48,7 +48,7 @@ namespace tests
                     for (std::size_t hit = 0; hit < target.hits; ++hit)
                     {
                         const auto action =
-                            view.visualKind == NoteVisualKind::DengDeng && hit % 2 != 0 ? 'D' : 'F';
+                            view.visualKind == NoteVisualKind::DengDeng && hit % 2 != 0 ? 'D' : 'C';
                         AddTap(note->Timing() + RhythmDuration{static_cast<long long>(hit) * 80'000}, action);
                     }
                 }
@@ -57,7 +57,7 @@ namespace tests
                     AddTap(note->Timing(), key);
                     if (target.hits == 2)
                         AddTap(note->Timing(), view.visualKind == NoteVisualKind::Purple ? 'D'
-                                               : key == 'F'                                    ? 'J'
+                                               : key == 'C'                                    ? 'M'
                                                                                                : 'K');
                 }
                 end_ = std::max(end_, view.hasEndTime ? view.endTime : note->Timing());

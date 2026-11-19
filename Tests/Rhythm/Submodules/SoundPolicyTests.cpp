@@ -47,10 +47,10 @@ Version: 1
         Require(sound('D', first - RhythmDuration{1}) == "Taiko.Kat.FreeInput",
                 "Change must not apply a microsecond early.");
         Require(sound('D', first) == "Chart.HitSound.1" &&
-                    sound('F', first) == "Taiko.Don.FreeInput",
+                    sound('C', first) == "Taiko.Don.FreeInput",
                 "Kat-only change must apply at the exact compiled BPM/measure boundary.");
         Require(sound('D', second) == "Chart.HitSound.2" &&
-                    sound('F', second) == "Chart.HitSound.2",
+                    sound('C', second) == "Chart.HitSound.2",
                 "Two changes at one position must change both actions independently.");
         Require(sound('D', second + RhythmDuration{10'000'000}) == "Chart.HitSound.2",
                 "The last change must persist.");
@@ -115,13 +115,13 @@ Version: 1
             auto loaded = TaikoMode{}.CreateSession(pattern, effects);
             Require(loaded.Succeeded(), "Special sound priority chart must load.");
             const auto head =
-                loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{});
+                loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{});
             Require(head.audioCues.size() == 1 &&
                         head.audioCues.front().sound == "Chart.HitSound.1",
                     "Balloon, DengDeng and Buzz explicit sounds must override timed Don defaults.");
             if (type == 17)
             {
-                const std::array<PhysicalKey, 1> held{'F'};
+                const std::array<PhysicalKey, 1> held{'C'};
                 const auto tick = loaded.session->Update(RhythmTime{125'000}, held);
                 Require(tick.audioCues.size() == 1 &&
                             tick.audioCues.front().sound == "Chart.HitSound.1",

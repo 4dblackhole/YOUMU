@@ -52,7 +52,7 @@ namespace tests
         lane.Finalize();
 
         const NoteProcessResult early =
-            lane.ProcessInput({RhythmTime{-70'000}, 1, 'F', InputEdge::Pressed});
+            lane.ProcessInput({RhythmTime{-70'000}, 1, 'C', InputEdge::Pressed});
         Require(lane.CurrentIndex() == 0 && HasEvent(early, NoteEventType::InputRejected),
                 "Early Bad must keep focus on the first note.");
 
@@ -64,7 +64,7 @@ namespace tests
                 "The automatic focus transition must emit MISS only once.");
         lane.Reset();
         const NoteProcessResult forwarded =
-            lane.ProcessInput({RhythmTime{60'000}, 1, 'F', InputEdge::Pressed});
+            lane.ProcessInput({RhythmTime{60'000}, 1, 'C', InputEdge::Pressed});
         Require(HasEvent(forwarded, NoteEventType::Missed) &&
                     std::ranges::count(forwarded.events, NoteEventType::HitAccepted, &NoteEvent::type) == 1 &&
                     lane.CurrentIndex() == 2,
@@ -88,7 +88,7 @@ namespace tests
         colour.AddNote(std::make_unique<RuleBasedNote>(2, RhythmTime{100'000}, profile,
                                                       std::make_unique<TapInputRule>(2)));
         colour.Finalize();
-        const auto wrongColour = colour.ProcessInput({RhythmTime{60'000}, 1, 'F', InputEdge::Pressed});
+        const auto wrongColour = colour.ProcessInput({RhythmTime{60'000}, 1, 'C', InputEdge::Pressed});
         Require(HasEvent(wrongColour, NoteEventType::Missed) && colour.CurrentIndex() == 1 &&
                 HasEvent(wrongColour, NoteEventType::InputRejected),
                 "The Good next note must receive even a wrong-colour edge after automatic focusing.");
@@ -129,7 +129,7 @@ namespace tests
             overlap.AddNote(MakeTap(1, {}, profile));
             overlap.AddNote(MakeTap(2, RhythmTime{spacing}, profile));
             overlap.Finalize();
-            const auto first = overlap.ProcessInput({{}, 1, 'F', InputEdge::Pressed});
+            const auto first = overlap.ProcessInput({{}, 1, 'C', InputEdge::Pressed});
             Require(std::ranges::count(first.events, NoteEventType::HitAccepted, &NoteEvent::type) == 1 &&
                     std::ranges::count(first.events, NoteEventType::Completed, &NoteEvent::type) == 1 &&
                     !HasEvent(first, NoteEventType::Missed),
@@ -138,7 +138,7 @@ namespace tests
                     "Overlapping judgement windows must accept only one note per pressed edge.");
             Require(!HasEvent(overlap.Update({}), NoteEventType::Missed),
                     "Advancing focus after a hit must not miss the still-open next note.");
-            Require(HasEvent(overlap.ProcessInput({{}, 1, 'J', InputEdge::Pressed}), NoteEventType::HitAccepted) &&
+            Require(HasEvent(overlap.ProcessInput({{}, 1, 'M', InputEdge::Pressed}), NoteEventType::HitAccepted) &&
                         overlap.CurrentIndex() == 2,
                     "The overlapping second note must wait for its own pressed edge.");
         }
@@ -160,19 +160,19 @@ namespace tests
         Require(loaded.Succeeded(), "Taiko mode must create the large-note session.");
 
         const NoteProcessResult early = loaded.session->ProcessInput(
-            'F', InputEdge::Pressed, RhythmTime{-60'000});
+            'C', InputEdge::Pressed, RhythmTime{-60'000});
         Require(early.audioCues.size() == 1 &&
                     early.audioCues.front().sound == "Taiko.Don.FreeInput",
                 "An out-of-Good large note must not play its dedicated sound.");
 
         const NoteProcessResult first = loaded.session->ProcessInput(
-            'F', InputEdge::Pressed, RhythmTime::zero());
+            'C', InputEdge::Pressed, RhythmTime::zero());
         Require(first.audioCues.size() == 1 &&
                     first.audioCues.front().sound == "Taiko.BigDon.FirstHit",
                 "The first Good large-note hit must emit exactly one large-note cue.");
 
         const NoteProcessResult second = loaded.session->ProcessInput(
-            'J', InputEdge::Pressed, RhythmTime{1'000});
+            'M', InputEdge::Pressed, RhythmTime{1'000});
         Require(second.audioCues.empty() && HasEvent(second, NoteEventType::Completed),
                 "The second large-note hit must complete without replaying the first-hit cue.");
         const auto result = loaded.session->TakeResult(PlayEndReason::Completed, RhythmTime{1'000});
@@ -193,7 +193,7 @@ namespace tests
                                                                        RhythmTime{20'000}}),
                                    sound);
         static_cast<void>(
-            note.ProcessInput({RhythmTime::zero(), 1, 'F', InputEdge::Pressed}));
+            note.ProcessInput({RhythmTime::zero(), 1, 'C', InputEdge::Pressed}));
         const std::array<NoteAction, 1> held{1};
         const NoteProcessResult first = note.Update({RhythmTime{15'000}, held});
         const NoteProcessResult repeated = note.Update({RhythmTime{15'000}, held});

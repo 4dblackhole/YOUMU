@@ -229,7 +229,7 @@ Ramp: From+(To-From)*u
                     loaded.session->FindNotePresentation(1)->scrollMultiplier == 3 &&
                     !loaded.session->IsKiaiActive(RhythmTime{3'000'000}),
                 "Retained Areas and excluded point state must agree between editor and gameplay.");
-        const auto hit = loaded.session->ProcessInput('F', InputEdge::Pressed, RhythmTime{2'000'000});
+        const auto hit = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{2'000'000});
         const auto preview = BuildTaikoAudioPreview(pattern, effects, editor.Timeline(), editor.Notes());
         Require(!hit.audioCues.empty() && hit.audioCues.front().sound == "Chart.HitSound.3" && preview.size() == 1,
                 "A masked hit-sound change must not override the surviving point in play or audio preview.");
@@ -508,7 +508,7 @@ void TestYmeEffects(const std::filesystem::path &songsRoot)
         const auto &note = trial.session->Gear().Lanes().front()->Notes().front();
         const auto late =
             note->Timing() + normal.HalfWindow(JudgementGrade::Good) + RhythmDuration{9'000};
-        const auto hit = trial.session->ProcessInput(index == 0 ? 'F' : 'D', InputEdge::Pressed, late);
+        const auto hit = trial.session->ProcessInput(index == 0 ? 'C' : 'D', InputEdge::Pressed, late);
         Require(!hit.events.empty() && hit.events.back().judgement.grade ==
                                            (index == 0 ? JudgementGrade::Bad : JudgementGrade::Good),
                 "Real rule input must use the expanded range only on non-excluded "
@@ -561,10 +561,10 @@ void TestYmeEffects(const std::filesystem::path &songsRoot)
             "Hit-sound Volume Exponential must use elapsed time and retain To.");
     Require(std::abs(volumeAt(time(7) + (time(8) - time(7)) / 2, "HitSound") - 2.0 / 3) < 1e-6,
             "Volume Harmonic must use reciprocal interpolation.");
-    auto cues = session.ProcessInput('F', InputEdge::Pressed, time(2));
+    auto cues = session.ProcessInput('C', InputEdge::Pressed, time(2));
     Require(cues.audioCues.front().sound == "Chart.HitSound.2", "Timed Don change must route to the YME sound index.");
     session.Reset();
-    cues = session.ProcessInput('F', InputEdge::Pressed, notes[8]->Timing());
+    cues = session.ProcessInput('C', InputEdge::Pressed, notes[8]->Timing());
     Require(cues.audioCues.back().sound == "Chart.HitSound.1",
             "Explicit note sound must retain precedence over timed defaults.");
     ChartEditor editor(pattern.document, effects.document);

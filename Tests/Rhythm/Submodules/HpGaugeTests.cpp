@@ -183,7 +183,7 @@ namespace tests
         auto gauge = GaugeFor(session);
         Bind(session, gauge);
         for (const auto us : {0, 500'000, 1'000'000, 1'500'000})
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{us}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{us}));
         Require(Near(gauge.State().percent, 100), "HP clamps to 100.");
         session.RewindJudgements(RhythmTime{1'500'000});
         Require(Near(gauge.State().percent, 90), "Rewind replays earlier changes, recovering discarded saturation.");
@@ -211,7 +211,7 @@ namespace tests
             auto gauge = GaugeFor(session);
             Bind(session, gauge);
             Require(session.PlayableNoteCount() == 1, "A long note counts as one HP unit.");
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
             static_cast<void>(session.Update(RhythmTime{1'000'000}));
             Require(gauge.State().percent > 0 && gauge.State().percent <= 100,
                     "Partial count/tick/Buzz recovery survives completion without non-timing MISS drain.");
@@ -223,7 +223,7 @@ namespace tests
         auto &session = *loaded.session;
         auto gauge = GaugeFor(session);
         Bind(session, gauge);
-        static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
+        static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
         const auto head = gauge.State().percent;
         session.RetireRemaining(RhythmTime{100'000});
         Require(Near(gauge.State().percent, head), "Retirement preserves a settled Buzz head.");
@@ -243,7 +243,7 @@ namespace tests
         Bind(session, gauge);
         session.SetResultInitialTime(RhythmTime{-2'000'000});
         for (const auto time : {0, 500'000})
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{time}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{time}));
         Require(Near(gauge.State().percent, 60) && gauge.History() && !gauge.History()->empty(),
                 "The gauge records real HP changes before deactivation.");
         const auto points = gauge.History()->size();
@@ -252,7 +252,7 @@ namespace tests
         session.RecordControl({PlayControlType::Rewind, RhythmTime{750'000}, RhythmTime{500'000}});
         session.RecordControl({PlayControlType::Resume, RhythmTime{750'000}, RhythmTime{250'000}});
         for (const auto time : {500'000, 1'000'000})
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{time}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{time}));
         session.RetireRemaining(RhythmTime{1'100'000});
         Require(!session.CanUseHp() && Near(gauge.State().percent, 60) && gauge.History()->size() == points,
                 "Pause/Rewind freeze HP/history through replay, Resume and retirement.");
@@ -273,7 +273,7 @@ namespace tests
         Require(retry.CanUseHp() && Near(retryGauge.State().percent, 0) && retryGauge.History()->empty(),
                 "Retry re-enables HP and clears the old history.");
         retry.RecordControl({PlayControlType::Pause, {}, {}, 0, false});
-        static_cast<void>(retry.ProcessInput('F', InputEdge::Pressed, {}));
+        static_cast<void>(retry.ProcessInput('C', InputEdge::Pressed, {}));
         Require(retry.CanUseHp() && Near(retryGauge.State().percent, 30), "Debug pause retains its existing exception.");
         retry.RecordControl({PlayControlType::Rewind, RhythmTime{250'000}, {}});
         retry.RewindJudgements({});

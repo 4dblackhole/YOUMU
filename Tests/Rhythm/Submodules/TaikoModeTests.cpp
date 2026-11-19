@@ -5,7 +5,7 @@ namespace tests
 {
     void TestDengDengEitherStart()
     {
-        for (const char first : {'F', 'D'})
+        for (const char first : {'C', 'D'})
         {
             auto pattern = MakeLongPattern(TaikoNoteType::DengDeng, {"HitCount=3"});
             pattern.patternOffsetMilliseconds = 500;
@@ -13,7 +13,7 @@ namespace tests
             Require(loaded.Succeeded(), "Either-start DengDeng fixture must load.");
             auto &session = *loaded.session;
             const auto &note = *session.Gear().Lanes().front()->Notes().front();
-            const char other = first == 'F' ? 'D' : 'F';
+            const char other = first == 'C' ? 'D' : 'C';
             const auto reject = [&](char key, std::int64_t us, std::size_t count, InputEdge edge)
             {
                 const auto state = note.State();
@@ -29,7 +29,7 @@ namespace tests
             const auto accept = [&](char key, std::int64_t us, std::size_t count)
             {
                 const auto result = session.ProcessInput(key, InputEdge::Pressed, RhythmTime{us});
-                const auto sound = key == 'F' ? "Taiko.Don.Hit" : "Taiko.Kat.Hit";
+                const auto sound = key == 'C' ? "Taiko.Don.Hit" : "Taiko.Kat.Hit";
                 Require(HasEvent(result, NoteEventType::HitAccepted) && note.Progress() == NoteProgress{count, 3} &&
                         result.audioCues.size() == 1,
                         "Accepted alternation must count once and sound the actual action, including Kat-first.");
@@ -90,15 +90,15 @@ namespace tests
                                            { return event.judgement.grade == JudgementGrade::Unjudged; });
             };
             for (const auto us : {430'000, 500'000, 900'000, 1'500'000})
-                Require(note.Preview({RhythmTime{us}, 1, 'F'}).grade == JudgementGrade::Unjudged,
+                Require(note.Preview({RhythmTime{us}, 1, 'C'}).grade == JudgementGrade::Unjudged,
                         "Count-only heads must never supply a timing grade.");
-            const auto before = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{430'000});
+            const auto before = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{430'000});
             Require(ungraded(before) && note.Accuracy().acceptedHits == 0,
                     "An early head input must be ungraded and must not count.");
             // The first hit is far beyond BAD; only the remaining interval and count matter.
             for (int index = 0; index < 3; ++index)
             {
-                const char key = type == TaikoNoteType::DengDeng && index == 1 ? 'D' : 'F';
+                const char key = type == TaikoNoteType::DengDeng && index == 1 ? 'D' : 'C';
                 const auto hit = session.ProcessInput(key, InputEdge::Pressed,
                                                       RhythmTime{900'000 + index * 100'000});
                 Require(ungraded(hit), "Accepted count-only hits must not create head timing feedback.");
@@ -107,14 +107,14 @@ namespace tests
             Require(note.Accuracy().finalized && note.Accuracy().Score().Units() == 100'000'000,
                     "A late start meeting the count before the tail must earn full accuracy.");
             session.Reset();
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{500'000}));
-            const char second = type == TaikoNoteType::DengDeng ? 'D' : 'F';
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{500'000}));
+            const char second = type == TaikoNoteType::DengDeng ? 'D' : 'C';
             static_cast<void>(session.ProcessInput(second, InputEdge::Pressed, RhythmTime{1'500'000}));
             static_cast<void>(session.Update(RhythmTime{1'500'000}));
             Require(note.Accuracy().Score().Units() == 66'666'666 && note.Accuracy().acceptedHits == 2,
                     "Both interval boundaries count, and partial accuracy retains six decimal places.");
             session.Reset();
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{1'500'001}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{1'500'001}));
             Require(note.Accuracy().acceptedHits == 0 && note.Accuracy().Score().Units() == 0,
                     "Inputs after the tail must not count.");
         }
@@ -124,7 +124,7 @@ namespace tests
                 type, type == TaikoNoteType::Buzz ? std::vector<std::string>{"Action=Don"} : std::vector<std::string>{}));
             Require(loaded.Succeeded(), "Timing-based long-note fixture must load.");
             const auto &note = *loaded.session->Gear().Lanes().front()->Notes().front();
-            Require(note.Preview({RhythmTime{20'000}, 1, 'F'}).grade == JudgementGrade::Great,
+            Require(note.Preview({RhythmTime{20'000}, 1, 'C'}).grade == JudgementGrade::Great,
                     "TickRoll and Buzz must retain their start timing judgement.");
         }
     }
@@ -135,7 +135,7 @@ namespace tests
         ModeLoadResult roll = taiko.CreateSession(MakeLongPattern(TaikoNoteType::Roll));
         Require(roll.Succeeded(), "Roll must create a playable session.");
         const NoteProcessResult don = roll.session->ProcessInput(
-            'F', InputEdge::Pressed, RhythmTime{100'000});
+            'C', InputEdge::Pressed, RhythmTime{100'000});
         const NoteProcessResult kat = roll.session->ProcessInput(
             'D', InputEdge::Pressed, RhythmTime{200'000});
         Require(HasEvent(don, NoteEventType::TickAccepted) &&
@@ -148,11 +148,11 @@ namespace tests
         Require(tickRoll.session->FindNotePresentation(1)->tickTimes.size() == 9,
                 "TickRoll presentation must expose every authored tick to the scene.");
         const NoteProcessResult first = tickRoll.session->ProcessInput(
-            'F', InputEdge::Pressed, RhythmTime::zero());
+            'C', InputEdge::Pressed, RhythmTime::zero());
         const NoteProcessResult duplicate = tickRoll.session->ProcessInput(
             'D', InputEdge::Pressed, RhythmTime::zero());
         const NoteProcessResult outsideGood = tickRoll.session->ProcessInput(
-            'F', InputEdge::Pressed, RhythmTime{70'000});
+            'C', InputEdge::Pressed, RhythmTime{70'000});
         const NoteProcessResult insideGood = tickRoll.session->ProcessInput(
             'D', InputEdge::Pressed, RhythmTime{71'000});
         Require(HasEvent(first, NoteEventType::TickAccepted) && !HasEvent(duplicate, NoteEventType::TickAccepted) &&
@@ -217,9 +217,9 @@ Mode: Taiko
                 "The scroll snapshot must expose Balloon progress to presentation.");
         const NoteProcessResult wrongBalloon = balloon.session->ProcessInput(
             'D', InputEdge::Pressed, RhythmTime{10'000});
-        static_cast<void>(balloon.session->ProcessInput('F', InputEdge::Pressed,
+        static_cast<void>(balloon.session->ProcessInput('C', InputEdge::Pressed,
                                                         RhythmTime{20'000}));
-        static_cast<void>(balloon.session->ProcessInput('J', InputEdge::Pressed,
+        static_cast<void>(balloon.session->ProcessInput('M', InputEdge::Pressed,
                                                         RhythmTime{30'000}));
         const ScrollGearSnapshot activeBalloonSnapshot =
             balloon.session->Gear().BuildSnapshot(RhythmTime{30'000},
@@ -228,7 +228,7 @@ Mode: Taiko
                     activeBalloonSnapshot.notes.front().progress == NoteProgress{2, 3},
                 "The scroll snapshot must update Balloon progress after hits.");
         const NoteProcessResult popped = balloon.session->ProcessInput(
-            'F', InputEdge::Pressed, RhythmTime{40'000});
+            'C', InputEdge::Pressed, RhythmTime{40'000});
         Require(!HasEvent(wrongBalloon, NoteEventType::HitAccepted) &&
                     HasEvent(popped, NoteEventType::Completed) &&
                     std::ranges::any_of(popped.audioCues,
@@ -246,25 +246,25 @@ Mode: Taiko
                         NoteProgress{0, 3},
                 "An unspecified quarter-note Balloon must default to "
                 "ceil(1/4 * 12) = 3 hits.");
-        static_cast<void>(defaultBalloon.session->ProcessInput('F', InputEdge::Pressed,
+        static_cast<void>(defaultBalloon.session->ProcessInput('C', InputEdge::Pressed,
                                                                RhythmTime{10'000}));
-        static_cast<void>(defaultBalloon.session->ProcessInput('J', InputEdge::Pressed,
+        static_cast<void>(defaultBalloon.session->ProcessInput('M', InputEdge::Pressed,
                                                                RhythmTime{20'000}));
         const NoteProcessResult defaultPopped = defaultBalloon.session->ProcessInput(
-            'F', InputEdge::Pressed, RhythmTime{30'000});
+            'C', InputEdge::Pressed, RhythmTime{30'000});
         Require(HasEvent(defaultPopped, NoteEventType::Completed),
                 "The computed Balloon hit count must drive completion.");
 
         ModeLoadResult dengDeng =
             taiko.CreateSession(MakeLongPattern(TaikoNoteType::DengDeng, {"HitCount=4"}));
         Require(dengDeng.Succeeded(), "DengDeng must create a playable session.");
-        static_cast<void>(dengDeng.session->ProcessInput('F', InputEdge::Pressed,
+        static_cast<void>(dengDeng.session->ProcessInput('C', InputEdge::Pressed,
                                                          RhythmTime{10'000}));
         const NoteProcessResult repeatedDon = dengDeng.session->ProcessInput(
-            'J', InputEdge::Pressed, RhythmTime{20'000});
+            'M', InputEdge::Pressed, RhythmTime{20'000});
         static_cast<void>(dengDeng.session->ProcessInput('D', InputEdge::Pressed,
                                                          RhythmTime{30'000}));
-        static_cast<void>(dengDeng.session->ProcessInput('F', InputEdge::Pressed,
+        static_cast<void>(dengDeng.session->ProcessInput('C', InputEdge::Pressed,
                                                          RhythmTime{40'000}));
         const NoteProcessResult alternated = dengDeng.session->ProcessInput(
             'K', InputEdge::Pressed, RhythmTime{50'000});
@@ -275,9 +275,9 @@ Mode: Taiko
         ModeLoadResult donBuzz = taiko.CreateSession(
             MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"}));
         Require(donBuzz.Succeeded(), "Don Buzz must create a playable session.");
-        static_cast<void>(donBuzz.session->ProcessInput('F', InputEdge::Pressed,
+        static_cast<void>(donBuzz.session->ProcessInput('C', InputEdge::Pressed,
                                                         RhythmTime::zero()));
-        const std::array<PhysicalKey, 1> heldDon{'F'};
+        const std::array<PhysicalKey, 1> heldDon{'C'};
         const NoteProcessResult donTick =
             donBuzz.session->Update(RhythmTime{125'000}, heldDon);
         const NoteProcessResult releasedTick =
@@ -371,10 +371,10 @@ Mode: Taiko
                 NoteProcessResult log;
                 if (buzz)
                 {
-                    log.Append(session.ProcessInput('F', InputEdge::Pressed, note.Timing()));
+                    log.Append(session.ProcessInput('C', InputEdge::Pressed, note.Timing()));
                     if (missTail)
-                        log.Append(session.ProcessInput('F', InputEdge::Released, view.endTime));
-                    const std::array<PhysicalKey, 1> held{'F'};
+                        log.Append(session.ProcessInput('C', InputEdge::Released, view.endTime));
+                    const std::array<PhysicalKey, 1> held{'C'};
                     log.Append(session.Update(view.endTime, missTail ? std::span<const PhysicalKey>{} : held));
                 }
                 else
@@ -382,7 +382,7 @@ Mode: Taiko
                     for (std::size_t i = 0; i < view.tickTimes.size() - (missTail ? 1 : 0); ++i)
                     {
                         log.Append(session.Update(view.tickTimes[i] - RhythmDuration{1}));
-                        log.Append(session.ProcessInput('F', InputEdge::Pressed, view.tickTimes[i]));
+                        log.Append(session.ProcessInput('C', InputEdge::Pressed, view.tickTimes[i]));
                     }
                     log.Append(session.Update(view.endTime));
                 }

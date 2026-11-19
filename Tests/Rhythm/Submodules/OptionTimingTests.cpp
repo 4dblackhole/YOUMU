@@ -13,14 +13,14 @@ namespace tests
                 "Remapped mode must load: " +
                     (loaded.diagnostics.empty() ? std::string{} : loaded.diagnostics.front().message));
         auto &session = *loaded.session;
-        Require(!session.InputMapping().contains('F') && !session.InputMapping().contains('V') &&
+        Require(!session.InputMapping().contains('C') && !session.InputMapping().contains('V') &&
                 !session.InputMapping().contains(0),
                 "Session input and presentation share the resolved primary/auxiliary keys.");
         Require(session.InputMapping().at('S') == 1 &&
                 session.InputLayout().bindings[1].keys == std::vector<PhysicalKey>{'S', 'A', 0, 0},
                 "Session input and presentation share the resolved primary/auxiliary keys.");
         Require(
-            !HasEvent(session.ProcessInput('F', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
+            !HasEvent(session.ProcessInput('C', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
             "Old key must no longer judge the note.");
         Require(HasEvent(session.ProcessInput('S', InputEdge::Pressed, {}), NoteEventType::HitAccepted),
                 "Remapped primary judges the Buzz head.");
@@ -43,7 +43,7 @@ namespace tests
         auto unassigned = TaikoMode(options).CreateSession(pattern);
         Require(unassigned.Succeeded() && unassigned.session->InputMapping().at('S') == 1,
                 "An unassigned primary keeps the binding's assigned auxiliary keys playable.");
-        Require(!unassigned.session->InputMapping().contains(0) && !unassigned.session->InputMapping().contains('J'),
+        Require(!unassigned.session->InputMapping().contains(0) && !unassigned.session->InputMapping().contains('M'),
                 "A binding without keys receives no input.");
         Require(unassigned.session->InputLayout().bindings[2].keys == std::vector<PhysicalKey>(4, 0),
                 "A binding without keys receives no input.");

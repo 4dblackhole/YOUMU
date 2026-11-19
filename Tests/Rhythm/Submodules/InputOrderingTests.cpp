@@ -19,7 +19,7 @@ namespace tests
             static_cast<void>(session.Update(RhythmTime{89'000}));
             if (split)
                 static_cast<void>(session.Update(RhythmTime{99'999}));
-            const auto hit = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{100'000});
+            const auto hit = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{100'000});
             Require(HasEvent(hit, NoteEventType::HitAccepted), "Input must pass all expired notes before judging.");
             auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{100'001});
             const auto &taiko = dynamic_cast<const TaikoPlayResult &>(*result);
@@ -35,7 +35,7 @@ namespace tests
         const auto end = boundary.Notes().front()->ExpireTime();
         Require(!HasEvent(boundary.ProcessInput({end, 2, 'D', InputEdge::Pressed}), NoteEventType::Missed),
                 "The exact expiry boundary remains closed.");
-        Require(HasEvent(boundary.ProcessInput({end + RhythmDuration{1}, 1, 'F', InputEdge::Pressed}),
+        Require(HasEvent(boundary.ProcessInput({end + RhythmDuration{1}, 1, 'C', InputEdge::Pressed}),
                          NoteEventType::Missed),
                 "The first microsecond after expiry must retire the note.");
 
@@ -46,10 +46,10 @@ namespace tests
             auto loaded = TaikoMode{}.CreateSession(pattern);
             Require(loaded.Succeeded(), "Tail-to-head fixture must load.");
             auto &session = *loaded.session;
-            static_cast<void>(session.ProcessInput('J', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, {}));
             if (split)
-                static_cast<void>(session.Update(RhythmTime{1'000'000}, std::array<PhysicalKey, 1>{'J'}));
-            const auto result = session.ProcessInput('F', InputEdge::Pressed, RhythmTime{1'001'000});
+                static_cast<void>(session.Update(RhythmTime{1'000'000}, std::array<PhysicalKey, 1>{'M'}));
+            const auto result = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{1'001'000});
             Require(HasEvent(result, NoteEventType::HitAccepted) && session.FinalizedNoteCount() == 2,
                     "A held long tail must complete before the next timestamped head.");
             Require(session.Gear().Lanes().front()->Notes().front()->Accuracy().acceptedTicks == 4,
@@ -66,21 +66,21 @@ namespace tests
                 MakeLongPattern(TaikoNoteType::Buzz, {"TickDivision=8", "Action=Don"}));
             Require(loaded.Succeeded(), "Held-input fixture must load.");
             auto &session = *loaded.session;
-            static_cast<void>(session.Update(RhythmTime{-100'000}, std::array<PhysicalKey, 1>{'F'}));
-            static_cast<void>(session.ProcessInput('J', InputEdge::Pressed, {}));
+            static_cast<void>(session.Update(RhythmTime{-100'000}, std::array<PhysicalKey, 1>{'C'}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, {}));
             if (split)
-                static_cast<void>(session.Update(RhythmTime{249'999}, std::array<PhysicalKey, 2>{'F', 'J'}));
-            const auto release = session.ProcessInput('J', InputEdge::Released, RhythmTime{250'000});
+                static_cast<void>(session.Update(RhythmTime{249'999}, std::array<PhysicalKey, 2>{'C', 'M'}));
+            const auto release = session.ProcessInput('M', InputEdge::Released, RhythmTime{250'000});
             Require(HasEvent(release, NoteEventType::TickAccepted) && !HasEvent(release, NoteEventType::TickMissed),
                     "Releasing the head key must preserve another preheld key at the same tick.");
-            static_cast<void>(session.ProcessInput('J', InputEdge::Pressed, RhythmTime{300'000}));
-            static_cast<void>(session.ProcessInput('F', InputEdge::Released, RhythmTime{400'000}));
-            const auto lastRelease = session.ProcessInput('J', InputEdge::Released, RhythmTime{500'000});
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, RhythmTime{300'000}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{400'000}));
+            const auto lastRelease = session.ProcessInput('M', InputEdge::Released, RhythmTime{500'000});
             Require(HasEvent(lastRelease, NoteEventType::TickMissed), "The final physical release must miss the tick.");
             // Pause snapshots can replace held keys without a judged press.
-            static_cast<void>(session.Update(RhythmTime{500'001}, std::array<PhysicalKey, 1>{'F'}));
-            static_cast<void>(session.ProcessInput('J', InputEdge::Pressed, RhythmTime{600'000}));
-            const auto pausedRelease = session.ProcessInput('J', InputEdge::Released, RhythmTime{750'000});
+            static_cast<void>(session.Update(RhythmTime{500'001}, std::array<PhysicalKey, 1>{'C'}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, RhythmTime{600'000}));
+            const auto pausedRelease = session.ProcessInput('M', InputEdge::Released, RhythmTime{750'000});
             Require(HasEvent(pausedRelease, NoteEventType::TickAccepted),
                     "Resume must use the restored physical state.");
             session.RewindJudgements(RhythmTime{800'000});

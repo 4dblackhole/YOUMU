@@ -22,16 +22,16 @@ namespace tests
         };
         Require(!session.Accuracy() && session.Score() == 0 && session.Statistics().combo == 0,
                 "A new attempt has no accuracy sample and zero statistics.");
-        hit('F', 0);
+        hit('C', 0);
         Require(session.Accuracy()->Units() == 100'000'000 && session.Score() == 16'666'666 &&
                     session.Statistics().combo == 1,
                 "A first MAX keeps current accuracy at 100 percent and earns one sixth of the full score.");
-        hit('F', 500'000);
+        hit('C', 500'000);
         Require(session.Statistics().combo == 1, "The first half of a big note is not another combo.");
-        hit('J', 500'000);
+        hit('M', 500'000);
         Require(session.Statistics().combo == 2, "A successful big note contributes one logical combo.");
-        hit('F', 1'000'000);
-        hit('F', 1'050'000);
+        hit('C', 1'000'000);
+        hit('C', 1'050'000);
         Require(session.Statistics().combo == 2, "Roll hits do not each increment combo.");
         static_cast<void>(session.Update(RhythmTime{1'500'000}));
         auto statistics = session.Statistics();
@@ -50,11 +50,11 @@ namespace tests
                 "BAD breaks combo even though the note completes.");
         Require(session.Statistics().timingErrorSum == RhythmDuration{70'000},
                 "A late BAD adds its signed error to the live timing sum.");
-        hit('F', 2'500'000);
+        hit('C', 2'500'000);
         hit('D', 3'000'000);
         Require(session.Statistics().combo == 0 && session.Statistics().poorCount == 1,
                 "A real POOR immediately breaks combo; key releases never add POOR.");
-        hit('F', 3'000'000);
+        hit('C', 3'000'000);
         Require(session.Statistics().combo == 1 && session.Statistics().maximumCombo == 3,
                 "A later accepted completion starts a new combo and preserves the maximum.");
         session.RewindJudgements(RhythmTime{2'000'000});
@@ -151,14 +151,14 @@ namespace tests
         session.SetResultInitialTime(RhythmTime{-2'000'000});
         const auto press = [&](char key, std::int64_t us)
         { return session.ProcessInput(key, InputEdge::Pressed, RhythmTime{us}); };
-        static_cast<void>(press('F', -1'000'000)); // Empty input is retained, never POOR.
+        static_cast<void>(press('C', -1'000'000)); // Empty input is retained, never POOR.
         static_cast<void>(press('D', 2'000));
         static_cast<void>(session.ProcessInput('D', InputEdge::Released, RhythmTime{3'000}));
-        const auto normal = press('F', 10'000);
-        static_cast<void>(session.ProcessInput('F', InputEdge::Released, RhythmTime{10'000}));
-        static_cast<void>(press('F', 500'000));
-        const auto big = press('J', 510'000);
-        static_cast<void>(press('F', 1'000'000));
+        const auto normal = press('C', 10'000);
+        static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{10'000}));
+        static_cast<void>(press('C', 500'000));
+        const auto big = press('M', 510'000);
+        static_cast<void>(press('C', 1'000'000));
         const auto roll = session.Update(RhythmTime{1'500'000});
         const auto expectedSum = static_cast<std::uint64_t>(normal.finalizedAccuracies.front().Score().Units()) +
                                  big.finalizedAccuracies.front().Score().Units() +
@@ -190,9 +190,9 @@ namespace tests
         Require(inputs.size() == 8 && inputs[0].time.count() == -1'000'000 && inputs[3].time == inputs[4].time,
                 "Input logs must preserve signed microseconds, physical keys, edges and tied event order.");
         Require(inputs[3].edge == InputEdge::Pressed && inputs[4].edge == InputEdge::Released &&
-                inputs[4].physicalKey == 'F',
+                inputs[4].physicalKey == 'C',
                 "Input logs must preserve signed microseconds, physical keys, edges and tied event order.");
-        Require(taiko->summary.inputMapping.at('F') == inputs[3].action &&
+        Require(taiko->summary.inputMapping.at('C') == inputs[3].action &&
                 taiko->summary.initialTime.count() == -2'000'000,
                 "Input logs must preserve signed microseconds, physical keys, edges and tied event order.");
         loaded.session.reset();
@@ -214,13 +214,13 @@ namespace tests
             auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(type, std::move(options)));
             Require(loaded.Succeeded(), "Long result session must load.");
             auto &session = *loaded.session;
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
             session.Reset();
-            static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
             if (type == TaikoNoteType::TickRoll || type == TaikoNoteType::BigTickRoll)
                 for (const std::int64_t us : {500'000, 1'000'000})
-                    static_cast<void>(session.ProcessInput('F', InputEdge::Pressed, RhythmTime{us}));
-            const std::array<PhysicalKey, 1> held{'F'};
+                    static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{us}));
+            const std::array<PhysicalKey, 1> held{'C'};
             static_cast<void>(session.Update(RhythmTime{1'000'000}, held));
             static_cast<void>(session.Update(RhythmTime{1'100'000}, held));
             auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{1'100'000});
@@ -241,7 +241,7 @@ namespace tests
         }
         auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don"}));
         Require(loaded.Succeeded(), "Interrupted Buzz fixture must load.");
-        static_cast<void>(loaded.session->ProcessInput('F', InputEdge::Pressed, {}));
+        static_cast<void>(loaded.session->ProcessInput('C', InputEdge::Pressed, {}));
         auto result = loaded.session->TakeResult(PlayEndReason::Interrupted, RhythmTime{10'000});
         Require(result->Summary().unprocessedNotes == 1 && result->Summary().accuracy.Units() == 0,
                 "A partially active long note remains unprocessed with zero score on interruption.");

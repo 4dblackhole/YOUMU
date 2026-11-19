@@ -250,7 +250,7 @@ namespace
     std::uint16_t KeyFor(NoteVisualKind kind)
     {
         const bool kat = kind == NoteVisualKind::Kat || kind == NoteVisualKind::BigKat;
-        return kat || kind == NoteVisualKind::KatBuzz ? 'D' : 'F';
+        return kat || kind == NoteVisualKind::KatBuzz ? 'D' : 'C';
     }
 
     // Presses every note on time, holds each Buzz from its head to its end, and taps every tick.
@@ -287,14 +287,14 @@ namespace
                     {
                         const bool alternate = view->visualKind == NoteVisualKind::DengDeng && hit % 2 != 0;
                         tap(note->Timing() + RhythmDuration{static_cast<long long>(hit) * 80'000},
-                            alternate ? std::uint16_t{'D'} : std::uint16_t{'F'});
+                            alternate ? std::uint16_t{'D'} : std::uint16_t{'C'});
                     }
                 }
                 else
                 {
                     tap(note->Timing(), key);
                     if (target.hits == 2)
-                        tap(note->Timing(), key == 'F' ? std::uint16_t{'J'} : std::uint16_t{'K'});
+                        tap(note->Timing(), key == 'C' ? std::uint16_t{'M'} : std::uint16_t{'K'});
                 }
             }
         std::ranges::stable_sort(inputs, {}, &PlannedInput::time);

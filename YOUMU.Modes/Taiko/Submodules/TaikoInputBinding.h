@@ -40,8 +40,8 @@ struct TaikoInputBinding
 };
 
 inline constexpr std::array<TaikoInputBinding, 4> TaikoInputBindings{{
-    {TaikoAction::Kat, 'D', {'C', 0}},
-    {TaikoAction::Don, 'F', {'V', 0}},
-    {TaikoAction::Don, 'J', {'N', 0}},
-    {TaikoAction::Kat, 'K', {'M', 0}},
+    {TaikoAction::Kat, 'D', {'F', 0}},
+    {TaikoAction::Don, 'C', {'V', 0}},
+    {TaikoAction::Don, 'M', {'N', 0}},
+    {TaikoAction::Kat, 'K', {'J', 0}},
 }};
