@@ -47,6 +47,23 @@ namespace
         const auto saved = values.modeKeys.find(mode);
         return saved == values.modeKeys.end() ? InputKeyOverrides{} : saved->second;
     }
+    // A newly assigned key leaves every other slot of the same mode that used it unassigned,
+    // whichever binding or slot (primary included) that was. The changed bindings are saved too.
+    void UnassignKeyElsewhere(ModeInputLayout &layout, std::map<std::string, std::vector<std::uint16_t>> &saved,
+                              const std::uint16_t key, const std::string_view keptBinding, const std::size_t keptSlot)
+    {
+        if (key == 0)
+            return;
+        for (auto &binding : layout.bindings)
+            for (std::size_t slot = 0; slot < binding.keys.size(); ++slot)
+            {
+                const bool kept = binding.id == keptBinding && slot == keptSlot;
+                if (kept || binding.keys[slot] != key)
+                    continue;
+                binding.keys[slot] = 0;
+                saved[binding.id] = binding.keys;
+            }
+    }
 } // namespace
 
 void OptionsPanel::CreateKeyControls()
@@ -383,8 +400,10 @@ void OptionsPanel::CaptureKey(std::uint16_t key)
     auto resolved = ResolveInputLayout(*layout, SavedOverrides(candidate, row.mode));
     const auto binding = std::ranges::find(resolved.bindings, row.binding, &ModeInputBinding::id);
     binding->keys[row.slot] = key;
-    candidate.modeKeys[row.mode][row.binding] = binding->keys;
-    // OptionSettings validates conflicts against all other default/changed keys.
+    auto &savedKeys = candidate.modeKeys[row.mode];
+    savedKeys[row.binding] = binding->keys;
+    UnassignKeyElsewhere(resolved, savedKeys, key, row.binding, row.slot);
+    // OptionSettings still rejects reserved keys and any key the layout cannot leave unassigned.
     if (SaveOptions(candidate))
         captureRow_.reset();
     RefreshKeyControls();

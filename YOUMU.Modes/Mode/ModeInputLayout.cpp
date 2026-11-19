@@ -5,12 +5,12 @@
 
 namespace
 {
-// Overrides may leave auxiliary slots unassigned only when the layout allows it.
-[[nodiscard]] bool HasValidKeyCount(std::size_t slots, std::size_t keyCount, bool allowUnassignedAuxiliaryKeys)
+// Overrides may leave slots unassigned only when the layout allows it.
+[[nodiscard]] bool HasValidKeyCount(std::size_t slots, std::size_t keyCount, bool allowUnassignedKeys)
 {
     if (keyCount == 0 || keyCount > slots)
         return false;
-    return allowUnassignedAuxiliaryKeys || keyCount == slots;
+    return allowUnassignedKeys || keyCount == slots;
 }
 
 [[nodiscard]] bool IsReservedKey(PhysicalKey key)
@@ -36,7 +36,7 @@ ModeInputLayout ResolveInputLayout(ModeInputLayout layout, const InputKeyOverrid
     {
         auto found = std::ranges::find(layout.bindings, id, &ModeInputBinding::id);
         if (found == layout.bindings.end() ||
-            !HasValidKeyCount(found->keys.size(), keys.size(), layout.allowUnassignedAuxiliaryKeys))
+            !HasValidKeyCount(found->keys.size(), keys.size(), layout.allowUnassignedKeys))
             throw std::invalid_argument("Unknown input binding or incorrect key count: " + id);
         const auto slots = found->keys.size();
         found->keys = keys;
@@ -45,11 +45,13 @@ ModeInputLayout ResolveInputLayout(ModeInputLayout layout, const InputKeyOverrid
     std::set<PhysicalKey> used;
     for (const auto &binding : layout.bindings)
     {
-        if (binding.keys.empty() || binding.keys.front() == 0)
+        if (binding.keys.empty())
+            throw std::invalid_argument("An input binding needs at least one key slot.");
+        if (binding.keys.front() == 0 && !layout.allowUnassignedKeys)
             throw std::invalid_argument("The primary key cannot be empty.");
         for (const auto key : binding.keys)
         {
-            if (key == 0 && layout.allowUnassignedAuxiliaryKeys) continue;
+            if (key == 0 && layout.allowUnassignedKeys) continue;
             // Preserve pause/reset controls and the global performance-display shortcut.
             if (IsReservedKey(key))
                 throw std::invalid_argument("This key is reserved for game controls.");

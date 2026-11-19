@@ -540,10 +540,24 @@ namespace
             static_cast<void>(canvas.TakeActions());
             router.Reset(canvas);
         }
+        // A key used elsewhere moves to the chosen slot and leaves its old slot unassigned.
+        const auto savedKey = [&](const char *binding, const std::size_t slot) {
+            return settings.Values().modeKeys.at("Taiko").at(binding).at(slot);
+        };
+        const auto slotText = [&](const std::string &node) {
+            return FindNode(canvas.Root(), node).GetComponent<TextVisualComponent>()->Text();
+        };
+        click("Options.Key.Taiko.LeftKat.1");
+        panel.HandleKey('D', router);
+        Check(!panel.OwnsKeyboard() && savedKey("LeftKat", 1) == 'D', "A key from the same column moves to the chosen slot.");
+        Check(savedKey("LeftKat", 0) == 0 && slotText("Options.Key.Taiko.LeftKat.0") == L"+",
+              "The primary slot that used the key becomes unassigned.");
         click("Options.Key.Taiko.LeftDon.0");
         panel.HandleKey('K', router);
-        Check(panel.OwnsKeyboard() && !settings.Values().modeKeys.contains("Taiko"),
-              "Duplicate key rejected against untouched defaults.");
+        Check(!panel.OwnsKeyboard() && savedKey("LeftDon", 0) == 'K', "A key from another column moves to the chosen slot.");
+        Check(savedKey("RightKat", 0) == 0 && slotText("Options.Key.Taiko.RightKat.0") == L"+",
+              "The other column's slot that used the key becomes unassigned.");
+        click("Options.Key.Taiko.LeftDon.0");
         panel.HandleKey(VK_SPACE, router);
         Check(panel.OwnsKeyboard(), "Reserved game control is rejected.");
         panel.HandleKey('S', router);

@@ -120,7 +120,7 @@ namespace
         return extent != 0 && extent <= 16384;
     }
 
-    // Layouts that allow unassigned auxiliary keys store those slots as 0.
+    // Layouts that allow unassigned keys store those slots, the primary included, as 0.
     bool IsInvalidSavedKey(const std::uint16_t key, const bool allowUnassigned)
     {
         if (key == 0 && allowUnassigned)
@@ -158,7 +158,7 @@ namespace
             if (!IsIdentifier(mode))
                 throw std::runtime_error("Invalid mode identifier.");
             const auto layout = std::ranges::find(layouts, mode, &ModeInputLayout::modeId);
-            const bool allowUnassigned = layout != layouts.end() && layout->allowUnassignedAuxiliaryKeys;
+            const bool allowUnassigned = layout != layouts.end() && layout->allowUnassignedKeys;
             for (const auto &[id, keys] : bindings)
             {
                 if (!IsIdentifier(id) || keys.empty() ||
