@@ -86,14 +86,12 @@
     <None Include="Assets\Skins\Default Skin\MusicSelect\Detail\*.*" />
     <None Include="Assets\Skins\Default Skin\MusicSelect\Panels\*.*" />
     <None Include="Assets\Skins\Default Skin\MusicSelect\Records\*.*" />
-    <None Include="Assets\Skins\Default Skin\NumberImage\*.*" />
     <None Include="Assets\Skins\Default Skin\Common\Icons\*.*" />
     <None Include="Assets\Skins\Default Skin\Result\*.*" />
     <None Include="Assets\Skins\Default Skin\Result\Background\*.*" />
     <None Include="Assets\Skins\Default Skin\Result\Mode\*.*" />
     <None Include="Assets\Skins\Default Skin\Result\Panels\*.*" />
     <None Include="Assets\Skins\Default Skin\Result\Rank\*.*" />
-    <None Include="Assets\Skins\Default Skin\TitleImage\Widget\*.*" />
     <None Include="Scripts\GenerateAssetPack.ps1" />
     <ResourceCompile Include="$(IntDir)YOUMU.Assets.rc" />
   </ItemGroup>

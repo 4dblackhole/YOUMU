@@ -13,22 +13,6 @@
     return UserSongsRoot();
 }
 
-[[nodiscard]] inline std::filesystem::path NotoSansKR()
-{
-    return ResolveBuiltInAsset(L"assets\\fonts\\NotoSansKR.ttf");
-}
-[[nodiscard]] inline std::filesystem::path YOUMU()
-{
-    return ResolveBuiltInAsset(
-        L"assets\\fonts\\Rajdhani-SemiBold.ttf");
-}
-
-[[nodiscard]] inline std::filesystem::path ExamplePixel()
-{
-    return ResolveBuiltInAsset(
-        L"assets\\fonts\\PressStart2P-Regular.ttf");
-}
-
 [[nodiscard]] inline std::filesystem::path EditorSound(const std::filesystem::path &file)
 {
     return SkinSetSelection::Instance().Resolve(std::filesystem::path(L"Editor") / file);
@@ -52,13 +36,6 @@
     return SkinSetSelection::Instance().Image("InGame", file.generic_string());
 }
 
-[[nodiscard]] inline std::filesystem::path NumberImage(
-    const std::filesystem::path& file)
-{
-    return SkinSetSelection::Instance().Resolve(
-        std::filesystem::path(L"NumberImage") / file);
-}
-
 // Built-in hit sounds live in one skin folder per mode under HitSounds.
 [[nodiscard]] inline std::filesystem::path ModeHitSound(
     const std::wstring_view modeFolder,
@@ -66,16 +43,4 @@
 {
     return SkinSetSelection::Instance().Resolve(
         std::filesystem::path(L"HitSounds") / modeFolder / file);
-}
-
-[[nodiscard]] inline std::filesystem::path First()
-{
-    return SkinSetSelection::Instance().Resolve(
-        L"TitleImage\\Widget\\Widget1.png");
-}
-
-[[nodiscard]] inline std::filesystem::path Second()
-{
-    return SkinSetSelection::Instance().Resolve(
-        L"TitleImage\\Widget\\Widget2.png");
 }
