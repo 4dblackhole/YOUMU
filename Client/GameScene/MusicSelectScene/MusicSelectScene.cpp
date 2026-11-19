@@ -247,6 +247,7 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
     request.globalOffsetMs = options_.Values().globalOffsetMs;
     request.volumes = options_.Values().volumes;
     request.patternTitle = PatternName(pattern, selection_.notation_);
+    request.restartKey = options_.Values().restartKey;
     request.playOptions = selection_.playOptions_;
     request.songsRoot = library_->CatalogRoot();
     request.backgroundPath =

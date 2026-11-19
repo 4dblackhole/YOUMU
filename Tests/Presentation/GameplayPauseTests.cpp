@@ -1086,8 +1086,6 @@ namespace
             }
         }
 
-        // The backquote key restarts the attempt only after a half-second hold; a tap, the old R key and a
-        // key held on through a restart must leave the attempt running.
         // A pause-menu Retry restarts only after its screen fade; advance past it in one frame.
         static void CompleteRetryFade(GameplaySessionController &controller, const UpdateContext &ctx)
         {
@@ -1117,6 +1115,8 @@ namespace
                   "At the end of the fade the attempt restarts and the new one is shown at once.");
         }
 
+        // The default backquote restart key restarts the attempt only after a half-second hold; a tap, the old
+        // R key and a key held on through a restart must leave the attempt running.
         void CheckRestartHold(const UpdateContext &ctx)
         {
             auto pattern = Pattern();
@@ -1169,6 +1169,46 @@ namespace
             edge(VK_OEM_3, true);
             holdFor(std::chrono::milliseconds{700});
             Check(controller.CurrentState() == PlayState::Loading, "Pressing the key anew must restart after a half-second hold.");
+            controller.Shutdown();
+            CheckChosenRestartKey(ctx);
+        }
+
+        // A restart key chosen in the options replaces backquote for the attempt it launches.
+        void CheckChosenRestartKey(const UpdateContext &ctx)
+        {
+            auto pattern = Pattern();
+            pattern.notes.push_back({.position = {0, {}}, .keyType = 1});
+            auto loaded = TaikoMode(PlaySessionOptions{}).CreateSession(pattern);
+            Check(loaded.Succeeded(), "Chosen restart key fixture must load.");
+            GameplayLaunchRequest request{"probe.ymp", {}, "probe-music.mp3", "Taiko"};
+            request.restartKey = VK_F8;
+            GameplaySessionController controller(request, playback_, false, std::move(loaded.session));
+            controller.InitializeSession();
+            controller.Start(*services_, RhythmTime{-2'000'000});
+            WaitForGameplay(controller, ctx);
+            InputState input;
+            const auto frame = [&] { controller.Update({0.0, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}}); };
+            const auto edge = [&](std::uint16_t key, bool down)
+            {
+                InputStateTestAccess::Begin(input);
+                const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                if (down) InputStateTestAccess::Press(input, key, ticks);
+                else InputStateTestAccess::Release(input, key, ticks);
+                frame();
+            };
+            const auto holdFor = [&](std::chrono::milliseconds duration)
+            {
+                std::this_thread::sleep_for(duration);
+                InputStateTestAccess::Begin(input);
+                frame();
+            };
+            edge(VK_OEM_3, true);
+            holdFor(std::chrono::milliseconds{700});
+            edge(VK_OEM_3, false);
+            Check(controller.CurrentState() == PlayState::Gameplay, "Backquote must not restart once another key is chosen.");
+            edge(VK_F8, true);
+            holdFor(std::chrono::milliseconds{700});
+            Check(controller.CurrentState() == PlayState::Loading, "Holding the chosen restart key must restart.");
             controller.Shutdown();
         }
 

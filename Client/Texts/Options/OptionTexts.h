@@ -8,6 +8,7 @@ struct OptionTextSet
 {
     std::wstring_view resolution, globalOffset, primary, auxiliary, pressKey;
     std::wstring_view windowError, inputError;
+    std::wstring_view restartKey;
     std::wstring_view title;
     std::wstring_view language;
     std::wstring_view skin;

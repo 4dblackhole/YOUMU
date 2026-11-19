@@ -31,5 +31,7 @@ struct PlaySessionOptions
     InputKeyOverrides inputKeys;
     PlayOptions play;
 };
+// Keys no play input may use: outside the Virtual-Key range, ESC, Space and F7.
+[[nodiscard]] bool IsReservedGameControlKey(PhysicalKey key) noexcept;
 // Resolve and validate before publishing settings or constructing a session.
 [[nodiscard]] ModeInputLayout ResolveInputLayout(ModeInputLayout defaults, const InputKeyOverrides &overrides);

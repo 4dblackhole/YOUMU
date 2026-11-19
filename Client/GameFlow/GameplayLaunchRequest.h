@@ -1,6 +1,7 @@
 #pragma once
 
 #include "App/AudioVolumes.h"
+#include "App/ControlKeys.h"
 #include "Catalog/SongCatalog.h"
 #include "Catalog/SongLayout.h"
 #include "Mode/PlayOptions.h"
@@ -31,6 +32,7 @@ struct GameplayLaunchRequest
     std::int32_t globalOffsetMs{};
     AudioVolumes volumes;
     std::map<std::string, std::vector<std::uint16_t>> inputKeys;
+    std::uint16_t restartKey{DefaultRestartKey}; // Held for half a second to restart the attempt.
     std::wstring songArtist;
     std::filesystem::path songsRoot;
     std::filesystem::path backgroundPath;
@@ -72,6 +74,7 @@ struct GameplayLaunchRequest
         volumes = {};
         playOptions = {};
         inputKeys.clear();
+        restartKey = DefaultRestartKey;
         songArtist.clear();
         songsRoot.clear();
         backgroundPath.clear();

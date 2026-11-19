@@ -29,6 +29,7 @@ void OptionsPanel::RefreshOffsetControls()
 void OptionsPanel::CancelKeyboardEdit()
 {
     captureRow_.reset();
+    capturingRestartKey_ = false;
     editingOffset_ = false;
     replaceOffsetDraft_ = false;
     if (offsetField_)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "App/AudioVolumes.h"
+#include "App/ControlKeys.h"
 #include "Model/Submodules/NotationText.h"
 #include "PhantomCore.h"
 #include "Texts/TextCatalog.h"
@@ -24,6 +25,7 @@ struct OptionValues
     TextNotation notation{TextNotation::First};
     std::int32_t globalOffsetMs{};
     std::filesystem::path songsPath; // Empty selects the development/deployment default.
+    std::uint16_t restartKey{DefaultRestartKey}; // [Controls] RestartKey; a missing entry keeps the default.
     std::map<std::string, std::map<std::string, std::vector<std::uint16_t>>> modeKeys;
 };
 

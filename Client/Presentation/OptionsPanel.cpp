@@ -201,6 +201,8 @@ void OptionsPanel::Shutdown() noexcept
     middlewareCombo_ = outputCombo_ = driverCombo_ = nullptr;
     offsetLabel_ = offsetField_ = offsetUnit_ = nullptr;
     captureRow_.reset();
+    restartKeyLabel_ = restartKeyButton_ = nullptr;
+    capturingRestartKey_ = false;
     editingOffset_ = replaceOffsetDraft_ = false;
     offsetDraft_.clear();
     skinNames_.clear();
@@ -297,6 +299,11 @@ bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inpu
         if (captureRow_)
         {
             CaptureKey(virtualKey);
+            return true;
+        }
+        if (capturingRestartKey_)
+        {
+            CaptureRestartKey(virtualKey);
             return true;
         }
         if (editingOffset_)

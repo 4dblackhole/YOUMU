@@ -128,6 +128,13 @@ namespace
         return key < 8 || key > 254;
     }
 
+    [[nodiscard]] bool UsesKey(const ModeInputLayout &layout, const std::uint16_t key)
+    {
+        return std::ranges::any_of(layout.bindings, [key](const ModeInputBinding &binding) {
+            return std::ranges::find(binding.keys, key) != binding.keys.end();
+        });
+    }
+
     void Validate(const OptionValues &values)
     {
         if (!IsSupportedLanguage(values.language))
@@ -168,9 +175,17 @@ namespace
                     throw std::runtime_error("Invalid mode input keys.");
             }
         }
+        // The restart key is held during play, so no play key of any installed mode may share it.
+        if (IsReservedGameControlKey(values.restartKey))
+            throw std::runtime_error("The restart key is reserved for another game control.");
         for (auto layout : layouts)
-            if (const auto saved = values.modeKeys.find(layout.modeId); saved != values.modeKeys.end())
-                static_cast<void>(ResolveInputLayout(std::move(layout), saved->second));
+        {
+            const auto saved = values.modeKeys.find(layout.modeId);
+            const auto resolved = ResolveInputLayout(
+                std::move(layout), saved == values.modeKeys.end() ? InputKeyOverrides{} : saved->second);
+            if (UsesKey(resolved, values.restartKey))
+                throw std::runtime_error("The restart key cannot also be a play key.");
+        }
     }
 
     void ReadValue(OptionValues &values, const std::string_view section,
@@ -203,6 +218,11 @@ namespace
                 else if (value == "romanized") values.notation = TextNotation::Romanized;
                 else throw std::runtime_error("Notation must be first or romanized.");
             }
+        }
+        else if (section == "Controls")
+        {
+            if (key == "RestartKey")
+                values.restartKey = ReadInteger<std::uint16_t>(value);
         }
         else if (section.starts_with("Keys."))
         {
@@ -334,7 +354,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nOutput=" << OutputName(values.audioOutput) << "\r\nDriverIndex=" << values.driverIndex
              << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master
              << "\r\nMusicVolume=" << values.volumes.music << "\r\nEffectsVolume=" << values.volumes.effects
-             << "\r\n";
+             << "\r\n\r\n[Controls]\r\nRestartKey=" << values.restartKey << "\r\n";
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             file << "\r\n[Keys." << mode << "]\r\n";

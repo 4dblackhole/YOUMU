@@ -134,6 +134,7 @@
     <ClCompile Include="App\OptionSettings.cpp" />
     <ClInclude Include="App\OptionSettings.h" />
     <ClInclude Include="App\AudioVolumes.h" />
+    <ClInclude Include="App\ControlKeys.h" />
     <ClCompile Include="App\YOUMUGame.cpp" />
     <ClInclude Include="App\YOUMUGame.h" />
     <ClInclude Include="Texts\GameIdentity.h" />
