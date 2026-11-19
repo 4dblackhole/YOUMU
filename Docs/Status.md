@@ -32,14 +32,14 @@
 | 곡 선택(검색·필터·정렬·즐겨찾기 폴더·미리듣기·F1 플레이 옵션) | [SongSelect](Features/SongSelect.md) |
 | 차트 에디터(Compose·Audio·Metadata, 새 난이도, osu! 가져오기) | [ChartEditor](Features/ChartEditor.md), [EditorSongSelect](Features/EditorSongSelect.md) |
 | 옵션·언어·글꼴·키 설정·키빔 불투명도 | [TextManagement](Features/TextManagement.md) |
-| 스킨·내장 자산·배포 | [BuiltInAssets](Features/Assets.md) |
+| 스킨·내장 자산·배포 | [자산·스킨](Features/Assets.md) |
 
 ## 진행 중
 
 - 열린 PR: 없음.
 - 문서 재정리(사용자 승인, 4단계): ① 진행 상황·작업 방식 문서, 검증 도구(`Scripts/Verify`), 세 저장소 AGENTS 한국어화,
   엔진 AudioOutput 복원 ② 구조 그림(클래스·실행 흐름) ③ 폴더 재배치(`Architecture`·`Contributing`·`Design`·`Features`·
-  `Formats`)와 통합, 남은 영어 문서 한국어화 ④ 저장소 밖 메모 정리. ①·②를 마쳤고 다음은 ③입니다.
+  `Formats`)와 통합, 남은 영어 문서 한국어화 ④ 저장소 밖 메모 정리. ①~③을 마쳤고 ④는 저장소 밖(공유 메모·세션 메모리)이라 PR이 없습니다.
 
 ## 미구현·보류
 
@@ -51,10 +51,9 @@
 - 예전 배치 Songs의 이전 도구, 곡 폴더를 옮기거나 이름을 바꿀 때 기록·즐겨찾기 연결 유지.
 - 음원·채보 해시 검증(저장 위치 미정).
 - [랭크 콘텐츠 제안](Design/Proposals/RankedContent.md)(공용 미디어·인증): 검토 제안.
-- UI-02의 작은 남은 항목([UIRedesign](Design/UI.md)의 "미구현" 표시): 기록 조회 실패 화면(지금은 오류 한 줄),
+- UI-02의 작은 남은 항목([UI 리디자인](Design/UI.md)의 "미구현" 표시): 기록 조회 실패 화면(지금은 오류 한 줄),
   검색 결과가 없을 때 기록·정보 칸 유지, 패턴이 없는 곡의 `+` 금빛 밑줄.
-- 곡 선택의 작은 남은 항목([SongSelect](Features/SongSelect.md)): 키보드 포커스 그림, 곡 목록의 "재생 중" 표시,
-  옵션 서랍·즐겨찾기 패널의 새 배치.
+- 곡 선택의 작은 남은 항목([SongSelect](Features/SongSelect.md)): 키보드 포커스 그림, 옵션 서랍·즐겨찾기 패널의 새 배치.
 
 ## 알려진 문제·주의
 

@@ -90,7 +90,7 @@
 - 원본 Version, 목록 parser revision, 캐시 schema, 기록 DB schema는 별도 계약입니다.
   문법/기본값/진단/목록 해석 변경은 parser revision, 캐시 배치 변경은 cache schema를 갱신합니다.
 
-상세: [ChartFormats](../Formats/README.md), [Timing](../Formats/Timing.md), [ResourceLoading](../Features/ResourceLoading.md),
+상세: [채보 형식](../Formats/README.md), [Timing](../Formats/Timing.md), [ResourceLoading](../Features/ResourceLoading.md),
 [곡 폴더 배치](../Features/Assets.md#곡-폴더-배치).
 검증: ChartParserTests, YmeEffectsTests, ChartReviewRegressionTests, SongCatalogTests(TestSongLayout 포함).
 
