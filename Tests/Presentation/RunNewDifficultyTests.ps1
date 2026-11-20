@@ -1,6 +1,6 @@
 param([ValidateSet('Debug','Release')][string]$Configuration = 'Debug')
 $ErrorActionPreference = 'Stop'
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MD','/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $objects = @('Pch','EditorPatternCreation','TextCatalog','LanguageFile') | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Chart','Rhythm','Assets') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }
 $testObjects = "build/obj/NewDifficultyTests/$Configuration"

@@ -1,6 +1,6 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
 $ErrorActionPreference = 'Stop'
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $objectDirectory = "build/obj/FailureBoundaryTests/$Configuration"
 New-Item -ItemType Directory -Path $objectDirectory -Force | Out-Null
 # Deliberately omit the RCDATA resource: initialization must fail before any cache access.

@@ -4,7 +4,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (!$FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot.' }
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MD','/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $objects = @('Pch','GameplayAudioRouter') | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Modes','Rhythm','Chart','ClientLogic') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }
 $testObjects = "build/obj/GameplayAudioRetirementTests/$Configuration"

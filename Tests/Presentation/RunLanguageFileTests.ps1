@@ -14,7 +14,7 @@ foreach ($folder in 'App','EditorScene','GameScene','Presentation','Texts') {
         }
     }
 }
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MD','/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd','/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch','TextCatalog','LanguageFile','LogoTexts','OptionTexts', 'ModePresentation','EditorTexts','TaikoEditorTexts',
     'MusicSelectTexts','GameplayTexts','PauseTexts','ResultTexts')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }

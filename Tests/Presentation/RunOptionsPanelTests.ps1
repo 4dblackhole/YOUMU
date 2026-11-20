@@ -1,6 +1,6 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
 $ErrorActionPreference = 'Stop'
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $testObjects = "build/obj/OptionsPanelTests/$Configuration"
 New-Item -ItemType Directory -Path $testObjects -Force | Out-Null
 $objects = @('Pch', 'OptionSettings', 'OptionsPanel', 'OptionsRail', 'OptionsVolume', 'UiTooltip', 'UiDropdown', 'UiAlert', 'UiScrollbar', 'OptionsDisplay', 'OptionsKeys', 'ModePresentation', 'OptionsOffset', 'OptionsSongs', 'OptionTexts', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent') |

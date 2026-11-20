@@ -4,7 +4,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot with the installed SDK path.' }
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'TaikoResultHero', 'TaikoResultRing', 'ResultScene', 'UiAlert', 'ResultViewFactory', 'TaikoResultView', 'TaikoResultGraphs', 'ResultTexts', 'UiTooltip',
     'TaikoResultPanels', 'TaikoResultGraphView',
     'RhythmTestScene', 'UiErrorLine', 'GameplayScreenFade', 'GameplaySessionController', 'GameplaySessionFactory', 'GameplayInput', 'GameplayAudioSession', 'ModePresentation',
