@@ -1,6 +1,6 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
 $ErrorActionPreference = 'Stop'
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'LogoView', 'LogoLayout', 'LogoInput', 'LogoTexts', 'TitlePlayerView',
     'OptionsPanel', 'OptionsRail', 'OptionsVolume', 'UiTooltip', 'UiDropdown', 'UiScrollbar', 'OptionsDisplay', 'OptionsKeys', 'ModePresentation', 'OptionsOffset', 'OptionsSongs', 'OptionSettings',
     'OptionTexts', 'TextCatalog', 'LanguageFile')

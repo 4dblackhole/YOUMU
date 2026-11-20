@@ -1,6 +1,6 @@
 param([ValidateSet('Debug', 'Release')][string]$configuration = 'Debug', [string]$SongFilter = '')
 $ErrorActionPreference = 'Stop'
-$runtime = if ($configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 [xml]$clientProject = Get-Content Client/YOUMU.Client.vcxproj
 $objects = @($clientProject.Project.ItemGroup.ClCompile | Where-Object { $_.Include -match '^(EditorScene\\|Texts\\EditorScene\\)' } | ForEach-Object { "build/obj/YOUMU.Client/x64/$configuration/$([IO.Path]::GetFileNameWithoutExtension($_.Include)).obj" })
 $testObjectDirectory = "build/obj/EditorPresentationTests/$configuration"

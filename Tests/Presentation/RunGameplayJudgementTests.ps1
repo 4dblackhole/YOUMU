@@ -4,7 +4,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot with the installed SDK path.' }
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'GameplayNoteVisibility',
     'GameplayFeedbackVisuals', 'GameplayInputView', 'GameplayKiaiView', 'UiErrorLine', 'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam',
     'GameplayTexts', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent')

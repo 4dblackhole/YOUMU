@@ -11,7 +11,7 @@ param(
 # Run it alone: concurrent builds or engine checks distort the numbers it measures.
 $ErrorActionPreference = 'Stop'
 if (-not $FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot.' }
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'GameplaySessionController', 'GameplaySessionFactory', 'GameplayInput', 'GameplayAudioSession', 'ModePresentation',
     'GameplayState', 'GameplayPause', 'GameplayPauseMenu', 'GameplayPauseLayout', 'PauseTexts', 'GameplayAudioRouter', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent',
     'RhythmTestScene', 'UiErrorLine', 'GameplayScreenFade', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'GameplayNoteVisibility', 'GameplayFeedbackVisuals',

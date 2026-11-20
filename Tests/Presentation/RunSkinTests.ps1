@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $testRoot = Join-Path $repoRoot ('build/skin-tests/' + [guid]::NewGuid().ToString('N') + '/deployment/game')
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'LogoView', 'LogoLayout', 'LogoInput', 'LogoTexts', 'TitlePlayerView',
     'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongListView', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'SongSelectRecords', 'SongRecordView', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'EditorOsuImport', 'OsuImportValidation', 'OsuSongPlacement', 'OsuImportPanel', 'MusicSelectTexts',
     'OptionsPanel', 'OptionsRail', 'OptionsVolume', 'UiTooltip', 'UiDropdown', 'UiAlert', 'UiScrollbar', 'UiModal', 'OptionsDisplay', 'OptionsKeys', 'ModePresentation', 'OptionsOffset', 'OptionsSongs', 'OptionSettings',

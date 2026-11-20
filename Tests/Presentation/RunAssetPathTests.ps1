@@ -4,7 +4,7 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $testRoot = Join-Path $repoRoot ('build/asset-path-tests/' + $Configuration + '-' + [guid]::NewGuid().ToString('N'))
 $objects = Join-Path $testRoot 'obj'
 New-Item -ItemType Directory -Path $objects -Force | Out-Null
-$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MD', '/DNDEBUG') }
+$runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $compiledExe = Join-Path $testRoot 'AssetPathTests.exe'
 Push-Location $repoRoot
 try {

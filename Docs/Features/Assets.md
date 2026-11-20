@@ -82,7 +82,6 @@ demo/
     Songs/<곡 폴더>/Chart/     차트 세트 폴더별 YMP·YME 쌍
     Songs/<곡 폴더>/BG/        그 곡의 YMP가 참조하는 배경 이미지
     Skins/                   사용자 스킨셋
-  Prerequisites/VC_redist.x64.exe
   Licenses/                  배포 폰트 고지
 ```
 
@@ -96,9 +95,12 @@ FMOD SDK/런타임 버전이 같으면 기존 fmod.dll을 유지할 수 있으�
 복사본은 필요하지 않습니다. 배포할 곡이 생기면 [곡 폴더](#곡-폴더-배치)째 Asset/Songs에 추가합니다.
 음악·이미지의 배포/사용 권한은 해당 계약으로 확인합니다.
 
-MSVCP140/VCRUNTIME 런타임 의존성은 [Microsoft 공식 x64 재배포 패키지](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)로 설치합니다.
-빌드 도구 이상 버전의 런타임이 필요하며 OS DLL을 임의로 복사하지 않습니다.
-설치 파일을 동봉한다면 Microsoft 공식 배포본과 서명을 확인합니다.
+Release 빌드는 C/C++ 런타임을 정적으로 링크(`/MT`)하므로 게임 EXE와 `OsuTaikoConverter.exe`는
+`VCRUNTIME140.dll`·`MSVCP140.dll` 없이 실행되고 Visual C++ 재배포 패키지가 필요 없습니다.
+`Directory.Build.props`가 Release 프로젝트 전체에 `/MT`를 지정하며 Debug는 `/MDd`입니다. `cl`을 직접
+부르는 `Tests/Presentation/Run*.ps1`도 Release에서 `/MT`를 씁니다. 프로젝트가 섞이면 링커가 LNK2038을
+보고합니다. Release EXE의 의존성은 `dumpbin /dependents`로 확인합니다(`fmod.dll`과 Windows 시스템 DLL만
+남아야 합니다). 이 때문에 `Prerequisites/VC_redist.x64.exe`는 동봉하지 않아도 됩니다.
 
 FMOD DLL을 동봉할 수 있는 조건과 크레딧/로고는 [FMOD 라이선스](https://www.fmod.com/licensing)와
 [표기 조건](https://www.fmod.com/attribution)을 확인합니다. 파일 구성과 실행 성공이 공개 배포에 필요한
