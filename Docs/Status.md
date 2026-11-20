@@ -8,9 +8,9 @@
 
 | 저장소 | main | 비고 |
 | --- | --- | --- |
-| YOUMU | `865d17f` (#83) | 게임 |
-| PhantomCore | `c9380d7` (#22) | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
-| OsuTaikoConverter | `35bda07` (#4) | YOUMU 솔루션이 형제 폴더로 참조 |
+| YOUMU | `25d3474` (#85) | 게임 |
+| PhantomCore | `e71964c` (#23) | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
+| OsuTaikoConverter | `e8819e9` (#5) | YOUMU 솔루션이 형제 폴더로 참조 |
 
 ## 한눈에
 
@@ -39,7 +39,7 @@
 - 열린 PR: 없음.
 - 문서 재정리(사용자 승인, 4단계): ① 진행 상황·작업 방식 문서, 검증 도구(`Scripts/Verify`), 세 저장소 AGENTS 한국어화,
   엔진 AudioOutput 복원 ② 구조 그림(클래스·실행 흐름) ③ 폴더 재배치(`Architecture`·`Contributing`·`Design`·`Features`·
-  `Formats`)와 통합, 남은 영어 문서 한국어화 ④ 저장소 밖 메모 정리. ①~③을 마쳤고 ④는 저장소 밖(공유 메모·세션 메모리)이라 PR이 없습니다.
+  `Formats`)와 통합, 남은 영어 문서 한국어화 ④ 저장소 밖 메모 정리. 네 단계를 모두 마쳤습니다(④는 저장소 밖 정리라 PR 없음).
 
 ## 미구현·보류
 
