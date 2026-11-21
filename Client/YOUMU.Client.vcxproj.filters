@@ -117,7 +117,10 @@
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongPreviewController.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongListView.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongListView.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongContextMenu.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectCreateMenu.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectMenu.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongContextMenu.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\OsuImportValidation.cpp"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClCompile>
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude>

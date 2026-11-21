@@ -375,6 +375,22 @@ SongListView::ActionResult SongListView::ProcessAction(const Action &action) con
     return {};
 }
 
+std::optional<SongListView::ContextTarget> SongListView::ContextTargetAt(const NodeId hovered) const
+{
+    if (hovered == 0)
+        return std::nullopt;
+    for (const auto [id, patternIndex] : difficultyButtonIds_)
+        if (id == hovered)
+            return ContextTarget{selection_.focusedSongPosition_, patternIndex};
+    for (const auto &card : cards_)
+    {
+        const bool onCard = card.button != nullptr && card.button->Id() == hovered;
+        if (onCard || card.createDifficultyId == hovered)
+            return ContextTarget{card.visiblePosition, std::nullopt};
+    }
+    return std::nullopt;
+}
+
 float SongListView::VisibleBottom() const noexcept
 {
     return viewport_ ? std::max(viewport_->NodeSize().height - layout::ContentTop, layout::ContentTop + 1.0F)

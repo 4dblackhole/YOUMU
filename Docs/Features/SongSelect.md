@@ -217,6 +217,39 @@ SceneStateTests와 RunMusicSelectViewTests는 같은 패턴 AND, 실제 인덱�
 접두사를 즉시 갱신한다. 패널 크기·애니메이션·스크롤과 텍스트 표 구조는
 [문구·언어·글꼴 관리](TextManagement.md)에 있다.
 
+## 우클릭 메뉴
+
+게임·에디터 곡 선택에서 곡 카드나 펼친 카드의 난이도 줄을 우클릭하면 osu!처럼 메뉴가 뜬다(사용자 결정 2026-11-22).
+우클릭은 왼쪽 클릭처럼 그 곡(과 난이도)을 고르지만 시작하지는 않는다. 메뉴는 포인터 오른쪽 아래의 남색 판(폭 200, 줄 높이 30)이고
+화면 밖으로 나가지 않게 옮긴다. 항목을 누르면 실행하고, 메뉴 밖을 누르거나(왼쪽·오른쪽) Esc를 누르면 아무것도 하지 않고 닫는다.
+메뉴가 열려 있는 동안 곡 선택의 키와 툴팁은 쉰다. 목록을 읽는 중에는 열지 않는다.
+
+| 항목 | 난이도 줄 | 곡 카드 | 하는 일 |
+| --- | --- | --- | --- |
+| New difficulty | ○ | ○ | 에디터 곡 선택의 `+`와 같이 그 곡의 [새 난이도](EditorSongSelect.md#새-난이도-생성)를 연다(게임 곡 선택에서도) |
+| Edit | 게임 곡 선택만 | — | 그 난이도를 에디터로 연다. 에디터를 나가면 에디터 곡 선택으로 돌아간다 |
+| Delete difficulty… | ○ | — | 그 난이도를 휴지통으로(아래) |
+| Delete song… | ○ | ○ | 곡 폴더 전체를 휴지통으로(아래) |
+| Open folder | ○ | ○ | Windows 탐색기로 곡 폴더를 연다 |
+| Collections… | 패턴이 있을 때 | 패턴이 있을 때 | 고른 패턴의 [컬렉션](#컬렉션즐겨찾기-폴더) 관리 창을 연다 |
+
+삭제는 늘 공용 알림으로 먼저 묻는다. 제목은 `Delete difficulty?`/`Delete song?`, 설명(선택 언어)은 휴지통으로 가며 거기서 되살릴 수 있다는
+문장이고, 상세 상자에 곡(과 `[난이도]`) 이름과 지울 경로를 Songs 기준으로 적는다(폴더는 끝에 `/`). 왼쪽 끝의 `Delete`를 눌러야만 지우고,
+`Cancel`·Enter·Esc는 아무것도 바꾸지 않는다. 다른 알림이 그 위에 뜨면 묻던 삭제는 버린다.
+
+- 난이도(`GameFlow/SongDeletion`의 `PlanDifficultyDeletion`): 그 YMP와, 같은 곡의 다른 차트가 쓰지 않는 YME. 그 차트 세트 폴더에
+  그 둘 말고 남는 것이 없으면 폴더째 보낸다. 다른 파일이 있으면 그 파일과 폴더는 남는다.
+- 곡(`PlanSongDeletion`): YMM이 있는 `Music`의 상위 곡 폴더 전체(음원·BG·모든 난이도).
+- 지울 경로는 모두 Songs 폴더 안이어야 하며(대소문자 무시), Songs 폴더 자체나 그 밖은 거부하고 오류 알림을 띄운다.
+- 확인하면 Scene이 미리듣기 음원을 놓고 `RecyclePaths`(SHFileOperation, 되돌리기 가능)로 휴지통에 보낸 뒤 목록을 다시 읽는다.
+  휴지통에 넣을 수 없는 항목(네트워크 드라이브 등)은 Windows가 영구 삭제 전에 한 번 더 묻는다. 실패하면 `Not deleted` 알림이
+  원인을 보여 준다. 기록 DB·컬렉션·곡별 오프셋은 그대로 둔다(해시·경로가 없는 항목은 표시되지 않을 뿐).
+
+`SongContextMenu`는 메뉴 판과 항목, `SongSelectMenu.cpp`는 우클릭 판정(`SongListView::ContextTargetAt`)·항목 실행·삭제 확인을,
+`MusicSelectScene`은 Edit·휴지통·탐색기 실행을 소유한다. 회귀: TestSongDeletionPlan(공유 YME, 빈 차트 세트, Songs 밖·Songs 자체 거부, 대소문자),
+RunMusicSelectViewTests의 TestSongContextMenu(난이도 줄·곡 카드 메뉴 항목, Esc, Open folder·New difficulty 명령, 삭제 확인의 Enter 취소와
+Delete 확인, 넘기는 경로). 실제 휴지통 이동과 탐색기 열기는 사용자 파일을 건드리므로 자동 검사하지 않는다.
+
 ## 컬렉션(즐겨찾기 폴더)
 
 osu!의 컬렉션과 같은 기능이다. 화면에는 `Collections`(한국어 문구 `컬렉션`)로 보이고, 코드 이름은 예전 그대로

@@ -51,6 +51,11 @@ class MusicSelectScene final : public PhantomCore::GameScene
     void OpenRecord();
     void PollRecordOpen(PhantomCore::SceneManager &scenes);
     void CreateDifficulty(PhantomCore::SceneManager &scenes);
+    // Right-click menu: Edit opens the selected difficulty in the editor (game song select too),
+    // a confirmed delete goes to the Recycle Bin and Open folder shows the song folder.
+    void OpenSelectedInEditor(PhantomCore::SceneManager &scenes);
+    void DeleteApproved();
+    void OpenSongFolder();
     void ConvertOsu();
     void PollOsuImport();
     void ShowOsuScan(OsuImportScan scan);

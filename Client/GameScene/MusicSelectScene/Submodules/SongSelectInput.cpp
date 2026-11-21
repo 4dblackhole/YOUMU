@@ -31,10 +31,18 @@ PointerInput MusicSelectView::CanvasPointerInput(const InputState &input)
 bool MusicSelectView::ProcessAlert(const InputState &input)
 {
     if (!alert_.IsOpen())
-        return false;
+    {
+        // A click routed outside this frame may have answered (and closed) the alert already.
+        const auto answer = alert_.Update(input);
+        if (!answer)
+            return false;
+        AnswerDeletion(answer);
+        inputRouter_.Reset(*canvas_);
+        return true;
+    }
     inputRouter_.Process(*canvas_, CanvasPointerInput(input));
     static_cast<void>(canvas_->TakeActions());
-    static_cast<void>(alert_.Update(input));
+    AnswerDeletion(alert_.Update(input));
     if (!alert_.IsOpen())
         inputRouter_.Reset(*canvas_);
     return true;
