@@ -16,7 +16,7 @@ YMM/YMP/YME 파일은 수정하지 않습니다.
 선곡 하단 Play options는 게임 내 평평한 모달(폭 960, [UI-02](../../Design/Decisions.md#ui-02-ui-리디자인))을 엽니다.
 남색 막이 화면 전체를 덮고 가운데 창의 왼쪽 위에 제목, 바닥 왼쪽에 Reset, 오른쪽에 `Done` 하나가 있습니다(✕·Cancel 없음).
 본문은 Difficulty(Scroll speed·Accelerate·JudgeLevel 덮어쓰기·HP gauge), Layout(Mirror·Random), Assist(Ignore scroll effects·
-Metronome)의 세 열이고 열 사이에 가는 세로줄이 있습니다. Game mode는 선곡 화면에 남습니다. 펼친 내용이 늘면 창이 아래로
+Metronome·Max strokes)의 세 열이고 열 사이에 가는 세로줄이 있습니다. Game mode는 선곡 화면에 남습니다. 펼친 내용이 늘면 창이 아래로
 늘어나며 모두 펼쳐도 1280×720 안에 들어가므로 본문 스크롤은 없습니다. 16:9보다 좁은 화면에서는 곡 선택 화면처럼 창 전체를 줄입니다.
 여닫을 때의 움직임은 없습니다.
 
@@ -42,10 +42,10 @@ HP gauge는 고를 수 있는 HP 게이지 목록(`Gauge/HpGaugeKind.h`의 `HpGa
 
 **배지:** 선곡 하단 Play options 글자 오른쪽에 기본과 다른 옵션 수를 금빛 칸(18×18)으로 표시하고 0이면 숨깁니다.
 스크롤(단위나 값)·Accelerate·음정 유지(둘 중 하나)·JudgeLevel 덮어쓰기·Mirror·Random·Ignore scroll effects·Metronome·
-기본이 아닌 HP gauge를 하나씩 셉니다(`ChangedPlayOptionCount`).
+기본이 아닌 HP gauge·기본(2)이 아닌 Max strokes를 하나씩 셉니다(`ChangedPlayOptionCount`).
 
 기본값은 스크롤 x/1, Accelerate 1.0, Mirror/Random/Ignore scroll effects/Metronome 꺼짐,
-Random 시드 0·시도 확률 100%, BGM 음정 유지 꺼짐(배속에 따라 음높이도 변함)·HIT 음정 유지 켜짐, JudgeLevel 덮어쓰기 없음입니다.
+Random 시드 0·시도 확률 100%, BGM 음정 유지 꺼짐(배속에 따라 음높이도 변함)·HIT 음정 유지 켜짐, JudgeLevel 덮어쓰기 없음, Max strokes 2입니다.
 패널을 다시 열면 마지막 적용값을 표시합니다. 실제 숫자 입력은 기존 엔진의 ITextInput을
 사용하며 접힘·드롭다운·창 축소에 맞춰 네이티브 입력의 표시와 위치·글자 크기도 갱신합니다.
 
@@ -79,6 +79,10 @@ EN/KO/JA 설명 언어를 따르고 기존 숫자/도메인 진단 원문은 유
   유지 시 원래 샘플 음정/길이로 즉시 재생하고 해제 시 배속만큼 pitch를 조절합니다.
 - JudgeLevel은 채보 값을 사용하거나 1.00..100.00, 0.01 간격으로 덮어씁니다.
   일반·Syncopation 판정과 결과/기록의 실제 JudgeLevel 모두 같은 값을 사용합니다.
+- Max strokes(Taiko, 사용자 요청)는 각 열(Left Kat·Left Don·Right Don·Right Kat)에서 실제로 쓰는 할당 키 수입니다.
+  Assist 열의 밑줄 탭 `1`·`2`·`3`·`4`로 고르고 기본은 2(주 키와 첫 보조 키)입니다. 키 설정의 슬롯 순서대로
+  할당된 키만 세며 빈 슬롯은 건너뜁니다. 넘는 키는 그 시도 동안 판정·자유 타격음·키 점등 모두 없습니다
+  (`LimitKeysPerBinding`, 세션의 입력 레이아웃). 키 설정(`Option.ini`)은 바꾸지 않습니다. 판정·점수 규칙은 그대로입니다.
 
 결과 화면의 랭크 원 아래에는 모드와 적용한 옵션을 아이콘 타일로 표시합니다([결과 화면 배치](Results.md#화면-배치와-책임-경계)).
 타일에는 짧은 값을, 툴팁에는 옵션 이름과 설정(Random의 시도 확률과 시드, Accelerate의 음정 유지)을 둡니다.
