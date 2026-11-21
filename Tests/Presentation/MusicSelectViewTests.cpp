@@ -1349,6 +1349,14 @@ namespace
         auto *recordPanel = Find(canvas->Root(),"RecordPanel");
         if (!recordPanel) throw std::runtime_error("Record panel missing.");
         const auto recordBounds = recordPanel->BoundsInCanvas();
+        // The query button inverts (cobalt fill, white icon) while a filter limits the records.
+        const auto queryColours=[&]{
+            auto &button=*Find(canvas->Root(),"RecordQuery");
+            return std::pair{button.GetComponent<SpriteVisualComponent>()->Style().normal,
+                             Find(button,"Icon")->GetComponent<SpriteVisualComponent>()->Style().normal};
+        };
+        const auto idleColours=queryColours();
+        Check(idleColours.first.blue>.9F&&idleColours.second.blue<.7F,"Without a filter the query button is light with a cobalt icon.");
         Click(*canvas,*Find(canvas->Root(),"RecordQuery"));static_cast<void>(view.Update(input,0));
         auto *filter = Find(canvas->Root(),"RecordFilter.Overlay");
         if (!filter) throw std::runtime_error("Record filter overlay missing.");
@@ -1357,6 +1365,11 @@ namespace
         Check(filter->IsVisible() && rows()==6,"Choosing Random On remains a draft until Apply.");
         Click(*canvas,*Find(canvas->Root(),"RecordFilter.Apply"));static_cast<void>(view.Update(input,0));
         Check(!filter->IsVisible(),"Apply closes only the record filter.");wait(4);
+        {
+            const auto activeColours=queryColours();
+            Check(activeColours.first.blue<.7F&&activeColours.second.blue>.99F&&activeColours.second.red>.99F,
+                  "With a filter on the query button turns cobalt with a white icon.");
+        }
         Check(recordPanel->BoundsInCanvas().x==recordBounds.x && recordPanel->BoundsInCanvas().width==recordBounds.width,
               "Record results reuse the existing panel without relocating it.");
         Check(Find(canvas->Root(),"SongContent")->BoundsInCanvas().y==contentY && selection.searchText_==L"Record" &&

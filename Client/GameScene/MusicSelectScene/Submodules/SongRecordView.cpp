@@ -58,16 +58,20 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
     ApplySkinPart(selector, visuals_, "Records.Selector", theme::Surface);
     RequireDropdown(selector).SetValueStyle(13.0F, 600, theme::Ink);
     // Icon-only controls; their names stay available to tooltips.
-    const auto button = [this, &panel](const wchar_t *icon, const char *name) -> Visual2DNode * {
+    const auto button = [this, &panel](const wchar_t *icon, const char *name,
+                                       Visual2DNode **glyphOut = nullptr) -> Visual2DNode * {
         auto &node = CreateButton(panel, {}, L"", name);
         ApplySpriteStyle(node, theme::Surface, PureWhite);
         SetCornerRadius(node, 2.0F);
         auto &glyph = CreateSprite(node, {(ControlSize - 18.0F) * 0.5F, (ControlSize - 18.0F) * 0.5F, 18.0F, 18.0F},
                                    visuals_.RegisterImage(Common(icon)), "Icon");
         RequireComponent<SpriteVisualComponent>(glyph).SetTint(theme::BrandText);
+        if (glyphOut) *glyphOut = &glyph;
         return &node;
     };
-    queryButton_ = button(L"Icons.filter", "RecordQuery");
+    // The magnifier; the button inverts while a filter is on.
+    queryButton_ = button(L"Icons.search", "RecordQuery", &queryIcon_);
+    RefreshQueryButton();
     pagerPlate_ = &CreatePanel(panel, {}, "RecordPagerPlate");
     ApplyFlatStyle(*pagerPlate_, theme::SurfacePlate);
     SetCornerRadius(*pagerPlate_, 0.0F);
@@ -80,6 +84,15 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
     ApplySkinPart(*messagePlate_, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
     emptyMessage_ = &CreateNumber(panel, {}, std::wstring(text.noRecord), 20.0F, 700, theme::Caption, "NoRecord",
                                   TextAlignment::Center, false);
+}
+
+void SongRecordView::RefreshQueryButton()
+{
+    if (!queryButton_ || !queryIcon_) return;
+    const bool active = !query_.empty();
+    if (active) ApplySpriteStyle(*queryButton_, theme::Brand, theme::BrandDeep);
+    else ApplySpriteStyle(*queryButton_, theme::Surface, PureWhite);
+    RequireComponent<SpriteVisualComponent>(*queryIcon_).SetTint(active ? PureWhite : theme::BrandText);
 }
 
 void SongRecordView::InitializeFilter(Visual2DCanvas& canvas, IWindowControl* window)
@@ -118,6 +131,7 @@ void SongRecordView::UpdateFilter(std::span<const Action> actions, const InputSt
         query_ = std::move(query);
         offset_ = 0;
         ++revision_;
+        RefreshQueryButton();
     }
 }
 
