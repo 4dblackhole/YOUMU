@@ -1198,7 +1198,7 @@ namespace
             *FindNode(canvas.Root(), "Options.BackgroundBrightness.Value").GetComponent<TextVisualComponent>();
         const auto brightnessBounds = brightnessTrack.BoundsInCanvas();
         Check(settings.Values().backgroundBrightness == 100 && brightnessValue.Text() == L"100%" &&
-                  brightnessBounds.y > beamBounds.y,
+                  brightnessBounds.y < beamBounds.y, // +Y is up: the next field down has a smaller y.
               "Background brightness starts at 100% below the key beam opacity.");
         const Point brightnessHalf{brightnessBounds.x + 5 + (brightnessBounds.width - 10) * .5F,
                                    brightnessBounds.y + brightnessBounds.height / 2};
