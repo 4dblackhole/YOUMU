@@ -80,6 +80,27 @@ namespace
         }
         throw std::runtime_error("Could not name the old record database. Existing records were preserved.");
     }
+    // Schema 2 -> 3 adds the stroke count. Records from before it read as the default 2. One
+    // transaction: on failure the file stays schema 2 and the error reaches the caller.
+    void UpgradeToSchemaThree(sqlite3 *db)
+    {
+        Execute(db, "BEGIN IMMEDIATE");
+        try
+        {
+            // Another process may have upgraded the file between reading the version and the lock.
+            if (SchemaOf(db) == 2)
+            {
+                Execute(db, "ALTER TABLE Plays ADD COLUMN MaxStrokes INTEGER NOT NULL DEFAULT 2");
+                Execute(db, "PRAGMA user_version=3");
+            }
+            Execute(db, "COMMIT");
+        }
+        catch (...)
+        {
+            static_cast<void>(sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr));
+            throw;
+        }
+    }
     Database Open(const std::filesystem::path &path)
     {
         auto db = Connect(path);
@@ -89,6 +110,11 @@ namespace
             db.reset();
             SetAsideOldDatabase(path);
             db = Connect(path);
+            schema = SchemaOf(db.get());
+        }
+        if (schema == 2)
+        {
+            UpgradeToSchemaThree(db.get());
             schema = SchemaOf(db.get());
         }
         if (schema != 0 && schema != PlayRecordStore::SchemaVersion)
@@ -105,9 +131,10 @@ namespace
                     "INTEGER NOT NULL, Random INTEGER NOT NULL, RandomSeed TEXT NOT NULL, RandomProbability REAL NOT "
                     "NULL, Accelerate REAL NOT NULL, PreserveMusicPitch INTEGER NOT NULL, PreserveHitSoundPitch "
                     "INTEGER NOT NULL, JudgeOverride INTEGER NOT NULL, GlobalOffset INTEGER NOT NULL, Score INTEGER "
-                    "NOT NULL, MaximumCombo INTEGER NOT NULL, HpGauge INTEGER NOT NULL, Detail TEXT NOT NULL)");
+                    "NOT NULL, MaximumCombo INTEGER NOT NULL, HpGauge INTEGER NOT NULL, Detail TEXT NOT NULL, "
+                    "MaxStrokes INTEGER NOT NULL DEFAULT 2)");
             Execute(db.get(), "CREATE INDEX IF NOT EXISTS PatternHistory ON Plays(Pattern, Mode, Id DESC)");
-            Execute(db.get(), "PRAGMA user_version=2");
+            Execute(db.get(), "PRAGMA user_version=3");
             Execute(db.get(), "COMMIT");
         }
         return db;
@@ -186,7 +213,7 @@ void PlayRecordStore::Save(const PlayRecord &r) const
     if (r.processedNotes > r.totalNotes || !countsFit || judgeOverrideMismatch)
         throw std::invalid_argument("Inconsistent play record summary.");
     auto db = Open(path_);
-    auto s = Prepare(db.get(), "INSERT INTO Plays VALUES(NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    auto s = Prepare(db.get(), "INSERT INTO Plays VALUES(NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     const auto integer = [&](int index, std::int64_t value)
     { Check(db.get(), sqlite3_bind_int64(s.get(), index, value)); };
     const auto number = [&](int index, double value) { Check(db.get(), sqlite3_bind_double(s.get(), index, value)); };
@@ -218,6 +245,7 @@ void PlayRecordStore::Save(const PlayRecord &r) const
     integer(25, static_cast<std::int64_t>(r.maximumCombo));
     integer(26, static_cast<std::int64_t>(o.hpGauge));
     Text(db.get(), s.get(), 27, r.detail);
+    integer(28, o.maxStrokes);
     Check(db.get(), sqlite3_step(s.get()));
 }
 void PlayRecordStore::ValidateQuery(std::string_view condition)
@@ -238,7 +266,7 @@ std::vector<PlayRecord> PlayRecordStore::Query(const std::filesystem::path &patt
                      "SELECT Id, PlayedAt, Pattern, Mode, Accuracy, TotalNotes, ProcessedNotes, Completed, Cleared, "
                      "PauseMenuUsed, JudgeLevel, ScrollSpeed, ScrollUnit, IgnoreScrollEffects, Metronome, Mirror, Random, "
                      "RandomSeed, RandomProbability, Accelerate, PreserveMusicPitch, PreserveHitSoundPitch, JudgeOverride, "
-                     "GlobalOffset, Score, MaximumCombo, HpGauge FROM Plays WHERE Pattern=? AND Mode=? AND (" +
+                     "GlobalOffset, Score, MaximumCombo, HpGauge, MaxStrokes FROM Plays WHERE Pattern=? AND Mode=? AND (" +
                          expression.sql + ") ORDER BY Id DESC LIMIT ? OFFSET ?");
     Text(db.get(), s.get(), 1, PathKey(pattern));
     Text(db.get(), s.get(), 2, mode);
@@ -297,6 +325,9 @@ std::vector<PlayRecord> PlayRecordStore::Query(const std::filesystem::path &patt
         r.score = static_cast<std::uint32_t>(integer(24));
         r.maximumCombo = static_cast<std::size_t>(integer(25));
         o.hpGauge = static_cast<HpGaugeKind>(std::min<std::int64_t>(integer(26), 255));
+        if (integer(27) < PlayOptions::MinimumStrokes || integer(27) > PlayOptions::MaximumStrokes)
+            throw std::runtime_error("Invalid stored max strokes. Records were preserved.");
+        o.maxStrokes = static_cast<int>(integer(27));
         o.Validate();
         records.push_back(std::move(r));
     }

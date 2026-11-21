@@ -5,8 +5,8 @@
 #include "Texts/TextCatalog.h"
 #include <vector>
 
-// Record filters (UI-02): Any/On/Off rows for the play options and the play results, and value rows with a
-// switch for the ranges and the seed. Apply commits a validated copy; Cancel, ✕, Escape and hiding the Scene
+// Record filters (UI-02): Any/On/Off rows for the play options and the play results, an Any/1-4 row for the
+// stroke count, and value rows with a switch for the ranges and the seed. Apply commits a validated copy; Cancel, ✕, Escape and hiding the Scene
 // discard the edit.
 class RecordFilterPanel final
 {
@@ -26,6 +26,8 @@ class RecordFilterPanel final
   private:
     static constexpr std::size_t ChoiceCount = RecordFilterFlagCount + 1; // Flags, then the scroll unit.
     static constexpr std::size_t FieldCount = 9;
+    static constexpr std::size_t StrokeItemCount = 5; // Any, then 1..4.
+    void LayoutStrokes(float bodyHeight);
     void Layout();
     void RefreshValues();
     void RefreshRows();
@@ -40,6 +42,8 @@ class RecordFilterPanel final
     std::array<PhantomCore::Visual2DNode *, ChoiceCount> choiceLabels_{};
     std::array<std::array<PhantomCore::Visual2DNode *, 3>, ChoiceCount> choices_{};
     std::array<PhantomCore::Visual2DNode *, ChoiceCount> choiceRules_{};
+    PhantomCore::Visual2DNode *strokeLabel_{}, *strokeRule_{};
+    std::array<PhantomCore::Visual2DNode *, StrokeItemCount> strokeTabs_{};
     std::array<PhantomCore::Visual2DNode *, RecordFilterValueRowCount> switches_{}, rowLabels_{};
     std::array<PhantomCore::Visual2DNode *, FieldCount> fields_{};
     std::array<std::unique_ptr<PhantomCore::ITextInput>, FieldCount> inputs_;

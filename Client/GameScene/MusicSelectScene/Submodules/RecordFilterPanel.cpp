@@ -29,7 +29,8 @@ namespace
     constexpr std::array<std::wstring_view, 9> Placeholders{L"1.00", L"100.00", L"0.5", L"2.0", L"", L"", L"0", L"100",
                                                             L"uint64"};
 
-    // Choice rows: options from the top of the left column, the scroll unit last, results under the ranges.
+    // Choice rows: options from the top of the left column, then the scroll unit and the stroke count; results
+    // under the ranges.
     struct ChoicePlace
     {
         float left, top;
@@ -41,6 +42,8 @@ namespace
         const std::size_t slot = index == RecordFilterFlagCount ? ResultFlagBegin : index;
         return {0, ChoiceTop + ChoicePitch * static_cast<float>(slot)};
     }
+    constexpr float StrokeTop = ChoiceTop + ChoicePitch * static_cast<float>(ResultFlagBegin + 1);
+    static_assert(StrokeTop + ChoiceHeight <= BodyHeight, "The stroke row fits in the left column.");
     [[nodiscard]] float RangeY(const std::size_t row) noexcept
     {
         return RangeTop + RangePitch * static_cast<float>(row);
@@ -67,6 +70,10 @@ void RecordFilterPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, I
         for (std::size_t item = 0; item < 3; ++item)
             choices_[i][item] = &CreateTab(body, name + "." + std::to_string(item), {}, 12);
     }
+    strokeLabel_ = &CreateText(body, "RecordFilter.MaxStrokes.Label", 13, 600, Ink);
+    strokeRule_ = &CreateRule(body, "RecordFilter.MaxStrokes.Rule");
+    for (std::size_t item = 0; item < StrokeItemCount; ++item)
+        strokeTabs_[item] = &CreateTab(body, "RecordFilter.MaxStrokes." + std::to_string(item), {}, 12);
     for (std::size_t row = 0; row < RecordFilterValueRowCount; ++row)
     {
         switches_[row] = &CreateSwitch(body, "RecordFilter.Switch." + std::to_string(row));
@@ -155,6 +162,7 @@ void RecordFilterPanel::Layout()
         }
         Place(*choiceRules_[i], {tabsLeft, place.top + TabHeight - 1, place.left + ColumnWidth - tabsLeft, 1}, h);
     }
+    LayoutStrokes(h);
     for (std::size_t row = 0; row < RecordFilterValueRowCount; ++row)
     {
         const float top = RangeY(row);
@@ -168,6 +176,23 @@ void RecordFilterPanel::Layout()
                h);
     RefreshRows();
     UpdateInputs();
+}
+
+void RecordFilterPanel::LayoutStrokes(const float h)
+{
+    // Same look as the choice rows: label on the left, tabs at the right end of the column over a rule.
+    Place(*strokeLabel_, {0, StrokeTop, ColumnWidth - 160, ChoiceHeight}, h);
+    float right = ColumnWidth;
+    float tabsLeft = right;
+    for (std::size_t item = StrokeItemCount; item-- > 0;)
+    {
+        auto &tab = *strokeTabs_[item];
+        const float width = std::max(EstimateWidth(tab.GetComponent<TextVisualComponent>()->Text(), 12) + 4, 18.0F);
+        Place(tab, {right - width, StrokeTop, width, TabHeight}, h);
+        tabsLeft = right - width;
+        right -= width + TabGap;
+    }
+    Place(*strokeRule_, {tabsLeft, StrokeTop + TabHeight - 1, ColumnWidth - tabsLeft, 1}, h);
 }
 
 void RecordFilterPanel::UpdateInputs()
@@ -203,6 +228,10 @@ void RecordFilterPanel::RefreshTexts()
         for (std::size_t item = 0; item < 3; ++item)
             SetText(*choices_[i][item], items[item]);
     }
+    SetText(*strokeLabel_, texts_->Get("PlayOptions.maxStrokes"));
+    SetText(*strokeTabs_[0], flagItems[0]);
+    for (std::size_t item = 1; item < StrokeItemCount; ++item)
+        SetText(*strokeTabs_[item], std::to_wstring(item));
     for (std::size_t row = 0; row < RecordFilterValueRowCount; ++row)
         SetText(*rowLabels_[row], texts_->Get(RowKeys[row]));
     modal_.SetStatus(error_.empty() ? std::wstring{}
@@ -230,6 +259,8 @@ void RecordFilterPanel::RefreshRows()
     for (std::size_t i = 0; i < ChoiceCount; ++i)
         for (std::size_t item = 0; item < 3; ++item)
             SetTabSelected(*choices_[i][item], draft_.choices[i] == item);
+    for (std::size_t item = 0; item < StrokeItemCount; ++item)
+        SetTabSelected(*strokeTabs_[item], draft_.maxStrokes == item);
     for (std::size_t i = 0; i < fields_.size(); ++i)
         StyleField(*fields_[i], inputs_[i] && inputs_[i]->HasFocus(), true);
 }
@@ -305,6 +336,13 @@ bool RecordFilterPanel::ProcessAction(const Action &action)
                 RefreshRows();
                 return true;
             }
+    for (std::size_t item = 0; item < StrokeItemCount; ++item)
+        if (action.source == strokeTabs_[item]->Id())
+        {
+            draft_.maxStrokes = item;
+            RefreshRows();
+            return true;
+        }
     for (std::size_t row = 0; row < RecordFilterValueRowCount; ++row)
         if (action.source == switches_[row]->Id())
         {

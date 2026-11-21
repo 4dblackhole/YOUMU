@@ -83,6 +83,8 @@ EN/KO/JA 설명 언어를 따르고 기존 숫자/도메인 진단 원문은 유
   Assist 열의 밑줄 탭 `1`·`2`·`3`·`4`로 고르고 기본은 2(주 키와 첫 보조 키)입니다. 키 설정의 슬롯 순서대로
   할당된 키만 세며 빈 슬롯은 건너뜁니다. 넘는 키는 그 시도 동안 판정·자유 타격음·키 점등 모두 없습니다
   (`LimitKeysPerBinding`, 세션의 입력 레이아웃). 키 설정(`Option.ini`)은 바꾸지 않습니다. 판정·점수 규칙은 그대로입니다.
+  기록에는 스키마 3부터 저장합니다(`MaxStrokes`). 그 전 기록은 열에 키를 3~4개 할당해 모두 썼더라도 기본값 2로 보입니다.
+  기록 필터의 Max strokes 탭(기본 Any)으로 한 개수의 기록만 볼 수 있습니다(사용자 결정 2026-11-22: 개수별로 나눠 보기).
 
 결과 화면의 랭크 원 아래에는 모드와 적용한 옵션을 아이콘 타일로 표시합니다([결과 화면 배치](Results.md#화면-배치와-책임-경계)).
 타일에는 짧은 값을, 툴팁에는 옵션 이름과 설정(Random의 시도 확률과 시드, Accelerate의 음정 유지)을 둡니다.
@@ -101,9 +103,12 @@ HP 게이지와 곡선, 종료 사유·시각, 제어 표지)를 함께 저장�
 
 위치: 게임 폴더(EXE 옆)의 `Data/Result/plays.sqlite3`(사용자 지시: C 드라이브 안쪽이 아니라 게임 폴더에서 찾을 수 있게).
 개발 빌드는 `bin/x64/<구성>/Data/Result/`입니다. 테스트는 각자의 임시 DB 경로를 넘겨 이 경로를 쓰지 않습니다.
-Windows 내장 SQLite를 사용하며 `user_version=2`로 스키마를 확인합니다.
+Windows 내장 SQLite를 사용하며 `user_version=3`으로 스키마를 확인합니다.
+스키마 3은 Max strokes(`MaxStrokes`, 1..4) 열을 더합니다. 스키마 2 DB는 열 때 같은 파일에서 한 트랜잭션으로 열을 더하고
+(`DEFAULT 2`) 버전을 3으로 올리며, 옛 기록은 지우거나 옮기지 않고 Max strokes 2로 읽습니다(지휘 결정 2026-11-22: 기록 보존이 기본).
+올리기가 실패하면 되돌려 스키마 2 그대로 두고 오류를 표시합니다. 스키마 3 DB를 스키마 2 빌드가 열면 지원하지 않는 버전 오류이며 파일은 그대로입니다.
 점수가 없는 스키마 1 기록은 사용자 결정(2026-11-21)으로 이어받지 않습니다. 스키마 1 DB를 열면 같은 폴더의
-`plays.v1.sqlite3`(이미 있으면 `plays.v1 (2).sqlite3`…)로 이름만 바꿔 옆에 두고 빈 스키마 2 DB로 새로 시작합니다.
+`plays.v1.sqlite3`(이미 있으면 `plays.v1 (2).sqlite3`…)로 이름만 바꿔 옆에 두고 빈 최신 스키마 DB로 새로 시작합니다.
 예전 위치 `%LOCALAPPDATA%/YOUMU/Records/plays.sqlite3`(스키마 1)는 더 읽지 않으며 지우거나 바꾸지도 않습니다.
 그 밖의 지원하지 않는 버전이나 손상 데이터는 오류를 표시하고 보존합니다.
 캐시와 달리 원본에서 복구 가능한 데이터가 아니므로 자동 삭제/재생성하지 않습니다.
@@ -118,7 +123,7 @@ Windows 내장 SQLite를 사용하며 `user_version=2`로 스키마를 확인합
 
 기록칸의 Filter records는 별도 기록 필터 창(평평한 모달, 폭 760)을 엽니다. 기록은 기존 왼쪽 기록 영역에 표시합니다.
 왼쪽 Options 열은 Mirror, Random, Metronome, Ignore scroll effects, BGM/HIT 음정 유지, JudgeLevel 덮어쓰기 여부의
-Any/On/Off와 Scroll unit(Any/x/BPM) 밑줄 탭입니다. 오른쪽 Ranges 열은 JudgeLevel(1..100), 재생속도(0.5..2.0x),
+Any/On/Off와 Scroll unit(Any/x/BPM), Max strokes(Any/1/2/3/4) 밑줄 탭입니다. 오른쪽 Ranges 열은 JudgeLevel(1..100), 재생속도(0.5..2.0x),
 스크롤속도(양수), Random 시도 확률(0..100%)의 Min/Max와 Random 시드(uint64 정수 동등)이고, 그 아래 Results는
 Completed·Cleared·Pause menu used의 Any/On/Off입니다. 스크롤속도는 기록에 저장한 x/BPM 원래 값이며,
 단위를 한정하려면 Scroll unit을 함께 지정합니다.
@@ -149,6 +154,7 @@ Completed·Cleared·Pause menu used의 Any/On/Off입니다. 스크롤속도는 �
 | RandomProbability | 재배치 시도 확률, 0..100 |
 | RandomSeed | 0..18446744073709551615 정수; 정확한 동등 비교 |
 | PreserveMusicPitch, PreserveHitSoundPitch | true/false |
+| MaxStrokes | 1..4 열마다 쓴 키 수(스키마 2 기록은 2) |
 | JudgeOverride | 채보 JudgeLevel을 덮어썼는지 |
 | Completed, Cleared, PauseMenuUsed | 실제 결과 상태, true/false |
 

@@ -21,6 +21,7 @@ namespace tests
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
     void TestOldRecordSchemaSetAside();
+    void TestRecordSchemaTwoUpgrade();
     void TestRecordResultDetail();
     void TestLocalOffsetStore();
     void TestTimerTimelineShift();

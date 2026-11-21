@@ -1,5 +1,6 @@
 #include "RecordFilter.h"
 #include "RecordCondition.h"
+#include "Mode/PlayOptions.h"
 #include <charconv>
 #include <cmath>
 #include <format>
@@ -72,6 +73,12 @@ std::string RecordFilter::Query() const
         if (*scrollUnit != 0 && *scrollUnit != 1) throw std::invalid_argument("Invalid scroll unit.");
         add("ScrollUnit = " + std::to_string(*scrollUnit));
     }
+    if (maxStrokes)
+    {
+        if (*maxStrokes < PlayOptions::MinimumStrokes || *maxStrokes > PlayOptions::MaximumStrokes)
+            throw std::invalid_argument("Max strokes must be within 1-4.");
+        add("MaxStrokes = " + std::to_string(*maxStrokes));
+    }
     const auto range = [&](std::size_t row, const char *name, const std::optional<double> &minimum,
                            const std::optional<double> &maximum)
     {
@@ -113,6 +120,7 @@ RecordFilterDraft FormatRecordFilter(const RecordFilter &filter)
     for (std::size_t i = 0; i < filter.flags.size(); ++i)
         draft.choices[i] = !filter.flags[i] ? 0 : *filter.flags[i] ? 1 : 2;
     draft.choices[RecordFilterFlagCount] = filter.scrollUnit ? static_cast<std::size_t>(*filter.scrollUnit + 1) : 0;
+    draft.maxStrokes = filter.maxStrokes ? static_cast<std::size_t>(*filter.maxStrokes) : 0;
     draft.values = {Text(filter.minimumJudgeLevel), Text(filter.maximumJudgeLevel),
         Text(filter.minimumAccelerate), Text(filter.maximumAccelerate), Text(filter.minimumScrollSpeed), Text(filter.maximumScrollSpeed),
         Text(filter.minimumRandomProbability), Text(filter.maximumRandomProbability), Text(filter.randomSeed)};
@@ -130,6 +138,7 @@ RecordFilter ParseRecordFilter(const RecordFilterDraft &draft)
     }
     if (draft.choices[RecordFilterFlagCount] > 2) throw std::invalid_argument("Invalid scroll unit.");
     if (draft.choices[RecordFilterFlagCount]) filter.scrollUnit = static_cast<int>(draft.choices[RecordFilterFlagCount] - 1);
+    if (draft.maxStrokes) filter.maxStrokes = static_cast<int>(draft.maxStrokes);
     filter.minimumJudgeLevel = Number<double>(draft.values[0]); filter.maximumJudgeLevel = Number<double>(draft.values[1]);
     filter.minimumAccelerate = Number<double>(draft.values[2]); filter.maximumAccelerate = Number<double>(draft.values[3]);
     filter.minimumScrollSpeed = Number<double>(draft.values[4]); filter.maximumScrollSpeed = Number<double>(draft.values[5]);

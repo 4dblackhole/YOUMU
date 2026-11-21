@@ -13,6 +13,7 @@ struct RecordFilter
 {
     std::array<std::optional<bool>, RecordFilterFlagCount> flags;
     std::optional<int> scrollUnit; // Empty: all; 0: x; 1: BPM.
+    std::optional<int> maxStrokes; // Empty: all stroke counts; 1..4: only records played with that count.
     std::optional<double> minimumJudgeLevel, maximumJudgeLevel;
     std::optional<double> minimumAccelerate, maximumAccelerate;
     std::optional<double> minimumScrollSpeed, maximumScrollSpeed;
@@ -26,6 +27,7 @@ struct RecordFilter
 struct RecordFilterDraft
 {
     std::array<std::size_t, RecordFilterFlagCount + 1> choices{};
+    std::size_t maxStrokes{}; // 0: Any; 1..4: that stroke count.
     // Minimum/maximum pairs: JudgeLevel, Accelerate, ScrollSpeed, probability; then seed.
     std::array<std::wstring, 9> values;
     std::array<bool, RecordFilterValueRowCount> switchedOff{};

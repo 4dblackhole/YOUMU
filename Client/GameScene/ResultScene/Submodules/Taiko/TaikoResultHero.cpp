@@ -180,11 +180,10 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
     if (o.ignoreScrollEffects)
         tiles.push_back({"ignoreScrollEffects", optionImages_.ignoreScrollEffects, text("Result.optionIgnoreScroll"),
                          {option("ignoreScroll")}});
-    // The default stroke count is a plain play; another one shows the count over "KEYS".
+    // The default stroke count is a plain play; another one shows the afterimage icon and the count.
     if (o.maxStrokes != PlayOptions{}.maxStrokes)
-        tiles.push_back({"maxStrokes", {}, text("Result.optionMaxStrokes"),
-                         {option("maxStrokes"), {}, std::format(L"{} {}", option("maxStrokesRange"), o.maxStrokes)},
-                         Brand, White, std::to_wstring(o.maxStrokes)});
+        tiles.push_back({"maxStrokes", optionImages_.maxStrokes, std::to_wstring(o.maxStrokes),
+                         {option("maxStrokes"), {}, std::format(L"{} {}", option("maxStrokesRange"), o.maxStrokes)}});
     // The default gauge is a plain play; another chosen gauge shows its name (HP-02 has none yet).
     if (const auto *gauge = FindHpGauge(o.hpGauge); gauge && o.hpGauge != HpGaugeKind::Default)
         tiles.push_back({"hpGauge", {}, std::wstring(gauge->name.begin(), gauge->name.end()), {option("hpGauge")},

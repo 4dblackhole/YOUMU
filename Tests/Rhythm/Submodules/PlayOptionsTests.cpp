@@ -2,6 +2,7 @@
 #include "Records/PlayRecordStore.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "TestSupport.h"
+#include <cctype>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -330,6 +331,90 @@ namespace tests
                 "A second old database takes the next free name and the first stays.");
         Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).size() == 1,
                 "Saving into a schema-1 database keeps only the new record.");
+    }
+
+    void TestRecordSchemaTwoUpgrade()
+    {
+        TemporaryDirectory directory("youmu-record-schema2");
+        const auto database = directory.Path() / "plays.sqlite3";
+        const auto pattern = directory.Path() / "pattern.ymp";
+        std::ofstream(pattern) << "fixture";
+        const auto run = [&](const std::string &sql)
+        {
+            sqlite3 *raw{};
+            Require(sqlite3_open16(database.c_str(), &raw) == SQLITE_OK, "Schema-2 fixture opens.");
+            const int status = sqlite3_exec(raw, sql.c_str(), nullptr, nullptr, nullptr);
+            sqlite3_close_v2(raw);
+            Require(status == SQLITE_OK, "Schema-2 fixture is written.");
+        };
+        const auto scalar = [&](const char *sql)
+        {
+            sqlite3 *raw{};
+            sqlite3_stmt *statement{};
+            std::int64_t value = -1;
+            const bool opened = sqlite3_open16(database.c_str(), &raw) == SQLITE_OK;
+            if (opened && sqlite3_prepare_v2(raw, sql, -1, &statement, nullptr) == SQLITE_OK)
+            {
+                if (sqlite3_step(statement) == SQLITE_ROW)
+                    value = sqlite3_column_int64(statement, 0);
+            }
+            sqlite3_finalize(statement);
+            sqlite3_close_v2(raw);
+            return value;
+        };
+        // The store's pattern key: the canonical path in lower case (ASCII here).
+        auto key = std::filesystem::weakly_canonical(pattern).lexically_normal().generic_string();
+        for (auto &ch : key)
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        // A schema-2 database as #103 left it, with one record; `extra` adds columns to break the upgrade.
+        const auto writeSchemaTwo = [&](const std::string &extra)
+        {
+            run("CREATE TABLE Plays (Id INTEGER PRIMARY KEY, PlayedAt INTEGER NOT NULL, Pattern TEXT NOT NULL, Mode TEXT "
+                "NOT NULL, Accuracy INTEGER NOT NULL, TotalNotes INTEGER NOT NULL, ProcessedNotes INTEGER NOT NULL, "
+                "Completed INTEGER NOT NULL, Cleared INTEGER NOT NULL, PauseMenuUsed INTEGER NOT NULL, JudgeLevel REAL "
+                "NOT NULL, ScrollSpeed REAL NOT NULL, ScrollUnit INTEGER NOT NULL, IgnoreScrollEffects INTEGER NOT NULL, "
+                "Metronome INTEGER NOT NULL, Mirror INTEGER NOT NULL, Random INTEGER NOT NULL, RandomSeed TEXT NOT NULL, "
+                "RandomProbability REAL NOT NULL, Accelerate REAL NOT NULL, PreserveMusicPitch INTEGER NOT NULL, "
+                "PreserveHitSoundPitch INTEGER NOT NULL, JudgeOverride INTEGER NOT NULL, GlobalOffset INTEGER NOT NULL, "
+                "Score INTEGER NOT NULL, MaximumCombo INTEGER NOT NULL, HpGauge INTEGER NOT NULL, Detail TEXT NOT NULL" +
+                extra + ");"
+                "CREATE INDEX PatternHistory ON Plays(Pattern, Mode, Id DESC);"
+                "INSERT INTO Plays (PlayedAt, Pattern, Mode, Accuracy, TotalNotes, ProcessedNotes, Completed, Cleared, "
+                "PauseMenuUsed, JudgeLevel, ScrollSpeed, ScrollUnit, IgnoreScrollEffects, Metronome, Mirror, Random, "
+                "RandomSeed, RandomProbability, Accelerate, PreserveMusicPitch, PreserveHitSoundPitch, JudgeOverride, "
+                "GlobalOffset, Score, MaximumCombo, HpGauge, Detail) VALUES (1, '" +
+                key +
+                "', 'Taiko', 98000000, 10, 10, 1, 1, 0, 70, 1, 0, 0, 0, 0, 0, '0', 100, 1, 0, 1, 0, 0, 980000, 10, 0, "
+                "'');"
+                "PRAGMA user_version=2");
+        };
+        writeSchemaTwo("");
+        const auto old = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10);
+        Require(old.size() == 1 && old[0].options.maxStrokes == 2 && old[0].score == 980000,
+                "A schema-2 record survives the upgrade and reads as the default two strokes.");
+        Require(scalar("PRAGMA user_version") == 3, "Opening a schema-2 database upgrades it to schema 3 in place.");
+        Require(!std::filesystem::exists(directory.Path() / "plays.v2.sqlite3"), "The upgrade sets nothing aside.");
+        PlayRecord record = old[0];
+        record.options.maxStrokes = 4;
+        PlayRecordStore(database).Save(record);
+        const auto both = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10);
+        Require(both.size() == 2 && both[0].options.maxStrokes == 4 && both[1].options.maxStrokes == 2,
+                "A new record keeps its stroke count beside the old one.");
+
+        // A failed upgrade (here the column already exists) leaves schema 2 and its records as they were.
+        std::filesystem::remove(database);
+        writeSchemaTwo(", MaxStrokes INTEGER");
+        bool failed{};
+        try
+        {
+            static_cast<void>(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10));
+        }
+        catch (const std::runtime_error &)
+        {
+            failed = true;
+        }
+        Require(failed && scalar("PRAGMA user_version") == 2 && scalar("SELECT COUNT(*) FROM Plays") == 1,
+                "A failed upgrade reports the error and rolls back to schema 2 with the records kept.");
     }
 
     void TestRecordResultDetail()

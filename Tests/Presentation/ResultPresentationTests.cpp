@@ -653,10 +653,9 @@ namespace
         Check(textOf("Result.OptionValue.scrollSpeed")==L"×2.0" && textOf("Result.OptionValue.judgeLevel")==L"60",
               "Tiles show the scroll multiplier with one decimal and the JudgeLevel.");
         {
-            // A changed stroke count wraps to a second row: the count large, KEYS under it.
+            // A changed stroke count wraps to a second row: the afterimage icon with the count under it.
             const auto *strokes=FindNode(canvas->Root(),"Result.Option.maxStrokes");
-            const bool captioned=textOf("Result.OptionValue.maxStrokes")==texts.Get("Result.optionMaxStrokes");
-            Check(strokes!=nullptr && captioned && HasText(*canvas,L"3"),
+            Check(strokes!=nullptr && textOf("Result.OptionValue.maxStrokes")==L"3",
                   "Max strokes other than the default shows its count tile.");
             const float modeTop=FindNode(canvas->Root(),"Result.Option.mode")->BoundsInCanvas().y;
             Check(strokes!=nullptr && strokes->BoundsInCanvas().y<modeTop,"The ninth tile starts a second row, below the first (canvas y points up).");
