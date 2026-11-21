@@ -409,9 +409,7 @@ Soft: From + (To - From) * Bezier(u, 0.25, 0.1, 0.25, 1)
     Require(roundtrip.Succeeded() && ChartEditor::WriteEffects(roundtrip.document) == saved,
             "YME tables, expressions, flags and excluded beats must round-trip "
             "without loss.");
-    const auto legacy = parse("[Zone]
-1,0/4,#Kiai ON
-2,0/4,#Kiai OFF");
+    const auto legacy = parse("[Zone]\n1,0/4,#Kiai ON\n2,0/4,#Kiai OFF");
     Require(legacy.Succeeded() && legacy.document.commands.size() == 2 &&
                 legacy.document.commands.front().type == EffectCommandType::Highlight &&
                 ChartEditor::WriteEffects(legacy.document).find("#Kiai") == std::string::npos,
