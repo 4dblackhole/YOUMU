@@ -541,6 +541,56 @@ namespace
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
     }
 
+    // Score rows start at measure 1 and at each YMP system break (---), then every four measures.
+    // The --- toggle starts a row at the cursor's measure or removes that break, as one Undo step.
+    void TestScoreSystemBreaks()
+    {
+        EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(PatternDocument{}));
+        state.SetRealtime(false);
+        const auto seekMeasure = [&state](std::int64_t measure) {
+            state.Seek(static_cast<double>(state.Document().Timeline().Compile({measure, {}}).count()) / 1000.0 + 1);
+        };
+        seekMeasure(2);
+        Check(!state.HasSystemBreakAtCursor(), "A new chart has no system breaks.");
+        state.ToggleSystemBreak();
+        Check(state.Document().Pattern().systemBreakMeasures == std::vector<std::int64_t>{2} &&
+                  state.HasSystemBreakAtCursor(),
+              "The --- toggle must make the cursor's measure start a score row.");
+        Check(ChartEditor::WritePattern(state.Document().Pattern()).find("\n---\n") != std::string::npos,
+              "A system break must be saved as --- in the YMP.");
+
+        // Row 1 now holds measures 1-2 only: a click where measure 3 used to be places nothing.
+        state.Seek(0);
+        state.SelectTool(1);
+        RecordingCanvas canvas;
+        state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
+        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth * 1.25F, ScoreY}, false);
+        Check(state.Document().Notes().size() == 1 && state.Document().Notes().front().note.position.measure == 1,
+              "Measure 2 must still sit second in the first row.");
+        state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean));
+        state.Mode().EditScore(state, {ScoreLeft + MeasureWidth * 2.25F, ScoreY}, false);
+        Check(state.Document().Notes().size() == 1, "The row must end before the system break.");
+
+        state.Undo();
+        state.Undo();
+        Check(state.Document().Pattern().systemBreakMeasures.empty(), "One Undo must remove the system break.");
+        state.Redo();
+        seekMeasure(2);
+        state.ToggleSystemBreak();
+        Check(state.Document().Pattern().systemBreakMeasures.empty(), "The toggle must remove an existing break.");
+        seekMeasure(0);
+        bool rejected = false;
+        try
+        {
+            state.ToggleSystemBreak();
+        }
+        catch (const std::invalid_argument &)
+        {
+            rejected = true;
+        }
+        Check(rejected, "Measure 1 always starts a row and takes no system break.");
+    }
+
     void TestDelayViewsAndSnapping()
     {
         PatternDocument pattern;
@@ -1506,6 +1556,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     TestLastNoteSeeking();
     TestSelectionClipboardAndHistory();
     TestDelayViewsAndSnapping();
+    TestScoreSystemBreaks();
     TestComposePanelEdits();
     TestSeekAndEffectEdits();
     TestInspectorMusicalTiming();

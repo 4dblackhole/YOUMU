@@ -88,6 +88,17 @@ void EditorView::DrawToolRow()
         return;
     state_.Mode().DrawTools(*this, state_, texts_);
     DrawBeatControl();
+    if (!score.realtime)
+        DrawLineBreakToggle();
+}
+
+void EditorView::DrawLineBreakToggle()
+{
+    // --- starts a new score row at the cursor's measure; lit while that measure already starts one.
+    const float middle = layout::BodyTop + layout::ToolRowHeight * .5F;
+    Button({layout::LineBreakLeft, middle - 16, layout::LineBreakWidth, 32},
+           L"---  " + std::wstring(texts_.Get("Editor.lineBreak")), [this] { state_.ToggleSystemBreak(); },
+           state_.HasSystemBreakAtCursor());
 }
 
 void EditorView::DrawBeatControl()

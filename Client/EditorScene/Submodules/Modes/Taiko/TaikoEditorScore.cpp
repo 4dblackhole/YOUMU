@@ -12,6 +12,7 @@
 #include <limits>
 #include <locale>
 #include <sstream>
+#include <tuple>
 using namespace PhantomCore;
 
 using namespace editor_ui;
@@ -122,7 +123,8 @@ std::optional<Point> TaikoEditorMode::ScorePoint(const MusicalTimeline &timeline
 void TaikoEditorMode::DrawOverview(IEditorModeCanvas &canvas, IEditorContext &state, const TextCatalog &)
 {
     // Score: the pattern alone, four measures per row with every beat the same width (taiko wiki
-    // style). It follows the cursor and keeps one row above the current one.
+    // style). A YMP system break (---) starts a new row early. It follows the cursor and keeps one
+    // row above the current one.
     const auto &timeline = state.Document().Timeline();
     const auto area = areas_.score;
     constexpr float padX = 20, padY = 10, numberHeight = 16, gap = 10;
@@ -134,18 +136,29 @@ void TaikoEditorMode::DrawOverview(IEditorModeCanvas &canvas, IEditorContext &st
     const float indent = std::round(scoreBigRadius_ + 4);
     const float cellWidth = (area.width - padX * 2 - indent * 2) / MeasuresPerRow;
     const auto current = MeasureNearTime(timeline, state.TimeMilliseconds());
-    const auto first = std::max<std::int64_t>(0, current / MeasuresPerRow - 1) * MeasuresPerRow;
-    const auto last = std::min<std::int64_t>(first + static_cast<std::int64_t>(rows) * MeasuresPerRow, MaximumMeasureCount);
+    const auto &breaks = state.Document().Pattern().systemBreakMeasures;
+    const auto currentRow = ScoreRowStart(breaks, current);
+    const auto first = currentRow == 0 ? std::int64_t{0} : ScoreRowStart(breaks, currentRow - 1);
+    // Measure, row and column of every drawn cell, row by row.
+    std::vector<std::tuple<std::int64_t, int, int>> cells;
+    auto last = first;
+    for (int row = 0; row < rows && last < MaximumMeasureCount; ++row)
+    {
+        const auto rowBegin = last;
+        last = std::min(NextScoreRowStart(breaks, rowBegin), MaximumMeasureCount);
+        for (auto m = rowBegin; m < last; ++m)
+            cells.emplace_back(m, row, static_cast<int>(m - rowBegin));
+    }
     const int subdivisions = state.Score().division * 4;
     scoreCells_.clear();
-    for (auto m = first; m < last; ++m)
+    for (std::size_t cell = 0; cell < cells.size(); ++cell)
     {
-        const auto index = m - first;
-        const auto column = static_cast<int>(index % MeasuresPerRow);
+        const auto [m, row, column] = cells[cell];
         const float x0 = area.x + padX + indent + cellWidth * static_cast<float>(column);
-        const float top = area.y + padY + pitch * static_cast<float>(index / MeasuresPerRow);
+        const float top = area.y + padY + pitch * static_cast<float>(row);
         const float laneTop = top + numberHeight;
-        const bool rowStart = column == 0, rowEnd = column == MeasuresPerRow - 1 || m == last - 1;
+        const bool rowStart = column == 0;
+        const bool rowEnd = cell + 1 == cells.size() || std::get<2>(cells[cell + 1]) == 0;
         const float bandLeft = rowStart ? area.x + padX : x0;
         const float bandRight = rowEnd ? x0 + cellWidth + indent : x0 + cellWidth;
         scoreCells_.push_back({m, x0, top, laneTop, cellWidth, lane, bandLeft, bandRight});

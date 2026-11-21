@@ -128,6 +128,26 @@ void EditorWorkspace::SetRealtimeZoom(const double factor)
     score_.realtimeZoom = factor;
     RequestRebuild();
 }
+bool EditorWorkspace::HasSystemBreakAtCursor() const
+{
+    const auto measure = MeasureNearTime(Document().Timeline(), timeMs_);
+    return std::ranges::binary_search(Document().Pattern().systemBreakMeasures, measure);
+}
+void EditorWorkspace::ToggleSystemBreak()
+{
+    const auto measure = MeasureNearTime(Document().Timeline(), timeMs_);
+    if (measure <= 0)
+        throw std::invalid_argument("The first measure always starts a score row.");
+    auto pattern = Document().Pattern();
+    auto &breaks = pattern.systemBreakMeasures;
+    const auto found = std::ranges::lower_bound(breaks, measure);
+    if (found != breaks.end() && *found == measure)
+        breaks.erase(found);
+    else
+        breaks.insert(found, measure);
+    // One edit: Undo restores the previous rows.
+    Replace(std::move(pattern), Document().Effects());
+}
 void EditorWorkspace::Replace(PatternDocument pattern, EffectDocument effects)
 {
     editor_->Replace(std::move(pattern), std::move(effects));
