@@ -164,24 +164,26 @@ namespace
     }
     void TestAverageError(GameplayJudgementView &view, Visual2DNode &root)
     {
-        Check(LabelText(root, "Judgement.Average") == L"—" && LabelText(root, "Judgement.AverageUnit") == L"ms",
-              "Before a graded hit the mean shows the explicit empty value.");
-        PlayStatistics statistics;
-        statistics.timingErrorSum = RhythmDuration{36'300};
-        statistics.timingErrorCount = 3;
-        view.ShowAverageError(statistics);
-        Check(LabelText(root, "Judgement.Average") == L"+12.1", "A late mean shows a plus sign and tenths.");
-        statistics.timingErrorSum = RhythmDuration{-6'850};
-        statistics.timingErrorCount = 2;
-        view.ShowAverageError(statistics);
-        Check(LabelText(root, "Judgement.Average") == L"−3.4", "An early mean shows a typographic minus.");
-        statistics.timingErrorSum = RhythmDuration{-40};
-        view.ShowAverageError(statistics);
-        Check(LabelText(root, "Judgement.Average") == L"0.0", "A mean that rounds to zero has no sign.");
+        const auto average = [&root] { return LabelText(root, "Judgement.Average"); };
+        Check(average() == L"—" && LabelText(root, "Judgement.AverageUnit") == L"ms",
+              "Before any hit line is drawn the mean shows the explicit empty value.");
+        view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Great, RhythmDuration{12'000}));
+        view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Great, RhythmDuration{12'200}));
+        Check(average() == L"+12.1", "A late mean of the drawn lines shows a plus sign and tenths.");
+        view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Good, RhythmDuration{-43'100}));
+        Check(average() == L"−6.3", "An early mean shows a typographic minus.");
+        view.Update(5.2);
+        Check(average() == L"—", "Lines that have faded out no longer count, so the mean empties with them.");
+        view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Max, RhythmDuration{-40}));
+        Check(average() == L"0.0", "A mean that rounds to zero has no sign.");
         view.Reset();
-        Check(LabelText(root, "Judgement.Average") == L"0.0", "The mean follows the statistics, not hit-line resets.");
-        view.ShowAverageError({});
-        Check(LabelText(root, "Judgement.Average") == L"—", "Statistics without graded hits clear the mean.");
+        Check(average() == L"—", "Reset removes the lines and the mean.");
+        // The 51st line pushes the oldest out early; that line stops counting at once.
+        view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Bad, RhythmDuration{100'000}));
+        for (int i = 0; i < 50; ++i)
+            view.Present(Event(NoteEventType::HitAccepted, JudgementGrade::Max, RhythmDuration{}));
+        Check(average() == L"0.0", "A line being pushed out by the 50-line limit is not part of the mean.");
+        view.Reset();
     }
     void TestGuideAndOverlays()
     {

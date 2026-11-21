@@ -139,7 +139,6 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
     progressView_.Update(time);
     UpdateAccuracyPresentation();
     statisticsView_.Update(*session_);
-    judgementView_.ShowAverageError(session_->Statistics());
 #if defined(_DEBUG)
     UpdateDebugPresentation(time);
 #endif
