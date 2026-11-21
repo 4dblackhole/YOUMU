@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Build.ps1 -Analyze가 ForceImportAfterCppTargets로 Client 프로젝트 끝에 끼워 넣습니다.
+     컴파일 경고를 오류로 올립니다(/WX). 경고가 난 파일은 오브젝트가 생기지 않아, 바뀐 파일만 다시 분석해도 고칠 때까지 매번 다시
+     컴파일되고 보고됩니다. 분석 경고(C6xxx, C26xxx)는 컴파일 때 출력되지 않고 결과 파일에 남으므로 Build.ps1이
+     CodeAnalysisTreatWarningsAsErrors로 따로 오류로 올립니다. -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>
