@@ -399,6 +399,61 @@ namespace
               "Clicking empty realtime space with the selection tool must preserve the cursor and place no note.");
     }
 
+    // Score clicks on notes: double-click moves the cursor to the note, Alt+click picks notes one by one,
+    // and a gold edge of the dragged range moves that edge.
+    void TestTaikoScoreInteractions()
+    {
+        EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(PatternDocument{}));
+        state.SetRealtime(false);
+        state.SelectTool(1);
+        state.PlaceNote({0, {1, 4}});
+        state.PlaceNote({0, {3, 4}});
+        const auto &notes = state.Document().Notes();
+        const auto firstId = notes.front().note.sourceOrder, secondId = notes.back().note.sourceOrder;
+        state.SelectTool(0);
+        state.Seek(0);
+        RecordingCanvas canvas;
+        const auto redraw = [&] { state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean)); };
+        const auto x = [](Rational fraction) { return ScoreLeft + MeasureWidth * static_cast<float>(fraction.Value()); };
+        const Point first{x({1, 4}), ScoreY}, second{x({3, 4}), ScoreY};
+
+        redraw();
+        state.Mode().ActivateScore(state, second);
+        const double secondMs = static_cast<double>(state.Document().Timeline().Compile({0, {3, 4}}).count()) / 1000.0;
+        Check(state.TimeMilliseconds() == secondMs, "Double-clicking a note must move the cursor to that note.");
+        redraw();
+        state.Mode().ActivateScore(state, {x({1, 2}), ScoreY});
+        Check(state.TimeMilliseconds() == secondMs, "Double-clicking empty score space must not move the cursor.");
+
+        redraw();
+        state.Mode().ToggleScoreNote(state, first);
+        redraw();
+        state.Mode().ToggleScoreNote(state, second);
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{firstId, secondId},
+              "Alt+click must add each clicked note to the selection.");
+        redraw();
+        state.Mode().ToggleScoreNote(state, first);
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{secondId},
+              "Alt+click on a selected note must take it out of the selection.");
+        state.Mode().ToggleScoreNote(state, {x({1, 2}), ScoreY});
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{secondId},
+              "Alt+click on empty score space must keep the selection.");
+
+        state.SelectNoteRange({0, {1, 8}}, {0, {7, 8}});
+        redraw();
+        Check(state.Mode().BeginScoreSelection(state, {x({7, 8}), ScoreY}), "The range's end edge must be grabbable.");
+        state.Mode().UpdateScoreSelection(state, {x({1, 2}), ScoreY}, true);
+        const auto &range = state.NoteSelectionRange();
+        Check(range && range->first == MusicalPosition{0, {1, 8}} && range->second == MusicalPosition{0, {1, 2}},
+              "Dragging the end edge must move only the end of the range.");
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{firstId}, "The moved range must reselect its notes.");
+        redraw();
+        Check(state.Mode().BeginScoreSelection(state, {x({1, 8}), ScoreY}), "The range's start edge must be grabbable.");
+        state.Mode().UpdateScoreSelection(state, {x({5, 8}), ScoreY}, true);
+        Check(range && range->first == MusicalPosition{0, {1, 2}} && range->second == MusicalPosition{0, {5, 8}},
+              "Dragging the start edge past the end must keep the other edge as the anchor.");
+    }
+
     // A placement replaces every note whose span shares a position with it (Taiko has
     // one lane). The replacement is one Undo step; the same ordinary note is kept.
     void TestTaikoPlacementConflicts()
@@ -1445,6 +1500,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     }
     TestTaikoEditing();
     TestTaikoPlacementConflicts();
+    TestTaikoScoreInteractions();
     TestPreviewMatchesPlay();
     TestRealtimeZoomAndTransport();
     TestLastNoteSeeking();

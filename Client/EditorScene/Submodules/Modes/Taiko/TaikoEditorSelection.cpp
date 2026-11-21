@@ -52,6 +52,15 @@ bool TaikoEditorMode::BeginScoreSelection(IEditorContext &state, Point point)
 {
     if (tool_ != 0 || state.Score().preview || !(state.Score().realtime ? areas_.lane : areas_.score).Contains(point))
         return false;
+    // A gold edge of the selected range moves that edge; a note drawn on the edge keeps its own click.
+    const auto edge = std::ranges::find_if(rangeEdgeHits_, [point](const auto &hit) { return hit.bounds.Contains(point); });
+    if (edge != rangeEdgeHits_.end() && !NoteHitAt(state, point))
+    {
+        selectionAnchor_ = edge->otherEdge;
+        selectionStart_ = point;
+        selecting_ = true;
+        return true;
+    }
     const auto position = SnapPosition(state, point);
     if (!position)
         return false;
@@ -79,4 +88,48 @@ bool TaikoEditorMode::UpdateScoreSelection(IEditorContext &state, Point point, b
         selecting_ = false;
     }
     return true;
+}
+
+void TaikoEditorMode::ActivateScore(IEditorContext &state, Point point)
+{
+    if (state.Score().preview)
+        return;
+    // A head or tail moves the cursor to that endpoint; a long-note body to its head.
+    std::optional<MusicalPosition> position;
+    if (const auto *hit = NoteHitAt(state, point))
+        position = hit->position;
+    else if (const auto order = NoteAt(state, point))
+        if (const auto note = state.Document().FindNote(*order))
+            position = note->head.note.position;
+    if (!position)
+        return;
+    state.Seek(static_cast<double>(state.Document().Timeline().Compile(*position).count()) / 1000.0);
+    state.RequestRebuild();
+}
+
+void TaikoEditorMode::ToggleScoreNote(IEditorContext &state, Point point)
+{
+    if (state.Score().preview)
+        return;
+    const auto order = NoteAt(state, point);
+    const auto note = order ? state.Document().FindNote(*order) : std::nullopt;
+    if (!note)
+        return;
+    // Selection keeps heads and tails; a long note is added or removed as one.
+    std::vector<std::size_t> ids;
+    const auto head = note->head.note.sourceOrder;
+    const bool selected = state.SelectedNoteIds().contains(head);
+    for (const auto id : state.SelectedNoteIds())
+    {
+        const auto owner = state.Document().FindNote(id);
+        if (owner && owner->head.note.sourceOrder != head)
+            ids.push_back(id);
+    }
+    if (!selected)
+        ids.push_back(head);
+    inspector_.Clear();
+    if (ids.size() == 1)
+        inspector_.Select(state.Document(), ids.front());
+    state.SelectNotes(ids);
+    state.RequestRebuild();
 }

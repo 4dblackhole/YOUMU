@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <format>
 #include <sstream>
+#include <utility>
 using namespace PhantomCore;
 
 using namespace editor_ui;
@@ -194,6 +195,7 @@ void EditorView::UpdatePointer(const UpdateContext &context)
     }
     if (!input.WasMouseButtonPressed(MouseButton::Left))
         return;
+    const bool doubleClick = IsDoubleClick(input, *point);
     if (std::ranges::none_of(fieldRects_, [&](const Rect &r) { return r.Contains(*point); }))
         if (auto rejected = fields_.BlurAll())
             state_.SetStatus(*rejected);
@@ -207,9 +209,43 @@ void EditorView::UpdatePointer(const UpdateContext &context)
     {
         auto action = found->click;
         action();
+        return;
     }
-    else if (compose && !state_.Mode().BeginScoreSelection(state_, *point))
+    if (!compose)
+        return;
+    // Alt+click picks notes one by one, like Ctrl+click in Explorer; it neither edits nor starts a range.
+    if (input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU))
+    {
+        state_.Mode().ToggleScoreNote(state_, *point);
+        return;
+    }
+    if (!state_.Mode().BeginScoreSelection(state_, *point))
         state_.Mode().EditScore(state_, *point, false);
+    if (doubleClick)
+        state_.Mode().ActivateScore(state_, *point);
+}
+
+bool EditorView::IsDoubleClick(const InputState &input, Point point)
+{
+    // Two left presses within the system double-click time and a few design pixels; a third starts over.
+    const auto events = input.Events();
+    const auto press = std::ranges::find_if(events, [](const InputEvent &event) {
+        return event.type == InputEventType::MouseButtonPressed && event.code == static_cast<std::uint16_t>(MouseButton::Left);
+    });
+    if (press == events.end())
+        return false;
+    const auto previous = std::exchange(lastPress_, PointerPress{press->performanceCounterTicks, point});
+    const auto frequency = input.PerformanceCounterFrequency();
+    if (!previous || frequency <= 0)
+        return false;
+    const double elapsedMs = static_cast<double>(press->performanceCounterTicks - previous->ticks) * 1000.0 /
+                             static_cast<double>(frequency);
+    const bool nearby = std::abs(point.x - previous->point.x) <= 4 && std::abs(point.y - previous->point.y) <= 4;
+    const bool inTime = elapsedMs >= 0 && elapsedMs <= static_cast<double>(GetDoubleClickTime());
+    if (!nearby || !inTime)
+        return false;
+    lastPress_.reset();
+    return true;
 }
 
 void EditorView::UpdateTimelineNavigation(const InputState &input, bool keyboardAllowed, bool pointerAllowed)

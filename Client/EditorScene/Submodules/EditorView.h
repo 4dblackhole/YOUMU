@@ -218,6 +218,14 @@ class EditorView final : public IEditorModeCanvas
     } curves_;
     // The pointer of the click being dispatched, for controls that read a position.
     std::optional<PhantomCore::Point> lastPointer_;
+    // The previous left press (QPC ticks, design point) for double-click detection.
+    struct PointerPress
+    {
+        std::int64_t ticks;
+        PhantomCore::Point point;
+    };
+    std::optional<PointerPress> lastPress_;
+    [[nodiscard]] bool IsDoubleClick(const PhantomCore::InputState &, PhantomCore::Point);
     bool toggleSelection_{}, rangeSelection_{}, shiftDown_{};
     std::vector<::Control> controls;
     using AudioColumnsKey = std::tuple<double, double, double, std::uint64_t, std::size_t, std::size_t>;

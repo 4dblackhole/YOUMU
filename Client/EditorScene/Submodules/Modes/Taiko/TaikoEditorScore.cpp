@@ -52,6 +52,7 @@ void TaikoEditorMode::DrawChart(IEditorModeCanvas &canvas, IEditorContext &state
     areas_ = canvas.Areas();
     noteHits_.clear();
     bodyHits_.clear();
+    rangeEdgeHits_.clear();
     realtimeGrid_.clear();
     overviewGrid_.clear();
     if (state.Score().preview)
@@ -203,7 +204,7 @@ void TaikoEditorMode::DrawOverview(IEditorModeCanvas &canvas, IEditorContext &st
                    radius - 1);
         if (n.keyType == 17)
             canvas.Box({point->x - radius * .2F, point->y - radius * .55F, radius * .4F, radius * 1.1F}, White, 1);
-        noteHits_.push_back({*point, n.sourceOrder});
+        noteHits_.push_back({*point, n.sourceOrder, n.position});
     }
     DrawScoreRangeAndCursor(canvas, state);
 }
@@ -283,9 +284,15 @@ void TaikoEditorMode::DrawScoreRangeAndCursor(IEditorModeCanvas &canvas, IEditor
             const float x = cell.x0 + cell.width * from, width = cell.width * (to - from);
             canvas.Box({x, cell.laneTop, width, cell.laneHeight}, {.3F, .61F, 1, .28F});
             if (first)
+            {
                 canvas.Box({x - 1, cell.laneTop - 4, 2.5F, cell.laneHeight + 8}, ui_colors::theme::Sun);
+                rangeEdgeHits_.push_back({{x - 5, cell.laneTop - 8, 10, cell.laneHeight + 16}, range->second});
+            }
             if (last)
+            {
                 canvas.Box({x + width - 1.5F, cell.laneTop - 4, 2.5F, cell.laneHeight + 8}, ui_colors::theme::Sun);
+                rangeEdgeHits_.push_back({{x + width - 5, cell.laneTop - 8, 10, cell.laneHeight + 16}, range->first});
+            }
         }
     // The playhead: the cursor's beat in its measure.
     const auto whole = timeline.WholeNotesAtTime(Microseconds(state.TimeMilliseconds()));
@@ -458,6 +465,10 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
         const float left = std::clamp(std::min(first, last), lane.x, right);
         const float end = std::clamp(std::max(first, last), lane.x, right);
         canvas.Box({left, lane.y, std::max(2.0F, end - left), lane.height}, {.3F, .61F, 1, .18F});
+        // The common view draws the gold edges over the ruler and lane; they are grabbed here.
+        for (const auto &[x, otherEdge] : {std::pair{first, range->second}, std::pair{last, range->first}})
+            if (x >= lane.x && x <= right)
+                rangeEdgeHits_.push_back({{x - 5, lane.y, 10, lane.height}, otherEdge});
     }
     const auto currentMeasure = MeasureNearTime(timeline, state.TimeMilliseconds());
     const auto gridBegin = std::max<std::int64_t>(0, currentMeasure - 1);
@@ -543,19 +554,36 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
             canvas.Box({x - radius - 5, centerY - radius - 5, (radius + 5) * 2, (radius + 5) * 2},
                        ui_colors::theme::Sun, radius + 5);
         Circle(canvas, x, centerY, VisualTool(n.note), radius);
-        noteHits_.push_back({{x, centerY}, n.note.sourceOrder});
+        noteHits_.push_back({{x, centerY}, n.note.sourceOrder, n.note.position});
     }
+}
+
+const TaikoEditorMode::NoteHit *TaikoEditorMode::NoteHitAt(IEditorContext &state, Point point) const
+{
+    const auto nearest = std::ranges::min_element(noteHits_, {}, [point](const NoteHit &n)
+                                                  { return std::hypot(n.point.x - point.x, n.point.y - point.y); });
+    const float hitRadius = state.Score().realtime ? EditorTimeAxis::NormalHeadDiameter * .5F + 2 : scoreBigRadius_ + 2;
+    if (nearest == noteHits_.end() || std::hypot(nearest->point.x - point.x, nearest->point.y - point.y) >= hitRadius)
+        return nullptr;
+    return &*nearest;
+}
+
+std::optional<std::size_t> TaikoEditorMode::NoteAt(IEditorContext &state, Point point) const
+{
+    if (const auto *hit = NoteHitAt(state, point))
+        return hit->order;
+    const auto body = std::ranges::find_if(bodyHits_, [point](const auto &hit) { return hit.bounds.Contains(point); });
+    if (body != bodyHits_.end())
+        return body->order;
+    return std::nullopt;
 }
 
 void TaikoEditorMode::EditScore(IEditorContext &state, Point point, bool erase)
 {
     if (state.Score().preview || !(state.Score().realtime ? areas_.lane : areas_.score).Contains(point))
         return;
-    const auto nearest = std::ranges::min_element(noteHits_, {}, [point](const NoteHit &n)
-                                                  { return std::hypot(n.point.x - point.x, n.point.y - point.y); });
-    const float hitRadius = state.Score().realtime ? EditorTimeAxis::NormalHeadDiameter * .5F + 2 : scoreBigRadius_ + 2;
-    const bool hitsNote =
-        nearest != noteHits_.end() && std::hypot(nearest->point.x - point.x, nearest->point.y - point.y) < hitRadius;
+    const auto *nearest = NoteHitAt(state, point);
+    const bool hitsNote = nearest != nullptr;
     if (erase || tool_ == 0)
     {
         if (hitsNote)
