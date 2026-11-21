@@ -2,6 +2,7 @@
 #include "OsuImportValidation.h"
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
+#include "YOUMUAssets.h"
 #include <Windows.h>
 #include <algorithm>
 #include <chrono>
@@ -57,14 +58,11 @@ namespace
         result.append(slashes * 2, L'\\');
         return result + L'\"';
     }
+    // The converter is an external program kept under the asset root: Client/Assets/Submodules in the
+    // repository and Asset/Submodules beside the EXE in a deployment.
     fs::path ConverterPath()
     {
-        std::wstring file(32768, L'\0');
-        const auto count = GetModuleFileNameW(nullptr, file.data(), static_cast<DWORD>(file.size()));
-        if (!count || count >= file.size())
-            throw std::runtime_error("Cannot locate the game executable.");
-        file.resize(count);
-        return fs::path(file).parent_path() / L"OsuTaikoConverter.exe";
+        return UserAssetRoot() / L"Submodules" / L"OsuTaikoConverter.exe";
     }
     class Capture final
     {
