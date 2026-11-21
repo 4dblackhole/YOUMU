@@ -205,6 +205,17 @@ void EditorWorkspace::CopySelection()
     clipboard_ = std::move(result);
 }
 
+MusicalPosition EditorWorkspace::CursorGridPosition() const
+{
+    const auto &timeline = Document().Timeline();
+    const auto divisions = static_cast<std::int64_t>(score_.division) * 4;
+    const auto whole = std::max(0.0L, timeline.WholeNotesAtTime(Microseconds(timeMs_)));
+    const auto value = std::round(whole * divisions);
+    if (!std::isfinite(value) || value >= std::numeric_limits<std::int64_t>::max())
+        throw std::out_of_range("The cursor position exceeds the supported musical range.");
+    return timeline.PositionAtWholeNotes({static_cast<std::int64_t>(value), divisions});
+}
+
 void EditorWorkspace::PasteSelection(bool includeBlanks)
 {
     if (!clipboard_)
@@ -216,13 +227,7 @@ void EditorWorkspace::PasteSelection(bool includeBlanks)
     const bool noEffectsOrSounds = clipboard_->effects.empty() && clipboard_->sounds.empty();
     if (!includeBlanks && noNotesOrTiming && noEffectsOrSounds)
         return;
-    const auto &timeline = Document().Timeline();
-    const auto divisions = static_cast<std::int64_t>(score_.division) * 4;
-    const auto whole = std::max(0.0L, timeline.WholeNotesAtTime(Microseconds(timeMs_)));
-    const auto value = std::round(whole * divisions);
-    if (!std::isfinite(value) || value >= std::numeric_limits<std::int64_t>::max())
-        throw std::out_of_range("Paste position exceeds the supported musical range.");
-    const auto anchor = timeline.PositionAtWholeNotes({static_cast<std::int64_t>(value), divisions});
+    const auto anchor = CursorGridPosition();
     if (focus == EditorFocus::Notes)
         PasteNotes(*clipboard_, anchor, includeBlanks);
     else if (focus == EditorFocus::Timing)

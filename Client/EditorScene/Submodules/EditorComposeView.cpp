@@ -201,7 +201,8 @@ void EditorView::DrawChannelHead(Channel channel, std::wstring_view icon, std::w
     if (open)
         Box({0, top, 4, h}, theme::Sun);
     Icon({9, top + (h - 18) * .5F, 18, 18}, icon, open ? White : theme::Brand);
-    Control(button, [this, channel, open] { open ? state_.ClosePanel() : state_.OpenPanel(channel); });
+    // The whole head row, icon and caption alike, opens or closes the channel's panel.
+    Control({0, top, layout::HeadWidth, h}, [this, channel, open] { open ? state_.ClosePanel() : state_.OpenPanel(channel); });
     Label({layout::HeadButtonWidth + 8, top, layout::HeadWidth - layout::HeadButtonWidth - 70, h}, std::move(name),
           {13, theme::Ink, TextAlignment::Leading, 700});
     Label({layout::HeadWidth - 70, top, 60, h}, std::move(value), {14, theme::Brand, TextAlignment::Trailing, 800, true});
@@ -229,7 +230,10 @@ void EditorView::DrawHeads()
     if (notesOpen)
         Box({0, laneTop, 4, laneHeight}, theme::Sun);
     Icon({9, laneTop + (laneHeight - 18) * .5F, 18, 18}, L"music", White);
-    Control(button, [this, notesOpen] { notesOpen ? state_.ClosePanel() : state_.OpenPanel(Channel::Notes); });
+    // The icon column and the caption row open the Notes panel; the spacing controls below keep their own clicks.
+    const auto toggleNotes = [this, notesOpen] { notesOpen ? state_.ClosePanel() : state_.OpenPanel(Channel::Notes); };
+    Control(button, toggleNotes);
+    Control({layout::HeadButtonWidth, laneTop, layout::HeadWidth - layout::HeadButtonWidth, 40}, toggleNotes);
     const float left = layout::HeadButtonWidth + 8, right = layout::HeadWidth - 10;
     Label({left, laneTop + 10, 80, 20}, std::wstring(texts_.Get("Editor.channelNotes")), {14, White, TextAlignment::Leading, 700});
     Label({right - 60, laneTop + 10, 60, 20}, HeadValue(Channel::Notes), {14, theme::Sun, TextAlignment::Trailing, 800, true});

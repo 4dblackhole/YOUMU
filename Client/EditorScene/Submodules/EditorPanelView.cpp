@@ -9,7 +9,7 @@ namespace theme = ui_colors::theme;
 
 namespace
 {
-    constexpr float RowHeight = 34, ActionHeight = 32;
+    constexpr float RowHeight = 34, ActionHeight = 32, PositionButtonWidth = 32;
     std::wstring PositionCell(MusicalPosition position)
     {
         return std::format(L"{} · {}", position.measure + 1, Wide(Fraction(position.fraction)));
@@ -202,9 +202,14 @@ void EditorView::DrawTimingPanel(Rect body)
     });
     formTop += 36 + 18;
     const float half = (body.width - 8) * .5F;
-    Field({body.x, formTop, half, 32}, text.startMeasure.data(), form.measure);
-    if (form.kind != EditorTimingKind::MeasureLength)
-        Field({body.x + half + 8, formTop, half, 32}, text.changePosition.data(), form.fraction);
+    // Measure and beat leave room for the current-position button at the row's end.
+    const float position = (body.width - 8 - 8 - PositionButtonWidth) * .5F;
+    Field({body.x, formTop, position, 32}, text.startMeasure.data(), form.measure);
+    const bool lengthOnly = form.kind == EditorTimingKind::MeasureLength;
+    if (!lengthOnly)
+        Field({body.x + position + 8, formTop, position, 32}, text.changePosition.data(), form.fraction);
+    CursorPositionButton({body.x + (position + 8) * (lengthOnly ? 1.0F : 2.0F), formTop, PositionButtonWidth, 32},
+                         form.measure, lengthOnly ? nullptr : &form.fraction);
     formTop += 54;
     if (form.kind == EditorTimingKind::Bpm)
         Field({body.x, formTop, half, 32}, texts_.Get("Editor.bpm").data(), form.bpm);
@@ -380,8 +385,12 @@ void EditorView::DrawEffectPanel(Rect body, EditorPanel panel)
     }
     formTop += 18;
     const float third = (body.width - 16) / 3;
-    Field({body.x, formTop, third, 32}, text.startMeasure.data(), draft.startMeasure);
-    Field({body.x + third + 8, formTop, third, 32}, text.startBeat.data(), draft.startFraction);
+    // Measure and beat give up room for the current-position button; the value column stays put.
+    const float position = third - (PositionButtonWidth + 8) * .5F;
+    Field({body.x, formTop, position, 32}, text.startMeasure.data(), draft.startMeasure);
+    Field({body.x + position + 8, formTop, position, 32}, text.startBeat.data(), draft.startFraction);
+    CursorPositionButton({body.x + (position + 8) * 2, formTop, PositionButtonWidth, 32}, draft.startMeasure,
+                         &draft.startFraction);
     if (toggle)
     {
         const std::array<std::wstring, 2> states{std::wstring(texts_.Get("Editor.toggleOn")),
@@ -419,8 +428,10 @@ void EditorView::DrawEffectPanel(Rect body, EditorPanel panel)
     if (area)
     {
         formTop += 18;
-        Field({body.x, formTop, third, 32}, text.endMeasureOptional.data(), draft.endMeasure);
-        Field({body.x + third + 8, formTop, third, 32}, text.endBeatOptional.data(), draft.endFraction);
+        Field({body.x, formTop, position, 32}, text.endMeasureOptional.data(), draft.endMeasure);
+        Field({body.x + position + 8, formTop, position, 32}, text.endBeatOptional.data(), draft.endFraction);
+        CursorPositionButton({body.x + (position + 8) * 2, formTop, PositionButtonWidth, 32}, draft.endMeasure,
+                             &draft.endFraction);
         Field({body.x + (third + 8) * 2, formTop, third, 32}, text.endValue.data(), draft.endValue);
         formTop += 40;
         DrawCurveRow({body.x, formTop, body.width, 30});
@@ -449,6 +460,24 @@ void EditorView::SelectEffectType(const EditorEffectSelection &selection)
             draft.beginValue = draft.endValue = draft.beginValue == "0" ? "0" : "1";
     }
     state_.RequestRebuild();
+}
+
+void EditorView::CursorPositionButton(Rect r, std::string &measure, std::string *fraction)
+{
+    Box(r, White);
+    Box({r.x, r.y, r.width, 1}, theme::RuleStrong);
+    Box({r.x, r.y + r.height - 1, r.width, 1}, theme::RuleStrong);
+    Box({r.x, r.y, 1, r.height}, theme::RuleStrong);
+    Box({r.x + r.width - 1, r.y, 1, r.height}, theme::RuleStrong);
+    Icon({r.x + (r.width - 16) * .5F, r.y + (r.height - 16) * .5F, 16, 16}, L"clock", theme::Brand);
+    // The fields are drafts in the workspace forms, which outlive this frame's callbacks.
+    Control(r, [this, &measure, fraction] {
+        const auto position = state_.CursorGridPosition();
+        measure = std::to_string(position.measure + 1);
+        if (fraction)
+            *fraction = Fraction(position.fraction);
+        state_.RequestRebuild();
+    });
 }
 
 void EditorView::DrawExcludeChips(Rect row)
