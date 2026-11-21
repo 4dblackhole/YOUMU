@@ -78,6 +78,8 @@ class TaikoEditorMode final : public IEditorMode
     bool addingMaker_{};
     float scoreNormalRadius_{}, scoreBigRadius_{};
     void Circle(IEditorModeCanvas &, float x, float y, int type, float radius);
+    // A long-note tool's button icon: its head at the left and the body running right, as in the lane.
+    void LongNoteIcon(IEditorModeCanvas &, PhantomCore::Rect button, int type, float radius);
     const std::filesystem::path &SkinImage(std::wstring_view);
     std::uint64_t skinRevision_{};
     std::map<std::wstring, std::filesystem::path, std::less<>> skinImagePaths_;

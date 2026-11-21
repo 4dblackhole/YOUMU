@@ -94,7 +94,11 @@ void TaikoEditorMode::DrawTools(IEditorModeCanvas &canvas, IEditorContext &state
         const int id = groupTools_[i];
         const auto r = drawButton(i + 1, tool_ == id, static_cast<wchar_t>(ToolKeys[i]));
         const auto *tool = Find(id);
-        Circle(canvas, r.x + r.width * .5F, r.y + 22, id, i == 1 ? 9.5F : 7.0F);
+        const float radius = i == 1 ? 9.5F : 7.0F;
+        if (tool && FindTaikoNote(static_cast<int>(tool->note))->longNote)
+            LongNoteIcon(canvas, r, id, radius);
+        else
+            Circle(canvas, r.x + r.width * .5F, r.y + 22, id, radius);
         if (tool && VariantCount(tool->group) > 1)
         {
             // One dot per variant; the current variant is gold.

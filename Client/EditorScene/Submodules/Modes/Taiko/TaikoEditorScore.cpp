@@ -681,3 +681,14 @@ void TaikoEditorMode::Circle(IEditorModeCanvas &canvas, float x, float y, int ty
     if (!custom)
         canvas.Image(bounds, SkinImage(big ? L"bigcircleoverlay" : L"noteoverlay"), White);
 }
+
+void TaikoEditorMode::LongNoteIcon(IEditorModeCanvas &canvas, Rect button, int type, float radius)
+{
+    // Rolls, balloons and buzzes read as long notes: a body as thick as the lane's, with a round end.
+    const float y = button.y + 22, headX = button.x + 6 + radius, endX = button.x + button.width - 6;
+    const float thickness = radius * 1.5F;
+    const bool buzz = type == 17 || type == 18;
+    const auto body = !buzz ? Gold : type == 18 ? Kat : Don;
+    canvas.Box({headX, y - thickness * .5F, endX - headX, thickness}, body, thickness * .5F);
+    Circle(canvas, headX, y, type, radius);
+}
