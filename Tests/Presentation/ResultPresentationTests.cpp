@@ -644,30 +644,27 @@ namespace
         Check(HasText(*canvas, texts.Get("Result.maximumCombo")) && textOf("Result.Score") == L"12,345,678" &&
                   textOf("Result.MaximumCombo") == std::to_wstring(taiko->summary.maximumCombo),
               "The result must display the carried score inside the ring and the maximum combo beside accuracy.");
-        for(const auto key:{"mode","scrollSpeed","metronome","mirror","random","accelerate","judgeLevel","ignoreScrollEffects"})
+        for(const auto key:{"scrollSpeed","metronome","mirror","random","accelerate","judgeLevel","ignoreScrollEffects"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
+        Check(FindNode(canvas->Root(),"Result.Option.mode")==nullptr,"The mode is the top-left badge, not a tile.");
         Check(FindNode(canvas->Root(),"Result.Option.hpGauge")==nullptr,"The default HP gauge is a plain play and has no tile.");
-        Check(textOf("Result.OptionValue.mode")==texts.Get("Result.modeName") && textOf("Result.OptionValue.accelerate")==L"1.50×" &&
-                  textOf("Result.OptionValue.random")==L"35%",
-              "Tiles show the mode name, the Accelerate rate and the Random probability.");
+        Check(textOf("Result.OptionValue.accelerate")==L"1.50×" && textOf("Result.OptionValue.random")==L"35%",
+              "Tiles show the Accelerate rate and the Random probability.");
         Check(textOf("Result.OptionValue.scrollSpeed")==L"×2.0" && textOf("Result.OptionValue.judgeLevel")==L"60",
               "Tiles show the scroll multiplier with one decimal and the JudgeLevel.");
         {
-            // A changed stroke count wraps to a second row: the afterimage icon with the count under it.
-            const auto *strokes=FindNode(canvas->Root(),"Result.Option.maxStrokes");
-            Check(strokes!=nullptr && textOf("Result.OptionValue.maxStrokes")==L"3",
+            // A changed stroke count: the afterimage icon with the count under it.
+            Check(FindNode(canvas->Root(),"Result.Option.maxStrokes")!=nullptr && textOf("Result.OptionValue.maxStrokes")==L"3",
                   "Max strokes other than the default shows its count tile.");
-            const float modeTop=FindNode(canvas->Root(),"Result.Option.mode")->BoundsInCanvas().y;
-            Check(strokes!=nullptr && strokes->BoundsInCanvas().y<modeTop,"The ninth tile starts a second row, below the first (canvas y points up).");
         }
         {
-            // The mode leads, then the options in a fixed order, centred under the ring in one row.
+            // The options in a fixed order, Accelerate first and Max strokes last, centred under the ring in one row.
             const auto boundsOf=[&](std::string_view name){return FindNode(canvas->Root(),name)->BoundsInCanvas();};
-            const auto mode=boundsOf("Result.Option.mode"),accelerate=boundsOf("Result.Option.accelerate"),
-                       last=boundsOf("Result.Option.ignoreScrollEffects"),ring=boundsOf("Result.RankRing");
-            Check(mode.x<accelerate.x && accelerate.x<last.x && mode.y==last.y,"Eight tiles share one row, mode first.");
-            const float rowCenter=(mode.x+last.x+last.width)*.5F,ringCenter=ring.x+ring.width*.5F;
-            Check(std::abs(rowCenter-ringCenter)<1 && mode.y+mode.height<=ring.y,"The tile row is centred below the ring.");
+            const auto first=boundsOf("Result.Option.accelerate"),middle=boundsOf("Result.Option.ignoreScrollEffects"),
+                       last=boundsOf("Result.Option.maxStrokes"),ring=boundsOf("Result.RankRing");
+            Check(first.x<middle.x && middle.x<last.x && first.y==last.y,"Eight option tiles share one row, Accelerate first.");
+            const float rowCenter=(first.x+last.x+last.width)*.5F,ringCenter=ring.x+ring.width*.5F;
+            Check(std::abs(rowCenter-ringCenter)<1 && first.y+first.height<=ring.y,"The tile row is centred below the ring.");
         }
         Check(HasText(*canvas, L"Accuracy") && HasText(*canvas, L"Recorded song") &&
               HasText(*canvas, L"Recorded creator"),
@@ -776,7 +773,6 @@ namespace
         Check(rest("Result.Score") == texts.Get("Tooltips.score"), "Resting on the score names it.");
         Check(rest("Result.Option.random") == texts.Get("PlayOptions.random"),
               "Resting on an option tile names the option.");
-        Check(rest("Result.Option.mode") == texts.Get("Tooltips.gameMode"), "Resting on the mode tile names the game mode.");
         Check(rest("Result.Rank") == L"(hidden)", "Parts without a hint show none.");
         view->SetVisible(false);
         Check(!FindNode(canvas->Root(), "Tooltip")->IsVisible(), "Hiding the result hides its hint.");
