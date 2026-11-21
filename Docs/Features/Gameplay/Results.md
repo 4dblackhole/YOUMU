@@ -47,8 +47,8 @@ Taiko는 일반(Don/Kat), 큰(BigDon/BigKat/Purple), 롤 계열의 정확도를 
 
 - MAX/PERFECT/GREAT/GOOD/BAD: 실제 `HitAccepted`의 타이밍 판정 개수입니다.
   큰/보라 노트의 두 입력은 각각 셉니다. Buzz의 `HoldStarted`는 중복 집계하지 않습니다.
-- OK: 롤 계열이 요구 타격/틱을 모두 채운 성공 완료입니다.
-- MISS: 실패로 확정된 논리 노트입니다. 틱롤의 완료 이벤트에도 실패 틱이 있으면 MISS입니다.
+- OK: 롤 계열 중 타격·틱을 하나라도 처리하고 끝난 노트입니다(사용자 결정: 조금이라도 처리하면 OK, 콤보 유지). 정확도는 처리 비율 그대로입니다.
+- MISS: 실패로 확정된 논리 노트입니다. 롤 계열은 타격·틱을 하나도 처리하지 못했거나 Retire로 끝난 경우입니다.
 - POOR: Good 이내에서 거부된 **Pressed** 입력과 잘못된 색을 유지해 거부된 Buzz 몸통 틱입니다.
   몸통의 각 `TickRejected`는 POOR 1개와 미처리 틱 1개로 집계하며 헤드 오차 표본을 만들지 않습니다.
   빈 입력과 키 해제(`InputEdge::Released`)는 포함하지 않습니다.
@@ -114,14 +114,19 @@ Retire는 기존처럼 남은 논리 노트·미완료 롱노트를 MISS·0점�
 - 가운데: 랭크 PNG와 SCORE를 원 틀(`Rank.Ring`) 안에 둡니다. 틀의 띠 위에 판정 비율 조각을 12시부터
   시계방향으로 MAX→PERFECT→GREAT→GOOD→BAD→OK→MISS→POOR 순서의 판정 색으로 그리고, 조각에 마우스를 올리면
   `PERFECT 62 · 14.98%`처럼 개수와 비율(둘째 자리 버림)을 보여 줍니다. 판정이 하나도 없으면 조각을 그리지 않습니다.
-  원 아래에는 기본과 다른 플레이 옵션만 칩으로 표시합니다.
+  원 아래에는 osu!의 모드 아이콘처럼 46×50 타일을 한 줄(가운데 열의 448 폭에 8개, 넘치면 다음 줄)로 늘어놓습니다.
+  맨 앞은 게임 모드(남색, 드럼 아이콘과 `TAIKO`)이고, 그 뒤는 기본과 다른 플레이 옵션만
+  Accelerate(금빛, `1.50×`)·Mirror(`MIRROR`)·Random(시도 확률 `35%`)·JudgeLevel(`60`)·Scroll speed(`×2.0`·`200BPM`)·
+  Metronome(`METRO`)·변속 효과 무시(`NO SV`) 순서의 코발트 타일입니다. 타일은 스킨의 흰 `Options.Tile`을 칠하고 그 위에
+  흰 선 아이콘(금빛 타일 위에서는 남색)과 작은 값을 둡니다. 기본이 아닌 HP gauge는 아이콘 대신 `HP`와 게이지 이름입니다.
 - 오른쪽 열: `Timing` 제목 아래 평균·표준편차·분산·표본 수, 오차 히스토그램, 시간별 오차 산점도.
 - 하단 띠(높이 64): 왼쪽 끝 Back, 그 옆 기록 저장 줄, 오른쪽 끝에 띠 위로 솟은 Retry와 그 왼쪽의 Replay.
   기록 저장 줄은 저장 중 회색, 저장됨 초록, 실패 빨강(`Record save failed`)이며 실패해도 결과 화면은 그대로입니다.
   실패하면 공용 [경고 대화상자](../TextManagement.md#경고-대화상자)가 기록 파일 경로와 원인을 보여 줍니다.
   Close(Esc)는 닫기만 하고, Retry(Enter)는 같은 기록을 다시 저장합니다(다시 실패하면 대화상자가 다시 열림).
   대화상자가 열린 동안 결과 화면의 버튼·키는 동작하지 않습니다.
-- 공용 [툴팁](../TextManagement.md#툴팁): Back은 키 칩 `Esc / Enter`, 점수는 `Score`, 옵션 칩은 `Applied options`,
+- 공용 [툴팁](../TextManagement.md#툴팁): Back은 키 칩 `Esc / Enter`, 점수는 `Score`, 모드 타일은 `Game mode`와 모드 이름,
+  옵션 타일은 옵션 이름과 설정(Accelerate는 배율과 켜 둔 음정 유지, Random은 시도 확률과 시드, JudgeLevel은 둘째 자리 값),
   배너의 채보 제작자는 `Chart by`입니다. Retry·Replay에는 두지 않습니다(시안과 같음). 판정 비율 조각의 개수·비율 표시는
   조각마다 위치를 따라가는 결과 화면 자체 표시로 남깁니다. View의 Update는 프레임 시간을 받아 툴팁 대기 시간을 셉니다.
 - 양옆 열 뒤에는 화면 끝에서 들어오는 흰 막(`Panels.Left`·`Panels.Right`)을 두어 BG 위에서도 읽히게 합니다.
@@ -140,7 +145,7 @@ Retire는 기존처럼 남은 논리 노트·미완료 롱노트를 MISS·0점�
 - YOUMUGame은 선택 snapshot을 캡처한 retry callback을 조립합니다. 이전 세션의
   노트·타이머·음성을 재사용하지 않고 DestroyOnExit route에서 새 플레이 객체를 생성합니다.
 - TaikoResultView는 Canvas·입력·스킨 이미지와 공통 틀(배경·레터박스·배너·하단 띠·버튼)을 소유합니다.
-  Panels는 배너와 왼쪽 열, Hero는 원·랭크·점수·옵션 칩·조각 툴팁, GraphView는 Timing 열의 장식·축 문구,
+  Panels는 배너와 왼쪽 열, Hero는 원·랭크·점수·모드·옵션 타일·조각 툴팁, GraphView는 Timing 열의 장식·축 문구,
   Graphs는 실제 입력에서 범위/빈/점 좌표와 HP 곡선을, Ring은 판정 비율 조각의 픽셀 행과 포인터 조회를 도출합니다.
 - TaikoResultLayout은 좌표계·열 폭·그래프 위치를 소유하고 모드의 점수/판정 규칙을 변경하지 않습니다.
 - 그래프와 원 조각은 각각 RectangleBatch 하나로 그리고 진입·언어/해상도 변경 시에만 재구성합니다.

@@ -243,6 +243,7 @@ namespace
             state.catalog_.songs.push_back(std::move(song));
         }
         state.catalog_.songs[0].music.names = {"Alpha", "Alpha Alias"};
+        state.catalog_.songs[0].patterns[0].pattern.name = "Konpaku Sariel Extremely Long Inner Oni Remix Edition";
         state.RebuildVisibleSongs();
         MusicSelectView view(visuals, state, purpose, texts, options);
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
@@ -250,6 +251,40 @@ namespace
         Check(canvas != nullptr, "Common parts Canvas missing.");
         InputState input;
         static_cast<void>(view.Update(input, 0));
+
+        // BACK keeps one look: the skin supplies no hover or pressed picture (they were solid white and hid the caption).
+        {
+            Need(Find(canvas->Root(), "Back"), "The footer must have its BACK button.");
+            const std::filesystem::path skin = "YOUMU.Assets/Assets/Skins/Default Skin";
+            std::ifstream ini(skin / "skin.ini");
+            const std::string text{std::istreambuf_iterator<char>{ini}, {}};
+            const bool keysGone = text.find("Back.Hovered") == std::string::npos &&
+                                  text.find("Back.Pressed") == std::string::npos;
+            const bool imagesGone = !std::filesystem::exists(skin / "MusicSelect/Back.Hovered.png") &&
+                                    !std::filesystem::exists(skin / "MusicSelect/Back.Pressed.png");
+            Check(!text.empty() && keysGone && imagesGone, "The default skin must not recolour BACK on hover or press.");
+        }
+        // A chart name that is too long is clipped; the difficulty block stops at its largest width.
+        {
+            auto &block = Need(Find(canvas->Root(), "DifficultyInformation"), "The detail column must have its difficulty block.");
+            Check(block.BoundsInCanvas().width <= 400.01F && block.BoundsInCanvas().width >= 130.0F,
+                  "A long chart name must not stretch the difficulty block past its largest width.");
+        }
+        // The + of a focused card is white on the card's blue; the other cards keep their own colour.
+        if (purpose == SongSelectPurpose::Editor)
+        {
+            const auto plusColour = [&](std::string_view name) {
+                auto &add = Need(Find(canvas->Root(), name), "Every editor card must offer the plus button.");
+                const auto *icon = Need(Find(add, "Icon"), "The plus button must have its icon").GetComponent<SpriteVisualComponent>();
+                if (icon == nullptr)
+                    throw std::runtime_error("The plus icon must be a sprite.");
+                return icon->Style().normal;
+            };
+            const auto focusedPlus = plusColour("AddDifficulty.0"), otherPlus = plusColour("AddDifficulty.1");
+            Check(focusedPlus.red == 1.0F && focusedPlus.green == 1.0F && focusedPlus.blue == 1.0F,
+                  "The focused card's plus must be white.");
+            Check(otherPlus.red < 1.0F || otherPlus.green < 1.0F, "Other cards keep the coloured plus.");
+        }
 
         auto &viewport = Need(Find(canvas->Root(), "SongViewport"), "The song viewport must exist.");
         auto &scrollbar = Need(Find(viewport, "Scrollbar"), "The song list must own the shared scrollbar.");
@@ -1246,6 +1281,8 @@ namespace
         for(int i=0;i<8;++i)
         {
             record.options.random=i%2==0;record.judgeLevel=record.options.random?70:50;
+            // The newest play was left early.
+            record.completed=record.cleared=i!=7;
             record.accuracy=AccuracyScore::FromRate(.90+i*.001);PlayRecordStore(database).Save(record);
         }
         Renderer renderer;ScreenVisual2DManager visuals;visuals.Initialize(renderer,{1280,720});
@@ -1272,7 +1309,14 @@ namespace
             while(std::chrono::steady_clock::now()<deadline);
             throw std::runtime_error("Record history page did not publish the expected rows.");
         };
-        wait(6);auto *next=Find(canvas->Root(),"RecordNext");if(!next)throw std::runtime_error("Record next page control is missing.");Check(next->IsEnabled(),"Actual history has an older page.");
+        wait(6);
+        {
+            const auto &firstRow=Find(canvas->Root(),"RecordRows")->Children().front();
+            const auto *status=Find(*firstRow,"StatusText");
+            const auto *label=status?status->GetComponent<TextVisualComponent>():nullptr;
+            Check(label!=nullptr && label->Text()==texts.Get("Records.failed"),"A play that was left early is shown as Failed.");
+        }
+        auto *next=Find(canvas->Root(),"RecordNext");if(!next)throw std::runtime_error("Record next page control is missing.");Check(next->IsEnabled(),"Actual history has an older page.");
         {
             // The column has no sheet: rows are plates of one width from the left screen edge, 58 apart.
             const auto &recordRows=Find(canvas->Root(),"RecordRows")->Children();
@@ -1331,6 +1375,31 @@ namespace
         }
         view.Shutdown();
     }
+    // Coming back from a play rebuilds the list: the focused song keeps the difficulty that was played.
+    void TestRebuildKeepsDifficulty()
+    {
+        SongSelectionState state;
+        for (int song = 0; song < 3; ++song)
+        {
+            SongCatalogEntry entry;
+            entry.music.names = {"Rebuild " + std::to_string(song)};
+            entry.patterns.resize(3);
+            for (int pattern = 0; pattern < 3; ++pattern)
+                entry.patterns[static_cast<std::size_t>(pattern)].pattern.name = "Chart " + std::to_string(pattern);
+            state.catalog_.songs.push_back(std::move(entry));
+        }
+        state.RebuildVisibleSongs();
+        state.SelectVisibleSong(1);
+        state.SelectPattern(2);
+        state.RebuildVisibleSongs();
+        Check(state.focusedSongPosition_ == 1 && state.selectedPatternIndex_ == 2,
+              "Rebuilding the list must keep the focused song's selected difficulty.");
+        state.searchText_ = L"Rebuild 0";
+        state.RebuildVisibleSongs();
+        Check(state.visibleSongIndices_.size() == 1 && state.selectedPatternIndex_ == 0,
+              "A song that left the list must fall back to the first difficulty of the new focus.");
+    }
+
     void TestOptionsToggle(MusicSelectView &view, Visual2DCanvas &canvas)
     {
         auto *button = Find(canvas.Root(), "OptionSelect");
@@ -1655,6 +1724,7 @@ int main()
         Check(editor.Update(input, 0) == SongSelectCommand::ConvertOsu && !menu->IsVisible(),
               "Convert .osu must issue only the import command.");
         editor.Shutdown();
+        TestRebuildKeepsDifficulty();
         TestNativeSongSearch();
         TestPlayOptionsPanel();
         std::cout << "Music selection viewport, catalog worker and native Unicode search tests passed.\n";

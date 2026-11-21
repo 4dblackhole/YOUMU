@@ -183,9 +183,9 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | 섹션 | 이미지 항목 |
 | --- | --- |
 | `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
-| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`OK`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
+| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`POOR`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
-| `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `BackButton/RetryButton/ReplayButton` |
+| `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `Options.Tile`, `Options.Accelerate/Mirror/Random/JudgeLevel/ScrollSpeed/Metronome/IgnoreScrollEffects`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
 | `Options` | `Drawer`(서랍 바탕), `Rail`, `RailButton`·`RailButton.On`(켜진 분류), `KeyCard`, `Keys.Slot.Main/Sub/Empty/Waiting` |
 | `Common` | `Icons.<이름>` 37개(흰색 36px 선 아이콘, 게임이 글자색을 곱해 씀) |
@@ -212,7 +212,7 @@ INI를 편집했다면 재실행하거나 다른 스킨을 선택했다 돌아�
 
 풍선 완료 효과음은 `HitSounds/TaikoMode/pop.wav`입니다. 다른 스킨에서 이 파일을
 제공하면 해당 파일을 사용하고, 없으면 내장 기본 스킨의 소리로 대체합니다.
-판정 글자 8종도 `InGame/Judgements/MAX.png`부터 `POOR.png`, `OK.png`까지 같은 파일별
+판정 글자 7종도 `InGame/Judgements/MAX.png`부터 `POOR.png`까지 같은 파일별
 fallback을 사용합니다. 인디케이터의 색 구간은 별도 요소이고, 감싸는 반투명 판만 `InGame/Hud/TimingPanel.png`입니다.
 판정별 파일명과 표시 계약은 [Presentation](Gameplay/Presentation.md)에 있습니다.
 하단 진행바는 `InGame/Progress/{Background,Track,Fill,Marker}.png` 네 파일을 사용합니다.
@@ -247,6 +247,8 @@ Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54,
 | `Result/{BackButton,ReplayButton,RetryButton}[.Hovered/.Pressed].png` | 203×96, 188×96, 360×126 | Back 모서리 블록, Replay 글자 버튼, 솟은 Retry |
 | `Result/Rank/Ring.png` | 516×516 | 랭크 원 틀(남색 띠와 12시 금빛 눈금) |
 | `Result/Rank/{Y,X,SS,S,AA,A,B,C,D,E,F}.png` | 각 708×354 | 정확도별 랭크(코발트 글자·흰 외곽), 투명 배경·원본 비율 유지 |
+| `Result/Options/Tile.png` | 69×75 | 모드·옵션 타일(모서리 두 곳 깎은 흰 판, 게임이 남색·금빛·코발트로 칠함) |
+| `Result/Options/{Accelerate,Mirror,Random,JudgeLevel,ScrollSpeed,Metronome,IgnoreScrollEffects}.png` | 각 36×36 | 옵션 아이콘(흰 선: 배속 `>>`, 미러 화살표와 점선, 주사위, 과녁, 왼쪽 화살표와 줄, 메트로놈, 물결에 사선) |
 
 외부 스킨은 `skin.ini`의 상대 경로로 각각 교체합니다. 글꼴은 내장 `Assets/Fonts/NotoSansKR.ttf`이며,
 원본 Google Fonts의 가변 굵기 파일과 `NotoSansKR-OFL.txt`(SIL OFL 1.1)를 함께 배포합니다.
@@ -269,7 +271,7 @@ Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54,
 | --- | --- |
 | MAX.png | 흰색 |
 | PERFECT.png | 밝은 청록색(cyan) |
-| GREAT.png, OK.png | 초록 |
+| GREAT.png | 초록 |
 | GOOD.png | 노랑 |
 | BAD.png | 보라 |
 | MISS.png | 회색 |

@@ -73,7 +73,7 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 │  │  ├─ Lane.JudgementCircle         판정원
 │  │  │  ├─ Lane.JudgementCircle.Kiai 같은 판정원 그림의 옅은 금빛 덧그림
 │  │  │  ├─ Lane.JudgementCircle.KiaiRing 바깥 금빛 고리
-│  │  │  └─ Lane.Judgement.{등급}      MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR/OK 판정 글자(판정원 바로 위)
+│  │  │  └─ Lane.Judgement.{등급}      MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR 판정 글자(판정원 바로 위)
 │  │  ├─ Lane.MeasureLine *           마디선
 │  │  └─ Lane.Notes                   노트 사이의 앞뒤 순서를 격리하는 레이어
 │  │     └─ Lane.Note.{id} *          노트별 표시 루트
@@ -288,7 +288,7 @@ BAD·MISS·OK·POOR)이며 이름 앞에 판정 색 점을 둡니다. 화면 가
 
 콤보·최대 콤보·MAX/PERFECT/GREAT/GOOD/BAD/MISS/OK/POOR 누적은 세션의 결과 수집기가
 소유하며 UI는 `PlaySession::Statistics()`의 값만 읽습니다. 일반·큰·보라 노트는 GOOD 이상
-완료 시 논리 노트당 1, 롤 계열은 성공 완료(OK) 시 1을 더합니다. 큰 노트의 첫 입력과
+완료 시 논리 노트당 1, 롤 계열은 OK(타격·틱을 하나라도 처리한 완료) 시 1을 더합니다. 큰 노트의 첫 입력과
 롱노트의 개별 타격/틱은 별도 콤보가 아닙니다. BAD·MISS·POOR는 콤보를 0으로 만듭니다.
 BAD를 받은 일반·큰·보라 노트의 완료는 콤보를 더하지 않습니다. POOR 뒤 유효 완료는
 새 콤보를 시작할 수 있으며 정확도의 기존 POOR 패널티는 유지합니다.
@@ -365,7 +365,7 @@ Retry·Rewind·일시정지 메뉴의 재개 이동처럼 표시를 다시 시�
 자동 MISS는 MISS 글자만 표시하며 입력 시각이 없으므로 막대를 만들지 않습니다.
 빠름/늦음 문구는 판의 날개 안, 색 띠 아래 끝보다 37~53 위에 둡니다.
 
-MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR/OK는 판정 글자만 담은 투명 PNG 8종입니다(사용자 지시로 판정원을
+MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR는 판정 글자만 담은 투명 PNG 7종입니다(사용자 지시로 판정원을
 둘러싸던 링을 없앰). 다른 게임 내 부품처럼 1080p 기준 크기로 그리며(픽셀 ÷ 1.5), 글자 아래 끝을 판정원 위
 끝보다 6 위에 두고 판정원 중심과 가로 가운데를 맞춥니다(Kiai 고리의 최대 반지름 54보다 바깥).
 `InGame/Judgements/<판정명>.png`를 세션 진입 때 등록하고 같은 노드를 재사용합니다.
@@ -376,9 +376,12 @@ Good 이내 InputRejected이며 BAD는 기존 조기/늦은 Bad 입력을 표시
 한 입력에서 이전 노트의 MISS와 다음 노트의 성공이 함께 오면 실제 입력 응답을 우선합니다.
 reset/되감기/종료 시 타격 막대와 판정 글자를 숨깁니다.
 
-롤·큰 롤·틱롤·큰 틱롤·풍선·뎅뎅·버즈는 최종 판정 뒤에도 판정 글자를 표시합니다.
-Completed이고 요구된 모든 연타/틱을 채우면 OK, 실패하거나 수용하지 못한 틱이 있으면 MISS를
-같은 200ms 수명으로 표시합니다. 점수/노트 상태/오디오 규칙은 바꾸지 않습니다.
+롤·큰 롤·틱롤·큰 틱롤·풍선·뎅뎅·버즈는 끝날 때 **처리 비율에 맞는 판정 글자**를 같은 200ms 수명으로 표시합니다(사용자 지시).
+처리 비율은 그 노트의 정확도(`NoteAccuracy::ScoreRate`: 친 횟수/목표, 성공 틱/전체, Buzz는 헤드 점수 1/2 + 몸통 1/2)이고,
+글자는 일반 타이밍 판정의 점수 경계를 그대로 씁니다: 100% MAX, 99% 이상 PERFECT, 90% 이상 GREAT, 그 밖은 GOOD.
+타격·틱을 하나도 처리하지 못했을 때만 MISS입니다(`NoteAccuracy::CompletionGrade`). 노트 종류별 분기는 없고
+표시 쪽은 확정된 노트 정확도만 읽습니다. 점수/노트 상태/오디오 규칙은 바꾸지 않습니다.
+예전의 OK 글자 그림은 쓰지 않아 지웠습니다. 결과 화면의 OK 수는 [Results](Results.md)를 따릅니다.
 다른 노트의 실제 입력 판정이 동시에 있으면 기존 입력 우선순위를 유지합니다.
 틱 마커는 규칙의 ProcessedTickCount를 ScrollGear snapshot으로 전달받아 처리된 prefix를
 그리지 않습니다. 수용/실패된 틱 모두 숨기며, 조기 입력으로 처리된 미래 틱도 즉시 숨깁니다.
@@ -388,7 +391,7 @@ Completed이고 요구된 모든 연타/틱을 채우면 OK, 실패하거나 수
 Reset은 처리 개수를 0으로 되돌립니다.
 
 
-8종 PNG는 내장 기본 스킨 팩에 포함됩니다. 선택 스킨 INI의 `Judgements.*` 매핑이 우선하고
+7종 PNG는 내장 기본 스킨 팩에 포함됩니다. 선택 스킨 INI의 `Judgements.*` 매핑이 우선하고
 누락된 판정 이미지만 내장본으로 대체합니다. 그림 크기·색·교체 규칙은
 [판정 글자 그림](../Assets.md#판정-글자-그림)에 있습니다.
 

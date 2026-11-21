@@ -128,7 +128,7 @@ namespace
     }
     void CheckOverlay(Visual2DNode &root, const std::string_view word)
     {
-        constexpr std::array names{"MAX", "PERFECT", "GREAT", "GOOD", "BAD", "MISS", "POOR", "OK"};
+        constexpr std::array names{"MAX", "PERFECT", "GREAT", "GOOD", "BAD", "MISS", "POOR"};
         for (const auto name : names)
             Check(Node(root, "Lane.Judgement." + std::string(name)).IsVisible() == (word == name),
                   "Exactly the expected judgement image must be visible.");
@@ -732,7 +732,7 @@ namespace
                       "Extra roll hits must not underflow the counter.");
             }
             presenter.ApplyFeedback({.result = loaded.session->Update(RhythmTime{1'500'000})});
-            CheckOverlay(root, "OK");
+            CheckOverlay(root, "MAX");
             presenter.UpdatePresentation(RhythmTime{1'500'000});
             Check(!counter.IsVisible(), "The hit counter must disappear at completion.");
             loaded.session->Reset();
@@ -778,7 +778,7 @@ namespace
                     {.keyPressed = true,
                      .result = loaded.session->ProcessInput(keys[index], InputEdge::Pressed,
                                                             RhythmTime{10'000 * static_cast<std::int64_t>(index)})});
-                CheckOverlay(root, index == 4 ? "OK" : "");
+                CheckOverlay(root, index == 4 ? "MAX" : "");
                 Check(VisibleHitLines(root) == 0, "Wrong-order presses must not display a timing hit line.");
                 const auto beam = Node(root, "Lane.KeyBeam").GetComponent<SpriteVisualComponent>()->Style().normal;
                 Check(Near(beam.red, 1) && Near(beam.green, 1) && Near(beam.blue, 1),
@@ -993,7 +993,7 @@ namespace
         presenter.UpdatePresentation(RhythmTime{500'000});
         Check(visibleTicks() == 0, "An accepted tail tick must disappear immediately.");
         presenter.ApplyFeedback({.result = loaded.session->Update(RhythmTime{500'000})});
-        CheckOverlay(root, "OK");
+        CheckOverlay(root, "MAX");
         presenter.AdvanceEffects(.2);
         CheckOverlay(root, "");
         loaded.session->Reset();

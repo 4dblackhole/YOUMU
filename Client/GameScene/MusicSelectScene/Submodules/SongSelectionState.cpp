@@ -11,6 +11,7 @@ using namespace song_select;
 void SongSelectionState::RebuildVisibleSongs()
 {
     std::optional<std::size_t> previousCatalogIndex;
+    const std::size_t previousPatternIndex = selectedPatternIndex_;
     if (focusedSongPosition_ < visibleSongIndices_.size())
     {
         previousCatalogIndex = visibleSongIndices_[focusedSongPosition_];
@@ -83,7 +84,13 @@ void SongSelectionState::RebuildVisibleSongs()
     }
     const auto patterns = focusedSongPosition_ < visibleSongIndices_.size()
         ? VisiblePatternIndices(visibleSongIndices_[focusedSongPosition_]) : std::vector<std::size_t>{};
-    selectedPatternIndex_ = patterns.empty() ? 0 : patterns.front();
+    // The same song keeps its difficulty (coming back from a play focuses the chart that was played);
+    // otherwise the first visible difficulty is selected.
+    const bool sameSong = previousCatalogIndex.has_value() &&
+                          focusedSongPosition_ < visibleSongIndices_.size() &&
+                          visibleSongIndices_[focusedSongPosition_] == *previousCatalogIndex;
+    const bool keepsPattern = sameSong && std::ranges::find(patterns, previousPatternIndex) != patterns.end();
+    selectedPatternIndex_ = keepsPattern ? previousPatternIndex : (patterns.empty() ? 0 : patterns.front());
 }
 
 void SongSelectionState::MoveSongFocus(const int delta)

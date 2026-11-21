@@ -145,17 +145,20 @@ void MusicSelectView::UpdateSongInformationLayout()
     hoverArea(*selectedSongLabel_, titleWidth, 0.0F, 36.0F);
     hoverArea(*selectedCreatorLabel_, creatorWidth, iconLead, 20.0F);
 
-    // The block grows with the chart name and keeps the value badge at its right end.
+    // The block grows with the chart name up to DifficultyBlockMaxWidth and keeps the value badge at its right end;
+    // a longer name is clipped at the label's edge.
     constexpr float badgeWidth = 40.0F, badgeHeight = 22.0F, nameLeft = 16.0F, badgeGap = 8.0F, blockRight = 14.0F;
     const auto &name = RequireComponent<TextVisualComponent>(*selectedPatternLabel_);
-    const float nameWidth = std::min(EstimateCaptionWidth(name.Text(), 15.0F) + 4.0F, textWidth - 96.0F);
+    const float nameWidth = EstimateCaptionWidth(name.Text(), 15.0F) + 4.0F;
     const float blockWidth =
-        std::max(layout::DifficultyBlock.width, nameLeft + nameWidth + badgeGap + badgeWidth + blockRight);
+        std::clamp(nameLeft + nameWidth + badgeGap + badgeWidth + blockRight, layout::DifficultyBlock.width,
+                   std::min(layout::DifficultyBlockMaxWidth, textWidth));
     const float blockHeight = layout::DifficultyBlock.height;
     difficultyBlock_->SetBounds(
         TopLeft({center - blockWidth * 0.5F, layout::DifficultyBlockTop, blockWidth, blockHeight}, panel.height));
-    selectedPatternLabel_->SetBounds({nameLeft, 0.0F, std::max(blockWidth - nameLeft - badgeGap - badgeWidth - blockRight, 1.0F),
-                                      blockHeight});
+    const float labelWidth = std::max(blockWidth - nameLeft - badgeGap - badgeWidth - blockRight, 1.0F);
+    selectedPatternLabel_->SetBounds({nameLeft, 0.0F, labelWidth, blockHeight});
+    selectedPatternLabel_->SetClipRect({0.0F, 0.0F, labelWidth, blockHeight});
     levelBadge_->SetBounds({blockWidth - blockRight - badgeWidth, (blockHeight - badgeHeight) * 0.5F, badgeWidth,
                             badgeHeight});
     levelBadge_->Children().front()->SetBounds({0.0F, 0.0F, badgeWidth, badgeHeight});

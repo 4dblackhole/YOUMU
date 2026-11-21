@@ -3,8 +3,11 @@
 #include "TaikoResultLayout.h"
 #include "TaikoResultView.h"
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <stdexcept>
+#include <string>
+#include <vector>
 using namespace PhantomCore;
 
 using namespace taiko_result_ui::layout;
@@ -17,6 +20,20 @@ namespace
         for (auto position = static_cast<std::ptrdiff_t>(digits.size()) - 3; position > 0; position -= 3)
             digits.insert(static_cast<std::size_t>(position), 1, L',');
         return digits;
+    }
+    double Hundredths(const double value)
+    {
+        return std::round(value * 100) / 100;
+    }
+    // A multiplier keeps one decimal (×2.0, ×1.25); a BPM target shows as set.
+    std::wstring ScrollCaption(const PlayOptions &options)
+    {
+        if (options.scrollUnit == PlayOptions::ScrollUnit::Bpm)
+            return std::format(L"{:g}BPM", options.scrollSpeed);
+        auto text = std::format(L"{:g}", options.scrollSpeed);
+        if (text.find(L'.') == std::wstring::npos)
+            text += L".0";
+        return L"×" + text;
     }
 } // namespace
 void TaikoResultView::BuildHero(Visual2DNode &root)
@@ -106,66 +123,92 @@ void TaikoResultView::UpdateRingTooltip(std::optional<Point> pointer)
 }
 void TaikoResultView::BuildOptions(Visual2DNode &root)
 {
+    // Mode and option tiles under the ring, like osu!'s mod icons: the mode first, then only the
+    // options that differ from a plain play. A tile is the skin's white tile tinted (navy mode,
+    // gold Accelerate, cobalt others) with a line icon and a short value under it. Resting on a
+    // tile names the option and its settings. A new option adds one tile to this list.
+    using ui_colors::theme::Brand, ui_colors::theme::BrandDeep, ui_colors::theme::Sun;
     const auto &o = result_.summary.playOptions;
-    struct Chip
+    struct Tile
     {
-        const char *key;
-        std::wstring name, value;
-        float width{};
+        std::string key;
+        ImageHandle icon;
+        std::wstring caption;
+        TooltipText hint;
+        Color fill{Brand};
+        Color ink{White};
     };
-    std::vector<Chip> chips;
-    const auto add = [&](const char *key, std::wstring value)
-    {
-        chips.push_back({key, std::wstring(texts_.Get(std::string("PlayOptions.") + key)), std::move(value)});
-    };
-    // Only options that differ from a plain play appear under the ring.
-    if (o.scrollUnit == PlayOptions::ScrollUnit::Bpm || o.scrollSpeed != 1.0 || o.ignoreScrollEffects)
-        add("scrollSpeed", std::format(L"{:g}{}{}", o.scrollSpeed,
-                                       o.scrollUnit == PlayOptions::ScrollUnit::Bpm ? L" BPM" : L"x",
-                                       o.ignoreScrollEffects ? L" FIX" : L""));
-    if (o.metronome)
-        add("metronome", L"ON");
-    if (o.mirror)
-        add("mirror", L"Don / Kat");
-    if (o.random)
-        add("random", std::format(L"{:g}%  #{}", o.randomAttemptProbability * 100, o.randomSeed));
+    const auto text = [&](const char *key) { return std::wstring(texts_.Get(key)); };
+    const auto option = [&](const char *key) { return std::wstring(texts_.Get(std::string("PlayOptions.") + key)); };
+    std::vector<Tile> tiles;
+    tiles.push_back({"mode", modeIcon_, text("Result.modeName"),
+                     {text("Tooltips.gameMode"), {}, text("Result.modeName")}, BrandDeep});
     if (o.accelerate != 1.0)
-        add("accelerate", std::format(L"{:.2f}x  BGM {} / HIT {}", o.accelerate, o.preserveMusicPitch ? L"=" : L"↗",
-                                      o.preserveHitSoundPitch ? L"=" : L"↗"));
+    {
+        auto note = std::format(L"{:.2f}x", o.accelerate);
+        if (o.preserveMusicPitch)
+            note += L" · " + option("musicPitch");
+        if (o.preserveHitSoundPitch)
+            note += L" · " + option("hitPitch");
+        tiles.push_back({"accelerate", optionImages_.accelerate, std::format(L"{:.2f}×", o.accelerate),
+                         {option("accelerate"), {}, std::move(note)}, Sun, BrandDeep});
+    }
+    if (o.mirror)
+        tiles.push_back({"mirror", optionImages_.mirror, text("Result.optionMirror"), {option("mirror"), {}, L"Don / Kat"}});
+    if (o.random)
+    {
+        const double percent = Hundredths(o.randomAttemptProbability * 100);
+        tiles.push_back({"random", optionImages_.random, std::format(L"{:g}%", percent),
+                         {option("random"), {},
+                          std::format(L"{} {:g}% · {} {}", option("probability"), percent, option("seed"), o.randomSeed)}});
+    }
     if (o.judgeLevel)
-        add("judgeLevel", std::format(L"{:.2f}", o.judgeLevel->Value()));
+    {
+        const double level = o.judgeLevel->Value();
+        tiles.push_back({"judgeLevel", optionImages_.judgeLevel, std::format(L"{:g}", Hundredths(level)),
+                         {option("judgeLevel"), {}, std::format(L"{:.2f}", level)}});
+    }
+    if (o.scrollUnit == PlayOptions::ScrollUnit::Bpm || o.scrollSpeed != 1.0)
+    {
+        const bool bpm = o.scrollUnit == PlayOptions::ScrollUnit::Bpm;
+        tiles.push_back({"scrollSpeed", optionImages_.scrollSpeed, ScrollCaption(o),
+                         {option("scrollSpeed"), {}, std::format(L"{:g}{}", o.scrollSpeed, bpm ? L" BPM" : L"x")}});
+    }
+    if (o.metronome)
+        tiles.push_back({"metronome", optionImages_.metronome, text("Result.optionMetronome"), {option("metronome")}});
+    if (o.ignoreScrollEffects)
+        tiles.push_back({"ignoreScrollEffects", optionImages_.ignoreScrollEffects, text("Result.optionIgnoreScroll"),
+                         {option("ignoreScroll")}});
     // The default gauge is a plain play; another chosen gauge shows its name (HP-02 has none yet).
     if (const auto *gauge = FindHpGauge(o.hpGauge); gauge && o.hpGauge != HpGaugeKind::Default)
-        add("hpGauge", std::wstring(gauge->name.begin(), gauge->name.end()));
+        tiles.push_back({"hpGauge", {}, std::wstring(gauge->name.begin(), gauge->name.end()), {option("hpGauge")}});
 
-    constexpr float chipHeight = 26, gap = 6, padding = 10, top = 529;
+    // Rows of up to eight tiles fit the 448-wide middle of the centre column; each row is centred.
+    constexpr float tileWidth = 46, tileHeight = 50, gap = 6, top = 525, iconSize = 24, captionSize = 11;
     const float centerX = columns_.centerX + columns_.sideWidth * 0.5F;
     const float rowLimit = std::min(448.0F, columns_.sideWidth);
-    for (auto &chip : chips)
-        chip.width = padding + EstimateTextWidth(chip.name, 12) + gap + EstimateNumberWidth(chip.value, 12) + padding;
-    // Centre each wrapped row under the ring.
-    std::size_t first = 0;
-    float y = top;
-    while (first < chips.size())
+    const auto perRow = std::max<std::size_t>(1, static_cast<std::size_t>((rowLimit + gap) / (tileWidth + gap)));
+    for (std::size_t first = 0; first < tiles.size(); first += perRow)
     {
-        std::size_t last = first;
-        float rowWidth = chips[first].width;
-        while (last + 1 < chips.size() && rowWidth + gap + chips[last + 1].width <= rowLimit)
-            rowWidth += gap + chips[++last].width;
-        float x = centerX - rowWidth * 0.5F;
-        for (std::size_t i = first; i <= last; ++i)
+        const auto count = std::min(perRow, tiles.size() - first);
+        const float rowWidth = static_cast<float>(count) * (tileWidth + gap) - gap;
+        const float y = top + static_cast<float>(first / perRow) * (tileHeight + gap);
+        for (std::size_t i = 0; i < count; ++i)
         {
-            const auto &chip = chips[i];
-            const float nameWidth = EstimateTextWidth(chip.name, 12);
-            auto &plate =
-                Fill(root, {x, y, chip.width, chipHeight}, ui_colors::theme::Chip, std::string("Result.Option.") + chip.key);
-            Hint(plate, {std::wstring(texts_.Get("Tooltips.appliedOptions"))});
-            Label(root, {x + padding, y, nameWidth + 2, chipHeight}, chip.name, {12, 700, InkSoft});
-            NumberLabel(root, {x + padding + nameWidth + gap, y, chip.width - padding * 2 - nameWidth - gap + 2, chipHeight},
-                        chip.value, {12, 700, BrandText}, false);
-            x += chip.width + gap;
+            const auto &tile = tiles[first + i];
+            const float x = centerX - rowWidth * 0.5F + static_cast<float>(i) * (tileWidth + gap);
+            auto &plate = Image(root, {x, y, tileWidth, tileHeight}, optionImages_.tile, "Result.Option." + tile.key, tile.fill);
+            Hint(plate, tile.hint);
+            if (tile.icon)
+                Image(root, {x + (tileWidth - iconSize) * 0.5F, y + 7, iconSize, iconSize}, tile.icon, "Result.OptionIcon",
+                      tile.ink);
+            else
+                NumberLabel(root, {x, y + 7, tileWidth, iconSize}, text("Result.hp"), {18, 800, tile.ink, TextAlignment::Center});
+            // A long value shrinks to stay inside its tile.
+            const float width = std::max(EstimateNumberWidth(tile.caption, captionSize), 1.0F);
+            const float size = std::min(captionSize, captionSize * (tileWidth - 6) / width);
+            auto &caption = NumberLabel(root, {x, y + 34, tileWidth, 13}, tile.caption, {size, 800, tile.ink, TextAlignment::Center});
+            caption.SetName("Result.OptionValue." + tile.key);
         }
-        first = last + 1;
-        y += chipHeight + gap;
     }
 }

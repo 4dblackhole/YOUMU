@@ -60,6 +60,8 @@ void PlayOptionsPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IW
     }
     units_[0] = &CreateTab(body, "PlayOptions.Unit.0", L"x", 13);
     units_[1] = &CreateTab(body, "PlayOptions.Unit.1", L"BPM", 13);
+    rateUnits_[0] = &CreateTab(body, "PlayOptions.RateUnit.0", L"x", 13);
+    rateUnits_[1] = &CreateTab(body, "PlayOptions.RateUnit.1", L"BPM", 13);
     rateRange_ = &CreateText(body, "PlayOptions.accelerate.Range", 12, 600, Caption);
     rateMore_ = &CreateButton(body, {}, L"", "PlayOptions.accelerate.More");
     rateMore_->GetComponent<SpriteVisualComponent>()->SetStyle(
@@ -251,7 +253,7 @@ void PlayOptionsPanel::RefreshTexts()
         SetText(*labels_[i], get(FieldKeys[i]));
     for (std::size_t i = 0; i < flags_.size(); ++i)
         SetText(*flags_[i].label, get(FlagKeys[i]));
-    SetText(*rateRange_, get("accelerateRange"));
+    SetText(*rateRange_, get(draft_.accelerateUnit == PlayOptions::ScrollUnit::Bpm ? "accelerateBpmRange" : "accelerateRange"));
     SetText(*judgeUnit_, get("judgeRange"));
     SetText(*gaugeLabel_, get("hpGauge"));
     const auto *gauge = FindHpGauge(draft_.hpGauge);
@@ -293,6 +295,15 @@ bool PlayOptionsPanel::ProcessAction(const Action &action)
         if (action.source == units_[i]->Id())
         {
             draft_.scrollUnit = i == 1 ? PlayOptions::ScrollUnit::Bpm : PlayOptions::ScrollUnit::Multiplier;
+            Layout();
+            return true;
+        }
+    // Accelerate as a multiplier or as a target BPM that each chart divides by its base BPM.
+    for (std::size_t i = 0; i < rateUnits_.size(); ++i)
+        if (action.source == rateUnits_[i]->Id())
+        {
+            draft_.accelerateUnit = i == 1 ? PlayOptions::ScrollUnit::Bpm : PlayOptions::ScrollUnit::Multiplier;
+            RefreshTexts();
             Layout();
             return true;
         }

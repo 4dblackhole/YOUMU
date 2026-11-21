@@ -20,7 +20,8 @@ class GameplayJudgementView final
     // Centres the guide horizontally on the screen (zero at Canvas x 0) below the gear.
     void SetGuidePlacement(float gearBottom);
     void Present(const NoteEvent &event);
-    void PresentCompletion(bool success);
+    // Shows a finished long note's processing grade (Max..Good) or Miss.
+    void PresentCompletion(JudgementGrade grade);
     void Update(double deltaSeconds);
     void Reset() noexcept;
     void Shutdown() noexcept;
@@ -79,7 +80,7 @@ class GameplayJudgementView final
     // lines that are still fading out. No per-hit node or image is created.
     std::array<HitLine, 64> hitLines_{};
     std::uint64_t nextLineOrder_{};
-    std::array<PhantomCore::Visual2DNode *, 8> judgementImages_{};
+    std::array<PhantomCore::Visual2DNode *, 7> judgementImages_{};
     PhantomCore::Visual2DNode *activeJudgement_{};
     double judgementElapsedSeconds_{FeedbackSeconds};
 };

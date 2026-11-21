@@ -101,6 +101,11 @@ struct NoteAccuracy
 
     [[nodiscard]] AccuracyScore Score() const noexcept;
     [[nodiscard]] double ScoreRate() const noexcept { return Score().Rate(); }
+    // True once any hit or tick of the note was accepted.
+    [[nodiscard]] bool HasProgress() const noexcept { return acceptedHits > 0 || acceptedTicks > 0; }
+    // The grade a finished long note shows: Miss without any progress, otherwise its score
+    // rate placed on the timing grades' score boundaries (Max 100%, Perfect 99%, Great 90%).
+    [[nodiscard]] JudgementGrade CompletionGrade() const noexcept;
 #if defined(_DEBUG)
     [[nodiscard]] std::wstring DebugText() const;
 #endif

@@ -250,8 +250,8 @@ void SongRecordView::Show(const std::vector<PlayRecord> &records)
                                      theme::Caption, "Details", TextAlignment::Leading, false);
         details.SetClipRect({0.0F, 0.0F, detailsWidth, 18.0F});
 
-        // Clear, a finished play below the clear line, or a play that was left early.
-        const char *statusKey = r.cleared ? "Records.cleared" : (r.completed ? "Records.practice" : "Records.interrupted");
+        // Clear, a finished play below the clear line, or a play that was left early (shown as Failed).
+        const char *statusKey = r.cleared ? "Records.cleared" : (r.completed ? "Records.practice" : "Records.failed");
         const char *chipKey = r.cleared ? "Records.Status.Clear" : (r.completed ? "Records.Status.Practice" : "Records.Status.Retired");
         const Color statusColor = r.cleared ? theme::Ok : (r.completed ? theme::InkSoft : theme::Danger);
         std::wstring status(texts_.Get(statusKey));

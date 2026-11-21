@@ -47,6 +47,10 @@ void TaikoResultView::LoadAssets()
     modeIcon_ = skin(L"Mode.Taiko");
     rankRing_ = skin(L"Rank.Ring");
     rankImage_ = skin(RankImageKey(result_.summary.accuracy));
+    optionImages_ = {skin(L"Options.Tile"),       skin(L"Options.Accelerate"),
+                     skin(L"Options.Mirror"),     skin(L"Options.Random"),
+                     skin(L"Options.JudgeLevel"), skin(L"Options.ScrollSpeed"),
+                     skin(L"Options.Metronome"),  skin(L"Options.IgnoreScrollEffects")};
     backIcon_ = icon(L"Icons.arrow-left");
     replayIcon_ = icon(L"Icons.film");
     retryIcon_ = icon(L"Icons.retry");

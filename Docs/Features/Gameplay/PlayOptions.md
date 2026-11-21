@@ -20,7 +20,7 @@ Metronome)의 세 열이고 열 사이에 가는 세로줄이 있습니다. Game
 늘어나며 모두 펼쳐도 1280×720 안에 들어가므로 본문 스크롤은 없습니다. 16:9보다 좁은 화면에서는 곡 선택 화면처럼 창 전체를 줄입니다.
 여닫을 때의 움직임은 없습니다.
 
-Scroll speed는 밑줄 탭 `x`·`BPM`과 숫자 칸입니다. Random을 켜면 시드와 시도 확률, JudgeLevel 덮어쓰기를 켜면 값 칸(`1–100`)이
+Scroll speed와 Accelerate는 각각 밑줄 탭 `x`·`BPM`과 숫자 칸입니다. Random을 켜면 시드와 시도 확률, JudgeLevel 덮어쓰기를 켜면 값 칸(`1–100`)이
 나타납니다. Accelerate 제목 줄 오른쪽 끝의 +/−로 BGM/HIT 음정 유지 스위치를 펼치거나 접습니다. 접기는 해당 값이나 옵션
 활성 상태를 바꾸지 않습니다. 켜고 끄는 항목은 이름과 오른쪽 끝 스위치(40×24)가 있는 줄이며 줄 어디를 눌러도 바뀝니다.
 입력에는 기존 단위·범위·파서를 유지하며 x/BPM 전환 시 입력 숫자를 자동 환산하지 않습니다.
@@ -67,7 +67,9 @@ EN/KO/JA 설명 언어를 따르고 기존 숫자/도메인 진단 원문은 유
   각각 같은 그룹의 두 종류에서 균등 추첨하므로 같은 색이 나올 수도 있습니다.
   보라는 제외합니다. 롱노트를 짝지은 후 한 번만 추첨합니다. uint64 시드와
   정의된 mt19937_64 draw를 사용하고 Mirror를 먼저, Random을 다음에 적용합니다.
-- Accelerate는 0.5..2.0x입니다. 하나의 RhythmTimer가 QPC/차트/DSP 좌표를
+- Accelerate는 0.5..2.0x 배수, 또는 `BPM` 탭의 목표 BPM입니다(사용자 요청). 목표 BPM은 플레이 세션을 만들 때
+  채보의 Base BPM(YMP `baseBpm`, Scroll speed의 BPM 단위와 같은 기준)으로 나눠 배수로 바꾸고 0.5..2.0x 안으로 맞춥니다
+  (`PlayOptions::AccelerateMultiplier`). 세션·시계·오디오·결과·기록은 바꾼 배수만 씁니다. 하나의 RhythmTimer가 QPC/차트/DSP 좌표를
   변환하므로 실제 판정 시간은 기본 판정 시간 / 배속입니다. 판정 프로필을 다시
   나누지 않습니다. 입력/결과 그래프는 원본 차트 시간 좌표를 유지합니다.
   배경음악·히트사운드의 음정 유지 여부는 독립적입니다.
@@ -78,9 +80,9 @@ EN/KO/JA 설명 언어를 따르고 기존 숫자/도메인 진단 원문은 유
 - JudgeLevel은 채보 값을 사용하거나 1.00..100.00, 0.01 간격으로 덮어씁니다.
   일반·Syncopation 판정과 결과/기록의 실제 JudgeLevel 모두 같은 값을 사용합니다.
 
-결과 중앙에는 적용한 옵션의 이름/값과 식별 아이콘을 표시합니다.
-RND 값에 시드와 시도 확률을, Accelerate 값에 BGM/HIT 음정 유지 상태를 표시합니다.
-HP gauge는 기본이 아닐 때만 게이지 이름 칩으로 나타납니다.
+결과 화면의 랭크 원 아래에는 모드와 적용한 옵션을 아이콘 타일로 표시합니다([결과 화면 배치](Results.md#화면-배치와-책임-경계)).
+타일에는 짧은 값을, 툴팁에는 옵션 이름과 설정(Random의 시도 확률과 시드, Accelerate의 음정 유지)을 둡니다.
+HP gauge는 기본이 아닐 때만 게이지 이름 타일로 나타납니다.
 
 ## 로컬 기록
 
@@ -132,7 +134,7 @@ Completed·Cleared·Pause menu used의 Any/On/Off입니다. 스크롤속도는 �
 | --- | --- |
 | JudgeLevel | 채보 기본값 또는 실제 덮어쓴 값 |
 | Random, Mirror, Metronome, IgnoreScrollEffects | true/false |
-| Accelerate | 0.5..2.0 배속 |
+| Accelerate | 0.5..2.0 배속(목표 BPM이면 그 채보에 맞춰 바꾼 배수) |
 | ScrollSpeed | 입력한 x 또는 BPM 값 |
 | ScrollUnit | 0=x, 1=BPM |
 | ScrollBPM | BPM 입력 때만 값 존재; x 입력은 NULL |
