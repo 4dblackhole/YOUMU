@@ -1,5 +1,6 @@
 #pragma once
 #include "PhantomCore.h"
+#include "App/OptionSettings.h"
 #include "GameFlow/GameplayLaunchStore.h"
 #include "Texts/TextCatalog.h"
 #include "Mode/Results/IPlayResult.h"
@@ -55,6 +56,8 @@ class RhythmTestScene final : public PhantomCore::GameScene
     void UpdateLoadingSettings(const PhantomCore::InputState &input);
     void ApplyBackgroundBrightness(int percent);
     void SaveBackgroundBrightness() noexcept;
+    // Follows volume changes saved while playing (Alt+wheel); the attempt started with the launch request's.
+    void FollowSavedVolumes();
     std::unique_ptr<IPlayResult> &pendingResult_;
     std::vector<std::unique_ptr<IHpGauge>> hpGauges_;
     std::unique_ptr<GameplaySessionController> controller_;
@@ -63,6 +66,7 @@ class RhythmTestScene final : public PhantomCore::GameScene
     PhantomCore::ScreenVisual2DManager &visuals_;
     TextCatalog &texts_;
     GameplayLaunchRequest launch_;
+    AudioVolumes appliedVolumes_;
     PhantomCore::ScreenCanvasHandle loadingCanvas_;
     PhantomCore::Visual2DNode *loadingBackground_{};
     PhantomCore::Visual2DNode *loadingCard_{};
