@@ -627,7 +627,7 @@ namespace
         auto &options=taiko->summary.playOptions;
         options.scrollSpeed=2;options.ignoreScrollEffects=true;options.metronome=true;options.mirror=true;
         options.random=true;options.randomSeed=987654321;options.randomAttemptProbability=.35;
-        options.accelerate=1.5;options.judgeLevel=60;
+        options.accelerate=1.5;options.judgeLevel=60;options.maxStrokes=3;
         auto view = CreateResultView(*result, visuals, texts,
                                      {L"Recorded song", L"Recorded creator", true, L"Recorded artist"});
         view->Initialize({meshes, textRendering, renderer, audio, 1280, 720});
@@ -652,6 +652,15 @@ namespace
               "Tiles show the mode name, the Accelerate rate and the Random probability.");
         Check(textOf("Result.OptionValue.scrollSpeed")==L"×2.0" && textOf("Result.OptionValue.judgeLevel")==L"60",
               "Tiles show the scroll multiplier with one decimal and the JudgeLevel.");
+        {
+            // A changed stroke count wraps to a second row: the count large, KEYS under it.
+            const auto *strokes=FindNode(canvas->Root(),"Result.Option.maxStrokes");
+            const bool captioned=textOf("Result.OptionValue.maxStrokes")==texts.Get("Result.optionMaxStrokes");
+            Check(strokes!=nullptr && captioned && HasText(*canvas,L"3"),
+                  "Max strokes other than the default shows its count tile.");
+            const float modeTop=FindNode(canvas->Root(),"Result.Option.mode")->BoundsInCanvas().y;
+            Check(strokes!=nullptr && strokes->BoundsInCanvas().y<modeTop,"The ninth tile starts a second row, below the first (canvas y points up).");
+        }
         {
             // The mode leads, then the options in a fixed order, centred under the ring in one row.
             const auto boundsOf=[&](std::string_view name){return FindNode(canvas->Root(),name)->BoundsInCanvas();};
