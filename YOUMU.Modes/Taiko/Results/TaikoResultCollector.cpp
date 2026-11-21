@@ -119,10 +119,11 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
     note.acceptedHits = accuracy.acceptedHits;
     note.acceptedTicks = accuracy.acceptedTicks;
     const bool longNote = ResultGroup(note.type) == TaikoResultGroup::Roll;
-    const bool success = note.finalState == NoteState::Completed &&
-        (longNote ? accuracy.acceptedHits >= accuracy.target.hits &&
-                        accuracy.acceptedTicks >= accuracy.target.ticks
-                  : comboEligible_[found->second]);
+    // A long note that took any hit or tick counts as OK and keeps the combo; only one left
+    // completely unprocessed is a MISS (user decision). Retire still turns it into a MISS.
+    const bool longNoteProgressed = !retired && accuracy.HasProgress();
+    const bool shortNoteHit = note.finalState == NoteState::Completed && comboEligible_[found->second];
+    const bool success = longNote ? longNoteProgressed : shortNoteHit;
     if (success)
     {
         ++combo_;

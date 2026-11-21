@@ -43,11 +43,11 @@ namespace
     constexpr float TabTop = PanelTop - 82.0F, TabHeight = 30.0F;
     constexpr float AverageNumberLeft = -64.0F, AverageNumberRight = 13.0F, AverageUnitLeft = 15.0F;
     constexpr float AverageUnitDrop = 3.0F;
-    constexpr std::array<std::string_view, 8> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
-                                                         "BAD", "MISS",    "POOR",  "OK"};
+    constexpr std::array<std::string_view, 7> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
+                                                         "BAD", "MISS",    "POOR"};
     // Judgement words sit just above the judgement circle (screen up), clear of the Kiai ring.
     constexpr float WordGapAboveCircle = 6.0F;
-    constexpr std::size_t PoorImageIndex = 6, OkImageIndex = 7;
+    constexpr std::size_t PoorImageIndex = 6;
     constexpr Color Ink = ui_colors::theme::Ink;
 
     void Tint(Visual2DNode &node, const Color color)
@@ -414,10 +414,11 @@ void GameplayJudgementView::ShowImage(std::size_t index)
     activeJudgement_->SetVisible(true);
 }
 
-void GameplayJudgementView::PresentCompletion(bool success)
+void GameplayJudgementView::PresentCompletion(const JudgementGrade grade)
 {
-    if (guide_ != nullptr)
-        ShowImage(success ? OkImageIndex : static_cast<std::size_t>(JudgementGrade::Miss));
+    const auto index = static_cast<std::size_t>(grade);
+    if (guide_ != nullptr && index < PoorImageIndex)
+        ShowImage(index);
 }
 
 void GameplayJudgementView::Update(const double deltaSeconds)

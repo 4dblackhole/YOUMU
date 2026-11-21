@@ -32,6 +32,8 @@ namespace tests
     void TestLivePlayStatistics();
     void TestComboEventOrder();
     void TestLongResultCompletionAndReset();
+    void TestPartialLongNotesCountAsOk();
+    void TestLongNoteCompletionGrade();
     void TestRewindJudgementsAndTrace();
     void TestLongNoteRewindState();
     void TestRetireAndRetryEligibility();
