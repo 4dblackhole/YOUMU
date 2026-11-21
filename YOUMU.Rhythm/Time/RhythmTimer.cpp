@@ -58,6 +58,12 @@ void RhythmTimer::Seek(
     counterAnchor_ = performanceCounterTicks;
 }
 
+void RhythmTimer::ShiftTimeline(const RhythmDuration delta) noexcept
+{
+    timelineAnchor_ += delta;
+    dspTimelineAnchor_ += delta;
+}
+
 RhythmTimer::State RhythmTimer::CurrentState() const noexcept
 {
     return state_;

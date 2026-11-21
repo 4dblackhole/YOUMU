@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <fstream>
 #include <stdexcept>
+#include <initializer_list>
 #include <thread>
 
 using namespace PhantomCore;
@@ -808,6 +809,7 @@ namespace
                 CheckAutomaticFocus(ctx);
                 CheckDebugTimeline(ctx);
                 CheckRestartHold(ctx);
+                CheckLocalOffsetKeys(ctx);
                 CheckSharedLifecycle(ctx);
                 CheckCompletionEscape(ctx);
                 CheckTransientVoices(ctx);
@@ -1210,6 +1212,74 @@ namespace
             holdFor(std::chrono::milliseconds{700});
             Check(controller.CurrentState() == PlayState::Loading, "Holding the chosen restart key must restart.");
             controller.Shutdown();
+        }
+
+        // +/- change the pattern's local offset by 5 ms (Alt 1 ms, Shift 20 ms) only before the first
+        // note's time; the chart clock moves back by the change while the music keeps playing.
+        void CheckLocalOffsetKeys(const UpdateContext &ctx)
+        {
+            auto pattern = Pattern();
+            pattern.notes.push_back({.position = {0, {}}, .keyType = 1});
+            auto loaded = TaikoMode(PlaySessionOptions{}).CreateSession(pattern);
+            Check(loaded.Succeeded(), "Local offset fixture must load.");
+            GameplayLaunchRequest request{"probe.ymp", {}, "probe-music.mp3", "Taiko"};
+            request.localOffsetMs = 10;
+            GameplaySessionController controller(request, playback_, false, std::move(loaded.session));
+            controller.InitializeSession();
+            controller.Start(*services_, RhythmTime{-2'000'000});
+            WaitForGameplay(controller, ctx);
+            InputState input;
+            const auto press = [&](std::initializer_list<std::uint16_t> keys)
+            {
+                InputStateTestAccess::Begin(input);
+                const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                for (const auto key : keys)
+                    InputStateTestAccess::Press(input, key, ticks);
+                controller.Update({0.0, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}});
+                InputStateTestAccess::Begin(input);
+                for (const auto key : keys)
+                    InputStateTestAccess::Release(input, key, ticks);
+                controller.Update({0.0, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}});
+            };
+            Check(controller.LocalOffsetMs() == 10 && !controller.LocalOffsetChanged() && controller.CanAdjustLocalOffset(),
+                  "The stored local offset is the starting value and may change before the first note.");
+            const auto before = controller.Time();
+            press({VK_OEM_PLUS});
+            Check(controller.LocalOffsetMs() == 15 && controller.LocalOffsetChanged() &&
+                      controller.LocalOffsetRevision() == 1,
+                  "Plus adds 5 ms.");
+            Check(controller.Time() < before + RhythmDuration{200'000},
+                  "The chart clock keeps running (moved back by the change, not restarted).");
+            press({VK_MENU, VK_OEM_MINUS});
+            Check(controller.LocalOffsetMs() == 14, "Alt with minus removes 1 ms.");
+            press({VK_SHIFT, VK_ADD});
+            Check(controller.LocalOffsetMs() == 34, "Shift with the numeric-pad plus adds 20 ms.");
+            press({VK_SUBTRACT});
+            Check(controller.LocalOffsetMs() == 29 && controller.LocalOffsetRevision() == 4,
+                  "The numeric-pad minus removes 5 ms and each change advances the revision.");
+            Check(controller.CurrentState() == PlayState::Gameplay, "Offset keys never pause or restart the attempt.");
+            controller.Shutdown();
+
+            auto late = Pattern();
+            late.notes.push_back({.position = {0, {}}, .keyType = 1});
+            auto lateLoaded = TaikoMode(PlaySessionOptions{}).CreateSession(late);
+            Check(lateLoaded.Succeeded(), "Late local offset fixture must load.");
+            GameplaySessionController after({"probe.ymp", {}, "probe-music.mp3", "Taiko"}, playback_, false,
+                                            std::move(lateLoaded.session));
+            after.InitializeSession();
+            after.Start(*services_, RhythmTime{-30'000});
+            WaitForGameplay(after, ctx);
+            std::this_thread::sleep_for(std::chrono::milliseconds{80});
+            InputStateTestAccess::Begin(input);
+            after.Update({0.0, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}});
+            Check(after.Time() > RhythmTime{} && !after.CanAdjustLocalOffset(),
+                  "Once the first note's time has passed the offset is fixed.");
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Press(input, VK_OEM_PLUS, ctx.audio.CaptureClockSnapshot().performanceCounterTicks);
+            after.Update({0.0, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}});
+            Check(after.LocalOffsetMs() == 0 && after.LocalOffsetRevision() == 0,
+                  "Plus after the first note's time does nothing.");
+            after.Shutdown();
         }
 
         void CheckTransientVoices(const UpdateContext &ctx)

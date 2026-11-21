@@ -1,4 +1,5 @@
 #include "GameFlow/GameplaySessionController.h"
+#include "Records/LocalOffsetStore.h"
 #include <algorithm>
 using namespace PhantomCore;
 
@@ -38,6 +39,10 @@ void GameplaySessionController::InitializeSession()
         throw std::runtime_error("A chart with no playable notes cannot be played.");
     heldKeys_.reserve(session_->InputMapping().size());
     playbackRate_ = session_->Options().accelerate;
+    firstNoteTime_ = RhythmTime::max();
+    for (const auto &lane : session_->Gear().Lanes())
+        if (lane != nullptr && !lane->Notes().empty())
+            firstNoteTime_ = std::min(firstNoteTime_, lane->Notes().front()->Timing());
     time_ = initialTime_;
     sessionInitialized_ = true;
 }
@@ -194,6 +199,41 @@ void GameplaySessionController::Shutdown() noexcept
 std::unique_ptr<IPlayResult> GameplaySessionController::TakeResult()
 {
     return std::move(result_);
+}
+
+bool GameplaySessionController::CanAdjustLocalOffset() const noexcept
+{
+    if (!sessionInitialized_ || debugMode_ || !launchRequest_.IsValid())
+        return false;
+    // Once the music start is scheduled for a future instant it can no longer be re-prepared.
+    if (playbackStart_)
+        return false;
+    const bool clockState = state_ == PlayState::Gameplay || state_ == PlayState::Loading;
+    return clockState && time_ < firstNoteTime_;
+}
+
+bool GameplaySessionController::AdjustLocalOffset(const std::int32_t milliseconds)
+{
+    if (!CanAdjustLocalOffset())
+        return false;
+    const auto current = LocalOffsetMs();
+    const auto next = std::clamp(current + milliseconds, -LocalOffsetStore::Limit, LocalOffsetStore::Limit);
+    const auto applied = next - current;
+    if (applied == 0)
+        return false;
+    offsetChangeMs_ += applied;
+    // A positive offset plays the notes later against the music. The music keeps playing as
+    // scheduled; the chart clock moves back by the change and every later music preparation
+    // (start, resume, rewind, retry) runs ahead of chart time by the accumulated change.
+    const RhythmDuration delta{static_cast<std::int64_t>(applied) * 1000};
+    audio_.SetMusicLead(audio_.MusicLead() + delta);
+    if (state_ == PlayState::Gameplay)
+    {
+        timer_.ShiftTimeline(-delta);
+        time_ -= delta;
+    }
+    ++offsetRevision_;
+    return true;
 }
 
 void GameplaySessionController::UpdateSession(const InputState &input,

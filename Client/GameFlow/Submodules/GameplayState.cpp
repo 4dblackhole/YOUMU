@@ -27,6 +27,8 @@ void GameplaySessionController::UpdateLoading(const UpdateContext &context)
         OpenPauseMenu(context);
         return;
     }
+    if (sessionInitialized_)
+        ProcessLocalOffsetKeys(context.input);
     if (PrepareResources(context))
         PrepareGameplay(context);
 }

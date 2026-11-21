@@ -1,5 +1,7 @@
 #include "MusicSelectScene.h"
 #include "App/AssetPaths.h"
+#include "App/GameDataPaths.h"
+#include "Records/LocalOffsetStore.h"
 #include "Catalog/SongLayout.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "Mode/PlayGameModeFactory.h"
@@ -245,6 +247,7 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
         song.audioPath,      pattern.pattern.mode,
         SongTitle(song, selection_.notation_), MakerName(pattern, selection_.notation_)};
     request.globalOffsetMs = options_.Values().globalOffsetMs;
+    request.localOffsetMs = LocalOffsetStore(LocalOffsetFilePath()).Get(pattern.patternPath);
     request.volumes = options_.Values().volumes;
     request.patternTitle = PatternName(pattern, selection_.notation_);
     request.restartKey = options_.Values().restartKey;

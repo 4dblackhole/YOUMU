@@ -4,6 +4,7 @@
 #include "Texts/TextCatalog.h"
 #include "Mode/Results/IPlayResult.h"
 #include "Presentation/UiErrorLine.h"
+#include "Submodules/GameplayOffsetNotice.h"
 #include "Submodules/GameplayScreenFade.h"
 #include <memory>
 
@@ -42,6 +43,9 @@ class RhythmTestScene final : public PhantomCore::GameScene
     void PresentScreenError();
     // Black over everything while a restart darkens the screen (held restart key or a chosen Retry).
     void PresentScreenFade();
+    // Shows the local offset after a +/- change and keeps it for the next attempts of this pattern.
+    void PresentLocalOffset(double deltaSeconds);
+    void SaveLocalOffset() noexcept;
     std::unique_ptr<IPlayResult> &pendingResult_;
     std::vector<std::unique_ptr<IHpGauge>> hpGauges_;
     std::unique_ptr<GameplaySessionController> controller_;
@@ -59,6 +63,8 @@ class RhythmTestScene final : public PhantomCore::GameScene
     std::optional<PhantomCore::EngineServices> services_;
     UiErrorLine errorLine_;
     GameplayScreenFade screenFade_;
+    GameplayOffsetNotice offsetNotice_;
+    std::uint64_t shownOffsetRevision_{};
     bool presentationReady_{};
     double nextPreparationPoll_{};
 };

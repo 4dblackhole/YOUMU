@@ -52,6 +52,8 @@ int main(const int argumentCount, char *arguments[])
         {"TestTaikoPlayOptions", TestTaikoPlayOptions},
         {"TestPersistentRecordConditions", TestPersistentRecordConditions},
         {"TestRecordDatabaseAdoption", TestRecordDatabaseAdoption},
+        {"TestLocalOffsetStore", TestLocalOffsetStore},
+        {"TestTimerTimelineShift", TestTimerTimelineShift},
         {"TestRecordFilters", TestRecordFilters},
         {"TestSampleRestartGateMixerPeriods", TestSampleRestartGateMixerPeriods},
         {"TestSampleRestartGateDenseTicks", TestSampleRestartGateDenseTicks},

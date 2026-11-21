@@ -116,12 +116,15 @@ AudioPreparationState GameplayAudioSession::PrepareMusicAt(const double totalSec
     nextPoll_ = totalSeconds + PollIntervalSeconds;
     if (skipMusic || !musicRegistered_)
         return AudioPreparationState::Ready;
-    return router_.PrepareMusicAt(time);
+    return router_.PrepareMusicAt(time + musicLead_);
 }
 
 bool GameplayAudioSession::StartPreparedMusic(const RhythmTime time, const RhythmTimer &timer)
 {
-    return !musicRegistered_ || router_.StartPreparedMusic(time, timer);
+    // The prepared source starts at source 0 for negative positions; that source position
+    // sounds at chart time (source - lead).
+    const auto sourceStart = std::max(time + musicLead_, RhythmTime{});
+    return !musicRegistered_ || router_.StartPreparedMusic(sourceStart - musicLead_, timer);
 }
 
 void GameplayAudioSession::SeekMetronome(const std::span<const MetronomeBeat> beats, const RhythmTime time) noexcept

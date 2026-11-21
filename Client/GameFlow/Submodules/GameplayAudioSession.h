@@ -41,6 +41,10 @@ class GameplayAudioSession final
                                                                     bool skipMusic);
     // Starts the music at the timer's anchored deadline; true without music.
     [[nodiscard]] bool StartPreparedMusic(RhythmTime time, const RhythmTimer &timer);
+    // How far the music source runs ahead of chart time (a local offset changed after the
+    // session was compiled). Music is prepared and started at chart time + lead.
+    void SetMusicLead(RhythmDuration lead) noexcept { musicLead_ = lead; }
+    [[nodiscard]] RhythmDuration MusicLead() const noexcept { return musicLead_; }
 
     void SeekMetronome(std::span<const MetronomeBeat> beats, RhythmTime time) noexcept;
     // Schedules beats within the next 100 ms of chart time at most once each.
@@ -67,4 +71,5 @@ class GameplayAudioSession final
     PhantomCore::AudioPreparationState resources_{PhantomCore::AudioPreparationState::Loading};
     double nextPoll_{};
     std::size_t metronomeCursor_{};
+    RhythmDuration musicLead_{};
 };

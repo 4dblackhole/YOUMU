@@ -12,6 +12,7 @@
 #include "Presentation/UiColors.h"
 #include "Texts/GameIdentity.h"
 #include "App/GameDataPaths.h"
+#include "Records/LocalOffsetStore.h"
 #include "Records/PlayRecordStore.h"
 
 #include <Windows.h>
@@ -125,10 +126,12 @@ std::unique_ptr<GameScene> YOUMUGame::CreateResultScene()
     if (!smokeTest_ && !rhythmDebugMode_ && launch.IsValid()) display.recordDatabase = PlayRecordDatabasePath();
     ResultScene::RetryHandler retry;
     if (display.canRetry)
-        retry = [store = launchRequest_, snapshot = std::move(launch)](SceneManager &scenes)
+        retry = [store = launchRequest_, snapshot = std::move(launch)](SceneManager &scenes) mutable
         {
             // A retry owns a fresh session; restore the played selection without
-            // retaining any note, timer or voice from the completed session.
+            // retaining any note, timer or voice from the completed session. The local
+            // offset may have changed during the attempt, so read the stored one again.
+            snapshot.localOffsetMs = LocalOffsetStore(LocalOffsetFilePath()).Get(snapshot.patternPath);
             store->Set(snapshot);
             return scenes.ChangeScene(RhythmTestSceneId);
         };

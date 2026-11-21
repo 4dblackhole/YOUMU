@@ -21,6 +21,8 @@ struct GameplayTextSet
     std::wstring_view errorEffect;
     std::wstring_view errorAudio;
     std::wstring_view errorBackground;
+    // Notice after a +/- local offset change; {} is the signed millisecond value.
+    std::wstring_view localOffsetFormat;
 };
 
 [[nodiscard]] GameplayTextSet Gameplay(const TextCatalog &texts);
