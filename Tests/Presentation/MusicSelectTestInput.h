@@ -16,6 +16,10 @@ struct InputStateTestAccess
     {
         input.SetMouseButton(PhantomCore::MouseButton::Left, down, 1);
     }
+    static void RightButton(PhantomCore::InputState &input, bool down)
+    {
+        input.SetMouseButton(PhantomCore::MouseButton::Right, down, 1);
+    }
     static void Mouse(PhantomCore::InputState &input, PhantomCore::Point canvasPoint, float wheel)
     {
         input.SetMousePosition(static_cast<std::int32_t>(canvasPoint.x + 640),

@@ -9,6 +9,7 @@ namespace tests
     void TestSongFavoritesPersistence();
     void TestSongFavoritesMigration();
     void TestSongFavoriteSelection();
+    void TestSongDeletionPlan();
     void TestHpFormat();
     void TestHpTimingRecovery();
     void TestHpCompositeSettlements();

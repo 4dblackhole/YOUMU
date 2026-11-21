@@ -14,6 +14,8 @@
 #include "SongSelectPurpose.h"
 #include "SongBackgroundPreview.h"
 #include "SongListView.h"
+#include "SongContextMenu.h"
+#include "GameFlow/SongDeletion.h"
 #include "SongSelectLayout.h"
 #include "Texts/TextCatalog.h"
 #include <filesystem>
@@ -27,7 +29,10 @@ enum class SongSelectCommand
     Launch,
     CreateDifficulty,
     ConvertOsu,
-    OpenRecord // A record row was clicked; TakeOpenedRecord gives it.
+    OpenRecord, // A record row was clicked; TakeOpenedRecord gives it.
+    EditPattern, // Right-click menu: open the selected difficulty in the editor.
+    DeleteFiles, // The delete was confirmed; TakeApprovedDeletion gives what to recycle.
+    OpenFolder   // Right-click menu: TakeFolderToOpen gives the song folder.
 };
 class MusicSelectView final
 {
@@ -43,7 +48,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { filterPanel_.Close(); favoritesPanel_.Close(); osuImportPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
+        if (!visible) { filterPanel_.Close(); favoritesPanel_.Close(); osuImportPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); songMenu_.Close(); pendingDeletion_.reset(); if (canvas_) CollapseDropdowns(*canvas_); }
         else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -66,6 +71,10 @@ class MusicSelectView final
     [[nodiscard]] std::optional<PlayRecord> TakeOpenedRecord() noexcept { return records_.TakeOpenedRecord(); }
     // Collection import/export asks this for files; tests answer without the Windows dialog.
     void SetCollectionFilePicker(CollectionFilePicker picker);
+    // What the confirmed delete sends to the Recycle Bin (SongSelectCommand::DeleteFiles), taken once.
+    [[nodiscard]] std::optional<SongDeletion> TakeApprovedDeletion() noexcept { return std::exchange(approvedDeletion_, std::nullopt); }
+    // The song folder Open folder asks for (SongSelectCommand::OpenFolder), taken once.
+    [[nodiscard]] std::optional<std::filesystem::path> TakeFolderToOpen() noexcept { return std::exchange(folderToOpen_, std::nullopt); }
     // The scene reports whether the focused song is the one being heard.
     void SetNowPlaying(const bool playing) { songList_.SetNowPlaying(playing); }
 
@@ -103,6 +112,13 @@ class MusicSelectView final
     bool ProcessFavoritesPanel(const PhantomCore::InputState &input);
     void OpenFavoritesPanel();
     bool ProcessOsuImportPanel(const PhantomCore::InputState &input);
+    // The right-click menu of song cards and difficulty rows (SongSelectMenu.cpp).
+    bool ProcessSongMenu(const PhantomCore::InputState &input);
+    void OpenSongMenu(const SongListView::ContextTarget &target);
+    void RunSongMenuItem(SongMenuItem item);
+    void AskToDelete(const SongCatalogEntry &song, std::optional<std::size_t> pattern);
+    void AnswerDeletion(std::optional<std::size_t> chosen);
+    [[nodiscard]] const SongCatalogEntry *FocusedSong() const noexcept;
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
     {
         const bool listPanel = favoritesPanel_.IsVisible() || osuImportPanel_.IsVisible();
@@ -139,6 +155,10 @@ class MusicSelectView final
     OsuImportPanel osuImportPanel_;
     UiTooltip tooltip_;
     UiAlert alert_;
+    SongContextMenu songMenu_;
+    // The delete the shown confirmation asks about, and the one the user confirmed.
+    std::optional<SongDeletion> pendingDeletion_, approvedDeletion_;
+    std::optional<std::filesystem::path> folderToOpen_;
     SongBackgroundPreview artwork_;
     SongListView songList_;
     std::uint64_t textRevision_{};

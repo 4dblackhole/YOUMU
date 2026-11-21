@@ -41,6 +41,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestSongFavoritesPersistence", TestSongFavoritesPersistence},
         {"TestSongFavoritesMigration", TestSongFavoritesMigration},
         {"TestSongFavoriteSelection", TestSongFavoriteSelection},
+        {"TestSongDeletionPlan", TestSongDeletionPlan},
         {"TestHpFormat", TestHpFormat},
         {"TestHpTimingRecovery", TestHpTimingRecovery},
         {"TestHpCompositeSettlements", TestHpCompositeSettlements},

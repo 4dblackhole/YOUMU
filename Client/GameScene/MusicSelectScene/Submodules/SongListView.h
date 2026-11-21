@@ -27,6 +27,12 @@ class SongListView final
         CreateDifficultyClicked,
         PatternClicked,
     };
+    // What a right-click lands on: a song card (or its +) or one of the focused card's difficulties.
+    struct ContextTarget
+    {
+        std::size_t visiblePosition{};
+        std::optional<std::size_t> pattern; // Catalog pattern index on a difficulty row.
+    };
     struct ActionResult
     {
         ActionKind kind{};
@@ -66,6 +72,8 @@ class SongListView final
     // Restyles difficulty buttons after the selected pattern changed.
     void RefreshPatternSelection();
     [[nodiscard]] ActionResult ProcessAction(const PhantomCore::Action &action) const;
+    // The song or difficulty under the pointer (the router's hovered node), if any.
+    [[nodiscard]] std::optional<ContextTarget> ContextTargetAt(PhantomCore::NodeId hovered) const;
     void Shutdown() noexcept;
 
   private:

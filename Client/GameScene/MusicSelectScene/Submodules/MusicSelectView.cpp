@@ -56,6 +56,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
         osuImportPanel_.Initialize(*canvas_, texts_);
     if (recordPanel_) records_.InitializeFilter(*canvas_, services.windowControl);
     tooltip_.Initialize(*canvas_);
+    songMenu_.Initialize(*canvas_, texts_);
     alert_.Initialize(*canvas_, &screenVisuals_);
     ApplyTexts();
     UpdateResponsiveLayout();
@@ -111,8 +112,8 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         return command_;
     }
     ProcessPointer(input);
-    // Hints rest while a panel or the options drawer covers the screen.
-    const bool covered = IsSelectionModalVisible() || options_.IsVisible();
+    // Hints rest while a panel, the options drawer or the right-click menu covers the screen.
+    const bool covered = IsSelectionModalVisible() || options_.IsVisible() || songMenu_.IsOpen();
     songList_.RefreshNameHints();
     tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !covered, canvasPointer_);
     // Panels are processed in order; the first one that consumes input stops the rest.
@@ -131,6 +132,11 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     if (options_.ProcessInput(input, canvasPointer_, inputRouter_.HoveredNode(), inputRouter_))
     {
         static_cast<void>(canvas_->TakeActions());
+        UpdateSearchInputVisibility();
+        return command_;
+    }
+    if (ProcessSongMenu(input))
+    {
         UpdateSearchInputVisibility();
         return command_;
     }
@@ -157,6 +163,7 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
 void MusicSelectView::Shutdown() noexcept
 {
     alert_.Shutdown();
+    songMenu_.Shutdown();
     tooltip_.Shutdown();
     playOptionsPanel_.Shutdown();
     records_.Shutdown();
@@ -218,7 +225,10 @@ void MusicSelectView::ShowAlert(AlertContent content)
 {
     if (canvas_ == nullptr)
         throw std::logic_error("Song select must be initialized before it shows an alert.");
-    // Native text boxes would float above the alert, so their panels close without applying.
+    // Native text boxes would float above the alert, so their panels close without applying. A delete
+    // waiting for its answer is dropped: only the confirmation that asked about it may approve it.
+    pendingDeletion_.reset();
+    songMenu_.Close();
     filterPanel_.Close();
     favoritesPanel_.Close();
     osuImportPanel_.Close();

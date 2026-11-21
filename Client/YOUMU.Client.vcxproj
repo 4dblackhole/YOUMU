@@ -197,7 +197,10 @@
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongPreviewController.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongListView.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongListView.h" />
+    <ClInclude Include="GameScene\MusicSelectScene\Submodules\SongContextMenu.h" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectCreateMenu.cpp" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongSelectMenu.cpp" />
+    <ClCompile Include="GameScene\MusicSelectScene\Submodules\SongContextMenu.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.cpp" />
     <ClCompile Include="GameScene\MusicSelectScene\Submodules\OsuImportValidation.cpp" />
     <ClInclude Include="GameScene\MusicSelectScene\Submodules\EditorOsuImport.h" />

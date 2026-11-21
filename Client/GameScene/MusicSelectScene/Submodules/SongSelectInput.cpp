@@ -33,7 +33,7 @@ bool MusicSelectView::ProcessAlert(const InputState &input)
         return false;
     inputRouter_.Process(*canvas_, CanvasPointerInput(input));
     static_cast<void>(canvas_->TakeActions());
-    static_cast<void>(alert_.Update(input));
+    AnswerDeletion(alert_.Update(input));
     if (!alert_.IsOpen())
         inputRouter_.Reset(*canvas_);
     return true;

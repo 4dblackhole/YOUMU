@@ -4,6 +4,7 @@
 #include "Records/LocalOffsetStore.h"
 #include "Records/PlayRecordStore.h"
 #include "Catalog/SongLayout.h"
+#include "GameFlow/SongDeletion.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Submodules/MusicSelectView.h"
@@ -113,6 +114,12 @@ void MusicSelectScene::Update(const UpdateContext &context, SceneManager &scenes
         ConvertOsu();
     else if (command == SongSelectCommand::OpenRecord)
         OpenRecord();
+    else if (command == SongSelectCommand::EditPattern)
+        OpenSelectedInEditor(scenes);
+    else if (command == SongSelectCommand::DeleteFiles)
+        DeleteApproved();
+    else if (command == SongSelectCommand::OpenFolder)
+        OpenSongFolder();
     if (command == SongSelectCommand::Back)
         return;
     PollPatternLoad(scenes);
@@ -196,8 +203,8 @@ void MusicSelectScene::FinishOsuImport(const EditorOsuImportResult &result)
 }
 void MusicSelectScene::CreateDifficulty(SceneManager &scenes)
 {
-    if (purpose_ != SongSelectPurpose::Editor || selection_.catalogLoading_ ||
-        selection_.focusedSongPosition_ >= selection_.visibleSongIndices_.size())
+    // The editor song select's + and both song selects' right-click menus start a new difficulty.
+    if (selection_.catalogLoading_ || selection_.focusedSongPosition_ >= selection_.visibleSongIndices_.size())
         return;
     const auto &song = selection_.catalog_.songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
     library_->ReleaseAudio();
@@ -212,6 +219,55 @@ void MusicSelectScene::CreateDifficulty(SceneManager &scenes)
     launchRequest_->Set(std::move(request));
     if (!scenes.ChangeScene(EditorSceneId))
         throw std::runtime_error("Failed to enter the editor scene.");
+}
+void MusicSelectScene::OpenSelectedInEditor(SceneManager &scenes)
+{
+    if (osuImport_.Busy() || patternLoader_.Busy())
+        return;
+    auto request = SelectedLaunchRequest();
+    if (!request)
+        return;
+    selection_.ClearLaunchError();
+    launchRequest_->Set(std::move(*request));
+    if (!scenes.ChangeScene(EditorSceneId))
+        throw std::runtime_error("Failed to enter the editor scene.");
+}
+void MusicSelectScene::DeleteApproved()
+{
+    auto deletion = view_->TakeApprovedDeletion();
+    if (!deletion || osuImport_.Busy())
+        return;
+    // The preview may hold the song's audio open; the list scans Songs again afterwards.
+    library_->ReleaseAudio();
+    pendingLaunch_.reset();
+    patternLoader_.Cancel();
+    try
+    {
+        RecyclePaths(deletion->paths);
+    }
+    catch (const std::exception &error)
+    {
+        view_->ShowAlert({AlertKind::Error, std::wstring(texts_.Get("SongMenu.deleteFailedTitle")),
+                          std::wstring(texts_.Get("SongMenu.deleteFailedMessage")), DecodeDisplayText(error.what()),
+                          {{std::wstring(texts_.Get("Alert.ok")), true}}});
+    }
+    RefreshCatalog();
+}
+void MusicSelectScene::OpenSongFolder()
+{
+    const auto folder = view_->TakeFolderToOpen();
+    if (!folder)
+        return;
+    try
+    {
+        OpenFolderInExplorer(*folder);
+    }
+    catch (const std::exception &error)
+    {
+        view_->ShowAlert({AlertKind::Error, std::wstring(texts_.Get("SongMenu.openFolderFailedTitle")),
+                          std::wstring(texts_.Get("SongMenu.openFolderFailedMessage")), DecodeDisplayText(error.what()),
+                          {{std::wstring(texts_.Get("Alert.ok")), true}}});
+    }
 }
 void MusicSelectScene::Render(const RenderContext &)
 {

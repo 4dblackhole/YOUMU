@@ -1123,6 +1123,129 @@ namespace
             Check(visuals.CanvasCount() == 0, "HP information releases its Canvas.");
         }
     }
+    // Right-clicking a song card or a difficulty row opens the song menu; deletes ask first.
+    void TestSongContextMenu(SongSelectPurpose purpose)
+    {
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts;
+        texts.SetLanguage(Language::English);
+        OptionSettings options("build/song-menu-unused.ini");
+        SongSelectionState selection;
+        const auto songFolder = options.SongsRoot() / L"Menu song";
+        SongCatalogEntry song;
+        song.music.names.push_back("Menu song");
+        song.metadataPath = songFolder / L"Music/menu.ymm";
+        for (const auto *name : {"easy", "hard"})
+        {
+            SongCatalogPattern pattern;
+            pattern.pattern.name = name;
+            pattern.pattern.mode = "Taiko";
+            pattern.patternPath = songFolder / L"Chart/Set" / (std::string(name) + ".ymp");
+            pattern.effectPath = songFolder / L"Chart/Set" / (std::string(name) + ".yme");
+            song.patterns.push_back(std::move(pattern));
+        }
+        selection.catalog_.songs.push_back(std::move(song));
+        MusicSelectView view(visuals, selection, purpose, texts, options);
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas) throw std::runtime_error("Song menu Canvas missing.");
+        InputState input;
+        const auto rightClick = [&](const Visual2DNode &node)
+        {
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Mouse(input, Centre(node), 0);
+            InputStateTestAccess::RightButton(input, true);
+            const auto command = view.Update(input, 0);
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::RightButton(input, false);
+            static_cast<void>(view.Update(input, 0));
+            return command;
+        };
+        const auto press = [&](std::uint16_t key)
+        {
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Key(input, key, true);
+            const auto command = view.Update(input, 0);
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Key(input, key, false);
+            static_cast<void>(view.Update(input, 0));
+            return command;
+        };
+        const auto menu = [&] { return Find(canvas->Root(), "SongMenu"); };
+        const auto item = [&](const char *name) { return Find(canvas->Root(), std::string("SongMenu.") + name); };
+        const bool gameplay = purpose == SongSelectPurpose::Gameplay;
+        // The card's title line: the expanded card's middle may be one of its difficulty rows.
+        const auto songCard = [&]() -> Visual2DNode & {
+            return Need(Find(Need(Find(canvas->Root(), "Song.0"), "The song card exists."), "Title"), "The card has a title.");
+        };
+
+        Check(rightClick(Need(Find(canvas->Root(), "Difficulty.1"), "The focused card lists its difficulties.")) ==
+                  SongSelectCommand::None, "A right-click opens the menu without starting the chart.");
+        Check(menu() && menu()->IsVisible() && selection.selectedPatternIndex_ == 1,
+              "Right-clicking a difficulty selects it and opens the song menu.");
+        Check(item("newDifficulty") && item("deleteDifficulty"), "A difficulty row's menu offers New difficulty and its delete.");
+        Check(item("deleteSong") && item("openFolder"), "A difficulty row's menu also deletes the song and opens its folder.");
+        Check(item("collections") && (item("edit") != nullptr) == gameplay,
+              "Collections is offered; Edit only in game song select, where a click plays instead.");
+        Check(press(VK_ESCAPE) == SongSelectCommand::None && !menu()->IsVisible(), "Esc closes only the menu.");
+
+        rightClick(songCard());
+        Check(menu()->IsVisible() && item("deleteSong"), "A song card's menu deletes the whole song.");
+        Check(!item("deleteDifficulty") && !item("edit"), "A song card's menu has no one-difficulty items.");
+        Click(*canvas, *item("openFolder"));
+        Check(view.Update(input, 0) == SongSelectCommand::OpenFolder && !menu()->IsVisible(), "Open folder asks the scene.");
+        const auto folder = view.TakeFolderToOpen();
+        Check(folder && *folder == songFolder && !view.TakeFolderToOpen(), "Open folder hands over the song folder once.");
+
+        rightClick(*Find(canvas->Root(), "Difficulty.0"));
+        Click(*canvas, *item("newDifficulty"));
+        Check(view.Update(input, 0) == SongSelectCommand::CreateDifficulty, "New difficulty starts the editor's new difficulty.");
+
+        // Deleting a difficulty asks first; Enter (and Esc) keep everything.
+        rightClick(*Find(canvas->Root(), "Difficulty.0"));
+        Click(*canvas, *item("deleteDifficulty"));
+        static_cast<void>(view.Update(input, 0));
+        const auto alertText = [&](const char *name)
+        {
+            const auto *node = Find(canvas->Root(), name);
+            return node ? std::wstring(node->GetComponent<TextVisualComponent>()->Text()) : std::wstring{};
+        };
+        Check(alertText("Alert.Title") == L"Delete difficulty?", "Delete difficulty asks with the shared alert.");
+        {
+            auto *box = Find(canvas->Root(), "Alert.Detail");
+            const auto *detail = box ? Find(*box, "Text") : nullptr;
+            const std::wstring listed = detail ? std::wstring(detail->GetComponent<TextVisualComponent>()->Text()) : L"";
+            Check(listed.starts_with(L"Menu song [easy]\nMenu song/Chart/Set/easy.ymp\nMenu song/Chart/Set/easy.yme"),
+                  "The confirmation names the difficulty and lists its files under Songs.");
+        }
+        Check(press(VK_RETURN) == SongSelectCommand::None && !view.TakeApprovedDeletion(), "Enter cancels the delete.");
+        rightClick(*Find(canvas->Root(), "Difficulty.0"));
+        Click(*canvas, *item("deleteDifficulty"));
+        static_cast<void>(view.Update(input, 0));
+        Click(*canvas, Need(Find(canvas->Root(), "Alert.Button0"), "The confirmation has its Delete button."));
+        Check(view.Update(input, 0) == SongSelectCommand::DeleteFiles, "Delete confirms the delete.");
+        const auto deletion = view.TakeApprovedDeletion();
+        Check(deletion && !deletion->wholeSong, "A confirmed difficulty delete is not a song delete.");
+        Check(deletion->paths.size() == 2 && deletion->paths.front() == selection.catalog_.songs[0].patterns[0].patternPath,
+              "A confirmed difficulty delete recycles its YMP and YME.");
+        Check(!view.TakeApprovedDeletion(), "The approved delete is handed over once.");
+
+        rightClick(songCard());
+        Click(*canvas, *item("deleteSong"));
+        static_cast<void>(view.Update(input, 0));
+        Check(alertText("Alert.Title") == L"Delete song?", "Delete song asks with its own title.");
+        Click(*canvas, *Find(canvas->Root(), "Alert.Button0"));
+        Check(view.Update(input, 0) == SongSelectCommand::DeleteFiles, "Delete confirms the song delete.");
+        const auto whole = view.TakeApprovedDeletion();
+        Check(whole && whole->wholeSong && whole->paths == std::vector<std::filesystem::path>{songFolder},
+              "A confirmed song delete recycles the whole song folder.");
+        view.Shutdown();
+    }
     void TestBackgroundPreview(SongSelectPurpose purpose)
     {
         Renderer renderer;
@@ -1664,6 +1787,8 @@ int main()
         TestOsuImportPanel();
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);
+        TestSongContextMenu(SongSelectPurpose::Gameplay);
+        TestSongContextMenu(SongSelectPurpose::Editor);
         TestSongPanelTransparency(SongSelectPurpose::Gameplay);
         TestSongPanelTransparency(SongSelectPurpose::Editor);
         TestSongListCommonParts(SongSelectPurpose::Gameplay);
