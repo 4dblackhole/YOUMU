@@ -194,6 +194,8 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
         result.diagnostics.push_back({DiagnosticSeverity::Warning, longNoteHead->note.source,
             "Ignored long-note head without a matching end."});
 
+    // Max strokes: only each column's first assigned keys play; the key overlay follows the same layout.
+    inputLayout = LimitKeysPerBinding(std::move(inputLayout), static_cast<std::size_t>(options.play.maxStrokes));
     std::map<PhysicalKey, NoteAction> inputMapping;
     for (const auto &binding : inputLayout.bindings)
         for (const auto key : binding.keys)

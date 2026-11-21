@@ -80,6 +80,10 @@ void PlayOptionsPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IW
     gauge_->GetComponent<SpriteVisualComponent>()->SetStyle(
         {ui_colors::Rgb(0xFFFFFF, .74F), ui_colors::White, ui_colors::White, ui_colors::Rgb(0xFFFFFF, .74F)});
     RequireDropdown(*gauge_).SetValueStyle(14, 600, Ink);
+    strokeLabel_ = &CreateText(body, "PlayOptions.MaxStrokes.Label", 13, 600, Ink);
+    strokeRange_ = &CreateText(body, "PlayOptions.MaxStrokes.Range", 12, 600, Caption);
+    for (std::size_t i = 0; i < strokeTabs_.size(); ++i)
+        strokeTabs_[i] = &CreateTab(body, "PlayOptions.MaxStrokes." + std::to_string(i + 1), std::to_wstring(i + 1), 13);
     for (std::size_t i = 0; i < fields_.size(); ++i)
     {
         const auto name = std::string("PlayOptions.") + FieldKeys[i];
@@ -256,6 +260,8 @@ void PlayOptionsPanel::RefreshTexts()
     SetText(*rateRange_, get(draft_.accelerateUnit == PlayOptions::ScrollUnit::Bpm ? "accelerateBpmRange" : "accelerateRange"));
     SetText(*judgeUnit_, get("judgeRange"));
     SetText(*gaugeLabel_, get("hpGauge"));
+    SetText(*strokeLabel_, get("maxStrokes"));
+    SetText(*strokeRange_, get("maxStrokesRange"));
     const auto *gauge = FindHpGauge(draft_.hpGauge);
     SetText(*gaugeClear_, texts_->Format("PlayOptions.clear", std::format(L"{:g}", gauge ? gauge->clearPercent : 0.0)));
     if (errorField_)
@@ -304,6 +310,13 @@ bool PlayOptionsPanel::ProcessAction(const Action &action)
         {
             draft_.accelerateUnit = i == 1 ? PlayOptions::ScrollUnit::Bpm : PlayOptions::ScrollUnit::Multiplier;
             RefreshTexts();
+            Layout();
+            return true;
+        }
+    for (std::size_t i = 0; i < strokeTabs_.size(); ++i)
+        if (action.source == strokeTabs_[i]->Id())
+        {
+            draft_.maxStrokes = static_cast<int>(i) + 1;
             Layout();
             return true;
         }
