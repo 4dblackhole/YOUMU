@@ -109,7 +109,7 @@ void YOUMUGame::RegisterScenes(SceneManager &scenes)
                                                              std::ref(optionSettings_)));
     requireRegistered(scenes.RegisterScene<EditorScene>(std::string(EditorSceneId),
                                                         SceneRetention::DestroyOnExit, std::ref(ScreenVisuals()),
-                                                        launchRequest_, std::ref(texts_)));
+                                                        launchRequest_, std::ref(texts_), &optionSettings_));
     requireRegistered(scenes.RegisterScene<RhythmTestScene>(std::string(RhythmTestSceneId),
                                                             // Gameplay routes keep only their factory while inactive.
                                                             // The concrete mode Scene is constructed on entry and
@@ -162,6 +162,8 @@ void YOUMUGame::OnClientInitialized(const EngineServices &services)
     // chooses F7 independently from Engine scheduling.
     performanceBand_.Initialize(ScreenVisuals(), texts_);
     performanceBand_.SetVisible(showPerformanceOverlay_);
+    // Alt+wheel volume on every screen; it runs after the screens, which ignore the wheel while Alt is held.
+    volumeOverlay_.Initialize(ScreenVisuals(), optionSettings_, services.windowControl);
 }
 
 void YOUMUGame::OnClientUpdated(const UpdateContext &context)
@@ -179,11 +181,13 @@ void YOUMUGame::OnClientUpdated(const UpdateContext &context)
         lastPerformanceMeasurementIndex_ = context.performance.measurementIndex;
     }
     performanceBand_.Update();
+    volumeOverlay_.Update(context.input, context.deltaSeconds);
 }
 
 void YOUMUGame::OnClientShuttingDown() noexcept
 {
     performanceBand_.Shutdown();
+    volumeOverlay_.Shutdown();
 }
 
 void YOUMUGame::RestoreSavedAudioDriver(AudioSystem &audio)

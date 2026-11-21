@@ -75,6 +75,8 @@ class GameplaySessionController final
         return restartHoldStart_ ? restartHoldProgress_ : 0.0;
     }
     static constexpr double RetryFadeSeconds = 0.3;
+    // Re-applies the player volumes to the running attempt's buses (Alt+wheel during play).
+    void SetVolumes(const AudioVolumes &volumes) { audio_.SetVolumes(volumes); }
     bool PauseMenuOpen() const noexcept
     {
         return pauseMenuOpen_;

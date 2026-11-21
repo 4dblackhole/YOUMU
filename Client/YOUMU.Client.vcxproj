@@ -297,7 +297,10 @@
     <ClCompile Include="Presentation\UiScrollbar.cpp" />
     <ClInclude Include="Presentation\UiScrollbar.h" />
     <ClCompile Include="Presentation\PerformanceBand.cpp" />
+    <ClCompile Include="Presentation\VolumeOverlay.cpp" />
     <ClInclude Include="Presentation\PerformanceBand.h" />
+    <ClInclude Include="Presentation\SceneWheel.h" />
+    <ClInclude Include="Presentation\VolumeOverlay.h" />
     <ClCompile Include="Presentation\UiModal.cpp" />
     <ClInclude Include="Presentation\UiModal.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />
