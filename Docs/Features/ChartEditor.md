@@ -47,6 +47,8 @@
 - 목록: 클릭은 한 행, Ctrl+클릭은 더하기/빼기, Shift+클릭은 주 행부터 연속. 주 행은 금빛 표지이며 아래 칸이 고치는 행입니다.
   패널 위의 휠은 목록을 넘깁니다.
 - 아래 줄: Delete(고른 행 수), Add(칸의 위치에 추가·같은 위치·종류는 교체), Apply(주 행을 칸 내용으로 바꿈, 한 번에 되돌림).
+- 위치 칸(마디·박) 오른쪽의 시계 버튼은 현재 시각에서 가장 가까운 Beat 눈금(붙여넣기 목적지와 같은 규칙)의 마디·박을
+  칸에 넣습니다. Area의 끝 위치 칸에도 같은 버튼이 있습니다. 칸만 바꾸며 Add·Apply를 눌러야 문서에 들어갑니다.
 - Timing: BPM·Length·Delay. 음수 delay는 잘라 내는 구간을 경고합니다. 마디 길이는 이월 규칙을 지키려고 마디 단위로 적용합니다.
 - Scroll speed(Whole·Separate), Volume(대상 HitSound·TickSound·UserInputFeedback), Audio FX(버스 Music·HitSound·TickSound·UserInputFeedback),
   Area 스위치와 끝 위치·To·Curve(기본 3개와 YME의 사용자 곡선). `Curves…`는 곡선 편집 창입니다.
