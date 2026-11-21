@@ -237,7 +237,7 @@ void SongListView::CreateCard(const SongCard &row, const bool focused)
             difficultyButtonIds_.push_back({difficulty.Id(), index});
         }
     }
-    const auto createId = editor_ ? CreateDifficultyButton(button, row.visiblePosition) : 0;
+    const auto createId = editor_ ? CreateDifficultyButton(button, row.visiblePosition, focused) : 0;
     auto *nowPlaying = focused ? &CreateNowPlaying(button, textLeft) : nullptr;
     cards_.push_back({row.catalogIndex, row.top, height, &button, &title, &artist, row.visiblePosition, createId,
                       nowPlaying, textLeft, textWidth});
@@ -323,15 +323,27 @@ void SongListView::ClearNameHints()
     }
 }
 
-NodeId SongListView::CreateDifficultyButton(Visual2DNode &card, const std::size_t visiblePosition)
+NodeId SongListView::CreateDifficultyButton(Visual2DNode &card, const std::size_t visiblePosition, const bool focused)
 {
     constexpr float size = 32.0F;
     auto &button = CreateButton(card, TopLeft({card.NodeSize().width - size - 12.0F, 13.0F, size, size}, card.NodeSize().height),
                                 L"", std::format("AddDifficulty.{}", visiblePosition));
-    ApplySkinPart(button, visuals_, "AddDifficulty", PureWhite);
+    if (focused)
+    {
+        // The focused card is Brand blue: the + turns white and the hover plate is a light veil, not the white
+        // skin plate that would hide a white +.
+        VisualStyle style{};
+        style.normal = style.disabled = {1.0F, 1.0F, 1.0F, 0.0F};
+        style.hovered = {1.0F, 1.0F, 1.0F, 0.25F};
+        style.pressed = {1.0F, 1.0F, 1.0F, 0.38F};
+        SetSkinBaseStyle(button, style);
+        SetCornerRadius(button, 2.0F);
+    }
+    else
+        ApplySkinPart(button, visuals_, "AddDifficulty", PureWhite);
     auto &plus = CreateSprite(button, {(size - 16.0F) * 0.5F, (size - 16.0F) * 0.5F, 16.0F, 16.0F},
                               visuals_.RegisterImage(Common(L"Icons.plus")), "Icon");
-    RequireComponent<SpriteVisualComponent>(plus).SetTint(theme::BrandText);
+    RequireComponent<SpriteVisualComponent>(plus).SetTint(focused ? PureWhite : theme::BrandText);
     button.SetZIndex(3);
     button.SetEnabled(!selection_.catalogLoading_);
     return button.Id();
