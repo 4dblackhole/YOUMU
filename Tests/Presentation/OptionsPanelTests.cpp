@@ -273,7 +273,7 @@ namespace
         OptionSettings settings(path);
         std::string error;
         for (const std::string content : {"[General]\nLanguage=zz\n", "missing separator\n",
-                                          "[Audio]\nMiddleware=uninstalled\n"})
+                                          "[Audio]\nMiddleware=uninstalled\n", "[Audio]\nDspBufferLength=300\n"})
         {
             auto previous = settings.Values();
             previous.driverIndex = 7;
@@ -564,6 +564,24 @@ namespace
                   settings.Values().renderRate == RenderRateMode::DisplayDouble,
               "The frame limit can be twice the refresh rate.");
         Section(panel, canvas, "Audio");
+        // The audio buffer is saved at once and read by the engine at the next start.
+        Check(settings.Values().dspBufferLength == 256 &&
+                  RequireDropdown(FindNode(canvas.Root(), "Options.Buffer.Combo")).SelectedIndex() == 1,
+              "The audio buffer starts at the engine's 256 samples.");
+        Check(panel.ProcessAction(Select(canvas, "Options.Buffer.Combo", 2)) && settings.Values().dspBufferLength == 512,
+              "Choosing an audio buffer saves it.");
+        Check(RequireDropdown(FindNode(canvas.Root(), "Options.Buffer.Combo")).SelectedIndex() == 2,
+              "The buffer list shows the saved choice.");
+        {
+            // Each text lands in its own field: buffer items read samples, the outputs keep their names.
+            const auto &buffers = RequireDropdown(FindNode(canvas.Root(), "Options.Buffer.Combo")).Items();
+            const auto &outputs = RequireDropdown(FindNode(canvas.Root(), "Options.Output.Combo")).Items();
+            Check(buffers.size() == 4 && buffers[2].starts_with(L"512 ") && buffers[2].find(L"WASAPI") == std::wstring::npos,
+                  "Buffer items read the sample count and its unit.");
+            Check(std::ranges::find(outputs, std::wstring(L"WASAPI")) != outputs.end() &&
+                      std::ranges::find(outputs, std::wstring(L"ASIO")) != outputs.end(),
+                  "Output names stay WASAPI and ASIO.");
+        }
         click("Options.Offset.Field");
         Check(panel.OwnsKeyboard(), "Offset field captures numeric input.");
         for (const auto key : {'1', '0', '0'})
@@ -718,6 +736,7 @@ namespace
         Check(restored.Values().notation == TextNotation::Romanized, "The notation choice survives restart.");
         Check(restored.Values().renderRate == RenderRateMode::DisplayDouble, "The frame limit survives restart.");
         Check(restored.Values().windowMode == WindowMode::Borderless, "The window mode survives restart.");
+        Check(restored.Values().dspBufferLength == 512, "The audio buffer survives restart.");
         Check(restored.Values().restartKey == VK_F8, "The restart key survives restart.");
         candidate.windowWidth = 0;
         Check(!settings.Save(candidate, error), "Invalid saved resolution rejected.");

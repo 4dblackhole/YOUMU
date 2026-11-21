@@ -98,7 +98,7 @@ class OptionsPanel final
     void UpdateContentLayout();
     void UpdateScrollbar();
     void CollapseCombos();
-    [[nodiscard]] std::array<PhantomCore::Visual2DNode *, 9> Combos() const noexcept;
+    [[nodiscard]] std::array<PhantomCore::Visual2DNode *, 10> Combos() const noexcept;
     // An open drop-down owns the wheel: its list scrolls (or closes) and the body stays put.
     [[nodiscard]] bool AnyComboExpanded() const;
     bool CanProcessAction(PhantomCore::NodeId source) const noexcept;
@@ -170,6 +170,10 @@ class OptionsPanel final
     bool SaveOptions(const OptionValues &candidate);
     void SelectOutput(PhantomCore::AudioOutputBackend output);
     void SelectDriver(int index);
+    // Saves the mixer buffer length; the engine reads it at the next start.
+    void SelectBuffer(std::size_t index);
+    // The saved buffer differs from the running mixer's, so a restart is still needed.
+    [[nodiscard]] bool BufferAwaitsRestart() const noexcept;
     void RestoreAudio(PhantomCore::AudioOutputBackend output, int driver, std::string &error);
     [[nodiscard]] std::string DriverName(int index) const;
 
@@ -217,6 +221,7 @@ class OptionsPanel final
     PhantomCore::Visual2DNode *renderRateLabel_{}, *renderRateCombo_{};
     PhantomCore::Visual2DNode *middlewareLabel_{}, *outputLabel_{}, *driverLabel_{};
     PhantomCore::Visual2DNode *middlewareCombo_{}, *outputCombo_{}, *driverCombo_{};
+    PhantomCore::Visual2DNode *bufferLabel_{}, *bufferCombo_{};
     PhantomCore::Visual2DNode *offsetLabel_{}, *offsetField_{}, *offsetUnit_{};
     std::optional<std::size_t> captureRow_;
     PhantomCore::Visual2DNode *restartKeyLabel_{}, *restartKeyButton_{};

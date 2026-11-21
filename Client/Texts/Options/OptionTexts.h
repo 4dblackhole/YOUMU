@@ -24,6 +24,8 @@ struct OptionTextSet
     std::wstring_view driverUnavailable;
     std::wstring_view loadWarning;
     std::wstring_view middlewareFmod, outputWasapi, outputAsio;
+    // Keep in the order Options() lists them: the set is aggregate-initialized.
+    std::wstring_view buffer, bufferSamples, bufferRestart;
 };
 
 [[nodiscard]] std::wstring_view InputBindingName(const TextCatalog &texts, std::string_view mode,
