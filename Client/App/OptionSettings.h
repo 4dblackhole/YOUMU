@@ -21,6 +21,8 @@ struct OptionValues
     std::string driverName;
     AudioVolumes volumes;
     std::uint32_t windowWidth{1280}, windowHeight{720};
+    // Framed window, or an unframed picture centred on a black monitor-sized backdrop.
+    PhantomCore::WindowMode windowMode{PhantomCore::WindowMode::Windowed};
     // Song, artist, chart and maker texts: the first notation, or the romanized line.
     TextNotation notation{TextNotation::First};
     // Key beam opacity for every mode, 0..100%; 100 draws the beam as it always was.

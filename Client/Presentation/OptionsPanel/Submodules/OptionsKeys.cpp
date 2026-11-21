@@ -451,6 +451,12 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
         SelectResolution(action.selectedIndex);
         return true;
     }
+    if (action.type == ActionType::SelectionChanged && action.source == windowModeCombo_->Id())
+    {
+        CancelKeyboardEdit();
+        SelectWindowMode(action.selectedIndex);
+        return true;
+    }
     if (action.type == ActionType::SelectionChanged && action.source == notationCombo_->Id())
     {
         CancelKeyboardEdit();

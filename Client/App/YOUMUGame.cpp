@@ -52,6 +52,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.windowTitle = GameName;
     config.windowWidth = optionSettings_.Values().windowWidth;
     config.windowHeight = optionSettings_.Values().windowHeight;
+    config.windowMode = optionSettings_.Values().windowMode;
     const auto color = ui_colors::ClearBackground;
     config.clearColor = {color.red, color.green, color.blue, color.alpha};
     config.renderRateMode = optionSettings_.Values().renderRate;

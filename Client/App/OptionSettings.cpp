@@ -70,6 +70,24 @@ namespace
         }
     }
 
+    std::string_view WindowModeName(const WindowMode mode)
+    {
+        switch (mode)
+        {
+        case WindowMode::Windowed: return "windowed";
+        case WindowMode::Borderless: return "borderless";
+        default: throw std::runtime_error("Invalid window mode option.");
+        }
+    }
+
+    WindowMode ReadWindowMode(const std::string_view value)
+    {
+        for (const auto mode : {WindowMode::Windowed, WindowMode::Borderless})
+            if (value == WindowModeName(mode))
+                return mode;
+        throw std::runtime_error("WindowMode must be windowed or borderless.");
+    }
+
     std::string_view RenderRateName(const RenderRateMode mode)
     {
         switch (mode)
@@ -181,6 +199,7 @@ namespace
             throw std::runtime_error("Background brightness must be a whole percentage within 0..100.");
         static_cast<void>(OutputName(values.audioOutput));
         static_cast<void>(RenderRateName(values.renderRate));
+        static_cast<void>(WindowModeName(values.windowMode));
         if (!IsValidWindowExtent(values.windowWidth) || !IsValidWindowExtent(values.windowHeight))
             throw std::runtime_error("Window dimensions must be within 1..16384 pixels.");
         const auto layouts = AvailableInputLayouts();
@@ -248,6 +267,8 @@ namespace
                 values.backgroundBrightness = ReadInteger<int>(value);
             else if (key == "RenderRate")
                 values.renderRate = ReadRenderRate(value);
+            else if (key == "WindowMode")
+                values.windowMode = ReadWindowMode(value);
         }
         else if (section == "Controls")
         {
@@ -379,6 +400,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nSkinSet=" << EncodeUtf8(values.skinSet) << "\r\nGlobalOffsetMs=" << values.globalOffsetMs
              << "\r\nSongsPath=" << EncodeUtf8(values.songsPath.wstring())
              << "\r\n\r\n[Display]\r\nWidth=" << values.windowWidth << "\r\nHeight=" << values.windowHeight
+             << "\r\nWindowMode=" << WindowModeName(values.windowMode)
              << "\r\nNotation=" << (values.notation == TextNotation::Romanized ? "romanized" : "first")
              << "\r\nKeyBeamOpacity=" << values.keyBeamOpacity
              << "\r\nBackgroundBrightness=" << values.backgroundBrightness
