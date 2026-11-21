@@ -101,6 +101,13 @@ class TaikoEditorMode final : public IEditorMode
     std::vector<NoteBodyHit> bodyHits_;
     TaikoEditorNoteInspector inspector_;
     std::vector<NoteHit> noteHits_;
+    // The drawn edges of the selected range; grabbing one re-anchors the range at the other edge.
+    struct RangeEdgeHit
+    {
+        PhantomCore::Rect bounds;
+        MusicalPosition otherEdge;
+    };
+    std::vector<RangeEdgeHit> rangeEdgeHits_;
     // The note (head, tail or long-note body) under the point, as the selection tool would pick it.
     [[nodiscard]] const NoteHit *NoteHitAt(IEditorContext &, PhantomCore::Point) const;
     [[nodiscard]] std::optional<std::size_t> NoteAt(IEditorContext &, PhantomCore::Point) const;

@@ -52,6 +52,15 @@ bool TaikoEditorMode::BeginScoreSelection(IEditorContext &state, Point point)
 {
     if (tool_ != 0 || state.Score().preview || !(state.Score().realtime ? areas_.lane : areas_.score).Contains(point))
         return false;
+    // A gold edge of the selected range moves that edge; a note drawn on the edge keeps its own click.
+    const auto edge = std::ranges::find_if(rangeEdgeHits_, [point](const auto &hit) { return hit.bounds.Contains(point); });
+    if (edge != rangeEdgeHits_.end() && !NoteHitAt(state, point))
+    {
+        selectionAnchor_ = edge->otherEdge;
+        selectionStart_ = point;
+        selecting_ = true;
+        return true;
+    }
     const auto position = SnapPosition(state, point);
     if (!position)
         return false;

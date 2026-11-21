@@ -52,6 +52,7 @@ void TaikoEditorMode::DrawChart(IEditorModeCanvas &canvas, IEditorContext &state
     areas_ = canvas.Areas();
     noteHits_.clear();
     bodyHits_.clear();
+    rangeEdgeHits_.clear();
     realtimeGrid_.clear();
     overviewGrid_.clear();
     if (state.Score().preview)
@@ -283,9 +284,15 @@ void TaikoEditorMode::DrawScoreRangeAndCursor(IEditorModeCanvas &canvas, IEditor
             const float x = cell.x0 + cell.width * from, width = cell.width * (to - from);
             canvas.Box({x, cell.laneTop, width, cell.laneHeight}, {.3F, .61F, 1, .28F});
             if (first)
+            {
                 canvas.Box({x - 1, cell.laneTop - 4, 2.5F, cell.laneHeight + 8}, ui_colors::theme::Sun);
+                rangeEdgeHits_.push_back({{x - 5, cell.laneTop - 8, 10, cell.laneHeight + 16}, range->second});
+            }
             if (last)
+            {
                 canvas.Box({x + width - 1.5F, cell.laneTop - 4, 2.5F, cell.laneHeight + 8}, ui_colors::theme::Sun);
+                rangeEdgeHits_.push_back({{x + width - 5, cell.laneTop - 8, 10, cell.laneHeight + 16}, range->first});
+            }
         }
     // The playhead: the cursor's beat in its measure.
     const auto whole = timeline.WholeNotesAtTime(Microseconds(state.TimeMilliseconds()));
@@ -458,6 +465,10 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
         const float left = std::clamp(std::min(first, last), lane.x, right);
         const float end = std::clamp(std::max(first, last), lane.x, right);
         canvas.Box({left, lane.y, std::max(2.0F, end - left), lane.height}, {.3F, .61F, 1, .18F});
+        // The common view draws the gold edges over the ruler and lane; they are grabbed here.
+        for (const auto &[x, otherEdge] : {std::pair{first, range->second}, std::pair{last, range->first}})
+            if (x >= lane.x && x <= right)
+                rangeEdgeHits_.push_back({{x - 5, lane.y, 10, lane.height}, otherEdge});
     }
     const auto currentMeasure = MeasureNearTime(timeline, state.TimeMilliseconds());
     const auto gridBegin = std::max<std::int64_t>(0, currentMeasure - 1);

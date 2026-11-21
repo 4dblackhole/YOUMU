@@ -438,6 +438,20 @@ namespace
         state.Mode().ToggleScoreNote(state, {x({1, 2}), ScoreY});
         Check(state.SelectedNoteIds() == std::set<std::size_t>{secondId},
               "Alt+click on empty score space must keep the selection.");
+
+        state.SelectNoteRange({0, {1, 8}}, {0, {7, 8}});
+        redraw();
+        Check(state.Mode().BeginScoreSelection(state, {x({7, 8}), ScoreY}), "The range's end edge must be grabbable.");
+        state.Mode().UpdateScoreSelection(state, {x({1, 2}), ScoreY}, true);
+        const auto &range = state.NoteSelectionRange();
+        Check(range && range->first == MusicalPosition{0, {1, 8}} && range->second == MusicalPosition{0, {1, 2}},
+              "Dragging the end edge must move only the end of the range.");
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{firstId}, "The moved range must reselect its notes.");
+        redraw();
+        Check(state.Mode().BeginScoreSelection(state, {x({1, 8}), ScoreY}), "The range's start edge must be grabbable.");
+        state.Mode().UpdateScoreSelection(state, {x({5, 8}), ScoreY}, true);
+        Check(range && range->first == MusicalPosition{0, {1, 2}} && range->second == MusicalPosition{0, {5, 8}},
+              "Dragging the start edge past the end must keep the other edge as the anchor.");
     }
 
     // A placement replaces every note whose span shares a position with it (Taiko has
