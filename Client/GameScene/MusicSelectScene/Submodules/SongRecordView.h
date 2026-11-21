@@ -37,6 +37,8 @@ public:
     void Shutdown() noexcept;
 
 private:
+    // A filter that limits the records shows the query button inverted: cobalt fill, white icon.
+    void RefreshQueryButton();
     void Show(const std::vector<PlayRecord>& records);
     void ShowPager(bool visible);
     void ShowMessage(bool visible);
@@ -56,5 +58,5 @@ private:
     std::vector<std::pair<PhantomCore::NodeId, PlayRecord>> shownRecords_;
     std::optional<PlayRecord> openedRecord_;
     PhantomCore::Visual2DNode *panel_{}, *selector_{}, *messagePlate_{}, *emptyMessage_{};
-    PhantomCore::Visual2DNode *queryButton_{}, *pagerPlate_{}, *previousButton_{}, *nextButton_{}, *rows_{}, *pageLabel_{};
+    PhantomCore::Visual2DNode *queryButton_{}, *queryIcon_{}, *pagerPlate_{}, *previousButton_{}, *nextButton_{}, *rows_{}, *pageLabel_{};
 };
