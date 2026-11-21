@@ -87,11 +87,19 @@ float PlayOptionsPanel::LayoutDifficulty(const float height)
 
     const float rateWidth = EstimateWidth(labels_[Rate]->GetComponent<TextVisualComponent>()->Text(), 13);
     Place(*labels_[Rate], {left, top, rateWidth + 4, 24}, height);
-    Place(*rateRange_, {left + rateWidth + 8, top + 4, 80, 16}, height);
+    Place(*rateRange_, {left + rateWidth + 8, top + 4, width - rateWidth - 8 - 32, 16}, height);
     Place(*rateMore_, {left + width - 24, top, 24, 24}, height);
     rateMoreIcon_->SetBounds({5, 5, 14, 14});
     top += 24 + 6;
-    PlaceField(*fields_[Rate], {left, top, NumberWidth, FieldHeight}, height);
+    // Accelerate has the same x / BPM tabs before its field as the scroll speed.
+    tabLeft = left;
+    for (std::size_t i = 0; i < rateUnits_.size(); ++i)
+    {
+        Place(*rateUnits_[i], {tabLeft, top, UnitWidths[i], 28}, height);
+        SetTabSelected(*rateUnits_[i], (draft_.accelerateUnit == PlayOptions::ScrollUnit::Bpm) == (i == 1));
+        tabLeft += UnitWidths[i] + 16;
+    }
+    PlaceField(*fields_[Rate], {tabLeft - 8, top, NumberWidth, FieldHeight}, height);
     top += FieldHeight + FieldGap;
     // The pitch switches hang 8 under the field and keep the usual gap below them.
     if (rateExpanded_)

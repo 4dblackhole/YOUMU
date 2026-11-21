@@ -14,8 +14,14 @@
 class PlaySession final
 {
   public:
+    // Resolves the per-chart units: the clock, audio, results and records read the Accelerate multiplier.
     void SetPlayOptions(PlayOptions options, double baseBpm)
-    { scrollMultiplier_ = options.ScrollMultiplier(baseBpm); playOptions_ = std::move(options); }
+    {
+        scrollMultiplier_ = options.ScrollMultiplier(baseBpm);
+        options.accelerate = options.AccelerateMultiplier(baseBpm);
+        options.accelerateUnit = PlayOptions::ScrollUnit::Multiplier;
+        playOptions_ = std::move(options);
+    }
     const PlayOptions &Options() const noexcept { return playOptions_; }
     void SetHpLevel(HpLevel level) noexcept { hpLevel_ = level; }
     HpLevel HealthLevel() const noexcept { return hpLevel_; }

@@ -66,7 +66,8 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     summary.globalOffset = options.globalOffset;
     summary.patternName = pattern.name;
     summary.judgementLevel = judgeLevel;
-    summary.playOptions = options.play;
+    // The session's options, with Accelerate already resolved to this chart's multiplier.
+    summary.playOptions = session->Options();
     auto collector = std::make_unique<TaikoResultCollector>(std::move(summary), compiled.size());
     ConfigureHitSounds(*session, pattern, effects, timeline, result.diagnostics, stop);
     if (!result.diagnostics.empty())
