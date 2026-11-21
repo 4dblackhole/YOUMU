@@ -45,6 +45,7 @@ class TaikoEditorMode final : public IEditorMode
     void ScrollScore(IEditorContext &, int direction) override;
     bool BeginScoreSelection(IEditorContext &, PhantomCore::Point) override;
     bool UpdateScoreSelection(IEditorContext &, PhantomCore::Point, bool released) override;
+    void ActivateScore(IEditorContext &, PhantomCore::Point) override;
     void DrawMetadata(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     std::vector<EditorSoundChoice> SoundChoices(const TextCatalog &) const override;
     std::wstring_view SoundEffectHelp(const TextCatalog &) const override;
@@ -89,6 +90,7 @@ class TaikoEditorMode final : public IEditorMode
     {
         PhantomCore::Point point;
         std::size_t order;
+        MusicalPosition position;
     };
     struct NoteBodyHit
     {
@@ -98,6 +100,9 @@ class TaikoEditorMode final : public IEditorMode
     std::vector<NoteBodyHit> bodyHits_;
     TaikoEditorNoteInspector inspector_;
     std::vector<NoteHit> noteHits_;
+    // The note (head, tail or long-note body) under the point, as the selection tool would pick it.
+    [[nodiscard]] const NoteHit *NoteHitAt(IEditorContext &, PhantomCore::Point) const;
+    [[nodiscard]] std::optional<std::size_t> NoteAt(IEditorContext &, PhantomCore::Point) const;
     std::vector<std::pair<PhantomCore::Point, MusicalPosition>> overviewGrid_;
     std::vector<std::pair<float, MusicalPosition>> realtimeGrid_;
     std::optional<MusicalPosition> pending_;

@@ -42,6 +42,14 @@ struct InputStateTestAccess
         input.SetMousePosition(x, y, true);
         input.SetMouseButton(MouseButton::Left, true, 1);
     }
+    // A left press stamped with QPC ticks, for double-click timing.
+    static void ClickAt(InputState &input, int x, int y, std::int64_t ticks, std::int64_t frequency)
+    {
+        input.Reset();
+        input.SetPerformanceCounterFrequency(frequency);
+        input.SetMousePosition(x, y, true);
+        input.SetMouseButton(MouseButton::Left, true, ticks);
+    }
     // The frame after Click: the button comes up over the same point.
     static void Release(InputState &input, int x, int y)
     {
@@ -686,6 +694,35 @@ int main(int argc, char** argv)
         clickFrame(rateLeft + 30 + 31, rateY);
         Check(state.PlaybackRate() == 1.0, "Clicking the rate value must return to 1.00x.");
         state.SetPlaybackRate(1);
+        // Double-click on a realtime note: the second press moves the cursor to the note; one press does not.
+        {
+            state.SelectTab(EditorTab::Compose);
+            state.SetRealtime(true);
+            state.ClosePanel();
+            state.SelectTool(0);
+            const double noteMs = static_cast<double>(state.Document().Notes().front().timing.count()) / 1000.0;
+            state.Seek(noteMs + 5);
+            view.Build();
+            // Judge line and lane centre of the 16:9 frame with no panel open, in window pixels.
+            const int judgeX = static_cast<int>((184 + 152 * .62F) * 1.5F), laneY = static_cast<int>(236 * 1.5F);
+            const auto press = [&](std::int64_t ticks) {
+                InputStateTestAccess::ClickAt(input, judgeX, laneY, ticks, 10'000'000);
+                static_cast<void>(view.Update({0, 0, 1, input, audio, {}}));
+                InputStateTestAccess::Release(input, judgeX, laneY);
+                static_cast<void>(view.Update({0, 0, 1, input, audio, {}}));
+            };
+            press(10'000'000);
+            Check(state.TimeMilliseconds() == noteMs + 5, "A single click on a note must not move the cursor.");
+            press(10'000'000 + 1'000'000);
+            Check(state.TimeMilliseconds() == noteMs, "A double-click on a note must move the cursor to it.");
+            state.Seek(noteMs + 5);
+            press(10'000'000 + 2'000'000);
+            press(10'000'000 + 2'000'000 + 20'000'000);
+            Check(state.TimeMilliseconds() == noteMs + 5, "Presses two seconds apart must not count as a double-click.");
+            state.SelectNotes({});
+            state.Seek(0);
+            view.Build();
+        }
         // A hit-sound Volume Area: the Curve button cycles Linear → Exponential → Harmonic and wraps.
         // Its click runs after the frame that listed the curves, so it must not hold an iterator into it.
         {

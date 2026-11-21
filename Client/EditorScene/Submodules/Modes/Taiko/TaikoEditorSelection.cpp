@@ -80,3 +80,20 @@ bool TaikoEditorMode::UpdateScoreSelection(IEditorContext &state, Point point, b
     }
     return true;
 }
+
+void TaikoEditorMode::ActivateScore(IEditorContext &state, Point point)
+{
+    if (state.Score().preview)
+        return;
+    // A head or tail moves the cursor to that endpoint; a long-note body to its head.
+    std::optional<MusicalPosition> position;
+    if (const auto *hit = NoteHitAt(state, point))
+        position = hit->position;
+    else if (const auto order = NoteAt(state, point))
+        if (const auto note = state.Document().FindNote(*order))
+            position = note->head.note.position;
+    if (!position)
+        return;
+    state.Seek(static_cast<double>(state.Document().Timeline().Compile(*position).count()) / 1000.0);
+    state.RequestRebuild();
+}

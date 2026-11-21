@@ -107,6 +107,10 @@ class IEditorMode : public IEditorAudioSource
     {
         return false;
     }
+    // Double-click on the score or lane, after the first click's EditScore: move the cursor to the note there.
+    virtual void ActivateScore(IEditorContext &, PhantomCore::Point)
+    {
+    }
     virtual void DrawMetadata(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) = 0;
     virtual std::vector<EditorSoundChoice> SoundChoices(const TextCatalog &) const = 0;
     virtual std::wstring_view SoundEffectHelp(const TextCatalog &) const = 0;

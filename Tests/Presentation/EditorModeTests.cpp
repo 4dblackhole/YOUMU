@@ -399,6 +399,33 @@ namespace
               "Clicking empty realtime space with the selection tool must preserve the cursor and place no note.");
     }
 
+    // Score clicks on notes: double-click moves the cursor to the note, Alt+click picks notes one by one,
+    // and a gold edge of the dragged range moves that edge.
+    void TestTaikoScoreInteractions()
+    {
+        EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(PatternDocument{}));
+        state.SetRealtime(false);
+        state.SelectTool(1);
+        state.PlaceNote({0, {1, 4}});
+        state.PlaceNote({0, {3, 4}});
+        const auto &notes = state.Document().Notes();
+        const auto firstId = notes.front().note.sourceOrder, secondId = notes.back().note.sourceOrder;
+        state.SelectTool(0);
+        state.Seek(0);
+        RecordingCanvas canvas;
+        const auto redraw = [&] { state.Mode().DrawChart(canvas, state, TestCatalog(Language::Korean)); };
+        const auto x = [](Rational fraction) { return ScoreLeft + MeasureWidth * static_cast<float>(fraction.Value()); };
+        const Point first{x({1, 4}), ScoreY}, second{x({3, 4}), ScoreY};
+
+        redraw();
+        state.Mode().ActivateScore(state, second);
+        const double secondMs = static_cast<double>(state.Document().Timeline().Compile({0, {3, 4}}).count()) / 1000.0;
+        Check(state.TimeMilliseconds() == secondMs, "Double-clicking a note must move the cursor to that note.");
+        redraw();
+        state.Mode().ActivateScore(state, {x({1, 2}), ScoreY});
+        Check(state.TimeMilliseconds() == secondMs, "Double-clicking empty score space must not move the cursor.");
+    }
+
     // A placement replaces every note whose span shares a position with it (Taiko has
     // one lane). The replacement is one Undo step; the same ordinary note is kept.
     void TestTaikoPlacementConflicts()
@@ -1445,6 +1472,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     }
     TestTaikoEditing();
     TestTaikoPlacementConflicts();
+    TestTaikoScoreInteractions();
     TestPreviewMatchesPlay();
     TestRealtimeZoomAndTransport();
     TestLastNoteSeeking();

@@ -203,7 +203,7 @@ void TaikoEditorMode::DrawOverview(IEditorModeCanvas &canvas, IEditorContext &st
                    radius - 1);
         if (n.keyType == 17)
             canvas.Box({point->x - radius * .2F, point->y - radius * .55F, radius * .4F, radius * 1.1F}, White, 1);
-        noteHits_.push_back({*point, n.sourceOrder});
+        noteHits_.push_back({*point, n.sourceOrder, n.position});
     }
     DrawScoreRangeAndCursor(canvas, state);
 }
@@ -543,19 +543,36 @@ void TaikoEditorMode::DrawRealtime(IEditorModeCanvas &canvas, IEditorContext &st
             canvas.Box({x - radius - 5, centerY - radius - 5, (radius + 5) * 2, (radius + 5) * 2},
                        ui_colors::theme::Sun, radius + 5);
         Circle(canvas, x, centerY, VisualTool(n.note), radius);
-        noteHits_.push_back({{x, centerY}, n.note.sourceOrder});
+        noteHits_.push_back({{x, centerY}, n.note.sourceOrder, n.note.position});
     }
+}
+
+const TaikoEditorMode::NoteHit *TaikoEditorMode::NoteHitAt(IEditorContext &state, Point point) const
+{
+    const auto nearest = std::ranges::min_element(noteHits_, {}, [point](const NoteHit &n)
+                                                  { return std::hypot(n.point.x - point.x, n.point.y - point.y); });
+    const float hitRadius = state.Score().realtime ? EditorTimeAxis::NormalHeadDiameter * .5F + 2 : scoreBigRadius_ + 2;
+    if (nearest == noteHits_.end() || std::hypot(nearest->point.x - point.x, nearest->point.y - point.y) >= hitRadius)
+        return nullptr;
+    return &*nearest;
+}
+
+std::optional<std::size_t> TaikoEditorMode::NoteAt(IEditorContext &state, Point point) const
+{
+    if (const auto *hit = NoteHitAt(state, point))
+        return hit->order;
+    const auto body = std::ranges::find_if(bodyHits_, [point](const auto &hit) { return hit.bounds.Contains(point); });
+    if (body != bodyHits_.end())
+        return body->order;
+    return std::nullopt;
 }
 
 void TaikoEditorMode::EditScore(IEditorContext &state, Point point, bool erase)
 {
     if (state.Score().preview || !(state.Score().realtime ? areas_.lane : areas_.score).Contains(point))
         return;
-    const auto nearest = std::ranges::min_element(noteHits_, {}, [point](const NoteHit &n)
-                                                  { return std::hypot(n.point.x - point.x, n.point.y - point.y); });
-    const float hitRadius = state.Score().realtime ? EditorTimeAxis::NormalHeadDiameter * .5F + 2 : scoreBigRadius_ + 2;
-    const bool hitsNote =
-        nearest != noteHits_.end() && std::hypot(nearest->point.x - point.x, nearest->point.y - point.y) < hitRadius;
+    const auto *nearest = NoteHitAt(state, point);
+    const bool hitsNote = nearest != nullptr;
     if (erase || tool_ == 0)
     {
         if (hitsNote)
