@@ -154,8 +154,8 @@ void OptionsPanel::CreateSkinControls()
 void OptionsPanel::CreateAudioControls()
 {
     const std::array fields{std::pair{&middlewareLabel_, &middlewareCombo_}, std::pair{&outputLabel_, &outputCombo_},
-                            std::pair{&driverLabel_, &driverCombo_}};
-    const std::array<std::string, 3> names{"Middleware", "Output", "Driver"};
+                            std::pair{&driverLabel_, &driverCombo_}, std::pair{&bufferLabel_, &bufferCombo_}};
+    const std::array<std::string, 4> names{"Middleware", "Output", "Driver", "Buffer"};
     for (std::size_t i = 0; i < fields.size(); ++i)
     {
         const float top = NextField(ControlHeight);
@@ -201,8 +201,8 @@ void OptionsPanel::Shutdown() noexcept
     windowModeLabel_ = windowModeCombo_ = nullptr;
     notationLabel_ = notationCombo_ = nullptr;
     renderRateLabel_ = renderRateCombo_ = nullptr;
-    middlewareLabel_ = outputLabel_ = driverLabel_ = nullptr;
-    middlewareCombo_ = outputCombo_ = driverCombo_ = nullptr;
+    middlewareLabel_ = outputLabel_ = driverLabel_ = bufferLabel_ = nullptr;
+    middlewareCombo_ = outputCombo_ = driverCombo_ = bufferCombo_ = nullptr;
     offsetLabel_ = offsetField_ = offsetUnit_ = nullptr;
     captureRow_.reset();
     restartKeyLabel_ = restartKeyButton_ = nullptr;
@@ -504,6 +504,12 @@ bool OptionsPanel::ProcessAction(const Action &action)
         RefreshTexts();
         return true;
     }
+    if (action.source == bufferCombo_->Id() && action.selectedIndex < DspBufferLengths.size())
+    {
+        SelectBuffer(action.selectedIndex);
+        RefreshTexts();
+        return true;
+    }
     return false;
 }
 
@@ -563,7 +569,7 @@ void OptionsPanel::RefreshAudioControls()
 {
     const auto &text = Options(texts_);
     const std::array labels{std::pair{middlewareLabel_, text.middleware}, std::pair{outputLabel_, text.output},
-                            std::pair{driverLabel_, text.driver}};
+                            std::pair{driverLabel_, text.driver}, std::pair{bufferLabel_, text.buffer}};
     for (const auto &[node, value] : labels)
         SetCaption(*node, std::wstring(value));
 
@@ -591,6 +597,30 @@ void OptionsPanel::RefreshAudioControls()
     const auto selected = std::ranges::find(driverIndices_, audio_->ActiveDriverIndex());
     if (selected != driverIndices_.end())
         driver.SetSelectedIndex(static_cast<std::size_t>(selected - driverIndices_.begin()));
+
+    // The saved buffer, which the running mixer uses only after a restart (StatusText says so).
+    names.clear();
+    for (const auto length : DspBufferLengths)
+        names.push_back(std::to_wstring(length) + L" " + std::wstring(text.bufferSamples));
+    auto &buffer = RequireDropdown(*bufferCombo_);
+    buffer.SetItems(std::move(names));
+    const auto savedBuffer = std::ranges::find(DspBufferLengths, options_.Values().dspBufferLength);
+    if (savedBuffer != DspBufferLengths.end())
+        buffer.SetSelectedIndex(static_cast<std::size_t>(savedBuffer - DspBufferLengths.begin()));
+}
+
+bool OptionsPanel::BufferAwaitsRestart() const noexcept
+{
+    // A backend that reports no buffer (none, or a test double) cannot be compared.
+    const auto running = audio_ != nullptr ? audio_->DspBufferLength() : 0U;
+    return running != 0 && running != options_.Values().dspBufferLength;
+}
+
+void OptionsPanel::SelectBuffer(const std::size_t index)
+{
+    auto candidate = options_.Values();
+    candidate.dspBufferLength = DspBufferLengths[index];
+    static_cast<void>(SaveOptions(candidate));
 }
 
 bool OptionsPanel::SaveOptions(const OptionValues &candidate)
@@ -676,6 +706,8 @@ std::wstring OptionsPanel::StatusText(bool &error) const
         value = std::wstring(text.outputFallback) + L" " + OutputName(audio_->ActiveOutput(), text);
     else if (savedDriverUnavailable())
         value = text.driverUnavailable;
+    else if (BufferAwaitsRestart())
+        value = text.bufferRestart;
     if (!statusDetail_.empty())
         value += L"\n" + WideText(statusDetail_);
     if (!options_.LoadWarning().empty())

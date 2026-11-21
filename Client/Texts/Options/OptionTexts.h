@@ -23,6 +23,7 @@ struct OptionTextSet
     std::wstring_view outputFallback;
     std::wstring_view driverUnavailable;
     std::wstring_view loadWarning;
+    std::wstring_view buffer, bufferSamples, bufferRestart;
     std::wstring_view middlewareFmod, outputWasapi, outputAsio;
 };
 

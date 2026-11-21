@@ -6,10 +6,14 @@
 #include "PhantomCore.h"
 #include "Texts/TextCatalog.h"
 
+#include <array>
 #include <filesystem>
 #include <map>
 #include <string>
 #include <vector>
+
+// FMOD mixer buffer lengths offered in the options, in samples (four buffers each).
+inline constexpr std::array<std::uint32_t, 4> DspBufferLengths{128, 256, 512, 1024};
 
 struct OptionValues
 {
@@ -20,6 +24,9 @@ struct OptionValues
     int driverIndex{-1};
     std::string driverName;
     AudioVolumes volumes;
+    // [Audio] DspBufferLength, one of DspBufferLengths. The engine reads it when it starts, so a change
+    // applies from the next start (the mixer cannot restart while clips are loaded).
+    std::uint32_t dspBufferLength{256};
     std::uint32_t windowWidth{1280}, windowHeight{720};
     // Framed window, or an unframed picture centred on a black monitor-sized backdrop.
     PhantomCore::WindowMode windowMode{PhantomCore::WindowMode::Windowed};

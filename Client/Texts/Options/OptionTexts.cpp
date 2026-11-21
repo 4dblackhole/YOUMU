@@ -26,5 +26,7 @@ OptionTextSet Options(const TextCatalog &texts)
             texts.Get("Options.saveError"),      texts.Get("Options.audioError"),
             texts.Get("Options.outputFallback"), texts.Get("Options.driverUnavailable"),
             texts.Get("Options.loadWarning"),    texts.Get("Options.middlewareFmod"),
-            texts.Get("Options.outputWasapi"),   texts.Get("Options.outputAsio")};
+            texts.Get("Options.outputWasapi"),   texts.Get("Options.outputAsio"),
+            texts.Get("Options.buffer"),         texts.Get("Options.bufferSamples"),
+            texts.Get("Options.bufferRestart")};
 }

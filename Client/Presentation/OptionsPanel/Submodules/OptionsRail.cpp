@@ -66,7 +66,8 @@ void OptionsPanel::LayoutSections()
     std::array<std::vector<float>, SectionCount> controls{
         std::vector<float>{control, FieldHeight(SongsControlHeight)},
         std::vector<float>(7, control), // Skin, resolution, window mode, notation, frame limit, key beam opacity, background brightness.
-        std::vector<float>{InlineRowsHeight(VolumeSliderCount), control, control, control, control}, // Volumes, audio, offset.
+        // Volumes, then middleware, output, driver, buffer and offset.
+        std::vector<float>{InlineRowsHeight(VolumeSliderCount), control, control, control, control, control},
         std::vector<float>{control}}; // Input: the restart key, then each mode's keys.
     for (const auto &layout : inputLayouts_)
     {
@@ -252,10 +253,10 @@ void OptionsPanel::SpySection()
     activeSection_ = current;
 }
 
-std::array<PhantomCore::Visual2DNode *, 9> OptionsPanel::Combos() const noexcept
+std::array<PhantomCore::Visual2DNode *, 10> OptionsPanel::Combos() const noexcept
 {
     return {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_, notationCombo_,
-            renderRateCombo_, windowModeCombo_};
+            renderRateCombo_, windowModeCombo_, bufferCombo_};
 }
 
 void OptionsPanel::CollapseCombos()

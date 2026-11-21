@@ -57,6 +57,8 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.clearColor = {color.red, color.green, color.blue, color.alpha};
     config.renderRateMode = optionSettings_.Values().renderRate;
     config.audio.preferredBackend = optionSettings_.Values().audioOutput;
+    // The mixer buffer is chosen in the options and only read here, at start.
+    config.audio.dspBufferLength = optionSettings_.Values().dspBufferLength;
     // Restore the named device after enumeration instead of trusting a stale index.
     config.audio.driverIndex = -1;
     config.audio.fallBackToWasapi = true;
