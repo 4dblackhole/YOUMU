@@ -130,6 +130,9 @@ class GameplaySessionController final
     [[nodiscard]] bool CanAdjustLocalOffset() const noexcept;
     // Adds milliseconds, clamped to LocalOffsetStore::Limit; false when not allowed or unchanged.
     bool AdjustLocalOffset(std::int32_t milliseconds);
+    // While held (the pointer rests on the loading screen's play settings), a prepared attempt
+    // waits before scheduling its start; the music stays prepared.
+    void SetStartHeld(bool held) noexcept { startHeld_ = held; }
 
   private:
 #if defined(_DEBUG)
@@ -186,6 +189,7 @@ class GameplaySessionController final
     std::optional<double> retryFadeElapsed_; // Seconds since a pause-menu Retry was chosen.
     double completedElapsedSeconds_{};
     std::int32_t offsetChangeMs_{}; // Local offset change since the session was compiled.
+    bool startHeld_{};
     std::uint64_t offsetRevision_{};
     RhythmTime firstNoteTime_{RhythmTime::max()};
     double playbackRate_{1.0};

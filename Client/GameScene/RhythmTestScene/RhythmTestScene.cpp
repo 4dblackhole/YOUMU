@@ -1,6 +1,7 @@
 #include "RhythmTestScene.h"
 #include "App/AssetPaths.h"
 #include "App/GameDataPaths.h"
+#include "App/OptionSettings.h"
 #include "Records/LocalOffsetStore.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
@@ -49,14 +50,16 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
                                  AudioPlaybackManager &playback,
                                  ScreenVisual2DManager &visuals, bool debug,
                                  TextCatalog &texts,
-                                 std::unique_ptr<IPlayResult> &pendingResult)
+                                 std::unique_ptr<IPlayResult> &pendingResult,
+                                 OptionSettings *options)
     : pendingResult_(pendingResult),
       controller_(std::make_unique<GameplaySessionController>(
           request ? request->Snapshot() : throw std::invalid_argument("Gameplay requires a launch store."), playback,
           debug, request ? request->TakeValidatedSession() : nullptr)),
       view_(std::make_unique<GameplayPresenter>(visuals, texts)),
       pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts)),
-      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals), screenFade_(visuals), offsetNotice_(visuals)
+      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals), screenFade_(visuals), offsetNotice_(visuals),
+      loadingSettings_(visuals, texts), options_(options)
 {
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
     view_->ConfigureKeyBeamOpacity(launch_.keyBeamOpacity);
@@ -126,6 +129,7 @@ void RhythmTestScene::PrepareLoadingBackground()
         // The loading screen shows the background at the play screen's brightness.
         const float brightness = static_cast<float>(std::clamp(launch_.backgroundBrightness, 0, 100)) / 100.0F;
         sprite.SetTint({brightness, brightness, brightness, 1});
+        loadingBackgroundImage_ = true;
         sprite.SetImage(image);
         loadingBackgroundSize_ = size;
         UpdateLoadingBackgroundLayout();
@@ -211,11 +215,13 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
         UpdatePauseMenu(context, scenes);
         // A Retry chosen before the play screen exists still fades out first.
         static_cast<void>(controller_->UpdatePendingRetry(context));
+        UpdateLoadingSettings(context.input);
         PresentLoadingScreen();
         PresentScreenError();
         PresentScreenFade();
         return;
     }
+    UpdateLoadingSettings(context.input);
     controller_->Update(context);
     PresentLocalOffset(context.deltaSeconds);
     PresentLoadingScreen();
@@ -246,6 +252,55 @@ void RhythmTestScene::PresentLocalOffset(const double deltaSeconds)
         return;
     }
     offsetNotice_.Update(deltaSeconds);
+}
+void RhythmTestScene::UpdateLoadingSettings(const InputState &input)
+{
+    // Only the loading screen (before the attempt's clock first runs) shows the plate, and not
+    // under the pause menu; elsewhere the start is never held.
+    const bool loading = !controller_->AttemptStarted() && !controller_->PauseMenuOpen();
+    if (!loading || !services_ || !launch_.IsValid())
+    {
+        loadingSettings_.Hide();
+        controller_->SetStartHeld(false);
+        return;
+    }
+    loadingSettings_.Show(services_->windowWidth, services_->windowHeight);
+    const auto interaction = loadingSettings_.Update(input);
+    controller_->SetStartHeld(interaction.holdStart);
+    if (interaction.brightness)
+        ApplyBackgroundBrightness(*interaction.brightness);
+    if (interaction.brightnessCommitted)
+        SaveBackgroundBrightness();
+    if (interaction.offsetStepMs != 0)
+        static_cast<void>(controller_->AdjustLocalOffset(interaction.offsetStepMs));
+    loadingSettings_.SetValues(launch_.backgroundBrightness, controller_->LocalOffsetMs());
+}
+void RhythmTestScene::ApplyBackgroundBrightness(const int percent)
+{
+    launch_.backgroundBrightness = std::clamp(percent, 0, 100);
+    view_->ConfigureBackgroundBrightness(launch_.backgroundBrightness);
+    if (loadingBackground_ != nullptr && loadingBackgroundImage_)
+    {
+        const float brightness = static_cast<float>(launch_.backgroundBrightness) / 100.0F;
+        loadingBackground_->GetComponent<SpriteVisualComponent>()->SetTint({brightness, brightness, brightness, 1});
+    }
+}
+void RhythmTestScene::SaveBackgroundBrightness() noexcept
+{
+    if (options_ == nullptr || options_->Values().backgroundBrightness == launch_.backgroundBrightness)
+        return;
+    try
+    {
+        auto values = options_->Values();
+        values.backgroundBrightness = launch_.backgroundBrightness;
+        std::string error;
+        if (!options_->Save(values, error))
+            OutputDebugStringA(("Background brightness was not saved: " + error + "\n").c_str());
+    }
+    catch (const std::exception &failure)
+    {
+        OutputDebugStringA((std::string("Background brightness was not saved: ") + failure.what() + "\n").c_str());
+    }
 }
 void RhythmTestScene::SaveLocalOffset() noexcept
 {
@@ -362,6 +417,7 @@ void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
     errorLine_.OnResize(width, height);
     screenFade_.OnResize(width, height);
     offsetNotice_.OnResize(width, height);
+    loadingSettings_.OnResize(width, height);
     UpdateLoadingBackgroundLayout();
     pauseMenu_->OnResize(width, height);
 }
@@ -371,6 +427,7 @@ void RhythmTestScene::Shutdown() noexcept
     errorLine_.Shutdown();
     screenFade_.Shutdown();
     offsetNotice_.Shutdown();
+    loadingSettings_.Shutdown();
     loadingBackground_ = nullptr;
     loadingCard_ = nullptr;
     loadingBarPiece_ = nullptr;

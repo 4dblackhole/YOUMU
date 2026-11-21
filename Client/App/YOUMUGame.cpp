@@ -111,7 +111,7 @@ void YOUMUGame::RegisterScenes(SceneManager &scenes)
                                                             SceneRetention::DestroyOnExit, launchRequest_,
                                                             std::ref(AudioPlayback()), std::ref(ScreenVisuals()),
                                                             rhythmDebugMode_, std::ref(texts_),
-                                                            std::ref(pendingResult_)));
+                                                            std::ref(pendingResult_), &optionSettings_));
     requireRegistered(scenes.RegisterScene(std::string(ResultSceneId), SceneRetention::DestroyOnExit,
                                            [this] { return CreateResultScene(); }));
 }
