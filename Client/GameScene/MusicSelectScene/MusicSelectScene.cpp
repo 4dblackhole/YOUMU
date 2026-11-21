@@ -2,13 +2,16 @@
 #include "App/AssetPaths.h"
 #include "App/GameDataPaths.h"
 #include "Records/LocalOffsetStore.h"
+#include "Records/PlayRecordStore.h"
 #include "Catalog/SongLayout.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Submodules/MusicSelectView.h"
 #include "GameFlow/SongLibrary.h"
 #include "Submodules/SongSelectionText.h"
+#include <chrono>
 #include <stdexcept>
+#include <utility>
 
 using namespace PhantomCore;
 
@@ -27,10 +30,12 @@ namespace
 MusicSelectScene::MusicSelectScene(ScreenVisual2DManager &visuals,
                                    std::shared_ptr<SongLibrary> library,
                                    std::shared_ptr<GameplayLaunchStore> request, SongSelectPurpose purpose,
-                                   TextCatalog &texts, OptionSettings &options)
+                                   TextCatalog &texts, OptionSettings &options,
+                                   RecordedResultHandler openRecordedResult)
     : launchRequest_(std::move(request)), purpose_(purpose), options_(options), texts_(texts),
       library_(std::move(library)), selection_(RequireLibrary(library_).Selection()),
-      view_(std::make_unique<MusicSelectView>(visuals, selection_, purpose, texts, options))
+      view_(std::make_unique<MusicSelectView>(visuals, selection_, purpose, texts, options)),
+      openRecordedResult_(std::move(openRecordedResult))
 {
 }
 MusicSelectScene::~MusicSelectScene() = default;
@@ -104,8 +109,12 @@ void MusicSelectScene::Update(const UpdateContext &context, SceneManager &scenes
         CreateDifficulty(scenes);
     else if (command == SongSelectCommand::ConvertOsu)
         ConvertOsu();
-    if (command != SongSelectCommand::Back)
-        PollPatternLoad(scenes);
+    else if (command == SongSelectCommand::OpenRecord)
+        OpenRecord();
+    if (command == SongSelectCommand::Back)
+        return;
+    PollPatternLoad(scenes);
+    PollRecordOpen(scenes);
 }
 void MusicSelectScene::ConvertOsu()
 {
@@ -216,31 +225,31 @@ void MusicSelectScene::Shutdown() noexcept
     view_->Shutdown();
 }
 
-bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
+std::optional<GameplayLaunchRequest> MusicSelectScene::SelectedLaunchRequest(std::string *patternName)
 {
-    if (osuImport_.Busy() || patternLoader_.Busy())
-        return false;
     if (selection_.focusedSongPosition_ >= selection_.visibleSongIndices_.size())
     {
-        return false;
+        return std::nullopt;
     }
     const auto &song =
         selection_.catalog_
             .songs[selection_.visibleSongIndices_[selection_.focusedSongPosition_]];
     if (song.patterns.empty() || selection_.selectedPatternIndex_ >= song.patterns.size())
     {
-        return false;
+        return std::nullopt;
     }
     const auto &pattern = song.patterns[selection_.selectedPatternIndex_];
 
-    // Validate both entry routes before a Scene factory can reject the request.
+    // Validate every entry route before a Scene factory can reject the request.
     if (!IsSupportedPlayGameMode(pattern.pattern.mode))
     {
         selection_.SetLaunchError(SongSelectionState::LaunchErrorKind::UnsupportedMode,
                                    pattern.pattern.mode);
         view_->RefreshSelectionPresentation();
-        return false;
+        return std::nullopt;
     }
+    if (patternName)
+        *patternName = pattern.pattern.name;
 
     GameplayLaunchRequest request{
         pattern.patternPath, pattern.effectPath,
@@ -262,6 +271,17 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
     request.songArtist = SongArtist(song, selection_.notation_);
     if (const auto keys = options_.Values().modeKeys.find(request.mode); keys != options_.Values().modeKeys.end())
         request.inputKeys = keys->second;
+    return request;
+}
+
+bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
+{
+    if (osuImport_.Busy() || patternLoader_.Busy())
+        return false;
+    auto selected = SelectedLaunchRequest();
+    if (!selected)
+        return false;
+    auto request = std::move(*selected);
     if (purpose_ == SongSelectPurpose::Editor)
     {
         selection_.ClearLaunchError();
@@ -319,6 +339,54 @@ void MusicSelectScene::PollPatternLoad(SceneManager &scenes)
     {
         throw std::runtime_error("Failed to enter transient gameplay.");
     }
+}
+
+void MusicSelectScene::OpenRecord()
+{
+    auto record = view_->TakeOpenedRecord();
+    // One record at a time, and not while a play is starting.
+    const bool busy = recordOpen_.valid() || patternLoader_.Busy();
+    if (!record || !openRecordedResult_ || busy)
+        return;
+    std::string patternName;
+    pendingRecordLaunch_ = SelectedLaunchRequest(&patternName);
+    if (!pendingRecordLaunch_)
+        return;
+    // Retry repeats the recorded play: its options, Random seed included.
+    pendingRecordLaunch_->playOptions = record->options;
+    recordOpen_ = std::async(std::launch::async,
+                             [database = PlayRecordDatabasePath(), record = std::move(*record),
+                              name = std::move(patternName)]() mutable
+                             {
+                                 record.detail = PlayRecordStore(database).LoadDetail(record.id);
+                                 return record.LoadResult(std::move(name));
+                             });
+}
+
+void MusicSelectScene::PollRecordOpen(SceneManager &scenes)
+{
+    if (!recordOpen_.valid() || recordOpen_.wait_for(std::chrono::seconds{0}) != std::future_status::ready)
+        return;
+    auto request = std::exchange(pendingRecordLaunch_, std::nullopt);
+    std::unique_ptr<IPlayResult> result;
+    try
+    {
+        result = recordOpen_.get();
+    }
+    catch (const std::exception &error)
+    {
+        view_->ShowAlert({AlertKind::Error, std::wstring(texts_.Get("Records.openFailedTitle")),
+                          std::wstring(texts_.Get("Records.openFailedMessage")), DecodeDisplayText(error.what()),
+                          {{std::wstring(texts_.Get("Alert.ok")), true}}});
+        return;
+    }
+    if (!request)
+        return;
+    // Retry plays the selected pattern, like Retry after a play.
+    launchRequest_->Set(std::move(*request));
+    openRecordedResult_(std::move(result));
+    if (!scenes.ChangeScene(ResultSceneId))
+        throw std::runtime_error("Failed to open the record's result.");
 }
 
 void MusicSelectScene::RefreshCatalog()

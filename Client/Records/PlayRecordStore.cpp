@@ -157,12 +157,13 @@ PlayRecord PlayRecord::From(const IPlayResult &result)
         r.detail = CreatePlayGameMode(r.mode)->SaveResultDetail(result);
     return r;
 }
-std::unique_ptr<IPlayResult> PlayRecord::LoadResult() const
+std::unique_ptr<IPlayResult> PlayRecord::LoadResult(std::string patternName) const
 {
     if (detail.empty() || !IsSupportedPlayGameMode(mode))
         throw std::runtime_error("This record keeps no result detail.");
     PlayResultSummary s;
     s.patternPath = patternPath;
+    s.patternName = std::move(patternName);
     s.accuracy = accuracy;
     s.score = score;
     s.totalNotes = totalNotes;

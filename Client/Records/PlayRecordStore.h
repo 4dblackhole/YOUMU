@@ -21,9 +21,9 @@ struct PlayRecord
     // Query leaves it empty; PlayRecordStore::LoadDetail reads it for one record.
     std::string detail;
     static PlayRecord From(const IPlayResult &result);
-    // The result screen's data again: these columns plus the mode's detail. The pattern name is
-    // the caller's. Throws when the detail is missing or damaged.
-    [[nodiscard]] std::unique_ptr<IPlayResult> LoadResult() const;
+    // The result screen's data again: these columns plus the mode's detail, with the chart's
+    // pattern name the caller knows. Throws when the detail is missing or damaged.
+    [[nodiscard]] std::unique_ptr<IPlayResult> LoadResult(std::string patternName = {}) const;
 };
 class PlayRecordStore final
 {

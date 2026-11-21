@@ -201,6 +201,7 @@
     <ClCompile Include="Presentation\MarqueeTextComponent.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClInclude Include="Presentation\MarqueeTextComponent.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\AccuracyText.h"><Filter>Presentation</Filter></ClInclude>
+    <ClInclude Include="Presentation\ScoreText.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\RankName.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\UiFonts.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\UiAlert.cpp"><Filter>Presentation</Filter></ClCompile>

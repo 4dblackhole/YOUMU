@@ -42,6 +42,8 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     std::shared_ptr<GameplayLaunchStore> launchRequest_;
     std::shared_ptr<SongLibrary> songLibrary_;
     std::unique_ptr<IPlayResult> pendingResult_;
+    // The pending result came from a record (song select), so the result screen does not save it.
+    bool pendingResultRecorded_{};
     TextCatalog texts_;
     OptionSettings optionSettings_;
     PerformanceBand performanceBand_;

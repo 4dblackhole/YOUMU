@@ -132,6 +132,11 @@ bool MusicSelectView::ProcessActions()
             OpenRecordFilter(); return true;
         }
         if (recordAction == SongRecordAction::PageChanged) return true;
+        if (recordAction == SongRecordAction::OpenRecord)
+        {
+            command_ = SongSelectCommand::OpenRecord;
+            return true;
+        }
         if (action.source == backButtonId_)
         {
             command_ = SongSelectCommand::Back;

@@ -7,6 +7,7 @@
 #include "GameScene/MusicSelectScene/Submodules/SongCatalogLoader.h"
 #include "GameFlow/PlaySessionLoader.h"
 #include "Judgement/AccuracyRange.h"
+#include "Presentation/AccuracyText.h"
 #include "Presentation/MarqueeTextComponent.h"
 #include "Presentation/PerformanceBand.h"
 #include <chrono>
@@ -1283,7 +1284,8 @@ namespace
             record.options.random=i%2==0;record.judgeLevel=record.options.random?70:50;
             // The newest play was left early.
             record.completed=record.cleared=i!=7;
-            record.accuracy=AccuracyScore::FromRate(.90+i*.001);PlayRecordStore(database).Save(record);
+            record.accuracy=AccuracyScore::FromRate(.90+i*.001);record.score=static_cast<std::uint32_t>(90'000'000+i*1'000);
+            PlayRecordStore(database).Save(record);
         }
         Renderer renderer;ScreenVisual2DManager visuals;visuals.Initialize(renderer,{1280,720});
         MeshRenderSystem meshes;TextRenderSystem textRendering;AudioSystem audio;
@@ -1363,7 +1365,20 @@ namespace
         Check(selection.selectedPatternIndex_==selectedPattern,
               "Applying a record filter preserves song list scroll, search and the selected chart.");
         for(const auto &row:Find(canvas->Root(),"RecordRows")->Children())
-            Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"JL 70.00")!=std::wstring::npos,"Only the Random plays (JudgeLevel 70) appear.");
+            Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"RND")!=std::wstring::npos,"Only the Random plays appear.");
+        {
+            // A row shows the score on its large line and the accuracy where the judge level was.
+            auto &newest=*Find(canvas->Root(),"RecordRows")->Children().front();
+            const auto textOf=[&](const char *name){return std::wstring(Find(newest,name)->GetComponent<TextVisualComponent>()->Text());};
+            Check(textOf("Score")==L"90,006,000","The newest Random play shows its score on the large line.");
+            Check(textOf("Details").starts_with(AccuracyText(AccuracyScore::FromRate(.90+6*.001))+L" · "),
+                  "The details start with the play's accuracy.");
+            Click(*canvas,newest);
+            Check(view.Update(input,0)==SongSelectCommand::OpenRecord,"Clicking a record row asks to open its result.");
+            const auto opened=view.TakeOpenedRecord();
+            Check(opened && opened->score==90'006'000,"The clicked row hands over its record.");
+            Check(!view.TakeOpenedRecord(),"The clicked record is handed over once.");
+        }
         selection.selectedPatternIndex_=1;view.RefreshSelectionPresentation();static_cast<void>(view.Update(input,0));wait(0);
         {
             const auto *notice=Find(canvas->Root(),"RecordMessagePlate");

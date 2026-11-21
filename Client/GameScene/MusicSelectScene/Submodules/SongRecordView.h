@@ -5,11 +5,12 @@
 #include "Texts/TextCatalog.h"
 #include <filesystem>
 #include <future>
+#include <optional>
 #include <span>
 #include <utility>
 
 struct SongCatalogPattern;
-enum class SongRecordAction { None, OpenFilter, PageChanged };
+enum class SongRecordAction { None, OpenFilter, PageChanged, OpenRecord };
 
 // Canvas owns nodes. This view owns their observers and record query/filter state.
 class SongRecordView final
@@ -31,6 +32,8 @@ public:
     [[nodiscard]] const PhantomCore::Visual2DNode *QueryButton() const noexcept { return queryButton_; }
     void UpdateFilter(std::span<const PhantomCore::Action> actions, const PhantomCore::InputState& input);
     [[nodiscard]] SongRecordAction ProcessAction(const PhantomCore::Action& action);
+    // The record whose row was clicked (OpenRecord), once.
+    [[nodiscard]] std::optional<PlayRecord> TakeOpenedRecord() noexcept { return std::exchange(openedRecord_, std::nullopt); }
     void Shutdown() noexcept;
 
 private:
@@ -49,6 +52,9 @@ private:
     std::size_t offset_{};
     std::uint64_t revision_{1}, jobRevision_{}, displayRevision_{};
     bool next_{};
+    // Rows on screen and their records, for opening one.
+    std::vector<std::pair<PhantomCore::NodeId, PlayRecord>> shownRecords_;
+    std::optional<PlayRecord> openedRecord_;
     PhantomCore::Visual2DNode *panel_{}, *selector_{}, *messagePlate_{}, *emptyMessage_{};
     PhantomCore::Visual2DNode *queryButton_{}, *pagerPlate_{}, *previousButton_{}, *nextButton_{}, *rows_{}, *pageLabel_{};
 };
