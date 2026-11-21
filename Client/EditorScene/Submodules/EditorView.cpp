@@ -318,7 +318,7 @@ void EditorView::BuildContent()
     fieldRects_.clear();
     fields_.Begin();
     // Native editors would sit above a modal, so fields beneath one are drawn only.
-    fieldsCovered_ = curvesOpen_ || alert_.IsOpen();
+    fieldsCovered_ = curvesOpen_ || findOpen_ || alert_.IsOpen();
     visual->Clear();
     Box({0, 0, frame_.width, layout::Height}, ui_colors::theme::Surface);
     if (state_.Tab() == EditorTab::Compose)
@@ -332,6 +332,7 @@ void EditorView::BuildContent()
     DrawFooter();
     fieldsCovered_ = alert_.IsOpen();
     DrawCurvesDialog();
+    DrawFindDialog();
     DrawLetterbox();
     fields_.End();
     visual->Finish();

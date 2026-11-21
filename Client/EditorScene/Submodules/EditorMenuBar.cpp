@@ -28,7 +28,9 @@ namespace
         MenuItem{EditorMenuAction::Redo, "Editor.menuRedo", L"Ctrl+Y"},
         MenuItem{EditorMenuAction::Copy, "Editor.menuCopy", L"Ctrl+C"},
         MenuItem{EditorMenuAction::Paste, "Editor.menuPaste", L"Ctrl+V"},
-        MenuItem{EditorMenuAction::PasteWithBlanks, "Editor.menuPasteWithBlanks", L"Ctrl+Shift+V"}};
+        MenuItem{EditorMenuAction::PasteWithBlanks, "Editor.menuPasteWithBlanks", L"Ctrl+Shift+V"},
+        MenuItem{EditorMenuAction::FindReplace, "Editor.menuFindReplace", L"Ctrl+F"}};
+    static_assert(FileItems.size() <= 6 && EditItems.size() <= 6, "EditorMenuBar::rows_ holds one node per item.");
     constexpr float MenuWidth = 248, ItemHeight = 34, FileWidth = 56, EditWidth = 58, DocumentLeft = 130;
 
     std::span<const MenuItem> Items(bool edit)

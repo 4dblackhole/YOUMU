@@ -76,6 +76,7 @@ EditorMenuInputResult EditorView::UpdateMenu(const InputState &input)
         else if (input.WasKeyPressed('Y')) menu.shortcutAction = EditorMenuAction::Redo;
         else if (input.WasKeyPressed('C')) menu.shortcutAction = EditorMenuAction::Copy;
         else if (input.WasKeyPressed('V')) menu.shortcutAction = shift ? EditorMenuAction::PasteWithBlanks : EditorMenuAction::Paste;
+        else if (input.WasKeyPressed('F')) menu.shortcutAction = EditorMenuAction::FindReplace;
     }
     return menuBar_.Update(menu, state_.Document().Dirty());
 }
@@ -134,6 +135,12 @@ bool EditorView::UpdateKeyboard(const InputState &input)
             CloseCurves();
         return false;
     }
+    if (findOpen_)
+    {
+        if (input.WasKeyPressed(VK_ESCAPE))
+            CloseFind();
+        return false;
+    }
     if (input.WasKeyPressed(VK_ESCAPE))
     {
         // Escape clears the nearest state first: selection or placement, the panel, then the editor.
@@ -183,6 +190,20 @@ void EditorView::UpdatePointer(const UpdateContext &context)
     if (!point)
         return;
     lastPointer_ = point;
+    // The Find/Replace dialog is modal: its lanes take presses and drags, then its buttons.
+    if (findOpen_)
+    {
+        if (UpdateFindPointer(input, *point) || !input.WasMouseButtonPressed(MouseButton::Left))
+            return;
+        const auto control = std::find_if(controls.rbegin(), controls.rend(),
+                                          [point](const ::Control &c) { return c.rect.Contains(*point); });
+        if (control != controls.rend())
+        {
+            auto action = control->click;
+            action();
+        }
+        return;
+    }
     const bool compose = state_.Tab() == EditorTab::Compose && !buildFailed_;
     if (compose && state_.Mode().UpdateScoreSelection(state_, *point, !input.IsMouseButtonDown(MouseButton::Left)))
         return;
@@ -283,6 +304,7 @@ void EditorView::ExecuteMenuAction(EditorMenuAction action)
     case EditorMenuAction::Copy: state_.CopySelection(); break;
     case EditorMenuAction::Paste: Paste(false); break;
     case EditorMenuAction::PasteWithBlanks: Paste(true); break;
+    case EditorMenuAction::FindReplace: OpenFind(); break;
     case EditorMenuAction::OpenYmmFolder: OpenDocumentFolder(state_.MusicMetadataPath()); break;
     case EditorMenuAction::OpenYmpFolder: OpenDocumentFolder(state_.Document().SourcePath()); break;
     case EditorMenuAction::OpenYmeFolder: OpenDocumentFolder(state_.Document().Effects().sourcePath); break;

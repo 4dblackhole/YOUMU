@@ -111,6 +111,14 @@ class IEditorMode : public IEditorAudioSource
     virtual void ActivateScore(IEditorContext &, PhantomCore::Point)
     {
     }
+    // Find/Replace lanes: the persisted key the current tool places when it is a short note, and how a key is drawn.
+    virtual std::optional<int> PatternKey() const noexcept
+    {
+        return std::nullopt;
+    }
+    virtual void DrawPatternNote(IEditorModeCanvas &, PhantomCore::Point, float, int)
+    {
+    }
     // Alt+click on the score or lane: add the note there to the selection or take it out (Explorer-style).
     virtual void ToggleScoreNote(IEditorContext &, PhantomCore::Point)
     {

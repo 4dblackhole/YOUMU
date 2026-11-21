@@ -1,4 +1,5 @@
 #pragma once
+#include "EditorFindReplace.h"
 #include "EditorLayout.h"
 #include "EditorMenuBar.h"
 #include "EditorSupport.h"
@@ -115,6 +116,16 @@ class EditorView final : public IEditorModeCanvas
     void ApplyCurves();
     void RenameCurve(const std::string &name);
     void DrawCurvesDialog();
+    // Find/Replace dialog: two pattern lanes, matches in the range selected when it opened.
+    void OpenFind();
+    void CloseFind();
+    void DrawFindDialog();
+    void DrawPatternLane(int index, PhantomCore::Rect lane, std::wstring caption);
+    // Handles the dialog's lane clicks and edge drags; true when the pointer belonged to a lane.
+    bool UpdateFindPointer(const PhantomCore::InputState &, PhantomCore::Point);
+    void RefreshFindMatches();
+    void ShowFindMatch(std::size_t index);
+    void ReplaceFindMatches(bool all);
     void DrawSwitch(PhantomCore::Rect row, std::wstring caption, bool on, std::function<void()> toggle);
     [[nodiscard]] PhantomCore::Rect PanelBody() const noexcept;
     [[nodiscard]] std::wstring HeadValue(editor_layout::Channel) const;
@@ -207,6 +218,19 @@ class EditorView final : public IEditorModeCanvas
     bool buildFailed_{};
     bool leaveRequested_{};
     bool curvesOpen_{};
+    bool findOpen_{};
+    struct FindDraft
+    {
+        NotePattern find, replace;
+        PatternScope scope;
+        std::vector<PatternMatch> matches;
+        std::size_t current{};
+        std::uint64_t revision{};
+        bool dirty{true};
+        // Lane rectangles of this build and the window edge being dragged (lane 0 find, 1 replace).
+        std::array<PhantomCore::Rect, 2> lanes{};
+        std::optional<std::pair<int, bool>> dragging;
+    } find_;
     // True while building layers under a modal (the Curves dialog or the alert).
     bool fieldsCovered_{};
     // Draft of the YME [Interpolation] table while the Curves dialog is open.
