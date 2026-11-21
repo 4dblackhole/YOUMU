@@ -3,6 +3,7 @@
 #include "RecordFilterPanel.h"
 #include "Records/PlayRecordStore.h"
 #include "Texts/TextCatalog.h"
+#include "Presentation/UiTooltip.h"
 #include <filesystem>
 #include <future>
 #include <optional>
@@ -26,6 +27,8 @@ public:
     void RefreshTexts();
     void Update(const SongCatalogPattern* selected);
     void Invalidate() noexcept { ++revision_; }
+    // Rows hint what they do not show (judgement counts, mode, time) on this tooltip.
+    void SetTooltip(UiTooltip &tooltip) noexcept { tooltip_ = &tooltip; }
     void OpenFilter();
     void CloseFilter();
     [[nodiscard]] bool FilterVisible() const noexcept { return filterPanel_.IsVisible(); }
@@ -37,7 +40,13 @@ public:
     void Shutdown() noexcept;
 
 private:
-    void Show(const std::vector<PlayRecord>& records);
+    // A page row with the judgement counts the worker read from its detail.
+    struct LoadedRecord
+    {
+        PlayRecord record;
+        std::vector<std::pair<std::string_view, std::size_t>> judgements;
+    };
+    void Show(const std::vector<LoadedRecord>& records);
     void ShowPager(bool visible);
     void ShowMessage(bool visible);
     void SetMessage(std::wstring message);
@@ -46,7 +55,8 @@ private:
     std::filesystem::path database_;
     RecordFilterPanel filterPanel_;
     RecordFilter filter_;
-    std::future<std::vector<PlayRecord>> job_;
+    std::future<std::vector<LoadedRecord>> job_;
+    UiTooltip *tooltip_{};
     std::filesystem::path pattern_;
     std::string mode_, query_;
     std::size_t offset_{};
