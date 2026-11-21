@@ -1,9 +1,10 @@
 #include "PlayRecordStore.h"
 #include "RecordCondition.h"
+#include "Mode/PlayGameModeFactory.h"
 #include <charconv>
 #include <chrono>
-#include <cstdlib>
 #include <cwctype>
+#include <format>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -31,7 +32,7 @@ namespace
     {
         Check(db, sqlite3_exec(db, sql, nullptr, nullptr, nullptr));
     }
-    Database Open(const std::filesystem::path &path)
+    Database Connect(const std::filesystem::path &path)
     {
         std::filesystem::create_directories(path.parent_path());
         sqlite3 *raw{};
@@ -41,16 +42,61 @@ namespace
             throw std::runtime_error("Could not allocate the record database.");
         Check(raw, status);
         Check(raw, sqlite3_busy_timeout(raw, 2000));
-        auto version = Prepare(raw, "PRAGMA user_version");
-        Check(raw, sqlite3_step(version.get()));
-        const int schema = sqlite3_column_int(version.get(), 0);
-        version.reset();
-        if (schema != 0 && schema != 1)
+        return db;
+    }
+    int SchemaOf(sqlite3 *db)
+    {
+        auto version = Prepare(db, "PRAGMA user_version");
+        Check(db, sqlite3_step(version.get()));
+        return sqlite3_column_int(version.get(), 0);
+    }
+    // Moves a schema-1 database (and a journal beside it) to the first free
+    // `<stem>.v1[ (n)]<extension>` name in its folder; nothing is deleted.
+    void SetAsideOldDatabase(const std::filesystem::path &path)
+    {
+        const auto folder = path.parent_path();
+        const auto stem = path.stem().wstring(), extension = path.extension().wstring();
+        auto journal = path;
+        journal += L"-journal";
+        for (int copy = 1; copy < 1000; ++copy)
+        {
+            const auto suffix = copy == 1 ? std::wstring(L".v1") : std::format(L".v1 ({})", copy);
+            const auto target = folder / (stem + suffix + extension);
+            auto targetJournal = target;
+            targetJournal += L"-journal";
+            if (std::filesystem::exists(target) || std::filesystem::exists(targetJournal))
+                continue;
+            // The journal moves first so a journal never stays behind for the new database.
+            const bool hasJournal = std::filesystem::exists(journal);
+            if (hasJournal)
+                std::filesystem::rename(journal, targetJournal);
+            std::error_code error;
+            std::filesystem::rename(path, target, error);
+            if (!error)
+                return;
+            if (hasJournal)
+                std::filesystem::rename(targetJournal, journal, error);
+            throw std::runtime_error("Could not set aside the old record database. Existing records were preserved.");
+        }
+        throw std::runtime_error("Could not name the old record database. Existing records were preserved.");
+    }
+    Database Open(const std::filesystem::path &path)
+    {
+        auto db = Connect(path);
+        int schema = SchemaOf(db.get());
+        if (schema == 1)
+        {
+            db.reset();
+            SetAsideOldDatabase(path);
+            db = Connect(path);
+            schema = SchemaOf(db.get());
+        }
+        if (schema != 0 && schema != PlayRecordStore::SchemaVersion)
             throw std::runtime_error("Unsupported local record database version. Existing records were preserved.");
         if (schema == 0)
         {
-            Execute(raw, "BEGIN IMMEDIATE");
-            Execute(raw,
+            Execute(db.get(), "BEGIN IMMEDIATE");
+            Execute(db.get(),
                     "CREATE TABLE IF NOT EXISTS Plays (Id INTEGER PRIMARY KEY, PlayedAt INTEGER NOT NULL, Pattern TEXT "
                     "NOT NULL, Mode TEXT NOT NULL, Accuracy INTEGER NOT NULL, TotalNotes INTEGER NOT NULL, "
                     "ProcessedNotes INTEGER NOT NULL, Completed INTEGER NOT NULL, Cleared INTEGER NOT NULL, "
@@ -58,10 +104,11 @@ namespace
                     "INTEGER NOT NULL, IgnoreScrollEffects INTEGER NOT NULL, Metronome INTEGER NOT NULL, Mirror "
                     "INTEGER NOT NULL, Random INTEGER NOT NULL, RandomSeed TEXT NOT NULL, RandomProbability REAL NOT "
                     "NULL, Accelerate REAL NOT NULL, PreserveMusicPitch INTEGER NOT NULL, PreserveHitSoundPitch "
-                    "INTEGER NOT NULL, JudgeOverride INTEGER NOT NULL, GlobalOffset INTEGER NOT NULL)");
-            Execute(raw, "CREATE INDEX IF NOT EXISTS PatternHistory ON Plays(Pattern, Mode, Id DESC)");
-            Execute(raw, "PRAGMA user_version=1");
-            Execute(raw, "COMMIT");
+                    "INTEGER NOT NULL, JudgeOverride INTEGER NOT NULL, GlobalOffset INTEGER NOT NULL, Score INTEGER "
+                    "NOT NULL, MaximumCombo INTEGER NOT NULL, HpGauge INTEGER NOT NULL, Detail TEXT NOT NULL)");
+            Execute(db.get(), "CREATE INDEX IF NOT EXISTS PatternHistory ON Plays(Pattern, Mode, Id DESC)");
+            Execute(db.get(), "PRAGMA user_version=2");
+            Execute(db.get(), "COMMIT");
         }
         return db;
     }
@@ -86,50 +133,6 @@ namespace
                     : std::string{};
     }
 } // namespace
-std::filesystem::path PlayRecordStore::LegacyPath()
-{
-    wchar_t *raw{};
-    std::size_t count{};
-    if (_wdupenv_s(&raw, &count, L"LOCALAPPDATA") != 0 || !raw)
-        return {};
-    std::unique_ptr<wchar_t, decltype(&std::free)> directory(raw, std::free);
-    return std::filesystem::path(directory.get()) / L"YOUMU" / L"Records" / L"plays.sqlite3";
-}
-
-std::filesystem::path PlayRecordStore::AdoptLegacyDatabase(const std::filesystem::path &database,
-                                                           const std::filesystem::path &legacy)
-{
-    std::error_code error;
-    // A database already in the game folder wins; the legacy one is never merged into it.
-    if (std::filesystem::exists(database, error) || legacy.empty())
-        return database;
-    if (!std::filesystem::exists(legacy, error))
-        return database;
-    // Copy under temporary names first so a failed copy never leaves a half database that
-    // a later start would mistake for an adopted one.
-    const auto journalSuffix = std::wstring(L"-journal");
-    auto legacyJournal = legacy;
-    legacyJournal += journalSuffix;
-    auto journal = database;
-    journal += journalSuffix;
-    auto staging = database;
-    staging += L".adopting";
-    std::filesystem::create_directories(database.parent_path(), error);
-    if (error)
-        return legacy;
-    std::filesystem::copy_file(legacy, staging, std::filesystem::copy_options::overwrite_existing, error);
-    const bool hasJournal = !error && std::filesystem::exists(legacyJournal, error);
-    if (!error && hasJournal)
-        std::filesystem::copy_file(legacyJournal, journal, std::filesystem::copy_options::overwrite_existing, error);
-    if (!error)
-        std::filesystem::rename(staging, database, error);
-    if (!error)
-        return database;
-    std::error_code ignored;
-    std::filesystem::remove(staging, ignored);
-    std::filesystem::remove(journal, ignored);
-    return legacy;
-}
 PlayRecord PlayRecord::From(const IPlayResult &result)
 {
     const auto &s = result.Summary();
@@ -140,15 +143,36 @@ PlayRecord PlayRecord::From(const IPlayResult &result)
     r.patternPath = s.patternPath;
     r.mode = result.ModeId();
     r.accuracy = s.accuracy;
+    r.score = s.score;
     r.totalNotes = s.totalNotes;
     r.processedNotes = s.processedNotes;
+    r.maximumCombo = s.maximumCombo;
     r.completed = s.endReason == PlayEndReason::Completed;
     r.cleared = s.IsCleared();
     r.pauseMenuUsed = s.pauseMenuUsed;
     r.judgeLevel = s.judgementLevel;
     r.options = s.playOptions;
     r.globalOffset = s.globalOffset;
+    if (IsSupportedPlayGameMode(r.mode))
+        r.detail = CreatePlayGameMode(r.mode)->SaveResultDetail(result);
     return r;
+}
+std::unique_ptr<IPlayResult> PlayRecord::LoadResult() const
+{
+    if (detail.empty() || !IsSupportedPlayGameMode(mode))
+        throw std::runtime_error("This record keeps no result detail.");
+    PlayResultSummary s;
+    s.patternPath = patternPath;
+    s.accuracy = accuracy;
+    s.score = score;
+    s.totalNotes = totalNotes;
+    s.processedNotes = processedNotes;
+    s.maximumCombo = maximumCombo;
+    s.judgementLevel = judgeLevel;
+    s.playOptions = options;
+    s.globalOffset = globalOffset;
+    s.pauseMenuUsed = pauseMenuUsed;
+    return CreatePlayGameMode(mode)->LoadResult(std::move(s), detail);
 }
 void PlayRecordStore::Save(const PlayRecord &r) const
 {
@@ -156,11 +180,12 @@ void PlayRecordStore::Save(const PlayRecord &r) const
     if (r.patternPath.empty() || r.mode.empty())
         throw std::invalid_argument("A record requires a real pattern and mode.");
     const bool judgeOverrideMismatch = r.options.judgeLevel && *r.options.judgeLevel != r.judgeLevel;
-    if (r.processedNotes > r.totalNotes ||
-        r.totalNotes > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) || judgeOverrideMismatch)
+    constexpr auto largest = static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max());
+    const bool countsFit = r.totalNotes <= largest && r.maximumCombo <= largest;
+    if (r.processedNotes > r.totalNotes || !countsFit || judgeOverrideMismatch)
         throw std::invalid_argument("Inconsistent play record summary.");
     auto db = Open(path_);
-    auto s = Prepare(db.get(), "INSERT INTO Plays VALUES(NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    auto s = Prepare(db.get(), "INSERT INTO Plays VALUES(NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     const auto integer = [&](int index, std::int64_t value)
     { Check(db.get(), sqlite3_bind_int64(s.get(), index, value)); };
     const auto number = [&](int index, double value) { Check(db.get(), sqlite3_bind_double(s.get(), index, value)); };
@@ -188,6 +213,10 @@ void PlayRecordStore::Save(const PlayRecord &r) const
     integer(21, o.preserveHitSoundPitch);
     integer(22, o.judgeLevel.has_value());
     integer(23, r.globalOffset.count());
+    integer(24, r.score);
+    integer(25, static_cast<std::int64_t>(r.maximumCombo));
+    integer(26, static_cast<std::int64_t>(o.hpGauge));
+    Text(db.get(), s.get(), 27, r.detail);
     Check(db.get(), sqlite3_step(s.get()));
 }
 void PlayRecordStore::ValidateQuery(std::string_view condition)
@@ -203,8 +232,13 @@ std::vector<PlayRecord> PlayRecordStore::Query(const std::filesystem::path &patt
     if (!std::filesystem::exists(path_))
         return {};
     auto db = Open(path_);
-    auto s = Prepare(db.get(), "SELECT * FROM Plays WHERE Pattern=? AND Mode=? AND (" + expression.sql +
-                                   ") ORDER BY Id DESC LIMIT ? OFFSET ?");
+    // Every column but the detail, which LoadDetail reads for one record.
+    auto s = Prepare(db.get(),
+                     "SELECT Id, PlayedAt, Pattern, Mode, Accuracy, TotalNotes, ProcessedNotes, Completed, Cleared, "
+                     "PauseMenuUsed, JudgeLevel, ScrollSpeed, ScrollUnit, IgnoreScrollEffects, Metronome, Mirror, Random, "
+                     "RandomSeed, RandomProbability, Accelerate, PreserveMusicPitch, PreserveHitSoundPitch, JudgeOverride, "
+                     "GlobalOffset, Score, MaximumCombo, HpGauge FROM Plays WHERE Pattern=? AND Mode=? AND (" +
+                         expression.sql + ") ORDER BY Id DESC LIMIT ? OFFSET ?");
     Text(db.get(), s.get(), 1, PathKey(pattern));
     Text(db.get(), s.get(), 2, mode);
     int index = 3;
@@ -225,8 +259,12 @@ std::vector<PlayRecord> PlayRecordStore::Query(const std::filesystem::path &patt
         r.mode = mode;
         const bool accuracyInRange = integer(4) >= 0 && integer(4) <= AccuracyScore::MaximumUnits;
         const bool noteCountsValid = integer(5) >= 0 && integer(6) >= 0 && integer(6) <= integer(5);
+        const bool scoreValid = integer(24) >= 0 && integer(24) <= std::numeric_limits<std::uint32_t>::max();
+        const bool comboValid = integer(25) >= 0 && integer(26) >= 0;
         if (!accuracyInRange || !noteCountsValid)
             throw std::runtime_error("Invalid stored accuracy or note count. Records were preserved.");
+        if (!scoreValid || !comboValid)
+            throw std::runtime_error("Invalid stored score, combo or HP gauge. Records were preserved.");
         for (const int column : {7, 8, 9, 12, 13, 14, 15, 16, 20, 21, 22})
             if (integer(column) != 0 && integer(column) != 1)
                 throw std::runtime_error("Invalid stored option flag. Records were preserved.");
@@ -255,9 +293,23 @@ std::vector<PlayRecord> PlayRecordStore::Query(const std::filesystem::path &patt
         if (integer(22))
             o.judgeLevel = r.judgeLevel;
         r.globalOffset = RhythmDuration{integer(23)};
+        r.score = static_cast<std::uint32_t>(integer(24));
+        r.maximumCombo = static_cast<std::size_t>(integer(25));
+        o.hpGauge = static_cast<HpGaugeKind>(std::min<std::int64_t>(integer(26), 255));
         o.Validate();
         records.push_back(std::move(r));
     }
     Check(db.get(), status);
     return records;
+}
+std::string PlayRecordStore::LoadDetail(std::int64_t id) const
+{
+    if (!std::filesystem::exists(path_))
+        return {};
+    auto db = Open(path_);
+    auto s = Prepare(db.get(), "SELECT Detail FROM Plays WHERE Id=?");
+    Check(db.get(), sqlite3_bind_int64(s.get(), 1, id));
+    const int status = sqlite3_step(s.get());
+    Check(db.get(), status);
+    return status == SQLITE_ROW ? ReadText(s.get(), 0) : std::string{};
 }

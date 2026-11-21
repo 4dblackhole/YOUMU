@@ -6,6 +6,8 @@
 #include <iterator>
 #include <limits>
 #include <string>
+#include <winsqlite/winsqlite3.h>
+#pragma comment(lib, "winsqlite3.lib")
 
 namespace tests
 {
@@ -239,41 +241,162 @@ namespace tests
                 "Invalid queries never mutate stored records.");
     }
 
-    void TestRecordDatabaseAdoption()
+    void TestOldRecordSchemaSetAside()
     {
-        TemporaryDirectory directory("youmu-record-adoption");
-        const auto legacy = directory.Path() / "legacy" / "plays.sqlite3";
-        const auto database = directory.Path() / "game" / "Data" / "Result" / "plays.sqlite3";
-        const auto read = [](const std::filesystem::path &file)
+        TemporaryDirectory directory("youmu-record-schema");
+        const auto database = directory.Path() / "Result" / "plays.sqlite3";
+        std::filesystem::create_directories(database.parent_path());
+        // An accuracy-only database as schema 1 left it.
+        const auto writeSchemaOne = [&]
         {
-            std::ifstream stream(file, std::ios::binary);
-            return std::string(std::istreambuf_iterator<char>(stream), {});
+            sqlite3 *raw{};
+            Require(sqlite3_open16(database.c_str(), &raw) == SQLITE_OK, "Schema-1 fixture opens.");
+            const int status = sqlite3_exec(raw, "CREATE TABLE Plays (Id INTEGER PRIMARY KEY); PRAGMA user_version=1",
+                                            nullptr, nullptr, nullptr);
+            sqlite3_close_v2(raw);
+            Require(status == SQLITE_OK, "Schema-1 fixture is written.");
         };
-        Require(PlayRecordStore::AdoptLegacyDatabase(database, legacy) == database &&
-                    !std::filesystem::exists(database),
-                "Without a legacy database nothing is created until the first save.");
+        const auto schemaOf = [](const std::filesystem::path &file)
+        {
+            sqlite3 *raw{};
+            sqlite3_stmt *statement{};
+            int version = -1;
+            const bool opened = sqlite3_open16(file.c_str(), &raw) == SQLITE_OK;
+            if (opened && sqlite3_prepare_v2(raw, "PRAGMA user_version", -1, &statement, nullptr) == SQLITE_OK)
+            {
+                if (sqlite3_step(statement) == SQLITE_ROW)
+                    version = sqlite3_column_int(statement, 0);
+            }
+            sqlite3_finalize(statement);
+            sqlite3_close_v2(raw);
+            return version;
+        };
+        writeSchemaOne();
+        const auto pattern = directory.Path() / "pattern.ymp";
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).empty(),
+                "Opening a schema-1 database starts the records over.");
+        const auto setAside = database.parent_path() / "plays.v1.sqlite3";
+        Require(schemaOf(setAside) == 1 && schemaOf(database) == PlayRecordStore::SchemaVersion,
+                "The old database is kept beside the new one as plays.v1.sqlite3.");
         PlayRecord record;
-        record.patternPath = directory.Path() / "pattern.ymp";
+        record.patternPath = pattern;
         record.mode = "Taiko";
-        PlayRecordStore(legacy).Save(record);
-        std::ofstream(legacy.string() + "-journal") << "journal";
-        Require(PlayRecordStore::AdoptLegacyDatabase(database, legacy) == database, "The game-folder path is used.");
-        Require(read(database) == read(legacy) && read(database.string() + "-journal") == "journal",
-                "The legacy database and its rollback journal are copied byte for byte.");
-        Require(std::filesystem::exists(legacy) && !std::filesystem::exists(database.string() + ".adopting"),
-                "The legacy database is kept and no staging file is left.");
-        // The fake journals only prove the copy; remove them before SQLite opens either file again.
-        std::filesystem::remove(database.string() + "-journal");
-        std::filesystem::remove(legacy.string() + "-journal");
-        Require(PlayRecordStore(database).Query(record.patternPath, "Taiko", "", 0, 10).size() == 1,
-                "Adopted records are readable from the game folder.");
-        record.mode = "Taiko";
-        PlayRecordStore(legacy).Save(record);
-        Require(PlayRecordStore::AdoptLegacyDatabase(database, legacy) == database &&
-                    PlayRecordStore(database).Query(record.patternPath, "Taiko", "", 0, 10).size() == 1,
-                "An existing game-folder database is never replaced or merged with the legacy one.");
-        Require(PlayRecordStore::AdoptLegacyDatabase(database, {}) == database,
-                "Without LOCALAPPDATA there is no legacy database to adopt.");
+        PlayRecordStore(database).Save(record);
+        std::filesystem::remove(database);
+        writeSchemaOne();
+        PlayRecordStore(database).Save(record);
+        Require(schemaOf(database.parent_path() / "plays.v1 (2).sqlite3") == 1 && schemaOf(setAside) == 1,
+                "A second old database takes the next free name and the first stays.");
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).size() == 1,
+                "Saving into a schema-1 database keeps only the new record.");
+    }
+
+    void TestRecordResultDetail()
+    {
+        TemporaryDirectory directory("youmu-record-detail");
+        const auto database = directory.Path() / "plays.sqlite3";
+        const auto pattern = directory.Path() / "pattern.ymp";
+        std::ofstream(pattern) << "fixture";
+        TaikoPlayResult result;
+        auto &s = result.summary;
+        s.patternPath = pattern;
+        s.patternName = "Oni";
+        s.accuracy = AccuracyScore::FromUnits(97'531'400);
+        s.score = 97'531'400;
+        s.totalNotes = 400;
+        s.processedNotes = 398;
+        s.unprocessedNotes = 2;
+        s.maximumCombo = 175;
+        s.endReason = PlayEndReason::Completed;
+        s.initialTime = RhythmTime{-2'000'000};
+        s.endTime = RhythmTime{112'345'678};
+        s.judgementLevel = 70;
+        s.playOptions.mirror = true;
+        s.playOptions.accelerate = 1.25;
+        s.controls = {{PlayControlType::Pause, RhythmTime{5'000}, RhythmTime{5'000}, 3, true},
+                      {PlayControlType::Resume, RhythmTime{5'000}, RhythmTime{4'000}, 3, false}};
+        s.hpGauges = {{83.25, true, true, 60.0}};
+        s.hpHistory = std::vector<HpHistoryPoint>{{RhythmTime{0}, 0.0}, {RhythmTime{1'500'000}, 12.5}};
+        result.judgements = {302, 62, 30, 2, 0, 6};
+        result.okCount = 12;
+        result.poorCount = 1;
+        result.acceptedTicks = 64;
+        result.missedTicks = 3;
+        result.groups[0] = {300, 300, AccuracyScore::FromUnits(97'260'000)};
+        result.groups[2] = {10, 8, AccuracyScore::FromUnits(100'000'000)};
+        result.timingErrors = {{7, 0, RhythmTime{1'002'000}, RhythmDuration{-4'321}, JudgementGrade::Perfect,
+                                AccuracyScore::FromUnits(99'000'000)},
+                               {std::numeric_limits<NoteId>::max(), 2, RhythmTime{2'000'000}, RhythmDuration{58'000},
+                                JudgementGrade::Bad, AccuracyScore{}}};
+        result.meanErrorMilliseconds = 0.58;
+        result.varianceMillisecondsSquared = 149.3;
+        result.standardDeviationMilliseconds.reset();
+
+        auto record = PlayRecord::From(result);
+        Require(record.score == 97'531'400 && record.maximumCombo == 175 && !record.detail.empty(),
+                "A record carries the score, the maximum combo and the mode's detail.");
+        PlayRecordStore(database).Save(record);
+        const auto stored = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10);
+        Require(stored.size() == 1, "The record is stored once.");
+        Require(stored[0].score == 97'531'400 && stored[0].maximumCombo == 175,
+                "Queries return the score and the maximum combo.");
+        Require(stored[0].detail.empty(), "Queries leave the detail for the one record that needs it.");
+        auto loaded = stored[0];
+        loaded.detail = PlayRecordStore(database).LoadDetail(loaded.id);
+        Require(loaded.detail == record.detail && PlayRecordStore(database).LoadDetail(loaded.id + 1).empty(),
+                "The detail reads back byte for byte; a missing record has none.");
+        const auto restored = loaded.LoadResult();
+        const auto *taiko = dynamic_cast<const TaikoPlayResult *>(restored.get());
+        Require(taiko != nullptr, "A Taiko record restores a Taiko result.");
+        const auto &r = taiko->summary;
+        Require(r.accuracy.Units() == 97'531'400 && r.score == 97'531'400, "Accuracy and score survive the record.");
+        Require(r.maximumCombo == 175 && r.totalNotes == 400, "Maximum combo and note total survive the record.");
+        Require(r.processedNotes == 398 && r.unprocessedNotes == 2, "Processed counts survive the record.");
+        Require(r.endReason == PlayEndReason::Completed && r.judgementLevel == JudgeLevel{70},
+                "End reason and JudgeLevel survive the record.");
+        Require(r.initialTime == s.initialTime && r.endTime == s.endTime, "Start and end times survive the record.");
+        Require(r.playOptions.mirror && r.playOptions.accelerate == 1.25, "Play options survive the record.");
+        Require(r.controls.size() == 2 && r.controls[1].to == RhythmTime{4'000}, "Control markers survive the record.");
+        Require(r.controls[0].pauseMenuShown && r.controls[0].inputIndex == 3, "Control marker fields survive the record.");
+        Require(r.hpGauges.size() == 1 && r.hpGauges[0].percent == 83.25, "HP gauges survive the record.");
+        Require(r.hpGauges[0].passed && r.hpHistory.has_value(), "The gauge clear and the HP curve survive the record.");
+        Require(r.hpHistory->size() == 2 && r.hpHistory->back().percent == 12.5, "HP curve points survive the record.");
+        Require(taiko->judgements == result.judgements && taiko->okCount == 12, "Judgement counts survive the record.");
+        Require(taiko->poorCount == 1, "The POOR count survives the record.");
+        Require(taiko->acceptedTicks == 64 && taiko->missedTicks == 3, "Tick counts survive the record.");
+        Require(taiko->groups[0].accuracy.Units() == 97'260'000 && taiko->groups[2].processed == 8,
+                "Group accuracies survive the record.");
+        Require(taiko->groups[1].total == 0, "An empty group stays empty.");
+        Require(taiko->timingErrors.size() == 2 && taiko->timingErrors[0].error == RhythmDuration{-4'321},
+                "Timing samples survive the record.");
+        Require(taiko->timingErrors[1].noteId == std::numeric_limits<NoteId>::max() &&
+                    taiko->timingErrors[1].grade == JudgementGrade::Bad,
+                "Timing sample ids and grades survive the record.");
+        Require(taiko->meanErrorMilliseconds == 0.58 && taiko->varianceMillisecondsSquared == 149.3,
+                "Timing statistics survive exactly.");
+        Require(!taiko->standardDeviationMilliseconds, "An absent timing statistic stays absent.");
+        Require(r.IsCleared() == s.IsCleared(), "The clear follows from the restored HP and controls.");
+
+        const auto rejects = [&](std::string detail)
+        {
+            auto damaged = loaded;
+            damaged.detail = std::move(detail);
+            try
+            {
+                static_cast<void>(damaged.LoadResult());
+            }
+            catch (const std::runtime_error &)
+            {
+                return true;
+            }
+            return false;
+        };
+        auto badGrade = record.detail;
+        badGrade.replace(badGrade.find(" 4 0\n"), 5, " 9 0\n");
+        Require(rejects("") && rejects(record.detail.substr(0, record.detail.size() / 2)),
+                "A missing or cut detail is rejected.");
+        Require(rejects(record.detail + "1") && rejects("taiko-result 2\n"), "A padded or newer detail is rejected.");
+        Require(rejects(badGrade), "An out-of-range value is rejected.");
     }
 
     void TestLocalOffsetStore()

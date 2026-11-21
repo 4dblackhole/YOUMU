@@ -28,8 +28,8 @@ Scroll speed와 Accelerate는 각각 밑줄 탭 `x`·`BPM`과 숫자 칸입니�
 HP gauge는 고를 수 있는 HP 게이지 목록(`Gauge/HpGaugeKind.h`의 `HpGauges`)의 드롭다운이고 이름 옆에 그 게이지의 클리어 기준
 (`Clear 60%`)을 둡니다. 지금은 Default 하나이며 추가 게이지는 [HP-02](../../Design/Decisions.md#hp-02-hp-구조와-미정점)대로 미정입니다.
 고른 게이지는 `PlayOptions::hpGauge`로 플레이에 복사되고 플레이 Scene이 그 게이지를 만듭니다. 게이지가 보고하는 클리어 기준
-(`HpGaugeState::clearPercent`)을 플레이 HP 게이지의 클리어 표시와 결과 HP 그래프의 클리어선이 같이 씁니다. 기록 DB에는
-게이지 종류를 저장하지 않습니다(Default뿐이므로). 게이지를 더할 때 기록 필드와 스키마 마이그레이션을 함께 정해야 합니다.
+(`HpGaugeState::clearPercent`)을 플레이 HP 게이지의 클리어 표시와 결과 HP 그래프의 클리어선이 같이 씁니다. 기록 DB는
+스키마 2부터 게이지 종류(`HpGauge`)를 저장합니다.
 
 **열기:** 선곡 하단 `Play options` 또는 `F1`(게임 곡 선택, 다른 패널·옵션 서랍이 닫혀 있을 때)로 엽니다. 연 프레임의 F1은
 패널이 닫기 키로 다시 읽지 않습니다.
@@ -89,15 +89,19 @@ HP gauge는 기본이 아닐 때만 게이지 이름 타일로 나타납니다.
 실제 패턴의 결과 화면에 진입할 때마다 한 번 저장합니다. 디버그/스모크 결과는
 저장하지 않습니다. Pause Retry로 결과 없이 초기화한 중간 시도는 별도 저장하지 않습니다.
 완료·연습·중단을 구분하고, 기존 pauseMenuUsed 클리어 자격 규칙을 유지합니다.
-정확도는 기존 0.000001% 정수 단위로 보존합니다.
+정확도는 기존 0.000001% 정수 단위로 보존합니다. 스키마 2부터 SCORE·최대 콤보와 모드의 결과 상세
+(`IPlayGameMode::SaveResultDetail`, Taiko는 `TaikoResultArchive`: 판정·틱 개수, 노트 그룹 정확도, 타이밍 표본과 통계,
+HP 게이지와 곡선, 종료 사유·시각, 제어 표지)를 함께 저장해 결과 화면을 다시 만들 수 있습니다(`PlayRecord::LoadResult`).
+노트별 결과·입력 기록·키 배치는 저장하지 않습니다(리플레이 미구현). 목록 조회는 상세를 읽지 않고
+`PlayRecordStore::LoadDetail`이 기록 하나의 상세만 읽습니다.
 
 위치: 게임 폴더(EXE 옆)의 `Data/Result/plays.sqlite3`(사용자 지시: C 드라이브 안쪽이 아니라 게임 폴더에서 찾을 수 있게).
-개발 빌드는 `bin/x64/<구성>/Data/Result/`입니다. 예전 위치 `%LOCALAPPDATA%/YOUMU/Records/plays.sqlite3`의 기록은
-게임이 그 DB를 처음 열 때(`PlayRecordDatabasePath`) 새 위치에 DB가 없으면 복사해 옮깁니다(rollback journal이 있으면 함께).
-옛 파일은 지우거나 바꾸지 않으며, 새 위치에 DB가 이미 있으면 그것만 쓰고 옛 DB를 합치지 않습니다.
-복사가 실패하면 그 실행은 옛 DB를 그대로 씁니다. 테스트는 각자의 임시 DB 경로를 넘겨 이 경로를 쓰지 않습니다.
-Windows 내장 SQLite를 사용하며 `user_version=1`로 스키마를 확인합니다.
-지원하지 않는 버전이나 손상 데이터는 오류를 표시하고 보존합니다.
+개발 빌드는 `bin/x64/<구성>/Data/Result/`입니다. 테스트는 각자의 임시 DB 경로를 넘겨 이 경로를 쓰지 않습니다.
+Windows 내장 SQLite를 사용하며 `user_version=2`로 스키마를 확인합니다.
+점수가 없는 스키마 1 기록은 사용자 결정(2026-11-21)으로 이어받지 않습니다. 스키마 1 DB를 열면 같은 폴더의
+`plays.v1.sqlite3`(이미 있으면 `plays.v1 (2).sqlite3`…)로 이름만 바꿔 옆에 두고 빈 스키마 2 DB로 새로 시작합니다.
+예전 위치 `%LOCALAPPDATA%/YOUMU/Records/plays.sqlite3`(스키마 1)는 더 읽지 않으며 지우거나 바꾸지도 않습니다.
+그 밖의 지원하지 않는 버전이나 손상 데이터는 오류를 표시하고 보존합니다.
 캐시와 달리 원본에서 복구 가능한 데이터가 아니므로 자동 삭제/재생성하지 않습니다.
 패턴의 정규화된 절대 경로와 모드로 묶습니다. 같은 경로의 편집본은 같은 기록칸을
 사용하며 파일을 이동하면 새 경로의 기록칸을 사용합니다.
@@ -143,6 +147,8 @@ Completed·Cleared·Pause menu used의 Any/On/Off입니다. 스크롤속도는 �
 | PreserveMusicPitch, PreserveHitSoundPitch | true/false |
 | JudgeOverride | 채보 JudgeLevel을 덮어썼는지 |
 | Completed, Cleared, PauseMenuUsed | 실제 결과 상태, true/false |
+
+스키마 2가 더한 `Score`·`MaximumCombo`·`HpGauge`·`Detail` 열은 조건식 필드가 아닙니다.
 
 원본 차트 문법이 바뀌어도 기록 옵션 스냅샷과 SQLite 스키마는 독립적입니다.
 기록 필드 의미나 레이아웃을 바꾸면 스키마 마이그레이션 정책을 명시해야 합니다.

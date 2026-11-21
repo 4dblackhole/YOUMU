@@ -23,6 +23,9 @@ class TaikoMode final : public IPlayGameMode
         const PatternDocument &pattern,
         const EffectDocument &effects = {},
         std::stop_token stop = {}) const override;
+    [[nodiscard]] std::string SaveResultDetail(const IPlayResult &result) const override;
+    [[nodiscard]] std::unique_ptr<IPlayResult> LoadResult(PlayResultSummary summary,
+                                                          std::string_view detail) const override;
 
   private:
     PlaySessionOptions options_;

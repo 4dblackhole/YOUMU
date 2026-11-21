@@ -19,7 +19,8 @@ namespace tests
     void TestAcceleratedClockAndWindows();
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
-    void TestRecordDatabaseAdoption();
+    void TestOldRecordSchemaSetAside();
+    void TestRecordResultDetail();
     void TestLocalOffsetStore();
     void TestTimerTimelineShift();
     void TestRecordFilters();
