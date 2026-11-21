@@ -74,7 +74,7 @@ class TaikoResultView final : public IResultView
     struct OptionImages
     {
         PhantomCore::ImageHandle tile, accelerate, mirror, random, judgeLevel, scrollSpeed, metronome,
-            ignoreScrollEffects;
+            ignoreScrollEffects, maxStrokes;
     };
     OptionImages optionImages_;
     PhantomCore::ImageHandle backIcon_, replayIcon_, retryIcon_, creatorIcon_;
