@@ -1,4 +1,5 @@
 #include "MusicSelectView.h"
+#include "Presentation/SceneWheel.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
@@ -20,7 +21,7 @@ PointerInput MusicSelectView::CanvasPointerInput(const InputState &input)
     pointer.leftButtonDown = input.IsMouseButtonDown(MouseButton::Left);
     pointer.leftButtonPressed = input.WasMouseButtonPressed(MouseButton::Left);
     pointer.leftButtonReleased = input.WasMouseButtonReleased(MouseButton::Left);
-    pointer.wheelDelta = input.MouseWheelDelta();
+    pointer.wheelDelta = SceneWheelDelta(input);
     pointer.timestampTicks = LatestPointerTimestamp(input);
     return pointer;
 }
@@ -49,16 +50,16 @@ void MusicSelectView::ProcessPointer(const InputState &input)
     // The wheel scrolls tabs first, then the song list, unless an overlay owns the pointer.
     const bool overlayOpen = IsSelectionModalVisible() || options_.IsVisible();
     bool tabsScrolled = false;
-    if (!overlayOpen && input.MouseWheelDelta() != 0)
+    if (!overlayOpen && SceneWheelDelta(input) != 0)
     {
-        tabsScrolled = canvasPointer_ && favoriteTabs_.Scroll(*canvasPointer_, input.MouseWheelDelta());
+        tabsScrolled = canvasPointer_ && favoriteTabs_.Scroll(*canvasPointer_, SceneWheelDelta(input));
     }
     if (tabsScrolled || overlayOpen || !canvasPointer_.has_value())
         return;
     const auto *viewport = songList_.Viewport();
     if (viewport != nullptr && viewport->BoundsInCanvas().Contains(*canvasPointer_) &&
-        std::abs(input.MouseWheelDelta()) > 0.0F)
-        songList_.ScrollBy(-input.MouseWheelDelta() * layout::ScrollStep);
+        std::abs(SceneWheelDelta(input)) > 0.0F)
+        songList_.ScrollBy(-SceneWheelDelta(input) * layout::ScrollStep);
 }
 
 bool MusicSelectView::ProcessActions()

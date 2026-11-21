@@ -1,4 +1,5 @@
 #include "OsuImportPanel.h"
+#include "Presentation/SceneWheel.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include <algorithm>
@@ -222,8 +223,8 @@ bool OsuImportPanel::ProcessAction(const Action &action)
 void OsuImportPanel::ProcessInput(const InputState &input, std::optional<Point> pointer)
 {
     if (!IsVisible()) return;
-    if (pointer && list_->BoundsInCanvas().Contains(*pointer) && input.MouseWheelDelta() != 0)
-        MoveList(input.MouseWheelDelta() > 0 ? -1 : 1);
+    if (pointer && list_->BoundsInCanvas().Contains(*pointer) && SceneWheelDelta(input) != 0)
+        MoveList(SceneWheelDelta(input) > 0 ? -1 : 1);
     if (waitRelease_)
     {
         if (!IsConfirmOrCancelKeyActive(input))

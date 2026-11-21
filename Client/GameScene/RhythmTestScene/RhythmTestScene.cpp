@@ -58,8 +58,8 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
           debug, request ? request->TakeValidatedSession() : nullptr)),
       view_(std::make_unique<GameplayPresenter>(visuals, texts)),
       pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts)),
-      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals), screenFade_(visuals), offsetNotice_(visuals),
-      loadingSettings_(visuals, texts), options_(options)
+      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), appliedVolumes_(launch_.volumes), errorLine_(visuals),
+      screenFade_(visuals), offsetNotice_(visuals), loadingSettings_(visuals, texts), options_(options)
 {
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
     view_->ConfigureKeyBeamOpacity(launch_.keyBeamOpacity);
@@ -199,9 +199,18 @@ void RhythmTestScene::EndScene() noexcept
     screenFade_.Present(0.0, 0, 0);
     static_cast<void>(loadingCanvas_.SetVisible(false));
 }
+void RhythmTestScene::FollowSavedVolumes()
+{
+    if (options_ == nullptr || options_->Values().volumes == appliedVolumes_)
+        return;
+    appliedVolumes_ = options_->Values().volumes;
+    controller_->SetVolumes(appliedVolumes_);
+}
+
 void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
 {
     PrepareLoadingBackground();
+    FollowSavedVolumes();
     // Sweep before the preparation branch: the long waits (chart, images, audio conversion)
     // all end in its early return, and a still bar there reads as a stalled screen.
     if (controller_->CurrentState() == PlayState::Loading)
