@@ -8,9 +8,9 @@
 // <game>/Data
 [[nodiscard]] std::filesystem::path GameDataDirectory();
 
-// <game>/Data/Result/plays.sqlite3. The first call adopts the records of the earlier
-// per-user location (%LOCALAPPDATA%/YOUMU/Records) by copying them when the game folder
-// has no database yet; see PlayRecordStore::AdoptLegacyDatabase. Thread-safe.
+// <game>/Data/Result/plays.sqlite3. Records of the earlier per-user location
+// (%LOCALAPPDATA%/YOUMU/Records) are not read: they predate scores (schema 1) and the user chose
+// to start over. That folder is left as it is.
 [[nodiscard]] std::filesystem::path PlayRecordDatabasePath();
 
 // <game>/Data/LocalOffsets.txt: per-pattern local offsets (LocalOffsetStore).

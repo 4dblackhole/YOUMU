@@ -47,6 +47,8 @@
     <ClInclude Include="Taiko\Results\TaikoPlayResult.h"><Filter>Taiko\Results</Filter></ClInclude>
     <ClCompile Include="Taiko\Results\TaikoResultCollector.cpp"><Filter>Taiko\Results</Filter></ClCompile>
     <ClInclude Include="Taiko\Results\TaikoResultCollector.h"><Filter>Taiko\Results</Filter></ClInclude>
+    <ClInclude Include="Taiko\Results\TaikoResultArchive.h"><Filter>Taiko\Results</Filter></ClInclude>
+    <ClCompile Include="Taiko\Results\TaikoResultArchive.cpp"><Filter>Taiko\Results</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup><ClInclude Include="Mode\ModeInputLayout.h"><Filter>Mode</Filter></ClInclude></ItemGroup>
   <ItemGroup><ClCompile Include="Mode\ModeInputLayout.cpp"><Filter>Mode</Filter></ClCompile></ItemGroup>

@@ -3,6 +3,7 @@
 #include "Parsing/ChartParser.h"
 #include "Taiko/Submodules/TaikoInputBinding.h"
 #include "Taiko/Submodules/TaikoSessionBuilder.h"
+#include "Taiko/Results/TaikoResultArchive.h"
 
 ModeInputLayout TaikoMode::InputLayout() const
 {
@@ -85,4 +86,14 @@ ModeLoadResult TaikoMode::CreateSession(const PatternDocument &pattern,
         result.diagnostics.push_back({DiagnosticSeverity::Error, {pattern.sourcePath, 1, 1}, error.what()});
         return result;
     }
+}
+
+std::string TaikoMode::SaveResultDetail(const IPlayResult &result) const
+{
+    const auto *taiko = dynamic_cast<const TaikoPlayResult *>(&result);
+    return taiko ? SaveTaikoResultDetail(*taiko) : std::string{};
+}
+std::unique_ptr<IPlayResult> TaikoMode::LoadResult(PlayResultSummary summary, std::string_view detail) const
+{
+    return LoadTaikoResultDetail(std::move(summary), detail);
 }

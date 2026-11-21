@@ -48,6 +48,8 @@
     <ClInclude Include="Taiko\Results\TaikoPlayResult.h" />
     <ClCompile Include="Taiko\Results\TaikoResultCollector.cpp" />
     <ClInclude Include="Taiko\Results\TaikoResultCollector.h" />
+    <ClInclude Include="Taiko\Results\TaikoResultArchive.h" />
+    <ClCompile Include="Taiko\Results\TaikoResultArchive.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Mode\PlayOptions.h" />
