@@ -1,7 +1,6 @@
 #include "GameplayJudgementView.h"
 #include "App/AssetPaths.h"
 #include "GameplaySupport.h"
-#include "Mode/Results/IPlayResultCollector.h"
 #include "Presentation/LaneKeyBeam.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
@@ -70,14 +69,10 @@ namespace
         return node;
     }
 
-    // Rounded to tenths of a millisecond; positive is late.
-    std::optional<std::int64_t> AverageTenths(const PlayStatistics &statistics)
+    // A line counts toward the mean while it is drawn and not being pushed out early.
+    bool CountsTowardAverage(bool alive, double quickFadeAge) noexcept
     {
-        if (statistics.timingErrorCount == 0)
-            return std::nullopt;
-        const double meanMicroseconds = static_cast<double>(statistics.timingErrorSum.count()) /
-                                        static_cast<double>(statistics.timingErrorCount);
-        return std::llround(meanMicroseconds / 100.0);
+        return alive && quickFadeAge < 0.0;
     }
 
     // Only real timing judgements get a hit line. Roll/count-only ticks have no
@@ -352,6 +347,7 @@ void GameplayJudgementView::AddHitLine(const RhythmDuration error, const Color c
     line.node->SetZIndex(7 + static_cast<int>(std::min<std::uint64_t>(line.order, 1'000'000'000)));
     PositionLine(line);
     AnimateLine(line, 0.0);
+    RefreshAverageError();
 }
 
 void GameplayJudgementView::Present(const NoteEvent &event)
@@ -376,11 +372,23 @@ void GameplayJudgementView::Present(const NoteEvent &event)
     }
 }
 
-void GameplayJudgementView::ShowAverageError(const PlayStatistics &statistics)
+void GameplayJudgementView::RefreshAverageError()
 {
     if (averageValue_ == nullptr)
         return;
-    const auto tenths = AverageTenths(statistics);
+    std::int64_t sum = 0;
+    std::int64_t count = 0;
+    for (const auto &line : hitLines_)
+    {
+        if (!CountsTowardAverage(line.alive, line.quickFadeAge))
+            continue;
+        sum += line.error.count();
+        ++count;
+    }
+    // Rounded to tenths of a millisecond; positive is late.
+    std::optional<std::int64_t> tenths;
+    if (count > 0)
+        tenths = std::llround(static_cast<double>(sum) / static_cast<double>(count) / 100.0);
     const std::int64_t shown = tenths.value_or(EmptyAverage);
     if (shown == shownAverage_)
         return;
@@ -420,6 +428,7 @@ void GameplayJudgementView::Update(const double deltaSeconds)
     for (auto &line : hitLines_)
         if (line.alive)
             AnimateLine(line, delta);
+    RefreshAverageError();
     if (activeJudgement_ != nullptr)
     {
         judgementElapsedSeconds_ = std::min(FeedbackSeconds, judgementElapsedSeconds_ + delta);
@@ -445,6 +454,7 @@ void GameplayJudgementView::Reset() noexcept
         if (node != nullptr)
             node->SetVisible(false);
     activeJudgement_ = nullptr;
+    RefreshAverageError();
 }
 
 void GameplayJudgementView::Shutdown() noexcept

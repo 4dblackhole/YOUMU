@@ -8,8 +8,6 @@
 #include <limits>
 #include <string>
 
-struct PlayStatistics;
-
 // Owns the timing-guide and judgement-overlay presentation state. Canvas owns
 // the nodes; Shutdown must run before Canvas destruction. No gameplay mutation.
 class GameplayJudgementView final
@@ -22,9 +20,6 @@ class GameplayJudgementView final
     // Centres the guide horizontally on the screen (zero at Canvas x 0) below the gear.
     void SetGuidePlacement(float gearBottom);
     void Present(const NoteEvent &event);
-    // Mean signed error of the attempt's graded hits, read from the live result
-    // statistics so it always equals the result screen's mean.
-    void ShowAverageError(const PlayStatistics &statistics);
     void PresentCompletion(bool success);
     void Update(double deltaSeconds);
     void Reset() noexcept;
@@ -58,6 +53,9 @@ class GameplayJudgementView final
     [[nodiscard]] HitLine &FreeOrOldestLine();
     void PositionLine(HitLine &);
     void AnimateLine(HitLine &, double delta);
+    // The tab under the panel shows the mean signed error of the hit lines drawn
+    // right now (lines being pushed out early are no longer counted).
+    void RefreshAverageError();
     void ShowImage(std::size_t);
 
     std::array<RhythmDuration, AccuracyRange::BandCount> halfWindows_{};
@@ -74,7 +72,7 @@ class GameplayJudgementView final
     PhantomCore::Visual2DNode *averageValue_{};
     PhantomCore::Visual2DNode *averageUnit_{};
     std::wstring averageEmpty_;
-    // Shown mean in tenths of a millisecond; EmptyAverage while no hit is graded.
+    // Shown mean in tenths of a millisecond; EmptyAverage while no hit line is drawn.
     static constexpr std::int64_t EmptyAverage = std::numeric_limits<std::int64_t>::min();
     std::int64_t shownAverage_{EmptyAverage};
     // Reused pool: at most 50 lines live at once, plus slots for displaced
