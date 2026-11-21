@@ -172,10 +172,10 @@ namespace tests
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
         Require(taiko->summary.accuracy.Units() == expectedSum / 4,
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
-        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 2 && taiko->judgements[5] == 1,
-                "Count graded inputs and failed completions once; releases and blanks are never POOR.");
-        Require(taiko->poorCount == 1 && taiko->okCount == 0,
-                "Count graded inputs and failed completions once; releases and blanks are never POOR.");
+        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 2 && taiko->judgements[5] == 0,
+                "Count graded inputs once; releases and blanks are never POOR.");
+        Require(taiko->poorCount == 1 && taiko->okCount == 1,
+                "A roll that took one of its three hits is an OK, not a MISS.");
         Require(taiko->timingErrors.size() == 3 && taiko->meanErrorMilliseconds &&
                 std::abs(*taiko->meanErrorMilliseconds - 20.0 / 3) < 1e-9,
                 "Population variance must exclude automatic misses and free roll hits.");
@@ -245,5 +245,58 @@ namespace tests
         auto result = loaded.session->TakeResult(PlayEndReason::Interrupted, RhythmTime{10'000});
         Require(result->Summary().unprocessedNotes == 1 && result->Summary().accuracy.Units() == 0,
                 "A partially active long note remains unprocessed with zero score on interruption.");
+    }
+
+    void TestPartialLongNotesCountAsOk()
+    {
+        for (const int hits : {0, 1})
+        {
+            auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::Roll, {"HitCount=3"}));
+            Require(loaded.Succeeded(), "Partial roll fixture must load.");
+            auto &session = *loaded.session;
+            if (hits > 0)
+                static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(session.Update(RhythmTime{1'100'000}));
+            auto result = session.TakeResult(PlayEndReason::Completed, RhythmTime{1'100'000});
+            const auto *taiko = dynamic_cast<const TaikoPlayResult *>(result.get());
+            if (!taiko)
+                throw std::runtime_error("Partial roll result type must be preserved.");
+            const bool progressed = hits > 0;
+            Require(taiko->okCount == (progressed ? 1U : 0U) && taiko->judgements[5] == (progressed ? 0U : 1U),
+                    "A long note with any hit is an OK; only an untouched one is a MISS.");
+            Require(taiko->summary.maximumCombo == (progressed ? 1U : 0U),
+                    "A partly processed long note keeps the combo; an untouched one breaks it.");
+            Require(taiko->notes[0].accuracy.Units() == (progressed ? 33'333'333 : 0),
+                    "Counting it as OK does not change the note's accuracy.");
+        }
+    }
+
+    void TestLongNoteCompletionGrade()
+    {
+        const auto grade = [](NoteAccuracyKind kind, std::size_t hits, std::size_t ticks,
+                              std::size_t acceptedHits, std::size_t acceptedTicks, std::vector<double> rates = {})
+        {
+            NoteAccuracy accuracy;
+            accuracy.target = {kind, hits, ticks};
+            accuracy.acceptedHits = acceptedHits;
+            accuracy.acceptedTicks = acceptedTicks;
+            accuracy.hitScoreRates = std::move(rates);
+            return accuracy.CompletionGrade();
+        };
+        Require(grade(NoteAccuracyKind::HitCount, 3, 0, 0, 0) == JudgementGrade::Miss,
+                "A long note with no accepted hit or tick shows MISS.");
+        Require(grade(NoteAccuracyKind::HitCount, 3, 0, 1, 0) == JudgementGrade::Good,
+                "A third of the hits shows GOOD.");
+        Require(grade(NoteAccuracyKind::HitCount, 3, 0, 5, 0) == JudgementGrade::Max,
+                "Extra hits never exceed MAX.");
+        Require(grade(NoteAccuracyKind::Ticks, 0, 100, 0, 99) == JudgementGrade::Perfect &&
+                    grade(NoteAccuracyKind::Ticks, 0, 100, 0, 90) == JudgementGrade::Great &&
+                    grade(NoteAccuracyKind::Ticks, 0, 100, 0, 89) == JudgementGrade::Good,
+                "Tick ratios use the timing grades' score boundaries: 99% PERFECT, 90% GREAT.");
+        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 10, {1.0}) == JudgementGrade::Max &&
+                    grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {1.0}) == JudgementGrade::Good,
+                "A Buzz averages its head score and body ticks before choosing the grade.");
+        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {0.0}) == JudgementGrade::Good,
+                "A Buzz whose head was accepted at a zero score is still processed, so it is not a MISS.");
     }
 } // namespace tests

@@ -33,14 +33,11 @@ void GameplayPresenter::PresentJudgementFeedback(const GameplayFeedback &feedbac
         const auto final = std::ranges::find(feedback.result.finalizedAccuracies, event.noteId, &NoteAccuracy::noteId);
         if (final == feedback.result.finalizedAccuracies.end())
             continue;
-        // Completion of tick traversal can include misses. OK requires all
-        // requested hits/ticks, independently of the head's timing grade.
-        const bool success = event.type == NoteEventType::Completed && final->acceptedHits >= final->target.hits &&
-                             final->acceptedTicks >= final->target.ticks;
         if (selected != nullptr && selected->noteId != event.noteId &&
             IsAtLeastAsAccurateAs(selected->judgement.grade, JudgementGrade::Bad))
             continue;
-        judgementView_.PresentCompletion(success);
+        // A finished long note shows the grade of how much of it was processed.
+        judgementView_.PresentCompletion(final->CompletionGrade());
     }
 }
 

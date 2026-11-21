@@ -66,6 +66,8 @@ int main(const int argumentCount, char *arguments[])
         {"TestLivePlayStatistics", TestLivePlayStatistics},
         {"TestComboEventOrder", TestComboEventOrder},
         {"TestLongResultCompletionAndReset", TestLongResultCompletionAndReset},
+        {"TestPartialLongNotesCountAsOk", TestPartialLongNotesCountAsOk},
+        {"TestLongNoteCompletionGrade", TestLongNoteCompletionGrade},
         {"TestRewindJudgementsAndTrace", TestRewindJudgementsAndTrace},
         {"TestLongNoteRewindState", TestLongNoteRewindState},
         {"TestRetireAndRetryEligibility", TestRetireAndRetryEligibility},

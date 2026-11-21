@@ -55,8 +55,7 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
                                 L"Judgements.GOOD",
                                 L"Judgements.BAD",
                                 L"Judgements.MISS",
-                                L"Judgements.POOR",
-                                L"Judgements.OK"})
+                                L"Judgements.POOR"})
             preparingImages_.push_back(InGameSkinAssetPath(file));
     }
     std::string error;
