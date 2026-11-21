@@ -267,7 +267,7 @@ namespace
         // A chart name that is too long is clipped; the difficulty block stops at its largest width.
         {
             auto &block = Need(Find(canvas->Root(), "DifficultyInformation"), "The detail column must have its difficulty block.");
-            Check(block.BoundsInCanvas().width <= 250.01F && block.BoundsInCanvas().width >= 130.0F,
+            Check(block.BoundsInCanvas().width <= 400.01F && block.BoundsInCanvas().width >= 130.0F,
                   "A long chart name must not stretch the difficulty block past its largest width.");
         }
         // The + of a focused card is white on the card's blue; the other cards keep their own colour.

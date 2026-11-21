@@ -81,7 +81,10 @@ namespace song_select
         constexpr float CreatorTop = 335.5F;
         constexpr float DifficultyBlockTop = 367.5F;
         constexpr PhantomCore::Size DifficultyBlock{196.0F / 1.5F, 32.0F};
-        constexpr float DifficultyBlockMaxWidth = 250.0F; // A long chart name is clipped instead of stretching the block.
+        // The block may reach the figures table's width less a margin on each side, so it never crowds the column
+        // edges or the table below; a longer chart name is clipped instead of stretching it further.
+        constexpr float DifficultyBlockMargin = 24.0F;
+        constexpr float DifficultyBlockMaxWidth = 448.0F - 2.0F * DifficultyBlockMargin;
         // Figures: a 3x2 table 448 wide. Strong rules above and below, light rules between rows and columns.
         constexpr float StatWidth = 448.0F / 3.0F;
         constexpr float StatTop = 429.5F;
