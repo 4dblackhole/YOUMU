@@ -303,11 +303,13 @@ void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximum
     state_.Analysis().PrepareSpectrumTiles(requests);
     const auto &markers = state_.Analysis().Markers();
     const std::array rectangles{audioTracks_[1], audioTracks_[2]};
+    // Both tracks give back their old tiles before either makes new ones, so a rebuild reuses those slots.
+    for (std::size_t track = 0; track < rectangles.size(); ++track)
+        PrepareAudioTrack(track, rectangles[track], first, last, invalidate);
     spectrumImagesFull_ = false;
     for (std::size_t track = 0; track < rectangles.size(); ++track)
     {
         const auto rect = rectangles[track];
-        PrepareAudioTrack(track, rect, first, last, invalidate);
         auto &tiles = audioTiles_[track];
         for (auto index = first; index <= last; ++index)
         {
