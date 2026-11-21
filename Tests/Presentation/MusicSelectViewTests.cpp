@@ -1166,6 +1166,12 @@ namespace
             static_cast<void>(view.Update(input, 0));
             return command;
         };
+        // A click answers the alert between frames; the next frame takes the answer.
+        const auto leftClick = [&](const Visual2DNode &node)
+        {
+            Click(*canvas, node);
+            return view.Update(input, 0);
+        };
         const auto press = [&](std::uint16_t key)
         {
             InputStateTestAccess::Begin(input);
@@ -1223,12 +1229,15 @@ namespace
             Check(listed.starts_with(L"Menu song [easy]\nMenu song/Chart/Set/easy.ymp\nMenu song/Chart/Set/easy.yme"),
                   "The confirmation names the difficulty and lists its files under Songs.");
         }
+        // The frame that opened the alert has passed; the next one passes its keys to nothing.
+        static_cast<void>(view.Update(input, 0));
         Check(press(VK_RETURN) == SongSelectCommand::None && !view.TakeApprovedDeletion(), "Enter cancels the delete.");
+        Check(!Need(Find(canvas->Root(), "Alert"), "The alert exists.").IsVisible(), "Enter closes the confirmation.");
         rightClick(*Find(canvas->Root(), "Difficulty.0"));
         Click(*canvas, *item("deleteDifficulty"));
         static_cast<void>(view.Update(input, 0));
-        Click(*canvas, Need(Find(canvas->Root(), "Alert.Button0"), "The confirmation has its Delete button."));
-        Check(view.Update(input, 0) == SongSelectCommand::DeleteFiles, "Delete confirms the delete.");
+        Check(leftClick(Need(Find(canvas->Root(), "Alert.Button0"), "The confirmation has its Delete button.")) ==
+                  SongSelectCommand::DeleteFiles, "Delete confirms the delete.");
         const auto deletion = view.TakeApprovedDeletion();
         Check(deletion && !deletion->wholeSong, "A confirmed difficulty delete is not a song delete.");
         Check(deletion->paths.size() == 2 && deletion->paths.front() == selection.catalog_.songs[0].patterns[0].patternPath,
@@ -1239,8 +1248,8 @@ namespace
         Click(*canvas, *item("deleteSong"));
         static_cast<void>(view.Update(input, 0));
         Check(alertText("Alert.Title") == L"Delete song?", "Delete song asks with its own title.");
-        Click(*canvas, *Find(canvas->Root(), "Alert.Button0"));
-        Check(view.Update(input, 0) == SongSelectCommand::DeleteFiles, "Delete confirms the song delete.");
+        Check(leftClick(*Find(canvas->Root(), "Alert.Button0")) == SongSelectCommand::DeleteFiles,
+              "Delete confirms the song delete.");
         const auto whole = view.TakeApprovedDeletion();
         Check(whole && whole->wholeSong && whole->paths == std::vector<std::filesystem::path>{songFolder},
               "A confirmed song delete recycles the whole song folder.");
