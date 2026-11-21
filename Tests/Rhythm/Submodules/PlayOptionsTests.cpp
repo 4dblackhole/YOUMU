@@ -115,7 +115,12 @@ namespace tests
                 Require(session.Succeeded(), "A positive target BPM is a valid Accelerate.");
                 Require(session.session->Options().accelerateUnit == PlayOptions::ScrollUnit::Multiplier,
                         "The session keeps the resolved Accelerate multiplier, not the target BPM.");
-                return session.session->Options().accelerate;
+                const auto multiplier = session.session->Options().accelerate;
+                auto result = session.session->TakeResult(PlayEndReason::Interrupted, RhythmTime{});
+                Require(result->Summary().playOptions.accelerate == multiplier &&
+                            result->Summary().playOptions.accelerateUnit == PlayOptions::ScrollUnit::Multiplier,
+                        "Results and records keep the multiplier that was played.");
+                return multiplier;
             };
             Require(multiplierFor(180) == 1.5, "Target BPM 180 on a 120 BPM chart plays at 1.5x.");
             Require(multiplierFor(300) == 2.0 && multiplierFor(30) == 0.5,
