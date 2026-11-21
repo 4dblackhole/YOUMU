@@ -14,7 +14,7 @@ if (-not $FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot.' }
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'GameplaySessionController', 'GameplaySessionFactory', 'GameplayInput', 'GameplayAudioSession', 'ModePresentation',
     'GameplayState', 'GameplayPause', 'GameplayPauseMenu', 'GameplayPauseLayout', 'PauseTexts', 'GameplayAudioRouter', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent',
-    'RhythmTestScene', 'UiErrorLine', 'GameplayScreenFade', 'GameplayOffsetNotice', 'GameplayLoadingSettings', 'GameDataPaths', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'GameplayNoteVisibility', 'GameplayFeedbackVisuals',
+    'RhythmTestScene', 'UiErrorLine', 'GameplayScreenFade', 'GameplayOffsetNotice', 'GameplayLoadingSettings', 'OptionSettings', 'GameDataPaths', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'GameplayNoteVisibility', 'GameplayFeedbackVisuals',
     'GameplayInputView', 'GameplayKiaiView', 'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Rhythm', 'Chart', 'Modes', 'Assets', 'ClientLogic') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }
