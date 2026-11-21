@@ -41,6 +41,7 @@ namespace tests
     void TestLongNoteRewindState();
     void TestRetireAndRetryEligibility();
     void TestYmeSyntax();
+    void TestShortestNumberText();
     void TestRuntimeAutomationRecovery();
     void TestEditorCompiledSpeedBounds();
     void TestEffectValidationConsistency();
