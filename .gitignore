@@ -20,4 +20,6 @@ Client/Assets/Songs/*
 !Client/Assets/Songs/Takahashi yoko - Angel Dream Handshaking/
 Client/Assets/Skins/
 Client/Assets/Languages/
+# A build copy of the converter (the asset root's Submodules folder).
+Client/Assets/Submodules/
 TODOLIST.txt
