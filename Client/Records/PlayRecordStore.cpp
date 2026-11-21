@@ -86,14 +86,49 @@ namespace
                     : std::string{};
     }
 } // namespace
-std::filesystem::path PlayRecordStore::DefaultPath()
+std::filesystem::path PlayRecordStore::LegacyPath()
 {
     wchar_t *raw{};
     std::size_t count{};
     if (_wdupenv_s(&raw, &count, L"LOCALAPPDATA") != 0 || !raw)
-        throw std::runtime_error("LOCALAPPDATA is unavailable for records.");
+        return {};
     std::unique_ptr<wchar_t, decltype(&std::free)> directory(raw, std::free);
     return std::filesystem::path(directory.get()) / L"YOUMU" / L"Records" / L"plays.sqlite3";
+}
+
+std::filesystem::path PlayRecordStore::AdoptLegacyDatabase(const std::filesystem::path &database,
+                                                           const std::filesystem::path &legacy)
+{
+    std::error_code error;
+    // A database already in the game folder wins; the legacy one is never merged into it.
+    if (std::filesystem::exists(database, error) || legacy.empty())
+        return database;
+    if (!std::filesystem::exists(legacy, error))
+        return database;
+    // Copy under temporary names first so a failed copy never leaves a half database that
+    // a later start would mistake for an adopted one.
+    const auto journalSuffix = std::wstring(L"-journal");
+    auto legacyJournal = legacy;
+    legacyJournal += journalSuffix;
+    auto journal = database;
+    journal += journalSuffix;
+    auto staging = database;
+    staging += L".adopting";
+    std::filesystem::create_directories(database.parent_path(), error);
+    if (error)
+        return legacy;
+    std::filesystem::copy_file(legacy, staging, std::filesystem::copy_options::overwrite_existing, error);
+    const bool hasJournal = !error && std::filesystem::exists(legacyJournal, error);
+    if (!error && hasJournal)
+        std::filesystem::copy_file(legacyJournal, journal, std::filesystem::copy_options::overwrite_existing, error);
+    if (!error)
+        std::filesystem::rename(staging, database, error);
+    if (!error)
+        return database;
+    std::error_code ignored;
+    std::filesystem::remove(staging, ignored);
+    std::filesystem::remove(journal, ignored);
+    return legacy;
 }
 PlayRecord PlayRecord::From(const IPlayResult &result)
 {

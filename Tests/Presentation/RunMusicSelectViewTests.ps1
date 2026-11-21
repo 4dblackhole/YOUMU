@@ -1,7 +1,7 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
 $ErrorActionPreference = 'Stop'
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
-$units = @('Pch', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'SongSelectRecords', 'SongRecordView', 'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongListView', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'EditorOsuImport', 'OsuImportValidation', 'OsuSongPlacement', 'OsuImportPanel',
+$units = @('Pch', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'SongSelectRecords', 'SongRecordView', 'GameDataPaths', 'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongListView', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'EditorOsuImport', 'OsuImportValidation', 'OsuSongPlacement', 'OsuImportPanel',
     'MusicSelectTexts', 'MarqueeTextComponent', 'OptionsPanel', 'OptionsRail', 'OptionsVolume', 'UiTooltip', 'UiDropdown', 'UiAlert', 'UiScrollbar', 'PerformanceBand', 'UiModal', 'OptionsDisplay', 'OptionsKeys', 'ModePresentation', 'OptionsOffset', 'OptionsSongs', 'OptionSettings', 'OptionTexts', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Modes', 'Chart', 'Rhythm', 'ClientLogic', 'Assets') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }

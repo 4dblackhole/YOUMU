@@ -11,6 +11,7 @@
 #include "GameScene/RhythmTestScene/RhythmTestScene.h"
 #include "Presentation/UiColors.h"
 #include "Texts/GameIdentity.h"
+#include "App/GameDataPaths.h"
 #include "Records/PlayRecordStore.h"
 
 #include <Windows.h>
@@ -121,7 +122,7 @@ std::unique_ptr<GameScene> YOUMUGame::CreateResultScene()
     display.backgroundPath = launch.backgroundPath;
     display.backgroundOffsetX = launch.backgroundOffsetX;
     display.backgroundOffsetY = launch.backgroundOffsetY;
-    if (!smokeTest_ && !rhythmDebugMode_ && launch.IsValid()) display.recordDatabase = PlayRecordStore::DefaultPath();
+    if (!smokeTest_ && !rhythmDebugMode_ && launch.IsValid()) display.recordDatabase = PlayRecordDatabasePath();
     ResultScene::RetryHandler retry;
     if (display.canRetry)
         retry = [store = launchRequest_, snapshot = std::move(launch)](SceneManager &scenes)

@@ -40,6 +40,8 @@
       <Filter>EditorScene\Submodules</Filter>
     </ClInclude>
     <ClInclude Include="App\AssetPaths.h"><Filter>App</Filter></ClInclude>
+    <ClCompile Include="App\GameDataPaths.cpp"><Filter>App</Filter></ClCompile>
+    <ClInclude Include="App\GameDataPaths.h"><Filter>App</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorForms.cpp">
       <Filter>EditorScene\Submodules</Filter>
     </ClCompile>

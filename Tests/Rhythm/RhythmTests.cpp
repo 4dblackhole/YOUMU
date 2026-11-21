@@ -51,6 +51,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestAcceleratedClockAndWindows", TestAcceleratedClockAndWindows},
         {"TestTaikoPlayOptions", TestTaikoPlayOptions},
         {"TestPersistentRecordConditions", TestPersistentRecordConditions},
+        {"TestRecordDatabaseAdoption", TestRecordDatabaseAdoption},
         {"TestRecordFilters", TestRecordFilters},
         {"TestSampleRestartGateMixerPeriods", TestSampleRestartGateMixerPeriods},
         {"TestSampleRestartGateDenseTicks", TestSampleRestartGateDenseTicks},

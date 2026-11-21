@@ -20,7 +20,15 @@ struct PlayRecord
 class PlayRecordStore final
 {
   public:
-    static std::filesystem::path DefaultPath();
+    // Where records lived before they moved into the game folder:
+    // %LOCALAPPDATA%/YOUMU/Records/plays.sqlite3. Empty when LOCALAPPDATA is unavailable.
+    static std::filesystem::path LegacyPath();
+    // Prepares the game-folder database once. When `database` does not exist yet and `legacy`
+    // does, copies the legacy database (and a rollback journal beside it) to `database`; the
+    // legacy files are never changed. Returns the path to open: `database`, or `legacy` when
+    // the copy failed so the old records stay reachable.
+    static std::filesystem::path AdoptLegacyDatabase(const std::filesystem::path &database,
+                                                     const std::filesystem::path &legacy);
     explicit PlayRecordStore(std::filesystem::path database) : path_(std::move(database))
     {
     }

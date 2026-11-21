@@ -1,4 +1,5 @@
 #include "SongRecordView.h"
+#include "App/GameDataPaths.h"
 #include "Catalog/SongCatalog.h"
 #include "Presentation/AccuracyText.h"
 #include "Presentation/RankName.h"
@@ -203,7 +204,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
         job_ = std::async(std::launch::async,
                                 [database, pattern, mode, condition = query_, offset = offset_]
                                 {
-                                    return PlayRecordStore(database.empty() ? PlayRecordStore::DefaultPath() : database)
+                                    return PlayRecordStore(database.empty() ? PlayRecordDatabasePath() : database)
                                         .Query(pattern, mode, condition, offset, PageSize + 1);
                                 });
     }
