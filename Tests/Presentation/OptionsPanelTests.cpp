@@ -515,6 +515,16 @@ namespace
                   settings.Values().notation == TextNotation::Romanized &&
                   RequireDropdown(FindNode(canvas.Root(), "Options.Notation.Combo")).SelectedIndex() == 1,
               "The notation choice is saved at once.");
+        Check(RequireDropdown(FindNode(canvas.Root(), "Options.RenderRate.Combo")).SelectedIndex() == 0 &&
+                  settings.Values().renderRate == RenderRateMode::Display,
+              "Rendering starts at the display refresh rate.");
+        Check(panel.ProcessAction(Select(canvas, "Options.RenderRate.Combo", 2)) &&
+                  settings.Values().renderRate == RenderRateMode::Unlimited &&
+                  RequireDropdown(FindNode(canvas.Root(), "Options.RenderRate.Combo")).SelectedIndex() == 2,
+              "The frame limit choice is saved at once.");
+        Check(panel.ProcessAction(Select(canvas, "Options.RenderRate.Combo", 1)) &&
+                  settings.Values().renderRate == RenderRateMode::DisplayDouble,
+              "The frame limit can be twice the refresh rate.");
         Section(panel, canvas, "Audio");
         click("Options.Offset.Field");
         Check(panel.OwnsKeyboard(), "Offset field captures numeric input.");
@@ -668,6 +678,7 @@ namespace
         Check(restored.Values().modeKeys == candidate.modeKeys,
               "Resolution, offset and all mode profiles survive restart.");
         Check(restored.Values().notation == TextNotation::Romanized, "The notation choice survives restart.");
+        Check(restored.Values().renderRate == RenderRateMode::DisplayDouble, "The frame limit survives restart.");
         Check(restored.Values().restartKey == VK_F8, "The restart key survives restart.");
         candidate.windowWidth = 0;
         Check(!settings.Save(candidate, error), "Invalid saved resolution rejected.");
@@ -1221,6 +1232,22 @@ namespace
         OptionSettings missingBeam(folder / "NoBeam.ini");
         Check(missingBeam.Load(error) && missingBeam.Values().keyBeamOpacity == 100,
               "A file without the entry keeps the default key beam opacity.");
+        Check(missingBeam.Values().renderRate == RenderRateMode::Display,
+              "A file without the entry renders at the display refresh rate.");
+        {
+            std::ofstream file(folder / "UnlimitedRate.ini");
+            file << "[Display]\nRenderRate=unlimited\n";
+        }
+        OptionSettings unlimitedRate(folder / "UnlimitedRate.ini");
+        Check(unlimitedRate.Load(error) && unlimitedRate.Values().renderRate == RenderRateMode::Unlimited,
+              "The unlimited frame limit is read from the file.");
+        {
+            std::ofstream file(folder / "BadRate.ini");
+            file << "[Display]\nRenderRate=triple\n";
+        }
+        OptionSettings invalidRate(folder / "BadRate.ini");
+        Check(!invalidRate.Load(error) && invalidRate.Values().renderRate == RenderRateMode::Display,
+              "An unknown frame limit falls back to defaults.");
         panel.Shutdown();
     }
 }

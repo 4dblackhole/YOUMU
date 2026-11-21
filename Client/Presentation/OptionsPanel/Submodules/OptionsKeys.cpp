@@ -457,6 +457,12 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
         SelectNotation(action.selectedIndex);
         return true;
     }
+    if (action.type == ActionType::SelectionChanged && action.source == renderRateCombo_->Id())
+    {
+        CancelKeyboardEdit();
+        SelectRenderRate(action.selectedIndex);
+        return true;
+    }
     if (action.type != ActionType::Clicked)
         return false;
     if (auto *overlay = VisibleKeyOverlay())

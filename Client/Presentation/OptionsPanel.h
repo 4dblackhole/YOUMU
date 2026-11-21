@@ -98,7 +98,7 @@ class OptionsPanel final
     void UpdateContentLayout();
     void UpdateScrollbar();
     void CollapseCombos();
-    [[nodiscard]] std::array<PhantomCore::Visual2DNode *, 7> Combos() const noexcept;
+    [[nodiscard]] std::array<PhantomCore::Visual2DNode *, 8> Combos() const noexcept;
     // An open drop-down owns the wheel: its list scrolls (or closes) and the body stays put.
     [[nodiscard]] bool AnyComboExpanded() const;
     bool CanProcessAction(PhantomCore::NodeId source) const noexcept;
@@ -122,6 +122,7 @@ class OptionsPanel final
     void RefreshDisplayControls();
     void SelectResolution(std::size_t index);
     void SelectNotation(std::size_t index);
+    void SelectRenderRate(std::size_t index);
     void CreateVolumeControls();
     void CreateKeyBeamOpacityControl();
     void CreateBackgroundBrightnessControl();
@@ -211,6 +212,7 @@ class OptionsPanel final
     PhantomCore::Visual2DNode *skinLabel_{}, *skinCombo_{};
     PhantomCore::Visual2DNode *resolutionLabel_{}, *resolutionCombo_{};
     PhantomCore::Visual2DNode *notationLabel_{}, *notationCombo_{};
+    PhantomCore::Visual2DNode *renderRateLabel_{}, *renderRateCombo_{};
     PhantomCore::Visual2DNode *middlewareLabel_{}, *outputLabel_{}, *driverLabel_{};
     PhantomCore::Visual2DNode *middlewareCombo_{}, *outputCombo_{}, *driverCombo_{};
     PhantomCore::Visual2DNode *offsetLabel_{}, *offsetField_{}, *offsetUnit_{};

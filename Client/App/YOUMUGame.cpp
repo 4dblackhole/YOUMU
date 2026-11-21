@@ -54,6 +54,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.windowHeight = optionSettings_.Values().windowHeight;
     const auto color = ui_colors::ClearBackground;
     config.clearColor = {color.red, color.green, color.blue, color.alpha};
+    config.renderRateMode = optionSettings_.Values().renderRate;
     config.audio.preferredBackend = optionSettings_.Values().audioOutput;
     // Restore the named device after enumeration instead of trusting a stale index.
     config.audio.driverIndex = -1;
@@ -158,6 +159,7 @@ void YOUMUGame::OnClientInitialized(const EngineServices &services)
 {
     // This hook runs before the first update/render; output switching retains clips.
     RestoreSavedAudioDriver(services.audio);
+    renderRateControl_ = services.renderRateControl;
     // The performance band is Client presentation, so the game owns it and
     // chooses F7 independently from Engine scheduling.
     performanceBand_.Initialize(ScreenVisuals(), texts_);
@@ -166,6 +168,9 @@ void YOUMUGame::OnClientInitialized(const EngineServices &services)
 
 void YOUMUGame::OnClientUpdated(const UpdateContext &context)
 {
+    // The options panel only saves the choice; the engine applies it from the next loop.
+    if (renderRateControl_)
+        renderRateControl_->SetMode(optionSettings_.Values().renderRate);
     if (context.input.WasKeyPressed(VK_F7))
     {
         showPerformanceOverlay_ = !showPerformanceOverlay_;
