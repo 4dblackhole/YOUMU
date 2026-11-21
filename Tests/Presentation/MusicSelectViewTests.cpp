@@ -1406,6 +1406,13 @@ namespace
         Check(filter && filter->IsVisible() && rows()==6,"Record filtering opens separately and leaves records in their assigned area.");
         Click(*canvas,*Find(canvas->Root(),"RecordFilter.Choice.1.1"));static_cast<void>(view.Update(input,0));
         Check(filter->IsVisible() && rows()==6,"Choosing Random On remains a draft until Apply.");
+        {
+            // Max strokes starts at Any; choosing 2 keeps these default-count records.
+            const auto underline=[&](const char *name){return Find(*Find(canvas->Root(),name),"Underline")->IsVisible();};
+            Check(underline("RecordFilter.MaxStrokes.0") && !underline("RecordFilter.MaxStrokes.2"),"Max strokes starts at Any.");
+            Click(*canvas,*Find(canvas->Root(),"RecordFilter.MaxStrokes.2"));static_cast<void>(view.Update(input,0));
+            Check(underline("RecordFilter.MaxStrokes.2") && !underline("RecordFilter.MaxStrokes.0"),"Clicking a stroke count selects it.");
+        }
         Click(*canvas,*Find(canvas->Root(),"RecordFilter.Apply"));static_cast<void>(view.Update(input,0));
         Check(!filter->IsVisible(),"Apply closes only the record filter.");wait(4);
         Check(recordPanel->BoundsInCanvas().x==recordBounds.x && recordPanel->BoundsInCanvas().width==recordBounds.width,

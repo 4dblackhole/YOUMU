@@ -81,5 +81,25 @@ namespace tests
         }
         Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 20).size() == 8,
                 "Filter queries preserve stored records.");
+        // Max strokes: Any keeps every count; a count shows only the records played with it.
+        record.options.maxStrokes = 3;
+        PlayRecordStore(database).Save(record);
+        RecordFilterDraft strokes;
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", ParseRecordFilter(strokes).Query(), 0, 20).size() == 9,
+                "Any stroke count keeps every record.");
+        strokes.maxStrokes = 3;
+        const auto byStrokes = ParseRecordFilter(strokes);
+        const auto three = PlayRecordStore(database).Query(pattern, "Taiko", byStrokes.Query(), 0, 20);
+        Require(byStrokes.maxStrokes == 3 && three.size() == 1 && three[0].options.maxStrokes == 3,
+                "A stroke count shows only the records played with it.");
+        strokes.maxStrokes = 2;
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", ParseRecordFilter(strokes).Query(), 0, 20).size() == 8,
+                "Two strokes finds the default-count records.");
+        Require(FormatRecordFilter(byStrokes).maxStrokes == 3, "Reopening keeps the chosen stroke count.");
+        strokes.maxStrokes = 5;
+        bool rejected{};
+        try { static_cast<void>(ParseRecordFilter(strokes)); }
+        catch (const std::invalid_argument &) { rejected = true; }
+        Require(rejected, "A stroke count outside 1-4 is rejected.");
     }
 }

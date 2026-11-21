@@ -162,7 +162,8 @@ namespace
                 {"judgeoverride", {"JudgeOverride", 'b'}},
                 {"completed", {"Completed", 'b'}},
                 {"cleared", {"Cleared", 'b'}},
-                {"pausemenuused", {"PauseMenuUsed", 'b'}}};
+                {"pausemenuused", {"PauseMenuUsed", 'b'}},
+                {"maxstrokes", {"MaxStrokes", 'n'}}};
             const auto field = fields.find(token_);
             if (field == fields.end())
                 throw std::invalid_argument("Unknown record query field: " + token_);
