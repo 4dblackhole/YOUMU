@@ -410,9 +410,9 @@ Soft: From + (To - From) * Bezier(u, 0.25, 0.1, 0.25, 1)
             "YME tables, expressions, flags and excluded beats must round-trip "
             "without loss.");
     const auto legacy = parse("[Zone]\n1,0/4,#Kiai ON\n2,0/4,#Kiai OFF");
-    Require(legacy.Succeeded() && legacy.document.commands.size() == 2 &&
-                legacy.document.commands.front().type == EffectCommandType::Highlight &&
-                ChartEditor::WriteEffects(legacy.document).find("#Kiai") == std::string::npos,
+    const bool legacyRead = legacy.Succeeded() && legacy.document.commands.size() == 2;
+    const bool legacyType = legacyRead && legacy.document.commands.front().type == EffectCommandType::Highlight;
+    Require(legacyType && ChartEditor::WriteEffects(legacy.document).find("#Kiai") == std::string::npos,
             "The old #Kiai name must read as Highlight and be saved as #Highlight.");
     ChartEditor edited({}, valid.document);
     auto changed = edited.Effects();
