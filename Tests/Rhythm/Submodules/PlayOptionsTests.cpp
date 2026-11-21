@@ -105,6 +105,34 @@ namespace tests
         Require(result->Summary().judgementLevel == 60 && result->Summary().playOptions.mirror,
                 "Result freezes effective JudgeLevel and options.");
         Require(pattern.notes.front().keyType == 1, "Play options never mutate source pattern documents.");
+        // Accelerate by target BPM: the chart's base BPM (120) turns it into the session's multiplier, within 0.5..2x.
+        {
+            PlaySessionOptions bpm;
+            bpm.play.accelerateUnit = PlayOptions::ScrollUnit::Bpm;
+            const auto multiplierFor = [&](const double target) {
+                bpm.play.accelerate = target;
+                auto session = TaikoMode(bpm).CreateSession(pattern);
+                Require(session.Succeeded(), "A positive target BPM is a valid Accelerate.");
+                Require(session.session->Options().accelerateUnit == PlayOptions::ScrollUnit::Multiplier,
+                        "The session keeps the resolved Accelerate multiplier, not the target BPM.");
+                return session.session->Options().accelerate;
+            };
+            Require(multiplierFor(180) == 1.5, "Target BPM 180 on a 120 BPM chart plays at 1.5x.");
+            Require(multiplierFor(300) == 2.0 && multiplierFor(30) == 0.5,
+                    "A target BPM beyond 0.5..2x of the chart plays at the nearest limit.");
+            PlayOptions invalid;
+            invalid.accelerateUnit = PlayOptions::ScrollUnit::Bpm;
+            invalid.accelerate = 0;
+            bool zeroRejected{};
+            try { invalid.Validate(); }
+            catch (const std::invalid_argument &) { zeroRejected = true; }
+            invalid.accelerateUnit = PlayOptions::ScrollUnit::Multiplier;
+            invalid.accelerate = 2.5;
+            bool multiplierRejected{};
+            try { invalid.Validate(); }
+            catch (const std::invalid_argument &) { multiplierRejected = true; }
+            Require(zeroRejected && multiplierRejected, "Target BPM must be positive and a multiplier stays 0.5..2.");
+        }
         options.play.random = true;
         options.play.randomAttemptProbability = 0;
         auto unchanged = TaikoMode(options).CreateSession(pattern);

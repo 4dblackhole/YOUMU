@@ -14,9 +14,10 @@
 {
     const PlayOptions plain;
     const bool scroll = options.scrollUnit != plain.scrollUnit || options.scrollSpeed != plain.scrollSpeed;
+    const bool rate = options.accelerateUnit != plain.accelerateUnit || options.accelerate != plain.accelerate;
     const bool pitch = options.preserveMusicPitch != plain.preserveMusicPitch ||
                        options.preserveHitSoundPitch != plain.preserveHitSoundPitch;
-    const std::array changed{scroll, options.accelerate != plain.accelerate, pitch, options.judgeLevel.has_value(),
+    const std::array changed{scroll, rate, pitch, options.judgeLevel.has_value(),
                              options.mirror, options.random, options.ignoreScrollEffects, options.metronome,
                              options.hpGauge != plain.hpGauge};
     return static_cast<std::size_t>(std::ranges::count(changed, true));
@@ -64,7 +65,7 @@ class PlayOptionsPanel final
     TextCatalog *texts_{};
     UiModal modal_;
     std::array<PhantomCore::Visual2DNode *, 3> headings_{};
-    std::array<PhantomCore::Visual2DNode *, 2> columnRules_{}, units_{};
+    std::array<PhantomCore::Visual2DNode *, 2> columnRules_{}, units_{}, rateUnits_{};
     std::array<PhantomCore::Visual2DNode *, 2> subRules_{};
     PhantomCore::Visual2DNode *rateRange_{}, *rateMore_{}, *rateMoreIcon_{}, *judgeUnit_{}, *probabilityUnit_{};
     PhantomCore::Visual2DNode *gaugeLabel_{}, *gaugeClear_{}, *gauge_{};
