@@ -1112,6 +1112,7 @@ namespace
         song.patterns.front().pattern.backgroundOffsetX = 70;
         song.patterns.front().pattern.backgroundOffsetY = -25;
         song.patterns.front().bpmRange = std::pair{120.0, 180.0};
+        song.patterns.front().pattern.baseBpm = 150.0;
         selection.selectedDurationMicroseconds_ = 125'000'000;
         selection.catalog_.songs.push_back(std::move(song));
         MusicSelectView view(visuals, selection, purpose, texts, options);
@@ -1124,7 +1125,17 @@ namespace
             return node->GetComponent<TextVisualComponent>()->Text();
         };
         Check(detail("Detail.JudgeLevel.Value") == L"40.37" && detail("Detail.HP.Value") == L"9.00" &&
-              detail("Detail.BPM.Value") == L"120–180", "Selected pattern details use real data.");
+              detail("Detail.BPM.Value") == L"150", "Selected pattern details use real data.");
+        {
+            // The first figure is the chart's Base BPM; its BPM range is the tooltip.
+            Check(detail("Detail.BPM.Caption") == L"Base BPM", "The first figure is labelled Base BPM.");
+            InputState input;
+            Rest(view, input, Centre(*Find(canvas->Root(), "Detail.BPM.Value")));
+            const auto *tip = ShownTooltip(canvas->Root());
+            Check(tip != nullptr && tip->Text() == L"BPM 120–180", "Resting on Base BPM shows the chart's BPM range.");
+            Rest(view, input, Centre(*Find(canvas->Root(), "Detail.Length.Value")));
+            Check(ShownTooltip(canvas->Root()) == nullptr, "Other figures have no range tooltip.");
+        }
         Check(detail("Detail.Length.Value") == L"2:05", "Selected pattern details use real data.");
         {
             // The figures sit in a 448-wide table: strong rules above and below, light ones between rows and columns.
