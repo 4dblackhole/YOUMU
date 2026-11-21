@@ -4,9 +4,9 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cmath>
 #include <fstream>
-#include <iomanip>
 #include <limits>
 #include <locale>
 #include <set>
@@ -26,6 +26,19 @@
 
 namespace
 {
+// A number in the shortest text that reads back as the same double (0.9, not 0.90000000000000002). Fixed
+// notation, so every reader of the chart files takes it without an exponent.
+struct Shortest
+{
+    double value;
+};
+std::ostream &operator<<(std::ostream &out, const Shortest number)
+{
+    char text[400]; // The longest fixed form of a double (1.8e308) has 309 digits.
+    const auto result = std::to_chars(text, text + sizeof(text), number.value, std::chars_format::fixed);
+    return out.write(text, result.ptr - text);
+}
+
 std::string Fraction(const Rational &value)
 {
 return std::to_string(value.Numerator()) + "/" + std::to_string(value.Denominator());
@@ -127,9 +140,9 @@ else if (c.endPosition)
         c.curve == AutomationCurve::Linear ? "Linear" : c.curve == AutomationCurve::Exponential ? "Exponential" :
         c.curve == AutomationCurve::Harmonic ? "Harmonic" : "";
     if (curve.empty()) throw std::invalid_argument("Area requires a registered or built-in curve.");
-    out << ", From=" << c.beginValue << ", To=" << c.endValue << ", Curve=" << curve;
+    out << ", From=" << Shortest{c.beginValue} << ", To=" << Shortest{c.endValue} << ", Curve=" << curve;
 }
-else out << ", Value=" << c.endValue;
+else out << ", Value=" << Shortest{c.endValue};
 out << '\n';
 }
 
@@ -859,10 +872,10 @@ std::string ChartEditor::WritePattern(const PatternDocument &pattern)
 {
 std::ostringstream out;
 out.imbue(std::locale::classic());
-out << std::setprecision(17) << "Version: " << pattern.version << "\n[Metadata]\n"
+out << "Version: " << pattern.version << "\n[Metadata]\n"
     << "Effect file: " << Utf8(pattern.effectFile) << '\n'
     << "BG: " << Utf8(pattern.backgroundFile) << '\n'
-    << "offset: " << pattern.backgroundOffsetX << ", " << pattern.backgroundOffsetY << '\n'
+    << "offset: " << Shortest{pattern.backgroundOffsetX} << ", " << Shortest{pattern.backgroundOffsetY} << '\n'
     // Each block starts with its romanized line, written even when empty so it can be filled in.
     << "Romanized Pattern Name: " << pattern.romanizedName << '\n'
     << "Pattern Name: " << pattern.name << '\n'
@@ -872,7 +885,7 @@ for (std::size_t i = 0; i < pattern.makers.size(); ++i)
 out << "Tags: ";
 for (std::size_t i = 0; i < pattern.tags.size(); ++i)
     out << (i ? ", " : "") << pattern.tags[i];
-out << "\nPattern Offset: " << pattern.patternOffsetMilliseconds << "\nBase BPM: " << pattern.baseBpm
+out << "\nPattern Offset: " << Shortest{pattern.patternOffsetMilliseconds} << "\nBase BPM: " << Shortest{pattern.baseBpm}
     << "\n[Difficulty]\nMode: " << pattern.mode << "\nJudgeLevel: " << pattern.judgementLevel.Format()
     << "\nHP: " << pattern.hpLevel.Format() << '\n';
 out << "[Time Signature]\n";
@@ -886,7 +899,7 @@ for (const auto &d : timing)
         out << "#measure " << Fraction(d.ratio) << '\n';
     else
         out << Fraction(d.position.fraction) << ", " << (d.type == TimingDirectiveType::Bpm ? "#bpm " : "#delay ")
-            << d.value << '\n';
+            << Shortest{d.value} << '\n';
 }
 out << "[Pattern]\n";
 measure = 0;
@@ -909,7 +922,7 @@ std::string ChartEditor::WriteEffects(const EffectDocument &effects)
 {
 std::ostringstream out;
 out.imbue(std::locale::classic());
-out << std::setprecision(17) << "Version: " << effects.version << "\n[Interpolation]\n";
+out << "Version: " << effects.version << "\n[Interpolation]\n";
 for (const auto &[name, expression] : effects.interpolations) out << name << ": " << expression << '\n';
 out << "[HitSounds]\n";
 for (const auto &[index, path] : effects.hitSounds) out << index << ": " << Utf8(path) << '\n';

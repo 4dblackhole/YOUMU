@@ -74,6 +74,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestLongNoteRewindState", TestLongNoteRewindState},
         {"TestRetireAndRetryEligibility", TestRetireAndRetryEligibility},
         {"TestYmeSyntax", TestYmeSyntax},
+        {"TestShortestNumberText", TestShortestNumberText},
         {"TestRuntimeAutomationRecovery", TestRuntimeAutomationRecovery},
         {"TestEditorCompiledSpeedBounds", TestEditorCompiledSpeedBounds},
         {"TestEffectValidationConsistency", TestEffectValidationConsistency},

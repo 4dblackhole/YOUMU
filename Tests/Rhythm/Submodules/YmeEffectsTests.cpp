@@ -379,6 +379,42 @@ Ramp: From+(To-From)*u
                 "Editor and gameplay must recompile edited formulas from the same document.");
     }
 
+// Numbers in the chart files are written as the shortest text that reads back as the same double.
+void TestShortestNumberText()
+{
+    ChartParser parser;
+    const auto pattern = parser.ParsePattern(
+        "[Metadata]\noffset: 0.1, 0.30000000000000004\nPattern Offset: 33.333333333333336\n"
+        "Base BPM: 174.99999999999997\n[Time Signature]\n0/1, #bpm 0.1\n");
+    Require(pattern.Succeeded(), "The number fixture must parse.");
+    const auto patternText = ChartEditor::WritePattern(pattern.document);
+    for (const std::string_view line : {"offset: 0.1, 0.30000000000000004\n", "Pattern Offset: 33.333333333333336\n",
+                                        "Base BPM: 174.99999999999997\n", "#bpm 0.1\n"})
+        Require(patternText.find(line) != std::string::npos,
+                "A pattern number must be written in its shortest exact form.");
+    const auto patternAgain = parser.ParsePattern(patternText);
+    Require(patternAgain.Succeeded() && patternAgain.document.baseBpm == pattern.document.baseBpm &&
+                patternAgain.document.patternOffsetMilliseconds == pattern.document.patternOffsetMilliseconds,
+            "A pattern number must read back as the same double.");
+
+    const auto effects = parser.ParseEffect(
+        "Version: 1\n[Speed]\n1,0/4,#ScrollSpeed Separate,Value=0.8751\n[Sounds]\n"
+        "1,0/4,#Volume HitSound,Value=0.90000000000000002\n2,0/4,#Volume HitSound,Value=1e-7\n"
+        "3,0/4,#ReverbSend HitSound,Value=0.3333333333333333\n");
+    Require(effects.Succeeded(), "The effect number fixture must parse.");
+    const auto effectsText = ChartEditor::WriteEffects(effects.document);
+    for (const std::string_view line :
+         {"Value=0.8751\n", "Value=0.9\n", "Value=0.0000001\n", "Value=0.3333333333333333\n"})
+        Require(effectsText.find(line) != std::string::npos,
+                "An effect value must be written in its shortest exact form.");
+    const auto effectsAgain = parser.ParseEffect(effectsText);
+    Require(effectsAgain.Succeeded() && effectsAgain.document.commands.size() == effects.document.commands.size(),
+            "The written effects must parse again.");
+    for (std::size_t i = 0; i < effects.document.commands.size(); ++i)
+        Require(effectsAgain.document.commands[i].endValue == effects.document.commands[i].endValue,
+                "An effect value must read back as the same double.");
+}
+
 void TestYmeSyntax()
 {
     ChartParser parser;
