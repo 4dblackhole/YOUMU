@@ -40,6 +40,8 @@ public:
     void Shutdown() noexcept;
 
 private:
+    // A filter that limits the records shows the query button inverted: cobalt fill, white icon.
+    void RefreshQueryButton();
     // A page row with the judgement counts the worker read from its detail.
     struct LoadedRecord
     {
@@ -66,5 +68,5 @@ private:
     std::vector<std::pair<PhantomCore::NodeId, PlayRecord>> shownRecords_;
     std::optional<PlayRecord> openedRecord_;
     PhantomCore::Visual2DNode *panel_{}, *selector_{}, *messagePlate_{}, *emptyMessage_{};
-    PhantomCore::Visual2DNode *queryButton_{}, *pagerPlate_{}, *previousButton_{}, *nextButton_{}, *rows_{}, *pageLabel_{};
+    PhantomCore::Visual2DNode *queryButton_{}, *queryIcon_{}, *pagerPlate_{}, *previousButton_{}, *nextButton_{}, *rows_{}, *pageLabel_{};
 };
