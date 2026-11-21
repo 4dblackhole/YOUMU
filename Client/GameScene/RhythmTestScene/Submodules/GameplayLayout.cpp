@@ -20,7 +20,8 @@ void GameplayPresenter::ApplyBackgroundBrightness()
     // The chart image, or the plain sky colour without one, darkened toward black.
     const Color base = backgroundImage_ ? Color{1, 1, 1, 1} : Color{0.941F, 0.973F, 1.0F, 1.0F};
     const float b = backgroundBrightness_;
-    SetColor(*background_, {base.red * b, base.green * b, base.blue * b, 1.0F});
+    // A tint keeps the chart image; a whole style would reset it.
+    RequireComponent<SpriteVisualComponent>(*background_).SetTint({base.red * b, base.green * b, base.blue * b, 1.0F});
 }
 
 void GameplayPresenter::CreatePresentation()
