@@ -47,7 +47,7 @@ flowchart LR
 - `YOUMU.ClientLogic`은 엔진 없이 로직 테스트로 검사할 수 있는 Client 코드입니다(기록 DB·기록 필터, 곡 필터·즐겨찾기·선택 상태,
   음악 플레이어 상태, 목록 로딩 작업, 겹친 틱 솎기). 소스는 `Client/` 아래 제자리에 두고 프로젝트만 나눴습니다.
 - `YOUMU.Editor`와 `YOUMU.Assets`도 다른 프로젝트를 참조하지 않습니다. 분석은 주입받은 PCM만 다룹니다.
-- Client는 변환기를 링크하지 않습니다. 빌드 순서를 맞추고 `OsuTaikoConverter.exe`를 출력 폴더에 복사한 뒤,
+- Client는 변환기를 링크하지 않습니다. 빌드 순서를 맞추고 `OsuTaikoConverter.exe`를 자산 루트의 `Submodules/` 폴더(출력 폴더에는 `Asset/Submodules/`)에 복사한 뒤,
   `.osu` 가져오기(`EditorOsuImport`)에서 별도 프로세스로 실행합니다.
 - 변환기는 YOUMU를 형제 폴더 `../YOUMU/`로 찾아 형식 계약(`YOUMU.Chart`, `YOUMU.Rhythm`)만 씁니다.
 - Presentation 회귀 러너(`Tests/Presentation/Run*.ps1`)는 솔루션 프로젝트가 아니라, 실제 Client 오브젝트를 링크한

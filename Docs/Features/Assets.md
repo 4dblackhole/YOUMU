@@ -33,6 +33,8 @@ Git이 직접 추적합니다. 빌드는 곡을 복사하지 않고 `YOUMU.Asset
 - 곡 기본값: `<자산 루트>/Songs`, 옵션 패널/Option.ini의 General/SongsPath로 변경 가능.
   빈 값은 기존 자동 기본 경로이고, 상대경로는 EXE 폴더 기준입니다. 사용자 스킨은 `<자산 루트>/Skins`입니다.
 - 편집 가능한 UTF-8 UI 문구: `<자산 루트>/Languages/{ko,en}.ini`
+- 외부 프로그램: `<자산 루트>/Submodules/OsuTaikoConverter.exe`(저장소에서는 `Client/Assets/Submodules`, git 무시.
+  빌드가 마지막으로 빌드한 구성의 변환기를 복사합니다)
 - `Option.ini`: 자산 루트와 별개로 항상 EXE 옆
 - 게임이 쓰는 사용자 데이터: EXE 옆 `Data/`(기록 DB는 `Data/Result/plays.sqlite3`, [PlayOptions](Gameplay/PlayOptions.md); 개별 오프셋은 `Data/LocalOffsets.txt`, [Audio](Gameplay/Audio.md#개별-오프셋)). 배포 묶음에 넣지 않고 실행 중 만들어집니다.
 
@@ -64,21 +66,22 @@ msbuild YOUMU.sln /m /p:Configuration=Release /p:Platform=x64
 
 게임 실행에 필요한 직접 배포 파일은 bin/x64/Release의 Y's Orchestral Unison - Melodic Ultimatum.exe와 fmod.dll입니다.
 PhantomCore 등 정적 라이브러리는 이미 EXE에 링크되므로 .lib/.pdb/테스트 EXE/fmodL.dll은 제외합니다.
-에디터의 Import osu! folder 기능을 제공하려면 같은 빌드의 OsuTaikoConverter.exe도 게임 EXE 옆에
-동봉합니다. 기본 플레이 실행에는 필요하지 않지만 가져오기 버튼은 이 파일을 실행합니다.
+에디터의 Import osu! folder 기능을 제공하려면 같은 빌드의 OsuTaikoConverter.exe도 `Asset/Submodules/`에
+동봉합니다(게임 EXE 옆이 아닙니다). 기본 플레이 실행에는 필요하지 않지만 가져오기 버튼은 이 파일을 실행합니다.
+빌드는 변환기를 `bin/x64/<구성>/Asset/Submodules/`에도 복사하므로 그 `Asset` 폴더째 배포 폴더에 넣으면 됩니다.
 
 곡 없는 기본본의 배치는 다음과 같습니다. 사용자 파일 폴더는 비워 둬도 됩니다.
 
 ```text
 demo/
   Y's Orchestral Unison - Melodic Ultimatum.exe
-  OsuTaikoConverter.exe       에디터의 Import osu! folder에 필요
   fmod.dll
   Option.ini                 처음 실행 시 기본값으로 자동 생성 가능
   README.txt
   Asset/                     Assets가 아닌 단수 Asset
     Languages/en.ini
     Languages/ko.ini
+    Submodules/OsuTaikoConverter.exe   에디터의 Import osu! folder에 필요
     Songs/<곡 폴더>/Music/     YMM 하나와 음원
     Songs/<곡 폴더>/Chart/     차트 세트 폴더별 YMP·YME 쌍
     Songs/<곡 폴더>/BG/        그 곡의 YMP가 참조하는 배경 이미지

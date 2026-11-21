@@ -30,14 +30,14 @@ git clone https://github.com/4dblackhole/OsuTaikoConverter.git ../OsuTaikoConver
 ```
 
 - Client 솔루션은 변환기의 Core 정적 라이브러리·콘솔 EXE·테스트 프로젝트를 포함합니다. `YOUMU.Client`는 변환기 EXE를
-  빌드 순서 의존으로만 참조하고, 같은 구성의 `OsuTaikoConverter.exe`를 게임 EXE 옆에 복사합니다. 링크하지 않습니다.
+  빌드 순서 의존으로만 참조하고, 같은 구성의 `OsuTaikoConverter.exe`를 자산 루트의 `Submodules/`(저장소 `Client/Assets/Submodules`, 출력 폴더의 `Asset/Submodules`)에 복사합니다. 링크하지 않습니다.
 - 변환기는 엔진과 무관한 Chart/Rhythm 라이브러리와 Taiko의 저장 노트 ID·동작 계약만 재사용합니다. 도메인 라이브러리는
   변환기나 Client 실행 프로젝트를 역참조하지 않습니다([전체 구조](../Architecture/Overview.md#저장소와-프로젝트-의존)).
 - 에디터 가져오기는 변환기 EXE의 `--output-dir` 지원이 필요하므로 Client와 변환기의 `main`을 함께 갱신합니다.
 
 ## Client가 변환기를 실행하는 방법
 
-- `EditorOsuImport`가 백그라운드 worker에서 게임 EXE 옆의 `OsuTaikoConverter.exe`를 실행합니다. 경로는 Windows 인자 인용 규칙에 따라
+- `EditorOsuImport`가 백그라운드 worker에서 `<자산 루트>/Submodules/OsuTaikoConverter.exe`를 실행합니다. 경로는 Windows 인자 인용 규칙에 따라
   넘기고 `--output-dir`로 임시 폴더를 줍니다. 렌더 스레드에서 종료를 기다리지 않습니다.
 - stdout(JSON)과 stderr를 함께 읽고, 종료 코드 0과 JSON `success`를 확인한 뒤 결과를 검사합니다.
 - worker는 Scene·엔진을 참조하지 않으며 KeepAlive Scene이 future를 소유합니다. 취소하면 선택 화면에 남습니다.
