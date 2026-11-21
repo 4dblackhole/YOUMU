@@ -748,7 +748,7 @@ namespace
 
         state.OpenPanel(EditorPanel::Zones);
         auto &form = state.effectForm;
-        form.selection = EffectCommandType::Kiai;
+        form.selection = EffectCommandType::Highlight;
         form.startMeasure = "2";
         form.startFraction = "0/1";
         form.beginValue = form.endValue = "1";
@@ -757,7 +757,7 @@ namespace
         form.excluded = "1|2";
         state.ApplyEffect();
         const auto written = ChartEditor::WriteEffects(state.Document().Effects());
-        Check(written.find("#Kiai ON") != std::string::npos &&
+        Check(written.find("#Highlight ON") != std::string::npos &&
                   written.find("#Syncopation ON, Exclude=1|2") != std::string::npos,
               "Zone toggles must write ON states and the Exclude divisors.");
         form.excluded = "0";

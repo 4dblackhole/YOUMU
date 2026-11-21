@@ -79,7 +79,7 @@ namespace tests
         auto parsed = ChartParser{}.ParseEffect(
             "[Speed]\n1,0/1,Area,1,1/2,#ScrollSpeed Whole,From=1,To=2,Curve=Linear\n"
             "[Sounds]\n1,0/1,Area,1,1/2,#Volume HitSound,From=0.2,To=0.8,Curve=Linear\n"
-            "[Zone]\n1,1/4,#Kiai ON\n",
+            "[Zone]\n1,1/4,#Highlight ON\n",
             "offset.yme");
         Require(parsed.Succeeded(), "Offset effect fixture parses.");
         const MusicalTimeline original(pattern);

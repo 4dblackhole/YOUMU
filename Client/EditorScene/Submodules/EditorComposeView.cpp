@@ -267,12 +267,12 @@ void EditorView::DrawHeads()
 
 void EditorView::DrawZoneHeads()
 {
-    // Zones carries three rows in its head: Syncopation, Kiai and bar lines with their current state.
+    // Zones carries three rows in its head: Syncopation, Highlight and bar lines with their current state.
     constexpr float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
     Box({layout::HeadButtonWidth + 1, top, layout::HeadWidth - layout::HeadButtonWidth - 2, h - 1}, ui_colors::Rgb(0xF5F9FE));
     const std::array<std::tuple<std::string_view, EffectCommandType, Color>, 3> rows{
         std::tuple{std::string_view{"Editor.zoneSyncopation"}, EffectCommandType::SyncopationZone, ui_colors::Rgb(0xA640E6)},
-        std::tuple{std::string_view{"Editor.zoneKiai"}, EffectCommandType::Kiai, ui_colors::Rgb(0xF29A1E)},
+        std::tuple{std::string_view{"Editor.zoneHighlight"}, EffectCommandType::Highlight, ui_colors::Rgb(0xF29A1E)},
         std::tuple{std::string_view{"Editor.zoneBarLines"}, EffectCommandType::MeasureLineVisible, theme::Brand}};
     const float rowHeight = 18, first = top + (h - rowHeight * 3) * .5F;
     for (std::size_t i = 0; i < rows.size(); ++i)

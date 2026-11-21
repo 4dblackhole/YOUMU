@@ -26,7 +26,7 @@
   Preview에서는 노트 도구와 Beat를 숨깁니다. 예전 BPM·마디 길이 도구는 없고 Timing 패널에서 편집합니다.
 - Realtime: 맨 위 눈금자(마디 번호·박·눈금, 누르면 그 시각), 레인(플레이와 같은 크기의 노트), 그 아래 채널
   Music(파형)·Timing(BPM·마디 길이·delay 칩)·Scroll speed(Whole 곡선과 Separate 금빛 표지)·Volume(대상별 곡선)·
-  Audio FX(Reverb send·Low-pass·High-pass, 쓰는 효과만)·Hit sounds(동/캇 소리 바뀜)·Zones(Syncopation·Kiai·Bar lines 세 줄)를
+  Audio FX(Reverb send·Low-pass·High-pass, 쓰는 효과만)·Hit sounds(동/캇 소리 바뀜)·Zones(Syncopation·Highlight·Bar lines 세 줄)를
   같은 시간축에 쌓습니다. 금빛 세로선이 현재 시각(판정선)입니다. 음수 delay로 잘린 구간은 빨간 빗금입니다.
   레인 머리의 Spacing −/+와 Ctrl+휠은 25·35·50·70·100·140·200·280·400% 중에서 노트 간격만 바꿉니다.
   처음은 50%이고 100%는 게임과 같은 간격(Base BPM의 16분음표가 일반 노트 지름의 85%)입니다.
@@ -55,7 +55,7 @@
 - Timing: BPM·Length·Delay. 음수 delay는 잘라 내는 구간을 경고합니다. 마디 길이는 이월 규칙을 지키려고 마디 단위로 적용합니다.
 - Scroll speed(Whole·Separate), Volume(대상 HitSound·TickSound·UserInputFeedback), Audio FX(버스 Music·HitSound·TickSound·UserInputFeedback),
   Area 스위치와 끝 위치·To·Curve(기본 3개와 YME의 사용자 곡선). `Curves…`는 곡선 편집 창입니다.
-- Zones: Syncopation·Kiai·Bar lines의 On/Off. Syncopation On은 Exclude 칩(1/4·1/8·1/16·1/12·1/24·1/32)과
+- Zones: Syncopation·Highlight·Bar lines의 On/Off. Syncopation On은 Exclude 칩(1/4·1/8·1/16·1/12·1/24·1/32)과
   직접 입력(4분음표 ÷ n, `|`로 구분)을 둡니다.
 - Hit sounds: 대상(Taiko는 Don sound·Kat sound)과 히트사운드 표의 인덱스. 대상 목록은 모드가 줍니다.
 - Notes: 선택한 노트의 종류(묶음 안), 시작/끝 마디·박, 연타 수·틱 분할, 히트사운드, Apply·Revert.
@@ -282,11 +282,11 @@ PCM/FFT 자체는 `YOUMU.Editor/Audio/EditorAudioAnalysis`만 읽으면 됩니�
   프로세스 강제 종료 또는 복구 자체의 파일 시스템 오류로 복구 파일이 남은 경우에는
   원본 복구를 확인한 뒤 제거하세요. YMP와 YME를 같은 파일에 저장하는 것도 거부합니다.
 
-효과 패널은 채널별입니다(Scroll speed: Whole·Separate, Volume, Audio FX, Hit sounds, Zones: Syncopation·Kiai·Bar lines).
+효과 패널은 채널별입니다(Scroll speed: Whole·Separate, Volume, Audio FX, Hit sounds, Zones: Syncopation·Highlight·Bar lines).
 볼륨 대상은 HitSound·TickSound·UserInputFeedback이며 Music/UI 대상은 검증 오류입니다. Curve는 Linear/Exponential/Harmonic과
 YME `[Interpolation]`의 사용자 곡선을 순환하고, 식·베지어는 `Curves…` 창에서 등록·수정합니다. 목록의 지점형 효과는
-변경값 하나만 표시하고, Area 효과만 시작값 → 끝값으로 표시합니다. Kiai·Syncopation은 On/Off로, Syncopation의 Exclude 분할은
-`−1/8|1/16`처럼 표시합니다. Kiai는 내부 숫자 대신 언어파일의 이름으로 표시합니다. 모드의 사운드 대상에 없는 히트사운드 변경은
+변경값 하나만 표시하고, Area 효과만 시작값 → 끝값으로 표시합니다. Highlight·Syncopation은 On/Off로, Syncopation의 Exclude 분할은
+`−1/8|1/16`처럼 표시합니다. Highlight는 내부 숫자 대신 언어파일의 이름으로 표시합니다. 모드의 사운드 대상에 없는 히트사운드 변경은
 목록에 남아 지울 수 있고 다른 수정/저장에서도 보존합니다. 문법은 [YME](../Formats/Yme.md)가 기준입니다.
 
 ## 내부 구조와 검증 경계

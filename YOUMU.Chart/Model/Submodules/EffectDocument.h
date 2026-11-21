@@ -14,7 +14,7 @@ enum class EffectCommandType : std::uint8_t
     SyncopationZone,
     Custom,
     MeasureLineVisible,
-    Kiai,
+    Highlight,
 };
 
 enum class AutomationCurve : std::uint8_t

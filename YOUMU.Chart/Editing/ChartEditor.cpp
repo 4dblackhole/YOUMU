@@ -90,7 +90,7 @@ out << p.measure + 1 << ", " << Fraction(p.fraction);
 std::string_view EffectSection(EffectCommandType type)
 {
     if (type == EffectCommandType::ScrollSpeed || type == EffectCommandType::NoteSpeed) return "Speed";
-    if (type == EffectCommandType::SyncopationZone || type == EffectCommandType::Kiai || type == EffectCommandType::MeasureLineVisible) return "Zone";
+    if (type == EffectCommandType::SyncopationZone || type == EffectCommandType::Highlight || type == EffectCommandType::MeasureLineVisible) return "Zone";
     return "Sounds";
 }
 
@@ -109,10 +109,10 @@ case EffectCommandType::LowPassCutoff: out << "LowPassCutoff " << c.target; brea
 case EffectCommandType::HighPassCutoff: out << "HighPassCutoff " << c.target; break;
 case EffectCommandType::MeasureLineVisible: out << "MeasureLineVisible"; break;
 case EffectCommandType::SyncopationZone: out << "Syncopation"; break;
-case EffectCommandType::Kiai: out << "Kiai"; break;
+case EffectCommandType::Highlight: out << "Highlight"; break;
 default: throw std::invalid_argument("Unsupported YME effect.");
 }
-if (c.type == EffectCommandType::SyncopationZone || c.type == EffectCommandType::Kiai)
+if (c.type == EffectCommandType::SyncopationZone || c.type == EffectCommandType::Highlight)
 {
     out << (c.endValue >= .5 ? " ON" : " OFF");
     if (!c.excludedDivisions.empty())

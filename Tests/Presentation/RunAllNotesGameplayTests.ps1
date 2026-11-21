@@ -10,7 +10,7 @@ if (-not $FmodRoot) { throw 'Set FMOD_ROOT or pass -FmodRoot with the installed 
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 if ($Effects) { $runtime += '/DTEST_YME_EFFECTS' }
 $units = @('Pch', 'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'GameplayNoteVisibility', 'ModePresentation',
-    'GameplayFeedbackVisuals', 'GameplayInputView', 'GameplayKiaiView', 'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts',
+    'GameplayFeedbackVisuals', 'GameplayInputView', 'GameplayHighlightView', 'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts',
     'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'GameplayAudioRouter',
     'ResultViewFactory', 'TaikoResultView', 'TaikoResultGraphs', 'TaikoResultPanels', 'TaikoResultGraphView',
     'TaikoResultHero', 'TaikoResultRing', 'ResultTexts', 'UiTooltip')

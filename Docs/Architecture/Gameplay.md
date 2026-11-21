@@ -101,7 +101,7 @@ classDiagram
 | --- | --- |
 | `GameplayNoteView` | 노트·롱노트·틱·마디선, 풍선·뎅뎅 그림과 남은 타격 배지 |
 | `GameplayJudgementView` | 판정 글자, 타이밍 인디케이터와 평균 오차 |
-| `GameplayKiaiView` | Kiai 판정원 |
+| `GameplayHighlightView` | Highlight 판정원 |
 | `GameplayInputView` | 입력 패널(누른 키) |
 | `LaneKeyBeam` | 키빔 |
 | `GameplayProgressView` | 진행 막대 |

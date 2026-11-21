@@ -45,7 +45,7 @@ namespace
     constexpr float AverageUnitDrop = 3.0F;
     constexpr std::array<std::string_view, 7> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
                                                          "BAD", "MISS",    "POOR"};
-    // Judgement words sit just above the judgement circle (screen up), clear of the Kiai ring.
+    // Judgement words sit just above the judgement circle (screen up), clear of the Highlight ring.
     constexpr float WordGapAboveCircle = 6.0F;
     constexpr std::size_t PoorImageIndex = 6;
     constexpr Color Ink = ui_colors::theme::Ink;

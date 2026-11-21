@@ -21,7 +21,7 @@ YMP `[Metadata]`의 `Effect file`로 YME를 지정합니다. **YME 경로는 YMP
 | `[HitSounds]` | 히트사운드 인덱스와 파일 표. 기본 데이터입니다. |
 | `[Speed]` | `#ScrollSpeed Whole`, `#ScrollSpeed Separate` |
 | `[Sounds]` | `#HitSound`, `#Volume` 및 기존 오디오 DSP 명령 |
-| `[Zone]` | `#Syncopation`, `#Kiai`, `#MeasureLineVisible` |
+| `[Zone]` | `#Syncopation`, `#Highlight`, `#MeasureLineVisible` |
 
 효과 명령은 마지막 세 섹션으로만 분류합니다. 정의와 사용의 파일 내 순서는 자유입니다.
 
@@ -124,14 +124,14 @@ Sample/Voice를 공유합니다. YMP 노트의 HitSound 칸도 이 표의 인덱
 문법을 사용합니다. 이 기존 DSP 명령의 대상은 오디오 버스 이름입니다.
 향후 distortion 등을 넣을 장소는 Sounds이며 현재 새 DSP 효과는 추가하지 않았습니다.
 
-## 싱코페이션과 Kiai
+## 싱코페이션과 Highlight
 
 ```text
 [Zone]
 3, 0/4, #Syncopation ON, Exclude=1|2|4
 5, 0/4, #Syncopation OFF
-3, 0/4, #Kiai ON
-7, 0/4, #Kiai OFF
+3, 0/4, #Highlight ON
+7, 0/4, #Highlight OFF
 ```
 
 ON/OFF는 지점만 지정합니다. ON 위치부터 OFF 위치 직전까지 활성 상태입니다.
@@ -145,7 +145,8 @@ JudgeLevel 배율을 적용한 **모든 판정 등급의 좌우 범위에 각각
 정확히 놓인 노트는 보정하지 않습니다. 유리수로 검사하며 ms 근사 오차를 쓰지 않습니다.
 생략하면 활성 구간 내 모든 노트가 대상입니다.
 
-Kiai는 `PlaySession::IsKiaiActive`로 상태만 조회하며 표시·점수·오디오를 변경하지 않습니다.
+Highlight는 `PlaySession::IsHighlightActive`로 상태만 조회하며 표시·점수·오디오를 변경하지 않습니다.
+예전 이름인 `#Kiai`도 같은 명령으로 읽습니다. 저장·변환은 항상 `#Highlight`로 씁니다.
 기존 마디선은 `#MeasureLineVisible, Value=0` 또는 `Value=1`로 지정합니다.
 
 ## 테스트 채보
@@ -153,5 +154,5 @@ Kiai는 `PlaySession::IsKiaiActive`로 상태만 조회하며 표시·점수·�
 내장 AngelDream 곡 폴더의 `Chart/Unknown - YME Effects Verification/angeldream [effects test].ymp`가
 같은 폴더의 `angeldream [effects test].yme`를 명시적으로 참조합니다. 기존 실제 음원/YMM을 사용하며
 15개 논리 노트, BPM 변경, Whole/Separate, 세 기본 보간·사용자 식·베지어,
-히트사운드 교체/볼륨, 싱코페이션 제외와 Kiai 상태를 검사합니다.
+히트사운드 교체/볼륨, 싱코페이션 제외와 Highlight 상태를 검사합니다.
 YME와 YMP의 폴더를 달리해 히트사운드 기준 경로도 검사합니다.

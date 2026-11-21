@@ -31,8 +31,8 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
                                 L"InputPanel",
                                 L"LaneLight",
                                 L"JudgementCircle",
-                                L"Kiai.Glow",
-                                L"Kiai.Ring",
+                                L"Highlight.Glow",
+                                L"Highlight.Ring",
                                 L"Lane",
                                 L"KeyButtonLeftKat",
                                 L"KeyButtonLeftDon",
@@ -99,7 +99,7 @@ void GameplayPresenter::Shutdown() noexcept
     hpView_.Shutdown();
     statisticsView_.Shutdown();
     noteView_.Shutdown();
-    kiaiView_.Shutdown();
+    highlightView_.Shutdown();
     preparingImages_.clear();
     inputView_.Shutdown();
     background_ = nullptr;
@@ -125,7 +125,7 @@ void GameplayPresenter::ApplyFeedback(const GameplayFeedback &feedback)
     {
         keyBeam_.Reset();
         judgementView_.Reset();
-        kiaiView_.Reset();
+        highlightView_.Reset();
     }
     if (feedback.keyPressed)
         keyBeam_.OnKeyPressed(feedback.result);
@@ -142,7 +142,7 @@ void GameplayPresenter::UpdatePresentation(const RhythmTime time)
     UpdateDebugPresentation(time);
 #endif
     noteView_.Update(time);
-    kiaiView_.Update(*session_, time);
+    highlightView_.Update(*session_, time);
 }
 
 void GameplayPresenter::UpdateInputPresentation(const InputState& input, const double deltaSeconds)

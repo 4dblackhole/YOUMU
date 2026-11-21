@@ -9,7 +9,7 @@ $units = @('Pch', 'TaikoResultHero', 'TaikoResultRing', 'ResultScene', 'UiAlert'
     'TaikoResultPanels', 'TaikoResultGraphView',
     'RhythmTestScene', 'UiErrorLine', 'GameplayScreenFade', 'GameplayOffsetNotice', 'GameplayLoadingSettings', 'OptionSettings', 'GameDataPaths', 'GameplaySessionController', 'GameplaySessionFactory', 'GameplayInput', 'GameplayAudioSession', 'ModePresentation',
     'GameplayState', 'GameplayPause', 'GameplayPauseMenu', 'GameplayPauseLayout', 'PauseTexts',
-    'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'GameplayNoteVisibility', 'GameplayFeedbackVisuals', 'GameplayInputView', 'GameplayKiaiView',
+    'GameplayPresenter', 'GameplayLayout', 'GameplayNoteView', 'GameplayNoteVisibility', 'GameplayFeedbackVisuals', 'GameplayInputView', 'GameplayHighlightView',
     'GameplayJudgementView', 'GameplayProgressView', 'GameplayHpView', 'GameplayStatisticsView', 'LaneKeyBeam', 'GameplayTexts', 'TextCatalog', 'LanguageFile', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'GameplayAudioRouter')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Rhythm', 'Chart', 'Modes', 'ClientLogic', 'Assets') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }

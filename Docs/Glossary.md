@@ -21,7 +21,7 @@
 | 곡 폴더 | `Songs/<곡 폴더>`. YMM 하나와 그 곡의 YMP·YME·음원·배경 그림을 담음 |
 | YMM | 곡 정보(제목·아티스트·음원 파일 등)([Ymm](Formats/Ymm.md)) |
 | YMP | 패턴(난이도 하나). 메타데이터·HP·노트([Ymp](Formats/Ymp.md)) |
-| YME | 효과. 스크롤·보간·히트사운드·볼륨·싱코페이션·Kiai([Yme](Formats/Yme.md)) |
+| YME | 효과. 스크롤·보간·히트사운드·볼륨·싱코페이션·Highlight([Yme](Formats/Yme.md)) |
 | 마디·위치 | 채보 시각은 `마디, 분자/분모`의 유리수 위치로 쓰고 로드할 때 정수 마이크로초로 컴파일함([Timing](Formats/Timing.md)) |
 | SongCatalog · SongLibrary | 카탈로그는 Songs를 훑은 곡·패턴 목록, 라이브러리는 목록·선택 상태·미리듣기 묶음(타이틀과 게임 곡 선택이 공유) |
 | 내장 자산 | EXE에 묶인 기본 스킨·글꼴·기본곡. 실행 때 `%LOCALAPPDATA%/YOUMU/BuiltInAssets`에 풀림([자산·스킨](Features/Assets.md)) |
@@ -52,7 +52,7 @@
 | SCORE | 정확도 × 100,000,000 × 처리한 논리 노트 비율 |
 | JudgeLevel | 판정 폭 배율. 레벨 `L`의 폭은 레벨 50의 `50/L`배 |
 | 싱코페이션 | YME 구간 안 노트의 판정 폭을 등급마다 10 ms 넓히는 설정 |
-| Kiai | YME로 켜는 강조 구간. 판정원 연출이 바뀜 |
+| Highlight | YME로 켜는 강조 구간. 판정원 연출이 바뀜 |
 | HP 게이지 | 판정에 따라 오르내리는 체력. 기본 게이지는 60% 이상이면 클리어([Ymp HP](Formats/Ymp.md#hp-게이지)) |
 | 배드말림 방지 | 앞 노트가 늦은 Bad이고 다음 노트가 Good 범위에 들면 앞 노트를 바로 MISS로 넘기는 포커스 규칙([GAME-01](Design/Decisions.md#game-01-rpg-포커스)) |
 

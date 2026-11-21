@@ -39,7 +39,7 @@ std::wstring EditorView::EffectLabel(const EditorEffectSelection &selection) con
 {
     if (const auto *type = std::get_if<EffectCommandType>(&selection))
     {
-        if (*type == EffectCommandType::Kiai)
+        if (*type == EffectCommandType::Highlight)
             return std::wstring(Texts().effectTypes[4]);
         const auto definition = std::ranges::find(EditorEffectDefinitions, *type, &EditorEffectDefinition::type);
         return definition == EditorEffectDefinitions.end() ? std::to_wstring(static_cast<int>(*type))

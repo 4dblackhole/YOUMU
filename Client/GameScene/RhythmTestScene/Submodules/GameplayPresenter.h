@@ -10,7 +10,7 @@
 #include "Texts/TextCatalog.h"
 #include "GameplayNoteView.h"
 #include "GameplayInputView.h"
-#include "GameplayKiaiView.h"
+#include "GameplayHighlightView.h"
 #include <array>
 
 // Composes the gameplay screen: background, scroll gear and lane and HUD views.
@@ -95,7 +95,7 @@ class GameplayPresenter final
     GameplayHpView hpView_;
     GameplayStatisticsView statisticsView_;
     GameplayNoteView noteView_;
-    GameplayKiaiView kiaiView_;
+    GameplayHighlightView highlightView_;
     std::vector<std::filesystem::path> preparingImages_;
     GameplayInputView inputView_;
     PhantomCore::Visual2DNode *background_{};

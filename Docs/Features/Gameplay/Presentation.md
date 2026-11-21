@@ -80,11 +80,11 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 │  ├─ ScrollGear.Lane                 레인 로컬 +Y, Taiko에서 -90° 회전
 │  │  ├─ Lane.SurfaceTile *           레인 배경 타일
 │  │  ├─ Lane.KeyBeam                 입력 키빔
-│  │  ├─ Lane.Kiai                    레인 크기로 잘린 Kiai 빛의 부모
-│  │  │  └─ Lane.Kiai.Glow            판정원 뒤 호박색 빛
+│  │  ├─ Lane.Highlight                    레인 크기로 잘린 Highlight 빛의 부모
+│  │  │  └─ Lane.Highlight.Glow            판정원 뒤 호박색 빛
 │  │  ├─ Lane.JudgementCircle         판정원
-│  │  │  ├─ Lane.JudgementCircle.Kiai 같은 판정원 그림의 옅은 금빛 덧그림
-│  │  │  ├─ Lane.JudgementCircle.KiaiRing 바깥 금빛 고리
+│  │  │  ├─ Lane.JudgementCircle.Highlight 같은 판정원 그림의 옅은 금빛 덧그림
+│  │  │  ├─ Lane.JudgementCircle.HighlightRing 바깥 금빛 고리
 │  │  │  └─ Lane.Judgement.{등급}      MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR 판정 글자(판정원 바로 위)
 │  │  ├─ Lane.MeasureLine *           마디선
 │  │  └─ Lane.Notes                   노트 사이의 앞뒤 순서를 격리하는 레이어
@@ -271,10 +271,10 @@ HP가 게이지의 클리어 기준(`HpGaugeState::clearPercent`, 기본 60%) �
 사용자 지시로 판정원 아래 배치를 대체하고, 이후 사용자 지시로 막대 높이 두 배·판·평균 오차를 추가).
 하단 진행 막대는 화면 아래 끝 전체 폭의 띠입니다.
 
-Kiai 구간(YME `#Kiai`, `PlaySession::IsKiaiActive`)에서는 판정원을 강화합니다. 같은 판정원 그림을 옅은 금빛(`#FFCF6E` 곱)으로 덧그리고,
-뒤에 호박색 빛(`Kiai.Glow`), 바깥에 금빛 고리 한 겹(`Kiai.Ring`)을 둡니다. 빛의 불투명도(0.40+0.25×맥동)와 고리 크기(반지름 51에서 +3)는
+Highlight 구간(YME `#Highlight`, `PlaySession::IsHighlightActive`)에서는 판정원을 강화합니다. 같은 판정원 그림을 옅은 금빛(`#FFCF6E` 곱)으로 덧그리고,
+뒤에 호박색 빛(`Highlight.Glow`), 바깥에 금빛 고리 한 겹(`Highlight.Ring`)을 둡니다. 빛의 불투명도(0.40+0.25×맥동)와 고리 크기(반지름 51에서 +3)는
 박마다 커졌다 줄어듭니다(맥동 = (1 − 박 안의 위치)², 박은 4분음표). 켜고 꺼질 때는 곡 시간 250ms에 걸쳐 페이드하며, 일시정지 중에는
-그대로이고 뒤로 이동하면 페이드 없이 새 상태입니다. 빛은 레인 크기로 잘려 입력 패널 위로 번지지 않습니다. `GameplayKiaiView`가 소유합니다.
+그대로이고 뒤로 이동하면 페이드 없이 새 상태입니다. 빛은 레인 크기로 잘려 입력 패널 위로 번지지 않습니다. `GameplayHighlightView`가 소유합니다.
 
 화면 오류 줄(`UiErrorLine`)은 플레이·로딩 공용입니다. 화면 위 끝에서 20 아래 가운데에 높이 37의 흰 막(96%)과 왼쪽 빨간 4px 표지·경고 아이콘,
 종류(영어 캡션: `Effect file`·`Audio`·`Background image`), 파일 경로와 행(Consolas 칩), 원인을 한 줄로 둡니다. 폭은 글자만큼이고 최대
@@ -379,7 +379,7 @@ Retry·Rewind·일시정지 메뉴의 재개 이동처럼 표시를 다시 시�
 
 MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR는 판정 글자만 담은 투명 PNG 7종입니다(사용자 지시로 판정원을
 둘러싸던 링을 없앰). 다른 게임 내 부품처럼 1080p 기준 크기로 그리며(픽셀 ÷ 1.5), 글자 아래 끝을 판정원 위
-끝보다 6 위에 두고 판정원 중심과 가로 가운데를 맞춥니다(Kiai 고리의 최대 반지름 54보다 바깥).
+끝보다 6 위에 두고 판정원 중심과 가로 가운데를 맞춥니다(Highlight 고리의 최대 반지름 54보다 바깥).
 `InGame/Judgements/<판정명>.png`를 세션 진입 때 등록하고 같은 노드를 재사용합니다.
 입력마다 파일을 읽거나 노드를 만들지 않습니다. 판정원 자식이므로 위치·배율을 따르고
 Taiko Lane의 -90° 회전을 되돌려 글자를 똑바로 표시합니다.
