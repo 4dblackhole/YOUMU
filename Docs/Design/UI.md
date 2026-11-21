@@ -144,7 +144,7 @@
 - Play options의 Difficulty 열 맨 아래에 `HP gauge` 선택과 그 게이지의 클리어 기준(`Clear 60%`)을 둡니다.
   지금은 Default 하나이며 추가 게이지는 [HP-02](Decisions.md#hp-02-hp-구조와-미정점)대로 미정입니다.
   선택한 게이지의 기준은 플레이 HP 게이지의 클리어 표시와 결과 HP 그래프의 클리어선에 같이 쓰고,
-  기본이 아닐 때만 선곡 Play options 배지와 결과 옵션 칩에 나타냅니다.
+  기본이 아닐 때만 선곡 Play options 배지와 결과 옵션 타일에 나타냅니다.
 - 시안의 직접 조건식(Direct condition 줄과 조건식 편집 창)은 사용자 결정으로 쓰지 않습니다. 곡 필터와 기록 필터는 항목마다
   값을 넣습니다. 곡 필터는 Note count·Base BPM·JudgeLevel·Difficulty·HP·Length(초, 채보 길이)의 최소/최대와 Tag 한 칸,
   기록 필터는 시안의 항목에 Completed·Cleared·Pause menu used의 Any/On/Off를 더합니다.

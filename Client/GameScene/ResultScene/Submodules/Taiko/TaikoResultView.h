@@ -70,6 +70,13 @@ class TaikoResultView final : public IResultView
     ResultViewContext context_;
     PhantomCore::ImageHandle sky_, leftScrim_, rightScrim_, banner_, bottomBar_, modeBadge_, modeIcon_;
     PhantomCore::ImageHandle rankRing_, rankImage_;
+    // Mode and option tiles under the ring (Result/Options): a white tile the game tints and white line icons.
+    struct OptionImages
+    {
+        PhantomCore::ImageHandle tile, accelerate, mirror, random, judgeLevel, scrollSpeed, metronome,
+            ignoreScrollEffects;
+    };
+    OptionImages optionImages_;
     PhantomCore::ImageHandle backIcon_, replayIcon_, retryIcon_, creatorIcon_;
     PhantomCore::ImageHandle chartBackground_;
     PhantomCore::Size chartBackgroundSize_{};
