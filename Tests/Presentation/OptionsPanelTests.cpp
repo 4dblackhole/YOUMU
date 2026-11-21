@@ -572,6 +572,16 @@ namespace
               "Choosing an audio buffer saves it.");
         Check(RequireDropdown(FindNode(canvas.Root(), "Options.Buffer.Combo")).SelectedIndex() == 2,
               "The buffer list shows the saved choice.");
+        {
+            // Each text lands in its own field: buffer items read samples, the outputs keep their names.
+            const auto &buffers = RequireDropdown(FindNode(canvas.Root(), "Options.Buffer.Combo")).Items();
+            const auto &outputs = RequireDropdown(FindNode(canvas.Root(), "Options.Output.Combo")).Items();
+            Check(buffers.size() == 4 && buffers[2].starts_with(L"512 ") && buffers[2].find(L"WASAPI") == std::wstring::npos,
+                  "Buffer items read the sample count and its unit.");
+            Check(std::ranges::find(outputs, std::wstring(L"WASAPI")) != outputs.end() &&
+                      std::ranges::find(outputs, std::wstring(L"ASIO")) != outputs.end(),
+                  "Output names stay WASAPI and ASIO.");
+        }
         click("Options.Offset.Field");
         Check(panel.OwnsKeyboard(), "Offset field captures numeric input.");
         for (const auto key : {'1', '0', '0'})
