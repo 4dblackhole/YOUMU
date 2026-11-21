@@ -368,10 +368,10 @@ void PlaySession::ResetNoteState(bool resetHp) noexcept
     automationErrorLocationLength_ = 0;
 }
 
-bool PlaySession::IsKiaiActive(RhythmTime time) const
+bool PlaySession::IsHighlightActive(RhythmTime time) const
 {
     for (const auto &value : EvaluateAutomation(time))
-        if (value.type == EffectCommandType::Kiai) return value.value >= .5;
+        if (value.type == EffectCommandType::Highlight) return value.value >= .5;
     return false;
 }
 

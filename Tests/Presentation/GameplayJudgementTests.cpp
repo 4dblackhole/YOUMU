@@ -823,7 +823,7 @@ namespace
         Check(!line.IsShown(), "A cleared diagnostic hides the line.");
         line.Shutdown();
     }
-    void TestKiaiJudgementCircle()
+    void TestHighlightJudgementCircle()
     {
         AssetRenderer renderer;
         ScreenVisual2DManager visuals;
@@ -834,10 +834,10 @@ namespace
         for (int measure = 0; measure < 4; ++measure)
             pattern.notes.push_back({{measure, {}}, 1});
         EffectDocument effects;
-        effects.commands.push_back({.position = {1, {}}, .type = EffectCommandType::Kiai, .beginValue = 1, .endValue = 1});
-        effects.commands.push_back({.position = {2, {}}, .type = EffectCommandType::Kiai, .beginValue = 0, .endValue = 0});
+        effects.commands.push_back({.position = {1, {}}, .type = EffectCommandType::Highlight, .beginValue = 1, .endValue = 1});
+        effects.commands.push_back({.position = {2, {}}, .type = EffectCommandType::Highlight, .beginValue = 0, .endValue = 0});
         auto loaded = TaikoMode{}.CreateSession(pattern, effects);
-        Check(loaded.Succeeded(), "Kiai fixture must load.");
+        Check(loaded.Succeeded(), "Highlight fixture must load.");
         MeshRenderSystem meshes;
         TextRenderSystem textRendering;
         AudioSystem audio;
@@ -847,27 +847,27 @@ namespace
         auto &root = visuals.FindCanvas(1)->Root();
         const auto &timeline = loaded.session->Timeline();
         const auto start = timeline.Compile({1, {}}), end = timeline.Compile({2, {}});
-        const auto gold = [&] { return Node(root, "Lane.JudgementCircle.Kiai").GetComponent<SpriteVisualComponent>()->Style().normal.alpha; };
+        const auto gold = [&] { return Node(root, "Lane.JudgementCircle.Highlight").GetComponent<SpriteVisualComponent>()->Style().normal.alpha; };
         presenter.UpdatePresentation(start - RhythmDuration{10'000});
-        Check(!Node(root, "Lane.JudgementCircle.Kiai").IsVisible() && !Node(root, "Lane.Kiai.Glow").IsVisible(),
-              "Outside Kiai the judgement circle is unchanged.");
+        Check(!Node(root, "Lane.JudgementCircle.Highlight").IsVisible() && !Node(root, "Lane.Highlight.Glow").IsVisible(),
+              "Outside Highlight the judgement circle is unchanged.");
         presenter.UpdatePresentation(start + RhythmDuration{125'000});
-        Check(gold() > .4F && gold() < .7F, "Kiai fades in over 250 ms of song time.");
+        Check(gold() > .4F && gold() < .7F, "Highlight fades in over 250 ms of song time.");
         presenter.UpdatePresentation(start + RhythmDuration{250'000});
-        Check(Near(gold(), 1) && Node(root, "Lane.Kiai.Glow").IsVisible() && Node(root, "Lane.JudgementCircle.KiaiRing").IsVisible(),
-              "Full Kiai shows the gold circle, the glow and the ring.");
+        Check(Near(gold(), 1) && Node(root, "Lane.Highlight.Glow").IsVisible() && Node(root, "Lane.JudgementCircle.HighlightRing").IsVisible(),
+              "Full Highlight shows the gold circle, the glow and the ring.");
         // 120 BPM: a beat is 500 ms. Just after a beat the pulse is near 1; late in the beat near 0.
         presenter.UpdatePresentation(start + RhythmDuration{510'000});
-        const auto beat = Node(root, "Lane.JudgementCircle.KiaiRing").NodeSize().width;
+        const auto beat = Node(root, "Lane.JudgementCircle.HighlightRing").NodeSize().width;
         presenter.UpdatePresentation(start + RhythmDuration{900'000});
-        Check(Node(root, "Lane.JudgementCircle.KiaiRing").NodeSize().width < beat,
+        Check(Node(root, "Lane.JudgementCircle.HighlightRing").NodeSize().width < beat,
               "The ring is largest on the beat and shrinks before the next one.");
         presenter.UpdatePresentation(end - RhythmDuration{10'000});
         presenter.UpdatePresentation(end + RhythmDuration{125'000});
-        Check(gold() > 0 && gold() < 1, "Kiai fades out after its end.");
+        Check(gold() > 0 && gold() < 1, "Highlight fades out after its end.");
         presenter.UpdatePresentation(start - RhythmDuration{1});
-        Check(!Node(root, "Lane.JudgementCircle.Kiai").IsVisible(), "A backward seek lands on the new state without fading.");
-        const auto glow = Node(root, "Lane.Kiai").ClipRect();
+        Check(!Node(root, "Lane.JudgementCircle.Highlight").IsVisible(), "A backward seek lands on the new state without fading.");
+        const auto glow = Node(root, "Lane.Highlight").ClipRect();
         Check(glow.has_value() && Near(glow->height, Node(root, "ScrollGear.Lane").NodeSize().height),
               "The glow is clipped to the lane, never over the input panel.");
         presenter.Shutdown();
@@ -1188,7 +1188,7 @@ int main()
         TestCountOnlyHeadsAndCounters();
         TestDengDengWrongOrderFeedback();
         TestScreenErrorLine();
-        TestKiaiJudgementCircle();
+        TestHighlightJudgementCircle();
         TestPresenterEventPriority();
         TestRollCompletionAndProcessedTicks();
         std::puts("Gameplay progress and judgement guide/marker/overlay tests passed.");

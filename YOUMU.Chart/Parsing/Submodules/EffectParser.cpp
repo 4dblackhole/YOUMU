@@ -82,8 +82,8 @@ else if (section == "Sounds" && name == "#HighPassCutoff")
     c.type = EffectCommandType::HighPassCutoff;
 else if (section == "Zone" && name == "#Syncopation")
     c.type = EffectCommandType::SyncopationZone;
-else if (section == "Zone" && name == "#Kiai")
-    c.type = EffectCommandType::Kiai;
+else if (section == "Zone" && (name == "#Highlight" || name == "#Kiai")) // #Kiai is the old name
+    c.type = EffectCommandType::Highlight;
 else if (section == "Zone" && name == "#MeasureLineVisible")
     c.type = EffectCommandType::MeasureLineVisible;
 else
@@ -106,7 +106,7 @@ if (fields[2] == "Area")
     commandIndex = 5;
 }
 SetCommandKind(c, section, fields[commandIndex]);
-const bool flag = c.type == EffectCommandType::SyncopationZone || c.type == EffectCommandType::Kiai;
+const bool flag = c.type == EffectCommandType::SyncopationZone || c.type == EffectCommandType::Highlight;
 if (flag)
 {
     if (c.endPosition || (c.target != "ON" && c.target != "OFF"))

@@ -68,7 +68,7 @@ class PlaySession final
     }
     long double ScrollDistance(RhythmTime target, RhythmTime current) const
     { return scroll_.Distance(target, current) * scrollMultiplier_; }
-    bool IsKiaiActive(RhythmTime time) const;
+    bool IsHighlightActive(RhythmTime time) const;
 
     [[nodiscard]] NoteProcessResult ProcessInput(PhysicalKey physicalKey,
                                                          InputEdge edge,

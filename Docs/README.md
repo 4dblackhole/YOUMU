@@ -78,7 +78,7 @@
 | 형식 진입점·파서 위치·캐시 무효화 규칙 | [Formats](Formats/README.md) |
 | 곡 정보·로마자 표기 | [YMM](Formats/Ymm.md) |
 | 패턴 metadata·노트·연타 수·기본 HP 게이지 | [YMP](Formats/Ymp.md) |
-| 히트사운드·볼륨·스크롤·보간·싱코페이션·Kiai | [YME](Formats/Yme.md) |
+| 히트사운드·볼륨·스크롤·보간·싱코페이션·Highlight | [YME](Formats/Yme.md) |
 | 분수 위치·BPM·마디 길이·delay | [Timing](Formats/Timing.md) |
 
 ## 문서를 고칠 때

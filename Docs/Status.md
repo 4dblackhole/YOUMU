@@ -24,7 +24,7 @@
 | 영역 | 현재 계약 |
 | --- | --- |
 | 판정·정확도·노트 규칙(MAX~BAD, POOR, 롤·풍선·뎅뎅·Buzz 틱) | [Rules](Features/Gameplay/Rules.md) |
-| 플레이 화면(기어·노트·판정 글자·타이밍 인디케이터와 평균 오차·HUD·Kiai) | [Presentation](Features/Gameplay/Presentation.md) |
+| 플레이 화면(기어·노트·판정 글자·타이밍 인디케이터와 평균 오차·HUD·Highlight) | [Presentation](Features/Gameplay/Presentation.md) |
 | 일시정지·되감기·Retry·Retire, 재시작 키(옵션에서 변경)와 검은 페이드아웃 | [Pause](Features/Gameplay/Pause.md) |
 | 플레이 옵션(스크롤·Accelerate·Mirror·Random·Metronome·JudgeLevel·HP 게이지)·로컬 기록 | [PlayOptions](Features/Gameplay/PlayOptions.md) |
 | 결과 화면·통계·그래프·입력 기록·기록 DB | [Results](Features/Gameplay/Results.md) |

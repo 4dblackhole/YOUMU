@@ -130,7 +130,7 @@ void GameplayPresenter::CreateLaneVisuals(Visual2DNode &gearRoot)
          judgementSize.width, judgementSize.height},
         judgementImage, "Lane.JudgementCircle");
     judgementLine.SetZIndex(3);
-    kiaiView_.Initialize(screenVisuals_, *laneRoot_, judgementLine, judgementImage);
+    highlightView_.Initialize(screenVisuals_, *laneRoot_, judgementLine, judgementImage);
     JudgeLevel level;
     const auto &lanes = session_->Gear().Lanes();
     if (!lanes.empty() && !lanes.front()->Notes().empty())
@@ -249,7 +249,7 @@ void GameplayPresenter::UpdatePresentationLayout()
             {-logicalWidth * 0.5F + laneScreenLeft + laneLength * 0.5F, 0.0F});
         UpdateLaneSurfaceLayout(laneLength);
         noteView_.SetLaneLayout(laneWidth_, judgementLocalY_);
-        kiaiView_.SetLaneLayout(laneWidth_, laneLength, judgementLocalY_);
+        highlightView_.SetLaneLayout(laneWidth_, laneLength, judgementLocalY_);
     }
     if (inputPresentationRoot_ != nullptr)
     {

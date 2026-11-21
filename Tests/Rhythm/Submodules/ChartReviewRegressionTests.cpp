@@ -195,8 +195,8 @@ namespace tests
                     !TryParseMusicalPosition("100000,0/1", 0, position) &&
                     !TryParseMusicalPosition("9223372036854775807,0/1", 0, position),
                 "Musical positions must enforce the 100,000-measure limit before allocation.");
-        Require(parser.ParseEffect("[Zone]\n100000,0/1,#Kiai ON\n").Succeeded() &&
-                    !parser.ParseEffect("[Zone]\n100001,0/1,#Kiai ON\n").Succeeded() &&
+        Require(parser.ParseEffect("[Zone]\n100000,0/1,#Highlight ON\n").Succeeded() &&
+                    !parser.ParseEffect("[Zone]\n100001,0/1,#Highlight ON\n").Succeeded() &&
                     !parser.ParseEffect("[Speed]\n1,0/1,Area,100001,0/1,#ScrollSpeed Whole,From=1,To=2,Curve=Linear\n")
                          .Succeeded(),
                 "YME point and area positions must enforce the one-based limit.");

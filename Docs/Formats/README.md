@@ -20,7 +20,7 @@ YMP의 타이밍 명령은 `#measure`, `#bpm`, `#delay`만 허용합니다.
 | 음악 이름·아티스트·음원 경로 | [YMM](Ymm.md) | MusicParser.cpp |
 | 패턴 metadata·노트·연타수 | [YMP](Ymp.md) | PatternParser.cpp |
 | 분수 문법·BPM·마디 길이 | [Timing](Timing.md) | PatternTiming.h / MusicalPositionParser.cpp |
-| 히트사운드 표/볼륨·Whole/Separate·보간·싱코페이션/Kiai | [YME](Yme.md) | EffectParser.cpp / Automation |
+| 히트사운드 표/볼륨·Whole/Separate·보간·싱코페이션/Highlight | [YME](Yme.md) | EffectParser.cpp / Automation |
 | 디버그 채보·1ms 이동 | [Debugging](../Features/Gameplay/Debugging.md) | GameplayInput.cpp |
 
 파서 경로는 `YOUMU.Chart/Parsing/Submodules`입니다.

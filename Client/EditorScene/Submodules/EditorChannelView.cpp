@@ -266,12 +266,12 @@ void EditorView::DrawChannels()
         }
     }
 
-    // Zones: Syncopation, Kiai and bar lines on three rows; bar lines off are dotted.
+    // Zones: Syncopation, Highlight and bar lines on three rows; bar lines off are dotted.
     {
         constexpr float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
         const float rowHeight = (h - 3) / 3;
         const std::array rows{CurveColor{EffectCommandType::SyncopationZone, "", ui_colors::Rgb(0xA640E6)},
-                              CurveColor{EffectCommandType::Kiai, "", ui_colors::Rgb(0xF29A1E)},
+                              CurveColor{EffectCommandType::Highlight, "", ui_colors::Rgb(0xF29A1E)},
                               CurveColor{EffectCommandType::MeasureLineVisible, "", theme::Brand}};
         for (std::size_t r = 0; r < rows.size(); ++r)
         {

@@ -92,7 +92,7 @@ Ramp: From+(To-From)*u
 1,1/4,Area,2,1/4,#Volume HitSound,From=0.2,To=0.8,Curve=Ramp
 1,3/4,#HitSound Don 1
 [Zone]
-1,3/4,#Kiai ON
+1,3/4,#Highlight ON
 )");
         ChartEditor editor(pattern, effects);
         auto loaded = TaikoMode{}.CreateSession(pattern, effects);
@@ -117,9 +117,9 @@ Ramp: From+(To-From)*u
         const auto &values = loaded.session->EvaluateAutomation(RhythmTime{1'475'000});
         const auto volume = std::ranges::find(values, std::string("HitSound"), &AutomationValue::target);
         Require(volume != values.end() && std::abs(volume->value - (.2 + .6 * u)) < 1e-12 &&
-                !loaded.session->IsKiaiActive(RhythmTime{1'624'999}),
+                !loaded.session->IsHighlightActive(RhythmTime{1'624'999}),
                 "Runtime volume and zone changes must follow the same delayed endpoint times as the editor.");
-        Require(loaded.session->IsKiaiActive(RhythmTime{1'625'000}),
+        Require(loaded.session->IsHighlightActive(RhythmTime{1'625'000}),
                 "Runtime volume and zone changes must follow the same delayed endpoint times as the editor.");
         editor.ReplaceTiming({});
         Require(std::abs(editor.EffectValueAt(EffectCommandType::NoteSpeed, {0, {1, 2}}) - 1.5) < 1e-12,
@@ -212,7 +212,7 @@ Ramp: From+(To-From)*u
 1,3/4,#HitSound Don 2
 2,1/4,#HitSound Don 3
 [Zone]
-1,3/4,#Kiai ON
+1,3/4,#Highlight ON
 1,3/4,#Syncopation ON
 )");
         ChartEditor editor(pattern, effects);
@@ -227,7 +227,7 @@ Ramp: From+(To-From)*u
                 "An Area whose compiled endpoints are equal must remain an instantaneous change.");
         Require(editor.EffectValueAt(EffectCommandType::NoteSpeed, {1, {3, 4}}) == 3 &&
                     loaded.session->FindNotePresentation(1)->scrollMultiplier == 3 &&
-                    !loaded.session->IsKiaiActive(RhythmTime{3'000'000}),
+                    !loaded.session->IsHighlightActive(RhythmTime{3'000'000}),
                 "Retained Areas and excluded point state must agree between editor and gameplay.");
         const auto hit = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{2'000'000});
         const auto preview = BuildTaikoAudioPreview(pattern, effects, editor.Timeline(), editor.Notes());
@@ -273,7 +273,7 @@ Singular: 1/(u-0.1)^2
                 "A failing track must retain its value while another track continues.");
         Require(session.AutomationError().find("quality-regression.yme:4") != std::string_view::npos,
                 "The visible error must identify the authored command.");
-        Require(!session.IsKiaiActive(RhythmTime{200'000}),
+        Require(!session.IsHighlightActive(RhythmTime{200'000}),
                 "Other consumers must reuse the safe cached result.");
         Require(std::abs(volume(400'000, "HitSound") - 100) < 1e-8 && !session.AutomationError().empty(),
                 "Valid samples must resume while retaining the diagnostic until reset.");
@@ -398,8 +398,8 @@ Soft: From + (To - From) * Bezier(u, 0.25, 0.1, 0.25, 1)
 [Zone]
 1, 0/4, #Syncopation ON, Exclude=1|2|4
 2, 0/4, #Syncopation OFF
-1, 0/4, #Kiai ON
-2, 0/4, #Kiai OFF
+1, 0/4, #Highlight ON
+2, 0/4, #Highlight OFF
 )");
     Require(valid.Succeeded() && valid.document.commands.size() == 6 && valid.document.hitSoundChanges.size() == 1,
             "The five-section YME must parse points, Areas, forward curve "
@@ -409,6 +409,13 @@ Soft: From + (To - From) * Bezier(u, 0.25, 0.1, 0.25, 1)
     Require(roundtrip.Succeeded() && ChartEditor::WriteEffects(roundtrip.document) == saved,
             "YME tables, expressions, flags and excluded beats must round-trip "
             "without loss.");
+    const auto legacy = parse("[Zone]
+1,0/4,#Kiai ON
+2,0/4,#Kiai OFF");
+    Require(legacy.Succeeded() && legacy.document.commands.size() == 2 &&
+                legacy.document.commands.front().type == EffectCommandType::Highlight &&
+                ChartEditor::WriteEffects(legacy.document).find("#Kiai") == std::string::npos,
+            "The old #Kiai name must read as Highlight and be saved as #Highlight.");
     ChartEditor edited({}, valid.document);
     auto changed = edited.Effects();
     changed.interpolations.at("Soft") = "From + (To - From) * u * u";
@@ -444,7 +451,7 @@ Bad: From+(To-From)*Bezier(u,-1,0,1,1)
 [Speed]
 1,0/4,Area,2,0/4,#ScrollSpeed Whole,From=1,To=2,Curve=Bad)",
                                    "[Zone]\n1,0/4,#Syncopation ON,Exclude=0",
-                                   "[Zone]\n1,0/4,Area,2,0/4,#Kiai ON",
+                                   "[Zone]\n1,0/4,Area,2,0/4,#Highlight ON",
                                    "[Speed]\n1,0/4,#ScrollSpeed Whole,Value=1,Value=2",
                                    "[HitSounds]\n1: a.wav\n1: b.wav",
                                    "[Sounds]\n1,0/4,#HitSound Kat missing",
@@ -530,12 +537,12 @@ void TestYmeEffects(const std::filesystem::path &songsRoot)
     }
     const auto &timeline = session.Timeline();
     const auto time = [&timeline](long long measure) { return timeline.Compile({measure - 1, {}}); };
-    Require(!session.IsKiaiActive(time(3) - RhythmDuration{1}) && session.IsKiaiActive(time(3)) &&
-            session.IsKiaiActive(time(7) - RhythmDuration{1}),
-            "Kiai must honor ON/OFF boundaries and backward queries without "
+    Require(!session.IsHighlightActive(time(3) - RhythmDuration{1}) && session.IsHighlightActive(time(3)) &&
+            session.IsHighlightActive(time(7) - RhythmDuration{1}),
+            "Highlight must honor ON/OFF boundaries and backward queries without "
             "adding display/score behavior.");
-    Require(!session.IsKiaiActive(time(7)) && session.IsKiaiActive(time(4)),
-            "Kiai must honor ON/OFF boundaries and backward queries without "
+    Require(!session.IsHighlightActive(time(7)) && session.IsHighlightActive(time(4)),
+            "Highlight must honor ON/OFF boundaries and backward queries without "
             "adding display/score behavior.");
     const auto middle = time(3) + (time(4) - time(3)) / 2;
     Require(std::abs(session.ScrollDistance(time(4), time(3)) - static_cast<long double>((time(4) - time(3)).count()) * 1.5L) < .01L,
@@ -573,6 +580,6 @@ void TestYmeEffects(const std::filesystem::path &songsRoot)
             "calculation.");
     std::cout << "YME effects verified: 15 notes; shared +10ms "
                  "ranges/exclusions; Whole/Separate; all curves; "
-                 "sound/volume; Kiai.\n";
+                 "sound/volume; Highlight.\n";
 }
 } // namespace tests

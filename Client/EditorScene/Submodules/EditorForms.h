@@ -43,7 +43,7 @@ enum class EditorFocus
     case EffectCommandType::HighPassCutoff:
         return EditorPanel::AudioEffects;
     case EffectCommandType::SyncopationZone:
-    case EffectCommandType::Kiai:
+    case EffectCommandType::Highlight:
     case EffectCommandType::MeasureLineVisible:
         return EditorPanel::Zones;
     case EffectCommandType::Custom:
@@ -88,7 +88,7 @@ inline constexpr std::array EditorEffectDefinitions{
     EditorEffectDefinition{EffectCommandType::LowPassCutoff, 6, true, true, EditorEffectValue::Number},
     EditorEffectDefinition{EffectCommandType::HighPassCutoff, 7, true, true, EditorEffectValue::Number},
     EditorEffectDefinition{EffectCommandType::SyncopationZone, 8, false, false, EditorEffectValue::Toggle},
-    EditorEffectDefinition{EffectCommandType::Kiai, 4, false, false, EditorEffectValue::Toggle},
+    EditorEffectDefinition{EffectCommandType::Highlight, 4, false, false, EditorEffectValue::Toggle},
     EditorEffectDefinition{EffectCommandType::MeasureLineVisible, 1, false, false, EditorEffectValue::Toggle}};
 [[nodiscard]] constexpr const EditorEffectDefinition *FindEffectDefinition(EffectCommandType type) noexcept
 {

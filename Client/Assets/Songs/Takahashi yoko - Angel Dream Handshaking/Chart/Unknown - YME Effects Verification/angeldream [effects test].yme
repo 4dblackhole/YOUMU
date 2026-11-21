@@ -30,5 +30,5 @@ Soft: From + (To - From) * Bezier(u, 0.25, 0.10, 0.25, 1.00)
 [Zone]
 3, 0/4, #Syncopation ON, Exclude=1|2|4
 5, 0/4, #Syncopation OFF
-3, 0/4, #Kiai ON
-7, 0/4, #Kiai OFF
+3, 0/4, #Highlight ON
+7, 0/4, #Highlight OFF
