@@ -23,6 +23,11 @@ namespace
     {
         return FieldGap + ControlOffset + controlHeight;
     }
+    // A block of inline rows has no caption line above it.
+    float InlineRowsHeight(const std::size_t rows)
+    {
+        return FieldGap + InlineRowHeight * static_cast<float>(rows);
+    }
 } // namespace
 
 void OptionsPanel::CreateRail()
@@ -56,28 +61,30 @@ void OptionsPanel::CreateRail()
 
 void OptionsPanel::LayoutSections()
 {
+    // Field heights per section, each including its gap above.
+    const float control = FieldHeight(ControlHeight);
     std::array<std::vector<float>, SectionCount> controls{
-        std::vector<float>{ControlHeight, SongsControlHeight},
-        std::vector<float>(4, ControlHeight), // Skin, resolution, notation, key beam opacity.
-        std::vector<float>(VolumeSliderCount + 4, ControlHeight),
-        std::vector<float>{ControlHeight}}; // Input: the restart key, then each mode's keys.
+        std::vector<float>{control, FieldHeight(SongsControlHeight)},
+        std::vector<float>(4, control), // Skin, resolution, notation, key beam opacity.
+        std::vector<float>{InlineRowsHeight(VolumeSliderCount), control, control, control, control}, // Volumes, audio, offset.
+        std::vector<float>{control}}; // Input: the restart key, then each mode's keys.
     for (const auto &layout : inputLayouts_)
     {
         const auto *presentation = FindModePresentation(layout.modeId);
         if (presentation && presentation->keyOverlay)
         {
-            controls[3].push_back(KeyCardHeight);
+            controls[3].push_back(FieldHeight(KeyCardHeight));
             continue;
         }
         for (const auto &binding : layout.bindings)
-            controls[3].insert(controls[3].end(), binding.keys.size(), ControlHeight);
+            controls[3].insert(controls[3].end(), binding.keys.size(), control);
     }
     float top = 0;
     for (std::size_t i = 0; i < sections_.size(); ++i)
     {
         float height = SectionPaddingTop + SectionHeaderHeight + SectionPaddingBottom;
-        for (const float control : controls[i])
-            height += FieldHeight(control);
+        for (const float field : controls[i])
+            height += field;
         sections_[i].top = top;
         sections_[i].height = height;
         top += height;
@@ -142,6 +149,13 @@ float OptionsPanel::NextField(const float controlHeight)
 {
     const float top = layoutCursor_ + FieldGap;
     layoutCursor_ += FieldHeight(controlHeight);
+    return top;
+}
+
+float OptionsPanel::NextInlineRows(const std::size_t rows)
+{
+    const float top = layoutCursor_ + FieldGap;
+    layoutCursor_ += InlineRowsHeight(rows);
     return top;
 }
 
@@ -238,12 +252,23 @@ void OptionsPanel::SpySection()
     activeSection_ = current;
 }
 
+std::array<PhantomCore::Visual2DNode *, 7> OptionsPanel::Combos() const noexcept
+{
+    return {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_, notationCombo_};
+}
+
 void OptionsPanel::CollapseCombos()
 {
-    for (auto *node : {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_,
-                       notationCombo_})
+    for (auto *node : Combos())
         if (node)
             RequireDropdown(*node).Collapse();
+}
+
+bool OptionsPanel::AnyComboExpanded() const
+{
+    return std::ranges::any_of(Combos(), [](PhantomCore::Visual2DNode *node) {
+        return node != nullptr && RequireDropdown(*node).IsExpanded();
+    });
 }
 
 void OptionsPanel::UpdateContentLayout()

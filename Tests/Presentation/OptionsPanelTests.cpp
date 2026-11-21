@@ -29,6 +29,8 @@ struct InputStateTestAccess
     static void Move(InputState &input) { input.Reset(); input.AddMouseDelta(1, 0, 1); }
     static void Press(InputState &input) { input.Reset(); input.SetMouseButton(MouseButton::Left, true, 1); }
     static void Release(InputState &input) { input.BeginUpdate(); input.SetMouseButton(MouseButton::Left, false, 2); }
+    // The next frame with the button still held: no new press edge.
+    static void Hold(InputState &input) { input.BeginUpdate(); }
 };
 } // namespace PhantomCore
 
@@ -530,6 +532,39 @@ namespace
         panel.HandleKey(VK_DELETE, router);
         panel.HandleKey(VK_RETURN, router);
         Check(settings.Values().globalOffsetMs == -5 && panel.OwnsKeyboard(), "Invalid draft preserves saved offset.");
+        // Dragging the field right or left changes the offset by 1 ms per pixel and saves it on release.
+        {
+            auto &field = FindNode(canvas.Root(), "Options.Offset.Field");
+            const auto box = field.BoundsInCanvas();
+            const Point start{box.x + box.width / 2, box.y + box.height / 2};
+            const auto drag = [&](const float dx) {
+                InputState pointer;
+                InputStateTestAccess::Press(pointer);
+                Check(!panel.ProcessInput(pointer, start, field.Id(), router), "A press alone is not an offset drag.");
+                InputStateTestAccess::Hold(pointer);
+                Check(panel.ProcessInput(pointer, Point{start.x + dx, start.y}, field.Id(), router) && !panel.OwnsKeyboard(),
+                      "Moving the pressed offset field drags the offset and ends any keyboard edit.");
+                const auto shown = field.GetComponent<TextVisualComponent>()->Text();
+                InputStateTestAccess::Release(pointer);
+                Check(panel.ProcessInput(pointer, Point{start.x + dx, start.y}, {}, router),
+                      "Releasing a drag drops its click, so no keyboard edit starts.");
+                return shown;
+            };
+            Check(drag(30) == L"25" && settings.Values().globalOffsetMs == 25 && !panel.OwnsKeyboard(),
+                  "Dragging right adds a millisecond per pixel and saves on release.");
+            Check(drag(-40) == L"-15" && settings.Values().globalOffsetMs == -15, "Dragging left lowers the offset.");
+            InputState tap;
+            InputStateTestAccess::Press(tap);
+            static_cast<void>(panel.ProcessInput(tap, start, field.Id(), router));
+            InputStateTestAccess::Release(tap);
+            Check(!panel.ProcessInput(tap, start, field.Id(), router) && settings.Values().globalOffsetMs == -15,
+                  "A press without movement stays a click.");
+            auto restore = settings.Values();
+            restore.globalOffsetMs = -5;
+            Check(settings.Save(restore, error), "Restore the saved offset for the checks that follow.");
+            click("Options.Offset.Field");
+            Check(panel.OwnsKeyboard(), "A click on the field still starts keyboard editing.");
+        }
         Section(panel, canvas, "Input");
         Check(!panel.OwnsKeyboard() && settings.Values().globalOffsetMs == -5,
               "Switching away from an invalid offset draft cancels only its edit state.");
@@ -793,6 +828,22 @@ namespace
             static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
         Check(Lit(canvas, "General") && std::abs(Top(viewport) - Top(general) - 22) < .01F,
               "Scrolling back to the top lights the first section.");
+        InputStateTestAccess::Wheel(wheel, -100);
+        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        Check(Lit(canvas, "Input"), "At the very bottom the last section is lit.");
+
+        // An open drop-down takes the wheel; the body does not scroll under its list.
+        Section(panel, canvas, "General");
+        auto &languageList = RequireDropdown(FindNode(canvas.Root(), "Options.Language.Combo"));
+        languageList.Expand();
+        const float openTop = Top(general);
+        InputStateTestAccess::Wheel(wheel, -1);
+        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        Check(languageList.IsExpanded() && std::abs(Top(general) - openTop) < .01F,
+              "An open drop-down keeps the wheel from scrolling the options body.");
+        languageList.Collapse();
+        static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
+        Check(std::abs(Top(general) - openTop) > 1.0F, "With the drop-down closed the wheel scrolls the body again.");
         InputStateTestAccess::Wheel(wheel, -100);
         static_cast<void>(panel.ProcessInput(wheel, Point{-500, 0}, {}, router));
         Check(Lit(canvas, "Input"), "At the very bottom the last section is lit.");

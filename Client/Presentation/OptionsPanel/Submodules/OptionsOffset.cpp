@@ -1,6 +1,9 @@
 #include "OptionsPanelStyle.h"
 #include "Presentation/OptionsPanel.h"
+#include <algorithm>
 #include <charconv>
+#include <cmath>
+#include <limits>
 
 using namespace PhantomCore;
 
@@ -23,8 +26,65 @@ void OptionsPanel::RefreshOffsetControls()
 {
     SetCaption(*offsetLabel_, std::wstring(Options(texts_).globalOffset));
     SetCaption(*offsetUnit_, L"ms");
-    RequireComponent<TextVisualComponent>(*offsetField_)
-        .SetText(editingOffset_ ? offsetDraft_ + L"_" : std::to_wstring(options_.Values().globalOffsetMs));
+    auto &text = RequireComponent<TextVisualComponent>(*offsetField_);
+    if (offsetDrag_ && offsetDrag_->moving)
+        text.SetText(std::to_wstring(offsetDrag_->value));
+    else
+        text.SetText(editingOffset_ ? offsetDraft_ + L"_" : std::to_wstring(options_.Values().globalOffsetMs));
+}
+
+namespace
+{
+    // A press must move this far before it becomes a drag; then one Canvas pixel is one millisecond.
+    constexpr float OffsetDragThreshold = 4.0F, OffsetPixelsPerMs = 1.0F;
+} // namespace
+
+bool OptionsPanel::ProcessOffsetDrag(const InputState &input, const std::optional<Point> canvasPointer,
+                                     const NodeId hoveredNode)
+{
+    if (!offsetDrag_)
+    {
+        if (!targetOpen_ || !canvasPointer || !input.WasMouseButtonPressed(MouseButton::Left))
+            return false;
+        if (offsetField_ == nullptr || hoveredNode != offsetField_->Id())
+            return false;
+        const auto saved = options_.Values().globalOffsetMs;
+        offsetDrag_ = OffsetDrag{canvasPointer->x, saved, saved, false};
+        // The press itself still reaches the field, which only reacts to a click.
+        return false;
+    }
+    if (canvasPointer)
+    {
+        const float moved = canvasPointer->x - offsetDrag_->startX;
+        if (!offsetDrag_->moving && std::abs(moved) >= OffsetDragThreshold)
+        {
+            CancelKeyboardEdit();
+            CollapseCombos();
+            offsetDrag_->moving = true;
+        }
+        if (offsetDrag_->moving)
+        {
+            const auto value = static_cast<std::int64_t>(offsetDrag_->start) + std::llround(moved / OffsetPixelsPerMs);
+            offsetDrag_->value = static_cast<std::int32_t>(std::clamp<std::int64_t>(
+                value, std::numeric_limits<std::int32_t>::min(), std::numeric_limits<std::int32_t>::max()));
+            RefreshOffsetControls();
+        }
+    }
+    const bool moving = offsetDrag_->moving;
+    if (input.IsMouseButtonDown(MouseButton::Left) && !input.WasMouseButtonReleased(MouseButton::Left))
+        return moving;
+    // Released: one save per drag, as the volume sliders do.
+    const auto value = offsetDrag_->value;
+    offsetDrag_.reset();
+    if (moving && value != options_.Values().globalOffsetMs)
+    {
+        auto candidate = options_.Values();
+        candidate.globalOffsetMs = value;
+        static_cast<void>(SaveOptions(candidate));
+    }
+    RefreshOffsetControls();
+    RefreshStatus();
+    return moving;
 }
 void OptionsPanel::CancelKeyboardEdit()
 {

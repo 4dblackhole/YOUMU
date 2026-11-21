@@ -23,6 +23,8 @@ namespace options_ui
     constexpr float SectionPaddingTop = 22, SectionHeaderHeight = 26, SectionPaddingBottom = 28;
     constexpr float FieldGap = 16, LabelHeight = 18, ControlOffset = 24, ControlHeight = 40;
     constexpr float KeyCardHeight = 64;
+    // Inline slider rows (the three volumes): caption, track and value on one 36-tall row each.
+    constexpr float InlineRowHeight = 36;
 
     constexpr auto DrawerColor = ui_colors::Rgb(0xF3F8FE);
     constexpr auto RailColor = ui_colors::theme::BrandDeep;

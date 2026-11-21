@@ -75,6 +75,7 @@ class OptionsPanel final
         void (*write)(OptionValues &, int){};
         const char *textKey{};
         PhantomCore::Visual2DNode *label{}, *track{}, *fill{}, *knob{}, *value{};
+        float trackWidth{}, trackHeight{};
     };
     static constexpr std::size_t VolumeSliderCount = 3, KeyBeamOpacitySlider = 3, SliderCount = 4;
 
@@ -85,6 +86,8 @@ class OptionsPanel final
     void LayoutSections();
     void CreateSectionHeader(std::size_t index);
     [[nodiscard]] float NextField(float controlHeight);
+    // Reserves a block of inline slider rows and returns its top.
+    [[nodiscard]] float NextInlineRows(std::size_t rows);
     void RefreshRail();
     void UpdateRailExpansion(double deltaSeconds);
     void ApplyRailWidth();
@@ -94,6 +97,9 @@ class OptionsPanel final
     void UpdateContentLayout();
     void UpdateScrollbar();
     void CollapseCombos();
+    [[nodiscard]] std::array<PhantomCore::Visual2DNode *, 7> Combos() const noexcept;
+    // An open drop-down owns the wheel: its list scrolls (or closes) and the body stays put.
+    [[nodiscard]] bool AnyComboExpanded() const;
     bool CanProcessAction(PhantomCore::NodeId source) const noexcept;
     void RefreshIcons();
     // Icons come from the skin's Common/Icons; bounds are from the parent's top-left.
@@ -117,7 +123,8 @@ class OptionsPanel final
     void SelectNotation(std::size_t index);
     void CreateVolumeControls();
     void CreateKeyBeamOpacityControl();
-    void CreatePercentSlider(std::size_t index, const std::string &name);
+    // A captioned slider row (caption above), or with inlineTop an inline row at that top.
+    void CreatePercentSlider(std::size_t index, const std::string &name, std::optional<float> inlineTop = {});
     void RefreshSliderControls();
     void ShowSlider(const PercentSlider &slider, int percent);
     bool ProcessSliderPointer(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
@@ -128,6 +135,10 @@ class OptionsPanel final
     void CreateOffsetControls();
     void RefreshOffsetControls();
     void EditOffset(std::uint16_t key);
+    // Pressing the offset field and moving left/right changes the offset by 1 ms per Canvas pixel; the
+    // release saves it. A press without movement stays a click that starts keyboard editing.
+    bool ProcessOffsetDrag(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
+                           PhantomCore::NodeId hoveredNode);
     void ApplyOffset();
     void CreateKeyControls();
     void CreateKeyOverlay(const ModeInputLayout &layout, const ModeKeyOverlay &description);
@@ -206,6 +217,13 @@ class OptionsPanel final
     bool capturingRestartKey_{};
     std::wstring offsetDraft_;
     bool editingOffset_{}, replaceOffsetDraft_{};
+    struct OffsetDrag
+    {
+        float startX{};
+        std::int32_t start{}, value{};
+        bool moving{}; // Past the threshold: the press is a drag, not a click.
+    };
+    std::optional<OffsetDrag> offsetDrag_;
 
     TextCatalog &texts_;
     OptionSettings &options_;
