@@ -65,7 +65,7 @@ void OptionsPanel::LayoutSections()
     const float control = FieldHeight(ControlHeight);
     std::array<std::vector<float>, SectionCount> controls{
         std::vector<float>{control, FieldHeight(SongsControlHeight)},
-        std::vector<float>(4, control), // Skin, resolution, notation, key beam opacity.
+        std::vector<float>(5, control), // Skin, resolution, notation, key beam opacity, background brightness.
         std::vector<float>{InlineRowsHeight(VolumeSliderCount), control, control, control, control}, // Volumes, audio, offset.
         std::vector<float>{control}}; // Input: the restart key, then each mode's keys.
     for (const auto &layout : inputLayouts_)

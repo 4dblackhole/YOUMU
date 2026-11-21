@@ -1192,6 +1192,25 @@ namespace
             std::ofstream file(folder / "BadBeam.ini");
             file << "[Display]\nKeyBeamOpacity=101\n";
         }
+        // Background brightness is the next Display slider: 100% (the image as it is) by default.
+        auto &brightnessTrack = FindNode(canvas.Root(), "Options.BackgroundBrightness");
+        auto &brightnessValue =
+            *FindNode(canvas.Root(), "Options.BackgroundBrightness.Value").GetComponent<TextVisualComponent>();
+        const auto brightnessBounds = brightnessTrack.BoundsInCanvas();
+        Check(settings.Values().backgroundBrightness == 100 && brightnessValue.Text() == L"100%" &&
+                  brightnessBounds.y < beamBounds.y, // +Y is up: the next field down has a smaller y.
+              "Background brightness starts at 100% below the key beam opacity.");
+        const Point brightnessHalf{brightnessBounds.x + 5 + (brightnessBounds.width - 10) * .5F,
+                                   brightnessBounds.y + brightnessBounds.height / 2};
+        InputStateTestAccess::Press(input);
+        static_cast<void>(panel.ProcessInput(input, brightnessHalf, brightnessTrack.Id(), router));
+        InputStateTestAccess::Release(input);
+        static_cast<void>(panel.ProcessInput(input, brightnessHalf, {}, router));
+        Check(settings.Values().backgroundBrightness == 50 && settings.Values().keyBeamOpacity == 25,
+              "Releasing the brightness slider saves only the background brightness.");
+        OptionSettings restoredBrightness(settings.Path());
+        Check(restoredBrightness.Load(error) && restoredBrightness.Values().backgroundBrightness == 50,
+              "The background brightness survives restart.");
         OptionSettings invalidBeam(folder / "BadBeam.ini");
         Check(!invalidBeam.Load(error) && invalidBeam.Values().keyBeamOpacity == 100,
               "A key beam opacity outside 0..100 falls back to defaults.");

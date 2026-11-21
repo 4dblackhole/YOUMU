@@ -77,7 +77,8 @@ class OptionsPanel final
         PhantomCore::Visual2DNode *label{}, *track{}, *fill{}, *knob{}, *value{};
         float trackWidth{}, trackHeight{};
     };
-    static constexpr std::size_t VolumeSliderCount = 3, KeyBeamOpacitySlider = 3, SliderCount = 4;
+    static constexpr std::size_t VolumeSliderCount = 3, KeyBeamOpacitySlider = 3, BackgroundBrightnessSlider = 4,
+                                 SliderCount = 5;
 
     // Drawer frame, rail and section navigation (OptionsRail).
     void CreateFrame();
@@ -123,6 +124,7 @@ class OptionsPanel final
     void SelectNotation(std::size_t index);
     void CreateVolumeControls();
     void CreateKeyBeamOpacityControl();
+    void CreateBackgroundBrightnessControl();
     // A captioned slider row (caption above), or with inlineTop an inline row at that top.
     void CreatePercentSlider(std::size_t index, const std::string &name, std::optional<float> inlineTop = {});
     void RefreshSliderControls();

@@ -252,6 +252,7 @@ bool MusicSelectScene::StartSelectedPattern(SceneManager &scenes)
     request.patternTitle = PatternName(pattern, selection_.notation_);
     request.restartKey = options_.Values().restartKey;
     request.keyBeamOpacity = options_.Values().keyBeamOpacity;
+    request.backgroundBrightness = options_.Values().backgroundBrightness;
     request.playOptions = selection_.playOptions_;
     request.songsRoot = library_->CatalogRoot();
     request.backgroundPath =

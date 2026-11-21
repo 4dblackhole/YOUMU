@@ -158,6 +158,8 @@ namespace
             throw std::runtime_error("Volumes must be whole percentages within 0..100.");
         if (!AudioVolumes::IsValidPercent(values.keyBeamOpacity))
             throw std::runtime_error("Key beam opacity must be a whole percentage within 0..100.");
+        if (!AudioVolumes::IsValidPercent(values.backgroundBrightness))
+            throw std::runtime_error("Background brightness must be a whole percentage within 0..100.");
         static_cast<void>(OutputName(values.audioOutput));
         if (!IsValidWindowExtent(values.windowWidth) || !IsValidWindowExtent(values.windowHeight))
             throw std::runtime_error("Window dimensions must be within 1..16384 pixels.");
@@ -222,6 +224,8 @@ namespace
             }
             else if (key == "KeyBeamOpacity")
                 values.keyBeamOpacity = ReadInteger<int>(value);
+            else if (key == "BackgroundBrightness")
+                values.backgroundBrightness = ReadInteger<int>(value);
         }
         else if (section == "Controls")
         {
@@ -355,6 +359,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\n\r\n[Display]\r\nWidth=" << values.windowWidth << "\r\nHeight=" << values.windowHeight
              << "\r\nNotation=" << (values.notation == TextNotation::Romanized ? "romanized" : "first")
              << "\r\nKeyBeamOpacity=" << values.keyBeamOpacity
+             << "\r\nBackgroundBrightness=" << values.backgroundBrightness
              << "\r\n\r\n[Audio]\r\nMiddleware=" << values.audioMiddleware
              << "\r\nOutput=" << OutputName(values.audioOutput) << "\r\nDriverIndex=" << values.driverIndex
              << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master

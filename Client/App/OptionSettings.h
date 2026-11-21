@@ -25,6 +25,8 @@ struct OptionValues
     TextNotation notation{TextNotation::First};
     // Key beam opacity for every mode, 0..100%; 100 draws the beam as it always was.
     int keyBeamOpacity{100};
+    // Play-screen background brightness, 0 (black) .. 100 (the image as it is); osu!'s background dim.
+    int backgroundBrightness{100};
     std::int32_t globalOffsetMs{};
     std::filesystem::path songsPath; // Empty selects the development/deployment default.
     std::uint16_t restartKey{DefaultRestartKey}; // [Controls] RestartKey; a missing entry keeps the default.

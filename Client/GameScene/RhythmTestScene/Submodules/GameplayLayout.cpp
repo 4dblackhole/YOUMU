@@ -3,8 +3,26 @@
 #include "Presentation/AccuracyText.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
+#include <algorithm>
 
 using namespace PhantomCore;
+
+void GameplayPresenter::ConfigureBackgroundBrightness(const int percent)
+{
+    backgroundBrightness_ = static_cast<float>(std::clamp(percent, 0, 100)) / 100.0F;
+    ApplyBackgroundBrightness();
+}
+
+void GameplayPresenter::ApplyBackgroundBrightness()
+{
+    if (background_ == nullptr)
+        return;
+    // The chart image, or the plain sky colour without one, darkened toward black.
+    const Color base = backgroundImage_ ? Color{1, 1, 1, 1} : Color{0.941F, 0.973F, 1.0F, 1.0F};
+    const float b = backgroundBrightness_;
+    // A tint keeps the chart image; a whole style would reset it.
+    RequireComponent<SpriteVisualComponent>(*background_).SetTint({base.red * b, base.green * b, base.blue * b, 1.0F});
+}
 
 void GameplayPresenter::CreatePresentation()
 {
@@ -15,7 +33,6 @@ void GameplayPresenter::CreatePresentation()
                                     {-CanvasReferenceWidth * 0.5F, -CanvasReferenceHeight * 0.5F,
                                      CanvasReferenceWidth, CanvasReferenceHeight},
                                     "Background");
-    SetColor(*background_, {0.941F, 0.973F, 1.0F, 1.0F});
     if (!backgroundPath_.empty())
     {
         try
@@ -24,7 +41,6 @@ void GameplayPresenter::CreatePresentation()
             backgroundSize_ = screenVisuals_.GetImageSize(backgroundImage_);
             if (backgroundSize_.width <= 0 || backgroundSize_.height <= 0)
                 throw std::runtime_error("Background image has no size.");
-            SetColor(*background_, {1, 1, 1, 1});
             RequireComponent<SpriteVisualComponent>(*background_).SetImage(backgroundImage_);
         }
         catch (const std::exception &error)
@@ -33,6 +49,7 @@ void GameplayPresenter::CreatePresentation()
             backgroundImage_ = {};
         }
     }
+    ApplyBackgroundBrightness();
 
     progressView_.Initialize(screenVisuals_, root, *session_, texts_);
     hpView_.Initialize(screenVisuals_, root);

@@ -11,6 +11,9 @@
 옵션 Display 섹션의 키빔 불투명도(0~100%, 기본 100%)는 모든 모드에 공통이며, 시작 요청에 복사된 값을
 `GameplayPresenter::ConfigureKeyBeamOpacity`가 `LaneKeyBeam::SetOpacity`로 넘깁니다. 빔의 시작 알파와 페이드 전체에
 이 값을 곱하므로 100%는 기존 모습, 0%는 보이지 않습니다. 모드 클래스는 이 값을 다루지 않습니다.
+같은 섹션의 배경 밝기(0~100%, 기본 100%)는 시작 요청에 복사되어 `GameplayPresenter::ConfigureBackgroundBrightness`가
+배경 그림(그림이 없으면 하늘색)의 RGB에 곱합니다. 0%는 검정, 100%는 그림 그대로이며 알파는 바꾸지 않습니다.
+로딩 화면의 배경도 같은 밝기로 그립니다.
 `InGame/LaneLight.png`는 Lane 폭에 맞춰 비율을 유지하고 로컬 Y=0에서 시작하며,
 Lane 끝에서 clip됩니다. PNG 원본 알파에 1→0의 표시 알파를 곱합니다.
 Scene 종료 전에 빔의 observer를 해제하고 Canvas가 노드를 파기합니다.

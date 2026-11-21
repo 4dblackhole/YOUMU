@@ -23,6 +23,7 @@ void OptionsPanel::CreateDisplayControls()
     ConfigureCombo(*notationCombo_);
     AddFieldLine(*content_, *notationCombo_, "Options.Notation.Line");
     CreateKeyBeamOpacityControl();
+    CreateBackgroundBrightnessControl();
 }
 
 void OptionsPanel::RefreshDisplayControls()
