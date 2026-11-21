@@ -38,6 +38,23 @@ python Scripts/Verify/check_links.py
 `-Runners`의 이름은 `Tests/Presentation/Run<이름>.ps1`의 `<이름>`입니다. 비우면 측정 하네스
 `RunGameplayTimingProbe`를 뺀 전부를 돌립니다. `SyntaxCheck.ps1 -Files a.cpp,b.cpp`는 잠금 없이 `cl /Zs`로 문법만 봅니다.
 
+`Test.ps1 -Core`의 smoke는 Client 프로젝트가 만든 게임 exe(msbuild의 `TargetPath`)만 실행하고, 실행한 경로를 `smoke exe:` 줄로 출력합니다.
+그 파일이 없으면 실패합니다. `bin/x64/<구성>`에 측정·진단용 exe가 있어도 smoke 대상이 되지 않습니다.
+
+스크립트는 검사를 줄이지 않고, 지난 실행 뒤에 바뀌지 않은 부분을 다시 만들지 않습니다.
+
+- **러너의 테스트 exe**: 러너는 테스트 소스를 컴파일해 Client 오브젝트와 링크한 exe를 만든 뒤 실행합니다. `Test.ps1`은 이 exe를
+  `build/verify/test-builds`에 보관하고, 명령줄·컴파일러·테스트 소스·읽은 헤더·링크한 `.obj`/`.lib`/`.res`가 모두 같으면 다시 만들지 않고
+  그대로 실행합니다(로그에 `test build up to date`, 지난 컴파일 출력도 함께 남음). 테스트는 언제나 실행합니다.
+- **Client 코드 분석**: `Build.ps1 -Analyze`는 분석 전용 오브젝트 폴더(`build/obj/YOUMU.Client.Analysis`)에서 컴파일과 분석 결과 보고만
+  하고 링크하지 않습니다. 일반 빌드의 오브젝트와 게임 exe를 건드리지 않으므로 분석 뒤의 솔루션 빌드와 테스트 exe가 다시 만들어지지
+  않습니다. 지난 분석 뒤에 바뀐 소스와 바뀐 헤더를 쓰는 소스만 다시 분석합니다. 경고는 오류입니다: 분석 경고는 파일별 결과 파일에 남아
+  고칠 때까지 매번 단계가 실패하고(`CodeAnalysisTreatWarningsAsErrors`), 컴파일 경고가 난 파일은 오브젝트가 생기지 않아 매번 다시
+  컴파일됩니다(`Scripts/Verify/Analysis.targets`의 `/WX`).
+- **`VerifyAll.ps1 -Full`**(`Test.ps1 -NoBuildCache`, `Build.ps1 -Analyze -Target Rebuild`)은 테스트 exe와 분석을 처음부터 다시 만듭니다.
+  Visual Studio·Windows SDK·FMOD SDK를 바꾼 뒤나 보관한 결과가 의심될 때 씁니다. 파일은 크기와 수정 시각으로 비교하므로, 시각을 되돌려 놓는
+  도구로 파일을 바꿨을 때도 `-Full`을 씁니다.
+
 ### 직접 실행
 
 스크립트 없이 x64 Developer PowerShell에서 같은 검사를 할 때의 명령입니다.
@@ -75,6 +92,7 @@ git diff --check
 MSVC Code Analysis 또는 clang-tidy를 실제 x64 구성의 include/define/C++20 설정으로
 실행합니다. 파싱 오류를 성공으로 처리하지 않습니다. 종속 프로젝트를 빌드한 뒤
 Client만 분석하는 예는 다음과 같습니다. 변경한 도메인 프로젝트도 같은 방식으로 분석합니다.
+`Build.ps1 -Analyze`는 같은 설정으로 바뀐 파일만 다시 분석합니다([검증 스크립트](#검증-스크립트)).
 
 ```powershell
 foreach ($configuration in 'Debug', 'Release') {
