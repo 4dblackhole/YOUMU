@@ -70,6 +70,8 @@ void MusicSelectScene::EndScene() noexcept
     active_ = false;
     pendingLaunch_.reset();
     patternLoader_.Cancel();
+    // A record still loading when song select closes is dropped when its worker finishes.
+    pendingRecordLaunch_.reset();
     if (!keepPlaybackOnExit_)
         library_->ReleaseAudio();
     keepPlaybackOnExit_ = false;
