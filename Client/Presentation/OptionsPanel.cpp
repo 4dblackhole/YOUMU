@@ -183,6 +183,7 @@ void OptionsPanel::Shutdown() noexcept
     icons_.clear();
     sliders_ = {};
     sliderDrag_.reset();
+    offsetDrag_.reset();
     window_ = nullptr;
     sections_ = {};
     activeSection_ = 0;
@@ -233,6 +234,7 @@ void OptionsPanel::Toggle()
     CancelKeyboardEdit();
     CollapseCombos();
     sliderDrag_.reset();
+    offsetDrag_.reset();
     scrollbar_.Release();
     railKeyboard_ = railPointerInside_ = false;
     railHoverSeconds_ = 0.0F;
@@ -280,6 +282,7 @@ void OptionsPanel::Close(Visual2DInputRouter *inputRouter)
     previousDragPoint_.reset();
     scrollbar_.Release();
     sliderDrag_.reset();
+    offsetDrag_.reset();
     railKeyboard_ = railPointerInside_ = false;
     CollapseCombos();
     if (inputRouter)
@@ -379,6 +382,9 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
 
     if (ProcessSliderPointer(input, canvasPointer, hoveredNode))
         return consumedKey;
+    // A finished offset drag also drops the click the release produced, so no keyboard edit starts.
+    if (ProcessOffsetDrag(input, canvasPointer, hoveredNode))
+        return true;
     // The shared scrollbar follows its drag even when the pointer leaves the panel.
     if (const auto offset = scrollbar_.Track(canvasPointer, input.IsMouseButtonDown(MouseButton::Left)))
     {
@@ -396,7 +402,7 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
     if (!insidePanel)
         return consumedKey;
 
-    if (input.MouseWheelDelta() != 0.0F)
+    if (input.MouseWheelDelta() != 0.0F && !AnyComboExpanded())
     {
         scrollOffset_ -= input.MouseWheelDelta() * 36.0F;
         heldSection_.reset();
