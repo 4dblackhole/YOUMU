@@ -8,7 +8,7 @@
 enum class EditorMenuAction
 {
     Save, OpenYmmFolder, OpenYmpFolder, OpenYmeFolder,
-    Undo, Redo, Copy, Paste, PasteWithBlanks
+    Undo, Redo, Copy, Paste, PasteWithBlanks, FindReplace
 };
 
 struct EditorMenuInput
@@ -64,7 +64,9 @@ class EditorMenuBar final
     PhantomCore::Visual2DNode *bar_{}, *file_{}, *edit_{}, *popup_{};
     PhantomCore::Visual2DNode *title_{}, *artist_{}, *pattern_{}, *dirtyDot_{}, *modeBadge_{}, *modeLabel_{};
     PhantomCore::Visual2DNode *newBadge_{}, *newLabel_{};
-    std::array<Row, 5> rows_{};
+    // One row node per item of the longer menu (Edit).
+    static constexpr std::size_t MaximumItems = 6;
+    std::array<Row, MaximumItems> rows_{};
     EditorMenuDocument document_;
     float width_{1280};
     Menu open_{Menu::None};

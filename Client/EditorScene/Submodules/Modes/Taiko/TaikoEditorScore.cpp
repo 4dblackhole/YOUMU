@@ -733,3 +733,8 @@ void TaikoEditorMode::LongNoteIcon(IEditorModeCanvas &canvas, Rect button, int t
     canvas.Box({headX, y - thickness * .5F, endX - headX, thickness}, body, thickness * .5F);
     Circle(canvas, headX, y, type, radius);
 }
+
+void TaikoEditorMode::DrawPatternNote(IEditorModeCanvas &canvas, Point center, float radius, int key)
+{
+    Circle(canvas, center.x, center.y, key, IsBig(key) ? radius : radius * .78F);
+}

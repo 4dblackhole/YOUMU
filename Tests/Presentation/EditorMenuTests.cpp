@@ -64,7 +64,8 @@ void TestEditorMenu()
     const std::array fileActions{EditorMenuAction::Save, EditorMenuAction::OpenYmmFolder,
                                 EditorMenuAction::OpenYmpFolder, EditorMenuAction::OpenYmeFolder};
     const std::array editActions{EditorMenuAction::Undo, EditorMenuAction::Redo, EditorMenuAction::Copy,
-                                EditorMenuAction::Paste, EditorMenuAction::PasteWithBlanks};
+                                EditorMenuAction::Paste, EditorMenuAction::PasteWithBlanks,
+                                EditorMenuAction::FindReplace};
     for (const Size viewport : {Size{1920, 1080}, {1280, 720}, {900, 720}, {2560, 1080}, {3840, 1080}})
     {
         canvas.SetViewportSize(viewport);

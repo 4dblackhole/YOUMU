@@ -148,3 +148,16 @@ void TaikoEditorMode::DrawToolMenu(IEditorModeCanvas &canvas, IEditorContext &st
                           [&state, id = tool.id] { state.SelectTool(id); }, tool_ == tool.id && current == tool.id);
         }
 }
+
+std::optional<int> TaikoEditorMode::PatternKey() const noexcept
+{
+    // Find/Replace patterns hold short notes only; long-note tools place nothing there.
+    const auto *tool = Find(tool_);
+    if (!tool)
+        return std::nullopt;
+    const int key = static_cast<int>(tool->note);
+    const auto *note = FindTaikoNote(key);
+    if (!note || note->longNote)
+        return std::nullopt;
+    return key;
+}

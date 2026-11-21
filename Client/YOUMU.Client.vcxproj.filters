@@ -94,6 +94,7 @@
     <ClInclude Include="EditorScene\Submodules\EditorVisual.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorWorkspace.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorWorkspace.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
+    <ClInclude Include="EditorScene\Submodules\EditorFindReplace.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorPlayback.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorPlayback.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClInclude Include="GameFlow\YOUMUSceneIds.h"><Filter>GameFlow</Filter></ClInclude>
@@ -288,6 +289,8 @@
   </ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorSelection.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorClipboard.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorFindReplace.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorFindDialog.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorSelection.cpp"><Filter>EditorScene\Submodules\Modes\Taiko</Filter></ClCompile></ItemGroup>
   <ItemGroup><ClInclude Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorLayout.h"><Filter>EditorScene\Submodules\Modes\Taiko</Filter></ClInclude></ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsSongs.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>

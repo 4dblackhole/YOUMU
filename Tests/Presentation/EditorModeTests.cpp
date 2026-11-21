@@ -1,6 +1,7 @@
 #include "EditorModeTests.h"
 #include "Editing/ChartEditor.h"
 #include "EditorScene/Submodules/EditorPatternCreation.h"
+#include "EditorScene/Submodules/EditorFindReplace.h"
 #include "EditorScene/Submodules/EditorView.h"
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorMode.h"
@@ -20,6 +21,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <Windows.h>
 
 using namespace PhantomCore;
@@ -463,6 +465,49 @@ namespace
         state.Mode().UpdateScoreSelection(state, {x({5, 8}), ScoreY}, true);
         Check(range && range->first == MusicalPosition{0, {1, 2}} && range->second == MusicalPosition{0, {5, 8}},
               "Dragging the start edge past the end must keep the other edge as the anchor.");
+    }
+
+    // Find/Replace: kind, spacing and the drawn blanks must all match; earlier matches keep their notes.
+    void TestFindReplacePatterns()
+    {
+        constexpr int Don = 1, Kat = 2;
+        ChartEditor chart(PatternDocument{});
+        // Measure 2: _ d d _ (matches). Measure 4: d d d d k (no blank after). Measure 6: k d d _ (no blank before).
+        for (const auto &[measure, fraction, key] : std::vector<std::tuple<std::int64_t, Rational, int>>{
+                 {1, {1, 8}, Don}, {1, {2, 8}, Don}, {3, {0, 1}, Don}, {3, {1, 8}, Don}, {3, {2, 8}, Don},
+                 {3, {3, 8}, Don}, {3, {4, 8}, Kat}, {5, {0, 1}, Kat}, {5, {1, 8}, Don}, {5, {2, 8}, Don}})
+            chart.AddNote({measure, fraction}, key);
+        NotePattern find{2, 16, 0, 3, {{1, Don}, {2, Don}}};
+        auto matches = FindNotePattern(chart, find, std::nullopt);
+        Check(matches.size() == 1 && matches.front().begin == Rational{1, 1} && matches.front().notes.size() == 2,
+              "1/2 'd d' with blanks around must match only the measure that has those blanks.");
+        Check(FindNotePattern(chart, find, std::pair{MusicalPosition{3, {}}, MusicalPosition{8, {}}}).empty(),
+              "A selected range must keep matches inside it.");
+
+        ChartEditor overlap(PatternDocument{});
+        for (const auto fraction : {Rational{0, 1}, Rational{2, 16}, Rational{4, 16}})
+            overlap.AddNote({0, fraction}, Don);
+        const NotePattern spaced{4, 16, 0, 2, {{0, Don}, {2, Don}}};
+        matches = FindNotePattern(overlap, spaced, std::nullopt);
+        Check(matches.size() == 1 && matches.front().begin == Rational{},
+              "Matches go from the start and never share a note with an earlier match.");
+
+        // Replace with a longer pattern: d k d over _ d d _, and the kat after it lands on a don outside the window.
+        chart.AddNote({1, {4, 8}}, Don);
+        matches = FindNotePattern(chart, find, std::nullopt);
+        Check(matches.size() == 1, "A note after the trailing blank must not stop the match.");
+        const NotePattern replacement{2, 16, 0, 4, {{1, Don}, {2, Kat}, {3, Don}, {4, Kat}}};
+        const auto before = chart.Notes().size();
+        chart.Replace(ReplaceNotePattern(chart, replacement, matches), chart.Effects());
+        std::vector<std::pair<Rational, int>> measure2;
+        for (const auto &note : chart.Notes())
+            if (note.note.position.measure == 1)
+                measure2.emplace_back(note.note.position.fraction, note.note.keyType);
+        std::ranges::sort(measure2);
+        Check(measure2 == std::vector<std::pair<Rational, int>>{{{1, 8}, Don}, {{2, 8}, Kat}, {{3, 8}, Don}, {{4, 8}, Kat}},
+              "Replace must put the replacement at the window start and replace the note it lands on.");
+        chart.Undo();
+        Check(chart.Notes().size() == before, "One Undo must restore the replaced notes.");
     }
 
     // A placement replaces every note whose span shares a position with it (Taiko has
@@ -1561,6 +1606,7 @@ void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &servi
     }
     TestTaikoEditing();
     TestTaikoPlacementConflicts();
+    TestFindReplacePatterns();
     TestTaikoScoreInteractions();
     TestPreviewMatchesPlay();
     TestRealtimeZoomAndTransport();
