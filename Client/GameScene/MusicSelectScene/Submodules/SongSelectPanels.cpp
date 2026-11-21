@@ -5,6 +5,7 @@
 #include "SongSelectionText.h"
 #include "Presentation/UiDropdown.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
+#include <cmath>
 
 using namespace PhantomCore;
 
@@ -123,6 +124,12 @@ void MusicSelectView::CreateSongInformationPanel()
             &CreateCaption(panel, {}, L"", 13.0F, 700, theme::InkSoft, name + ".Caption", TextAlignment::Center);
         statValues_[i] =
             &CreateNumber(panel, {}, L"", 26.0F, 800, theme::Ink, name + ".Value", TextAlignment::Center);
+    }
+    // The Base BPM cell takes the pointer: resting on it shows the chart's BPM range.
+    for (auto *bpm : {statCaptions_[0], statValues_[0]})
+    {
+        bpm->AddComponent<RectangleCollider2DComponent>();
+        bpm->AddComponent<PointerReceiverComponent>();
     }
 }
 
@@ -285,7 +292,7 @@ void MusicSelectView::ApplyTexts()
     if (importHelp_)
         SetCaption(*importHelp_, std::wstring(text.convertOsuHelp));
 
-    const std::array<std::wstring, 6> captions{L"BPM",
+    const std::array<std::wstring, 6> captions{L"Base BPM",
                                                std::wstring(texts_.Get("MusicSelect.durationLabel")),
                                                L"Notes",
                                                std::wstring(texts_.Get("MusicSelect.judgeLevelLabel")),
@@ -350,6 +357,9 @@ void MusicSelectView::RefreshSelectionPresentation()
         for (auto *value : statValues_)
             if (value)
                 RequireComponent<TextVisualComponent>(*value).SetText(L"");
+        for (auto *bpm : {statCaptions_[0], statValues_[0]})
+            if (bpm)
+                tooltip_.Set(*bpm, {});
         for (auto *caption : statCaptions_)
             if (caption)
                 caption->SetVisible(false);
@@ -407,9 +417,18 @@ void MusicSelectView::RefreshSelectionPresentation()
     if (goButton_)
         goButton_->SetEnabled(true);
 
-    const auto range = !selected.bpmRange || selected.bpmRange->first == selected.bpmRange->second
-                           ? BpmText(selected.bpmRange ? selected.bpmRange->first : selected.pattern.baseBpm)
-                           : BpmText(selected.bpmRange->first) + L"–" + BpmText(selected.bpmRange->second);
+    // The cell shows the YMP Base BPM, the speed Accelerate BPM and BPM scroll speed divide by; the
+    // range of the valid timing sections (one value without BPM changes) is its tooltip.
+    const bool knownBase = std::isfinite(selected.pattern.baseBpm) && selected.pattern.baseBpm > 0;
+    const auto baseBpm = knownBase ? BpmText(selected.pattern.baseBpm) : std::wstring(L"—");
+    std::wstring range;
+    if (selected.bpmRange)
+        range = selected.bpmRange->first == selected.bpmRange->second
+                    ? BpmText(selected.bpmRange->first)
+                    : BpmText(selected.bpmRange->first) + L"–" + BpmText(selected.bpmRange->second);
+    for (auto *bpm : {statCaptions_[0], statValues_[0]})
+        if (bpm)
+            tooltip_.Set(*bpm, range.empty() ? TooltipText{} : TooltipText{L"BPM " + range});
     std::wstring duration = L"—";
     if (selection_.selectedDurationMicroseconds_)
     {
@@ -417,7 +436,7 @@ void MusicSelectView::RefreshSelectionPresentation()
         duration = std::format(L"{}:{:02}", seconds / 60, seconds % 60);
     }
     const std::array<std::wstring, 6> values{
-        range,
+        baseBpm,
         duration,
         selected.noteCount ? std::to_wstring(*selected.noteCount) : std::wstring(L"—"),
         std::format(L"{:.2f}", selected.pattern.judgementLevel.Value()),
