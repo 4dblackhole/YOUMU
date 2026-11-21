@@ -89,7 +89,11 @@ HP gauge는 기본이 아닐 때만 게이지 이름 칩으로 나타납니다.
 완료·연습·중단을 구분하고, 기존 pauseMenuUsed 클리어 자격 규칙을 유지합니다.
 정확도는 기존 0.000001% 정수 단위로 보존합니다.
 
-위치: `%LOCALAPPDATA%/YOUMU/Records/plays.sqlite3`.
+위치: 게임 폴더(EXE 옆)의 `Data/Result/plays.sqlite3`(사용자 지시: C 드라이브 안쪽이 아니라 게임 폴더에서 찾을 수 있게).
+개발 빌드는 `bin/x64/<구성>/Data/Result/`입니다. 예전 위치 `%LOCALAPPDATA%/YOUMU/Records/plays.sqlite3`의 기록은
+게임이 그 DB를 처음 열 때(`PlayRecordDatabasePath`) 새 위치에 DB가 없으면 복사해 옮깁니다(rollback journal이 있으면 함께).
+옛 파일은 지우거나 바꾸지 않으며, 새 위치에 DB가 이미 있으면 그것만 쓰고 옛 DB를 합치지 않습니다.
+복사가 실패하면 그 실행은 옛 DB를 그대로 씁니다. 테스트는 각자의 임시 DB 경로를 넘겨 이 경로를 쓰지 않습니다.
 Windows 내장 SQLite를 사용하며 `user_version=1`로 스키마를 확인합니다.
 지원하지 않는 버전이나 손상 데이터는 오류를 표시하고 보존합니다.
 캐시와 달리 원본에서 복구 가능한 데이터가 아니므로 자동 삭제/재생성하지 않습니다.

@@ -19,6 +19,7 @@ namespace tests
     void TestAcceleratedClockAndWindows();
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
+    void TestRecordDatabaseAdoption();
     void TestRecordFilters();
     void TestSampleRestartGateMixerPeriods();
     void TestSampleRestartGateDenseTicks();

@@ -124,6 +124,8 @@
     <ClInclude Include="EditorScene\Submodules\EditorLayout.h" />
     <ClInclude Include="EditorScene\Submodules\EditorForms.h" />
     <ClInclude Include="App\AssetPaths.h" />
+    <ClCompile Include="App\GameDataPaths.cpp" />
+    <ClInclude Include="App\GameDataPaths.h" />
     <ClCompile Include="EditorScene\Submodules\EditorForms.cpp" />
     <ClCompile Include="App\SkinManifest.cpp" />
     <ClInclude Include="App\SkinManifest.h" />

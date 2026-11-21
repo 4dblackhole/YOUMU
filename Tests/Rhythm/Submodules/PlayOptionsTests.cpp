@@ -1,7 +1,10 @@
 #include "Records/PlayRecordStore.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "TestSupport.h"
+#include <fstream>
+#include <iterator>
 #include <limits>
+#include <string>
 
 namespace tests
 {
@@ -200,5 +203,42 @@ namespace tests
         }
         Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).size() == 2,
                 "Invalid queries never mutate stored records.");
+    }
+
+    void TestRecordDatabaseAdoption()
+    {
+        TemporaryDirectory directory("youmu-record-adoption");
+        const auto legacy = directory.Path() / "legacy" / "plays.sqlite3";
+        const auto database = directory.Path() / "game" / "Data" / "Result" / "plays.sqlite3";
+        const auto read = [](const std::filesystem::path &file)
+        {
+            std::ifstream stream(file, std::ios::binary);
+            return std::string(std::istreambuf_iterator<char>(stream), {});
+        };
+        Require(PlayRecordStore::AdoptLegacyDatabase(database, legacy) == database &&
+                    !std::filesystem::exists(database),
+                "Without a legacy database nothing is created until the first save.");
+        PlayRecord record;
+        record.patternPath = directory.Path() / "pattern.ymp";
+        record.mode = "Taiko";
+        PlayRecordStore(legacy).Save(record);
+        std::ofstream(legacy.string() + "-journal") << "journal";
+        Require(PlayRecordStore::AdoptLegacyDatabase(database, legacy) == database, "The game-folder path is used.");
+        Require(read(database) == read(legacy) && read(database.string() + "-journal") == "journal",
+                "The legacy database and its rollback journal are copied byte for byte.");
+        Require(std::filesystem::exists(legacy) && !std::filesystem::exists(database.string() + ".adopting"),
+                "The legacy database is kept and no staging file is left.");
+        // The fake journals only prove the copy; remove them before SQLite opens either file again.
+        std::filesystem::remove(database.string() + "-journal");
+        std::filesystem::remove(legacy.string() + "-journal");
+        Require(PlayRecordStore(database).Query(record.patternPath, "Taiko", "", 0, 10).size() == 1,
+                "Adopted records are readable from the game folder.");
+        record.mode = "Taiko";
+        PlayRecordStore(legacy).Save(record);
+        Require(PlayRecordStore::AdoptLegacyDatabase(database, legacy) == database &&
+                    PlayRecordStore(database).Query(record.patternPath, "Taiko", "", 0, 10).size() == 1,
+                "An existing game-folder database is never replaced or merged with the legacy one.");
+        Require(PlayRecordStore::AdoptLegacyDatabase(database, {}) == database,
+                "Without LOCALAPPDATA there is no legacy database to adopt.");
     }
 } // namespace tests

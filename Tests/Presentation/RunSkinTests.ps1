@@ -5,7 +5,7 @@ $testRoot = Join-Path $repoRoot ('build/skin-tests/' + [guid]::NewGuid().ToStrin
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'LogoView', 'LogoLayout', 'LogoInput', 'LogoTexts', 'TitlePlayerView',
-    'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongListView', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'SongSelectRecords', 'SongRecordView', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'EditorOsuImport', 'OsuImportValidation', 'OsuSongPlacement', 'OsuImportPanel', 'MusicSelectTexts',
+    'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongListView', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'SongSelectRecords', 'SongRecordView', 'GameDataPaths', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'EditorOsuImport', 'OsuImportValidation', 'OsuSongPlacement', 'OsuImportPanel', 'MusicSelectTexts',
     'OptionsPanel', 'OptionsRail', 'OptionsVolume', 'UiTooltip', 'UiDropdown', 'UiAlert', 'UiScrollbar', 'UiModal', 'OptionsDisplay', 'OptionsKeys', 'ModePresentation', 'OptionsOffset', 'OptionsSongs', 'OptionSettings',
     'OptionTexts', 'TextCatalog', 'LanguageFile')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
