@@ -266,7 +266,7 @@ namespace tests
                     "A long note with any hit is an OK; only an untouched one is a MISS.");
             Require(taiko->summary.maximumCombo == (progressed ? 1U : 0U),
                     "A partly processed long note keeps the combo; an untouched one breaks it.");
-            Require(taiko->notes[0].accuracy.Units() == (progressed ? 33'333'333 : 0),
+            Require(taiko->notes[0].accuracy.Units() == (progressed ? 33'333'333U : 0U),
                     "Counting it as OK does not change the note's accuracy.");
         }
     }
