@@ -105,6 +105,8 @@ class EditorView final : public IEditorModeCanvas
                    std::function<void(std::size_t)> choose);
     void SelectEffectType(const EditorEffectSelection &);
     void DrawExcludeChips(PhantomCore::Rect row);
+    // A clock button beside position fields: fills them with the Beat tick nearest the cursor.
+    void CursorPositionButton(PhantomCore::Rect r, std::string &measure, std::string *fraction);
     void DrawCurveRow(PhantomCore::Rect row);
     // Curves dialog (YME [Interpolation]): list, name/expression with checking, preview.
     void OpenCurves();

@@ -165,6 +165,8 @@ class EditorWorkspace final : public IEditorContext
     bool IsListRowSelected(std::size_t) const noexcept;
     void CopySelection();
     void PasteSelection(bool includeBlanks);
+    // The Beat divider tick nearest the cursor: the paste destination and the panels' "current position".
+    [[nodiscard]] MusicalPosition CursorGridPosition() const;
     void DeleteSelection();
     void Undo();
     void Redo();

@@ -711,6 +711,47 @@ int main(int argc, char** argv)
             state.SetRealtimeZoom(zoom);
             state.ClosePanel();
         }
+        // The clock button beside a panel's position fields types in the Beat tick nearest the cursor.
+        {
+            const auto clickClock = [&](std::wstring_view measureLabel, float buttonOffset) {
+                view.Build();
+                visuals.Render({});
+                const auto label = std::ranges::find_if(renderer.packets, [measureLabel](const auto &packet) {
+                    return packet.text && packet.text->value == measureLabel;
+                });
+                Check(label != renderer.packets.end(), "The panel must label its measure field.");
+                const auto left = TransformPoint({label->bounds.x, label->bounds.y + label->bounds.height * .5F, 0},
+                                                 label->nodeTransform);
+                // The caption sits 10px above the 32px field's top edge; the button is 32px wide.
+                clickFrame(left.x + 640 + buttonOffset + 16, 360 - left.y + 10 + 16);
+            };
+            const auto seek = [&](MusicalPosition position) {
+                state.Seek(state.Document().Timeline().Compile(position).count() / 1000.0);
+            };
+            // Effect forms: measure and beat each give up 20px of their third, so the button starts 170.67px in.
+            const float effectOffset = ((editor_layout::InspectorWidth - 40 - 16) / 3 - 20 + 8) * 2;
+            state.OpenPanel(EditorPanel::Volume);
+            state.effectForm.endMeasure = "9";
+            state.effectForm.endFraction = "0/1";
+            seek({3, {1, 8}});
+            clickClock(L"Measure", effectOffset);
+            Check(state.effectForm.startMeasure == "4" && state.effectForm.startFraction == "1/8",
+                  "The start clock button must type the cursor's measure and beat.");
+            seek({5, {3, 4}});
+            clickClock(L"End measure", effectOffset);
+            Check(state.effectForm.endMeasure == "6" && state.effectForm.endFraction == "3/4",
+                  "The end clock button must type the cursor's measure and beat.");
+            state.effectForm.endMeasure.clear();
+            state.effectForm.endFraction.clear();
+            state.OpenPanel(EditorPanel::Timing);
+            state.timingForm.kind = EditorTimingKind::Bpm;
+            seek({2, {1, 4}});
+            clickClock(L"Measure", ((editor_layout::InspectorWidth - 40 - 16 - 32) * .5F + 8) * 2);
+            Check(state.timingForm.measure == "3" && state.timingForm.fraction == "1/4",
+                  "The Timing panel's clock button must type the cursor's measure and beat.");
+            state.ClosePanel();
+            state.Seek(0);
+        }
         // A hit-sound Volume Area: the Curve button cycles Linear → Exponential → Harmonic and wraps.
         // Its click runs after the frame that listed the curves, so it must not hold an iterator into it.
         {
