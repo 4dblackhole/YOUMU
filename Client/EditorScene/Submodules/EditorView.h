@@ -81,6 +81,7 @@ class EditorView final : public IEditorModeCanvas
     void DrawCompose();
     void DrawToolRow();
     void DrawBeatControl();
+    void DrawLineBreakToggle();
     void DrawHeads();
     void DrawZoneHeads();
     void DrawChannelHead(editor_layout::Channel, std::wstring_view icon, std::wstring name, std::wstring value);

@@ -29,6 +29,8 @@ namespace editor_layout
     inline constexpr float ToolStripWidth = ToolButtonWidth * 7 + ToolStripPadding * 2;
     // Beat: caption, 1/1..1/16 slider, value and direct 1/N input.
     inline constexpr float BeatLeft = ToolStripLeft + ToolStripWidth + 20, BeatSliderWidth = 120;
+    // Score view only: the --- line break toggle after the Beat input.
+    inline constexpr float LineBreakLeft = BeatLeft + 38 + BeatSliderWidth + 10 + 50 + 16 + 84 + 20, LineBreakWidth = 132;
     inline constexpr float HeadWidth = 184, HeadButtonWidth = 36, InspectorWidth = 348;
     inline constexpr float RulerHeight = 28, LaneHeight = 152;
     inline constexpr float LaneTop = TrackTop + RulerHeight;

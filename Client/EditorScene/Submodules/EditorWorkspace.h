@@ -97,6 +97,9 @@ class EditorWorkspace final : public IEditorContext
     void SetFirstMeasure(std::int64_t) override;
     void SetDivision(std::int64_t);
     void SetRealtime(bool);
+    // A YMP system break (---) makes the cursor's measure start a new score row; measure 1 always starts one.
+    [[nodiscard]] bool HasSystemBreakAtCursor() const;
+    void ToggleSystemBreak();
     // Compose views: Realtime, Score or Preview (read-only).
     void SetPreview();
     void RequestRebuild() noexcept override
