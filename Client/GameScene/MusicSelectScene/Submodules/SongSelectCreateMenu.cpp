@@ -5,68 +5,30 @@
 using namespace PhantomCore;
 
 using namespace song_select;
+namespace theme = ui_colors::theme;
 
-void MusicSelectView::CreateAdditionMenu()
+void MusicSelectView::CreateImportButton()
 {
     if (!IsEditorSongSelect())
         return;
-    additionMenu_ = &CreatePanel(canvas_->Root(), {0, 0, 200, 84}, "SongAddition.Menu");
-    additionMenu_->SetZIndex(80);
-    ApplySpriteStyle(*additionMenu_, PanelWhite, BorderBlue);
-    SetCornerRadius(*additionMenu_, 6);
-    newDifficultyItem_ = &CreateButton(*additionMenu_, {4, 44, 192, 36}, L"", "SongAddition.NewDifficulty");
-    convertOsuItem_ = &CreateButton(*additionMenu_, {4, 4, 192, 36}, L"", "SongAddition.ConvertOsu");
-    for (auto *item : {newDifficultyItem_, convertOsuItem_})
-    {
-        ApplyButtonStyle(*item, PanelWhite, FocusBlue, AccentBlue);
-        auto &label = RequireComponent<TextVisualComponent>(*item);
-        label.SetFontSize(18);
-        texts_.ApplyFont(label);
-    }
-    CloseAdditionMenu();
-}
-void MusicSelectView::OpenAdditionMenu(const Rect anchor)
-{
-    if (!additionMenu_)
-        return;
-    const auto size = canvas_->LogicalSize();
-    additionMenu_->SetPosition(
-        {std::clamp(anchor.x + anchor.width - 200, -size.width / 2, std::max(-size.width / 2, size.width / 2 - 200)),
-         std::clamp(anchor.y - 84, -size.height / 2, std::max(-size.height / 2, size.height / 2 - 84))});
-    additionMenu_->SetVisible(true);
-    inputRouter_.InvalidateHitTest();
-}
-void MusicSelectView::CloseAdditionMenu()
-{
-    if (additionMenu_)
-        additionMenu_->SetVisible(false);
-    if (canvas_)
-        inputRouter_.Reset(*canvas_);
-}
-bool MusicSelectView::ProcessAdditionMenu(const InputState &input)
-{
-    if (!additionMenu_ || !additionMenu_->IsVisible())
-        return false;
-    for (const auto &action : canvas_->TakeActions())
-    {
-        if (action.type != ActionType::Clicked)
-            continue;
-        if (action.source == newDifficultyItem_->Id())
-            command_ = SongSelectCommand::CreateDifficulty;
-        else if (action.source == convertOsuItem_->Id())
-            command_ = SongSelectCommand::ConvertOsu;
-    }
-    const bool outside = input.WasMouseButtonPressed(MouseButton::Left) &&
-                         (!canvasPointer_ || !additionMenu_->BoundsInCanvas().Contains(*canvasPointer_));
-    const bool dismissed = input.WasKeyPressed(VK_ESCAPE) || input.WasMouseButtonPressed(MouseButton::Right);
-    if (command_ != SongSelectCommand::None || outside || dismissed)
-        CloseAdditionMenu();
-    return true; // An open menu consumes input, including clicks which dismiss it.
+    // The left column of the editor song select has no records; its top holds osu! import.
+    constexpr float width = layout::RecordWidth - 24.0F, height = 64.0F;
+    importButton_ = &CreateButton(*board_, TopLeft({layout::Margin, 100.0F, width, height}, layout::CanvasSize.height),
+                                  L"", "SongAddition.ImportOsu");
+    ApplyButtonStyle(*importButton_, theme::Brand, theme::BrandDeep, PureWhite);
+    SetCornerRadius(*importButton_, 6);
+    auto &accent = CreatePanel(*importButton_, {0, 0, 5, height}, "Accent");
+    ApplyFlatStyle(accent, theme::Sun);
+    auto &icon = CreateSprite(*importButton_, {20, (height - 26.0F) * 0.5F, 26, 26},
+                              screenVisuals_.RegisterImage(Common(L"Icons.folder")), "Icon");
+    RequireComponent<SpriteVisualComponent>(icon).SetTint(PureWhite);
+    importLabel_ = &CreateCaption(*importButton_, {62, 10, width - 72, 24}, L"", 17.0F, 800, PureWhite, "Label");
+    importHelp_ = &CreateCaption(*importButton_, {62, 36, width - 72, 18}, L"", 12.0F, 600,
+                                 PhantomCore::Color{1, 1, 1, .78F}, "Help");
 }
 void MusicSelectView::OpenOsuImportPanel(std::wstring folder, std::vector<OsuImportDifficulty> difficulties)
 {
     SetSearchFocus(false);
-    CloseAdditionMenu();
     osuImportPanel_.Open(std::move(folder), std::move(difficulties));
     inputRouter_.Reset(*canvas_);
     UpdateSearchInputVisibility();

@@ -42,15 +42,12 @@ bool MusicSelectView::ProcessAlert(const InputState &input)
 void MusicSelectView::ProcessPointer(const InputState &input)
 {
     const auto pointer = CanvasPointerInput(input);
-    if (IsAdditionMenuOpen() && (!canvasPointer_ || !additionMenu_->BoundsInCanvas().Contains(*canvasPointer_)))
-        inputRouter_.Reset(*canvas_);
-    else
-        inputRouter_.Process(*canvas_, pointer);
+    inputRouter_.Process(*canvas_, pointer);
     songList_.TrackScrollbar(canvasPointer_, pointer.leftButtonDown);
     favoriteTabs_.TrackScrollbar(canvasPointer_, pointer.leftButtonDown);
 
     // The wheel scrolls tabs first, then the song list, unless an overlay owns the pointer.
-    const bool overlayOpen = IsSelectionModalVisible() || options_.IsVisible() || IsAdditionMenuOpen();
+    const bool overlayOpen = IsSelectionModalVisible() || options_.IsVisible();
     bool tabsScrolled = false;
     if (!overlayOpen && input.MouseWheelDelta() != 0)
     {
@@ -77,7 +74,6 @@ bool MusicSelectView::ProcessActions()
         if (action.type == ActionType::Clicked && action.source == optionButtonId_)
         {
             SetSearchFocus(false);
-            CloseAdditionMenu();
             options_.Toggle();
             inputRouter_.Reset(*canvas_);
             return true;
@@ -102,10 +98,15 @@ bool MusicSelectView::ProcessActions()
             OpenFavoritesPanel();
             return true;
         }
+        if (importButton_ && action.type == ActionType::Clicked && action.source == importButton_->Id())
+        {
+            SetSearchFocus(false);
+            command_ = SongSelectCommand::ConvertOsu;
+            return true;
+        }
         if (filterButton_ && action.type == ActionType::Clicked && action.source == filterButton_->Id())
         {
             SetSearchFocus(false);
-            CloseAdditionMenu();
             filterPanel_.Open(selection_.filter_, selection_.catalog_);
             return true;
         }
@@ -155,7 +156,8 @@ bool MusicSelectView::ProcessActions()
             SetSearchFocus(false);
             SelectVisibleSong(listAction.index);
             RefreshSearchPresentation();
-            OpenAdditionMenu(listAction.anchor);
+            // The plus starts a new difficulty for its song; osu! import is the left column's button.
+            command_ = SongSelectCommand::CreateDifficulty;
             return true;
         case SongListView::ActionKind::SongClicked:
             SetSearchFocus(false);
@@ -185,10 +187,7 @@ void MusicSelectView::OpenPlayOptions()
 {
     SetSearchFocus(false);
     if (!options_.IsVisible())
-    {
-        CloseAdditionMenu();
         playOptionsPanel_.Open(selection_.playOptions_);
-    }
     inputRouter_.Reset(*canvas_);
 }
 

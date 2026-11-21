@@ -6,7 +6,6 @@ using namespace PhantomCore;
 void MusicSelectView::OpenFavoritesPanel()
 {
     SetSearchFocus(false);
-    CloseAdditionMenu();
     std::filesystem::path pattern;
     std::wstring name;
     if (!selection_.catalogLoading_ && selection_.focusedSongPosition_ < selection_.visibleSongIndices_.size())

@@ -280,8 +280,10 @@ void MusicSelectView::ApplyTexts()
         component.SetText(std::wstring(value));
         texts_.ApplyFont(component);
     };
-    setButton(newDifficultyItem_, text.newDifficulty);
-    setButton(convertOsuItem_, text.convertOsu);
+    if (importLabel_)
+        SetCaption(*importLabel_, std::wstring(text.convertOsu));
+    if (importHelp_)
+        SetCaption(*importHelp_, std::wstring(text.convertOsuHelp));
 
     const std::array<std::wstring, 6> captions{L"BPM",
                                                std::wstring(texts_.Get("MusicSelect.durationLabel")),
