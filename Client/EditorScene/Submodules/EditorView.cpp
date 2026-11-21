@@ -55,7 +55,11 @@ void EditorView::Shutdown() noexcept
     fields_.Shutdown();
     fieldRects_.clear();
     for (auto &tiles : audioTiles_)
+    {
+        for (auto &entry : tiles)
+            ReleaseSpectrumImage(entry.second);
         tiles.clear();
+    }
     audioRoots_.fill(nullptr);
     audioOverlays_.fill(nullptr);
     audioColumnsKey_.reset();

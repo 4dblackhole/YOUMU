@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 using namespace PhantomCore;
 
 using namespace editor_ui;
@@ -119,6 +120,33 @@ namespace
         return columns;
     }
 
+    std::size_t SpectrumColorIndex(const SpectrumTile &tile, std::size_t column, std::size_t band)
+    {
+        const std::size_t level = tile.levels[column * tile.bands + band];
+        return (level * (SpectrumColors.size() - 1) + SpectrumLevelMaximum / 2) / SpectrumLevelMaximum;
+    }
+
+    // RGBA8 rows, top row first: the highest band is the first row. Level 0 stays transparent like
+    // the rectangles it replaces, which skip it.
+    std::vector<std::uint8_t> SpectrumPixels(const SpectrumTile &tile)
+    {
+        std::vector<std::uint8_t> pixels(tile.columns * tile.bands * 4);
+        for (std::size_t row = 0; row < tile.bands; ++row)
+            for (std::size_t column = 0; column < tile.columns; ++column)
+            {
+                const auto color = SpectrumColorIndex(tile, column, tile.bands - 1 - row);
+                if (color == 0)
+                    continue;
+                const auto &value = SpectrumColors[color];
+                auto *pixel = &pixels[(row * tile.columns + column) * 4];
+                pixel[0] = static_cast<std::uint8_t>(std::lround(value.red * 255));
+                pixel[1] = static_cast<std::uint8_t>(std::lround(value.green * 255));
+                pixel[2] = static_cast<std::uint8_t>(std::lround(value.blue * 255));
+                pixel[3] = 255;
+            }
+        return pixels;
+    }
+
     void BuildSpectrumGeometry(EditorVisual &geometry, const SpectrumTile &tile, const Rect rect,
                                std::size_t visibleColumns)
     {
@@ -127,10 +155,7 @@ namespace
         for (std::size_t band = 0; band < tile.bands; ++band)
             for (std::size_t column = 0; column < tile.columns;)
             {
-                const auto colorAt = [&](std::size_t c) {
-                    const std::size_t level = tile.levels[c * tile.bands + band];
-                    return (level * (SpectrumColors.size() - 1) + SpectrumLevelMaximum / 2) / SpectrumLevelMaximum;
-                };
+                const auto colorAt = [&](std::size_t c) { return SpectrumColorIndex(tile, c, band); };
                 const auto color = colorAt(column);
                 auto end = column + 1;
                 while (end < tile.columns && colorAt(end) == color) ++end;
@@ -177,6 +202,7 @@ void EditorView::PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t fi
         // Retain one neighbouring tile on each side for short back-seeks.
         if (invalidate || it->first < first - 1 || it->first > last + 1)
         {
+            ReleaseSpectrumImage(it->second);
             static_cast<void>(audioRoots_[track]->RemoveChild(it->second.node->Id()));
             it = tiles.erase(it);
         }
@@ -186,6 +212,58 @@ void EditorView::PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t fi
             ++it;
         }
     }
+}
+
+void EditorView::ReleaseSpectrumImage(AudioTile &tile) noexcept
+{
+    visuals.ReleaseImage(tile.image);
+    tile.image = {};
+}
+
+bool EditorView::CanRetrySpectrumImage(const AudioTile &tile) const noexcept
+{
+    if (tile.image || !tile.levels)
+        return false;
+    return !spectrumImagesUnsupported_ && !spectrumImagesFull_;
+}
+
+void EditorView::ShowSpectrumTile(AudioTile &tile, std::shared_ptr<const SpectrumTile> levels, const Rect rect,
+                                  const std::size_t visibleColumns)
+{
+    // One texture per tile replaces thousands of rectangles; rectangles stay the fallback.
+    ReleaseSpectrumImage(tile);
+    auto &geometry = *tile.node->GetComponent<EditorVisual>();
+    geometry.Clear();
+    tile.levels = std::move(levels);
+    const auto &source = *tile.levels;
+    if (!spectrumImagesUnsupported_ && !spectrumImagesFull_)
+    {
+        try
+        {
+            const auto pixels = SpectrumPixels(source);
+            tile.image = visuals.CreatePixelImage(static_cast<std::uint32_t>(source.columns),
+                                                  static_cast<std::uint32_t>(source.bands), pixels);
+            spectrumImagesUnsupported_ = !tile.image;
+        }
+        catch (const std::length_error &)
+        {
+            // Released slots come back after the frames in flight; the tile retries next frame.
+            spectrumImagesFull_ = true;
+        }
+    }
+    if (!tile.image)
+    {
+        BuildSpectrumGeometry(geometry, source, rect, visibleColumns);
+        return;
+    }
+    DrawPacket packet{};
+    packet.type = DrawPacketType::Image;
+    // Same extent as the rectangles, including their .1 overlap that hides seams between tiles.
+    packet.bounds = {0, 0, static_cast<float>(source.columns) * rect.width / static_cast<float>(visibleColumns) + .1F,
+                     rect.height};
+    packet.image = tile.image;
+    packet.color = {1, 1, 1, 1};
+    geometry.AddPacket(std::move(packet));
 }
 
 void EditorView::UpdateWaveformColumns(double begin, std::size_t columns)
@@ -225,6 +303,7 @@ void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximum
     state_.Analysis().PrepareSpectrumTiles(requests);
     const auto &markers = state_.Analysis().Markers();
     const std::array rectangles{audioTracks_[1], audioTracks_[2]};
+    spectrumImagesFull_ = false;
     for (std::size_t track = 0; track < rectangles.size(); ++track)
     {
         const auto rect = rectangles[track];
@@ -238,21 +317,22 @@ void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximum
             {
                 auto &tileNode = audioRoots_[track]->CreateChild("Spectrum.Tile");
                 tileNode.AddComponent<EditorVisual>();
-                tile = tiles.emplace(index, AudioTile{&tileNode, {}}).first;
+                tile = tiles.emplace(index, AudioTile{&tileNode}).first;
                 if (!detail)
                 {
-                    const auto overview = OverviewTile(BuildSpectrumColumns(state_.Analysis().Data(), markers, track,
+                    auto overview = OverviewTile(BuildSpectrumColumns(state_.Analysis().Data(), markers, track,
                         static_cast<double>(index) * tileSeconds, tileSeconds, minimumHz, maximumHz, longestSound));
-                    BuildSpectrumGeometry(*tileNode.GetComponent<EditorVisual>(), overview, rect, columns);
+                    ShowSpectrumTile(tile->second, std::make_shared<const SpectrumTile>(std::move(overview)), rect,
+                                     columns);
                 }
             }
             if (detail && tile->second.detail != detail)
             {
-                auto &geometry = *tile->second.node->GetComponent<EditorVisual>();
-                geometry.Clear();
-                BuildSpectrumGeometry(geometry, *detail, rect, columns);
+                ShowSpectrumTile(tile->second, detail, rect, columns);
                 tile->second.detail = detail;
             }
+            else if (CanRetrySpectrumImage(tile->second))
+                ShowSpectrumTile(tile->second, tile->second.levels, rect, columns);
             tile->second.node->SetVisible(true);
             tile->second.node->SetPosition(
                 {static_cast<float>((index * tileSeconds - begin) / state_.audioWindow * rect.width), 0});
