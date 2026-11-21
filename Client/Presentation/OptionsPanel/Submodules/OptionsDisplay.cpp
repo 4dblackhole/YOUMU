@@ -23,6 +23,13 @@ void OptionsPanel::CreateDisplayControls()
         "Options.Resolution.Combo");
     ConfigureCombo(*resolutionCombo_);
     AddFieldLine(*content_, *resolutionCombo_, "Options.Resolution.Line");
+    const float windowModeTop = NextField(ControlHeight);
+    windowModeLabel_ = &CreateFieldLabel(*content_, windowModeTop, "Options.WindowMode.Label");
+    windowModeCombo_ = &CreateDropdown(
+        *content_, TopLeft({ContentLeft, windowModeTop + ControlOffset, FieldWidth, ControlHeight}, contentHeight_), {},
+        "Options.WindowMode.Combo");
+    ConfigureCombo(*windowModeCombo_);
+    AddFieldLine(*content_, *windowModeCombo_, "Options.WindowMode.Line");
     // Song and chart texts: the first notation of the file, or the romanized line.
     const float notationTop = NextField(ControlHeight);
     notationLabel_ = &CreateFieldLabel(*content_, notationTop, "Options.Notation.Label");
@@ -70,6 +77,13 @@ void OptionsPanel::RefreshDisplayControls()
     combo.SetSelectedIndex(
         static_cast<std::size_t>(std::ranges::find(resolutions_, current) - resolutions_.begin()));
     resolutionCombo_->SetEnabled(window_ != nullptr);
+    SetCaption(*windowModeLabel_, std::wstring(texts_.Get("Options.windowMode")));
+    auto &windowMode = RequireDropdown(*windowModeCombo_);
+    windowMode.SetItems({std::wstring(texts_.Get("Options.windowModeWindowed")),
+                         std::wstring(texts_.Get("Options.windowModeBorderless"))});
+    const auto shownMode = window_ ? window_->Mode() : options_.Values().windowMode;
+    windowMode.SetSelectedIndex(shownMode == WindowMode::Borderless ? 1 : 0);
+    windowModeCombo_->SetEnabled(window_ != nullptr);
     SetCaption(*notationLabel_, std::wstring(texts_.Get("Options.notation")));
     auto &notation = RequireDropdown(*notationCombo_);
     notation.SetItems({std::wstring(texts_.Get("Options.notationFirst")), std::wstring(texts_.Get("Options.notationRomanized"))});
@@ -102,6 +116,29 @@ void OptionsPanel::SelectNotation(const std::size_t index)
     candidate.notation = index == 1 ? TextNotation::Romanized : TextNotation::First;
     // Screens read the saved value, so a failed save leaves the shown notation unchanged.
     static_cast<void>(SaveOptions(candidate));
+    RefreshDisplayControls();
+    RefreshStatus();
+}
+
+void OptionsPanel::SelectWindowMode(const std::size_t index)
+{
+    if (!window_)
+        return;
+    const auto previous = window_->Mode();
+    const auto mode = index == 1 ? WindowMode::Borderless : WindowMode::Windowed;
+    if (!window_->SetMode(mode, statusDetail_))
+        status_ = Status::WindowFailed;
+    else
+    {
+        auto candidate = options_.Values();
+        candidate.windowMode = mode;
+        if (!SaveOptions(candidate))
+        {
+            std::string error;
+            if (!window_->SetMode(previous, error))
+                statusDetail_ += " | Restore failed: " + error;
+        }
+    }
     RefreshDisplayControls();
     RefreshStatus();
 }

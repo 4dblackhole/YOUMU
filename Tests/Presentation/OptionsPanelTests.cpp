@@ -452,6 +452,7 @@ namespace
     {
       public:
         WindowResolution size{1280, 720};
+        WindowMode mode{WindowMode::Windowed};
         bool reject{};
         WindowResolution ClientSize() const noexcept override
         {
@@ -469,6 +470,21 @@ namespace
                 return false;
             }
             size = value;
+            error.clear();
+            return true;
+        }
+        WindowMode Mode() const noexcept override
+        {
+            return mode;
+        }
+        bool SetMode(const WindowMode value, std::string &error) override
+        {
+            if (reject)
+            {
+                error = "Injected window mode failure";
+                return false;
+            }
+            mode = value;
             error.clear();
             return true;
         }
@@ -508,7 +524,21 @@ namespace
         Check(panel.ProcessAction(Select(canvas, "Options.Resolution.Combo", 0)) &&
                   settings.Values().windowWidth == 960,
               "Native resize failure preserves saved size.");
+        Check(panel.ProcessAction(Select(canvas, "Options.WindowMode.Combo", 1)) &&
+                  window.mode == WindowMode::Windowed && settings.Values().windowMode == WindowMode::Windowed,
+              "Native window mode failure preserves the saved mode.");
         window.reject = false;
+        Check(panel.ProcessAction(Select(canvas, "Options.WindowMode.Combo", 1)) &&
+                  window.mode == WindowMode::Borderless && settings.Values().windowMode == WindowMode::Borderless,
+              "The window mode applies and persists immediately.");
+        Check(RequireDropdown(FindNode(canvas.Root(), "Options.WindowMode.Combo")).SelectedIndex() == 1 &&
+                  window.size.width == 960,
+              "The borderless choice is shown and keeps the resolution.");
+        SetFileAttributesW(settings.Path().c_str(), FILE_ATTRIBUTE_READONLY);
+        Check(panel.ProcessAction(Select(canvas, "Options.WindowMode.Combo", 0)) &&
+                  window.mode == WindowMode::Borderless && settings.Values().windowMode == WindowMode::Borderless,
+              "INI write failure rolls the window mode back.");
+        SetFileAttributesW(settings.Path().c_str(), FILE_ATTRIBUTE_NORMAL);
         Check(RequireDropdown(FindNode(canvas.Root(), "Options.Notation.Combo")).SelectedIndex() == 0,
               "Song texts start in their first notation.");
         Check(panel.ProcessAction(Select(canvas, "Options.Notation.Combo", 1)) &&
@@ -679,6 +709,7 @@ namespace
               "Resolution, offset and all mode profiles survive restart.");
         Check(restored.Values().notation == TextNotation::Romanized, "The notation choice survives restart.");
         Check(restored.Values().renderRate == RenderRateMode::DisplayDouble, "The frame limit survives restart.");
+        Check(restored.Values().windowMode == WindowMode::Borderless, "The window mode survives restart.");
         Check(restored.Values().restartKey == VK_F8, "The restart key survives restart.");
         candidate.windowWidth = 0;
         Check(!settings.Save(candidate, error), "Invalid saved resolution rejected.");
@@ -1245,6 +1276,15 @@ namespace
             std::ofstream file(folder / "BadRate.ini");
             file << "[Display]\nRenderRate=triple\n";
         }
+        Check(missingBeam.Values().windowMode == WindowMode::Windowed,
+              "A file without the entry starts as a framed window.");
+        {
+            std::ofstream file(folder / "BadWindowMode.ini");
+            file << "[Display]\nWindowMode=fullscreen\n";
+        }
+        OptionSettings invalidWindowMode(folder / "BadWindowMode.ini");
+        Check(!invalidWindowMode.Load(error) && invalidWindowMode.Values().windowMode == WindowMode::Windowed,
+              "An unknown window mode falls back to defaults.");
         OptionSettings invalidRate(folder / "BadRate.ini");
         Check(!invalidRate.Load(error) && invalidRate.Values().renderRate == RenderRateMode::Display,
               "An unknown frame limit falls back to defaults.");

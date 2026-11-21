@@ -137,7 +137,7 @@ UI-02 리디자인([UI-02](../Design/Decisions.md#ui-02-ui-리디자인), [옵�
 - 본문 안에서 휠, 공용 [스크롤바](#스크롤바), 가운데 버튼 드래그, 빈 영역의 왼쪽 버튼 드래그로 스크롤합니다.
   스크롤 위치와 켜진 분류는 같은 View에서 다시 열 때 유지하며 INI에는 저장하지 않습니다.
   분류를 옮기면 펼친 드롭다운과 입력 대기를 정리합니다.
-- 섹션: General(설명 언어·Songs 폴더), Display(스킨·해상도·`Song text`·프레임 제한·키빔 불투명도·배경 밝기), Audio(전체·음악·효과음 음량, 미들웨어·출력 방식·드라이버,
+- 섹션: General(설명 언어·Songs 폴더), Display(스킨·해상도·창 모드·`Song text`·프레임 제한·키빔 불투명도·배경 밝기), Audio(전체·음악·효과음 음량, 미들웨어·출력 방식·드라이버,
   글로벌 오프셋), Input(재시작 키, 모드별 키 설정 카드). 항목명은 칸 위의 작은 글자이고 입력칸은 흰 바탕과 아래 2px 줄입니다.
   설명 문단은 두지 않습니다.
 - 오류·설정 복구 안내는 본문 밖 아래 칸에 왼쪽 색 띠·아이콘과 함께 두며 본문과 같은 clip을 쓰지 않습니다.
@@ -334,6 +334,7 @@ SongsPath=
 [Display]
 Width=1280
 Height=720
+WindowMode=windowed
 Notation=first
 KeyBeamOpacity=100
 BackgroundBrightness=100
@@ -366,6 +367,10 @@ RestartKey=192
   초기화합니다. 저장 성공 뒤 곡 목록을 비동기 갱신하고, 진행 중인 구 폴더 검색 결과는 버립니다.
   플레이·에디터·리트라이는 진입 당시의 곡 루트를 복사하여 사용합니다.
 - `Display/Width,Height`: 게임 화면 픽셀 크기. 누락 시 1280×720.
+- `Display/WindowMode`: 창 모드. `windowed`는 테두리 있는 창, `borderless`는 테두리 없이 게임 화면을 원래 크기로 모니터 가운데에
+  놓고 나머지를 검은 배경으로 덮습니다. 누락 시 `windowed`, 다른 값은 오류입니다. 어느 모드든 해상도가 모니터 전체 크기면
+  테두리 없이 화면을 가득 채웁니다. 고르면 바로 적용·저장하고, 저장이 실패하면 이전 모드로 되돌립니다(창을 놓는 규칙은 엔진
+  [WindowControl](../../Dependencies/PhantomCore/Docs/WindowControl.md)).
 - `Display/KeyBeamOpacity`: 모든 모드의 키빔 불투명도, 0~100 정수 %. 누락 시 100(기존 모습). 범위 밖은 오류입니다.
 - `Display/BackgroundBrightness`: 플레이·로딩 화면 배경의 밝기, 0(검정)~100(그림 그대로) 정수 %. osu!의 background dim과 같은 기능입니다
   (사용자 지시). 누락 시 100(기존 모습). 범위 밖은 오류입니다. 로딩 화면의 플레이 설정 판에서 바꿔도 여기에 저장됩니다.
