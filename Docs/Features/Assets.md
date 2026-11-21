@@ -86,12 +86,13 @@ demo/
     Songs/<곡 폴더>/Chart/     차트 세트 폴더별 YMP·YME 쌍
     Songs/<곡 폴더>/BG/        그 곡의 YMP가 참조하는 배경 이미지
     Skins/                   사용자 스킨셋
+    Collections/             컬렉션(곡 선택 즐겨찾기) 파일. 게임이 만들며 유저끼리 주고받을 수 있음
   Licenses/                  배포 폰트 고지
 ```
 
 기존 배포본을 갱신할 때 이번처럼 변환기도 바뀌었다면 두 EXE를 함께 교체합니다.
 FMOD SDK/런타임 버전이 같으면 기존 fmod.dll을 유지할 수 있으며, 버전이 바뀌면
-새 Release 빌드의 DLL도 함께 갱신합니다. Option.ini, 사용자 Songs/Skins와 편집한 언어파일은
+새 Release 빌드의 DLL도 함께 갱신합니다. Option.ini, 사용자 Songs/Skins/Collections와 편집한 언어파일은
 보존합니다. 새 번역을 배포할 때는 원본 언어파일의 추가 키를 사용자 수정본과 병합합니다.
 
 언어파일은 Client/Texts/Languages의 원본 두 개를 복사합니다. 개발 PC의 Option.ini는 장치명/키 등
