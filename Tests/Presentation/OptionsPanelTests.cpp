@@ -461,6 +461,7 @@ namespace
       public:
         WindowResolution size{1280, 720};
         WindowMode mode{WindowMode::Windowed};
+        std::optional<WindowPosition> placement;
         bool reject{};
         WindowResolution ClientSize() const noexcept override
         {
@@ -496,6 +497,30 @@ namespace
             error.clear();
             return true;
         }
+        // A 1920x1080 monitor: centred without a position, and a position is kept on the monitor.
+        WindowResolution MonitorSize() const noexcept override
+        {
+            return {1920, 1080};
+        }
+        WindowPosition Position() const noexcept override
+        {
+            const auto travelX = 1920 - static_cast<std::int32_t>(size.width);
+            const auto travelY = 1080 - static_cast<std::int32_t>(size.height);
+            if (!placement)
+                return {travelX / 2, travelY / 2};
+            return {std::clamp(placement->x, 0, travelX), std::clamp(placement->y, 0, travelY)};
+        }
+        bool SetPosition(const std::optional<WindowPosition> value, std::string &error) override
+        {
+            if (reject)
+            {
+                error = "Injected move failure";
+                return false;
+            }
+            placement = value;
+            error.clear();
+            return true;
+        }
     };
     void TestExtraOptions(const std::filesystem::path &folder)
     {
@@ -528,6 +553,9 @@ namespace
                   settings.Values().windowWidth == 960,
               "INI write failure rolls the runtime window back.");
         SetFileAttributesW(settings.Path().c_str(), FILE_ATTRIBUTE_NORMAL);
+        Check(!FindNode(canvas.Root(), "Options.Position.X").IsEnabled() &&
+                  !FindNode(canvas.Root(), "Options.Position.Center").IsEnabled(),
+              "A framed window is not moved from the options.");
         window.reject = true;
         Check(panel.ProcessAction(Select(canvas, "Options.Resolution.Combo", 0)) &&
                   settings.Values().windowWidth == 960,
@@ -547,6 +575,59 @@ namespace
                   window.mode == WindowMode::Borderless && settings.Values().windowMode == WindowMode::Borderless,
               "INI write failure rolls the window mode back.");
         SetFileAttributesW(settings.Path().c_str(), FILE_ATTRIBUTE_NORMAL);
+        // Screen position: a Borderless 960x540 picture on the 1920x1080 test monitor.
+        auto &positionX = FindNode(canvas.Root(), "Options.Position.X");
+        auto &positionY = FindNode(canvas.Root(), "Options.Position.Y");
+        const auto fieldText = [](Visual2DNode &node) { return node.GetComponent<TextVisualComponent>()->Text(); };
+        Check(positionX.IsEnabled() && fieldText(positionX) == L"480" && fieldText(positionY) == L"270",
+              "A borderless picture starts centred and can be moved.");
+        click("Options.Position.X");
+        Check(panel.OwnsKeyboard(), "The X field captures numeric input.");
+        for (const auto key : {'1', '0', '0'})
+            Check(panel.HandleKey(static_cast<std::uint16_t>(key), router), "Capture position digit.");
+        Check(panel.HandleKey(VK_RETURN, router) && window.Position() == WindowPosition{100, 270} &&
+                  settings.Values().windowPosition == WindowPosition{100, 270},
+              "Enter moves the picture and saves the position.");
+        Check(!panel.OwnsKeyboard(), "An applied position ends the numeric input.");
+        click("Options.Position.Y");
+        for (const auto key : {'9', '9', '9', '9'})
+            Check(panel.HandleKey(static_cast<std::uint16_t>(key), router), "Capture position digit.");
+        Check(panel.HandleKey(VK_RETURN, router) && settings.Values().windowPosition == WindowPosition{100, 540} &&
+                  fieldText(positionY) == L"540",
+              "A position off the monitor is brought back and the corrected value is saved.");
+        // The monitor is drawn 120 units tall for its 1080 pixels; +Y is up on the Canvas.
+        auto &picture = FindNode(canvas.Root(), "Options.Position.Picture");
+        const auto pictureBounds = picture.BoundsInCanvas();
+        const float unitsPerPixel = 120.0F / 1080.0F;
+        const Point grab{pictureBounds.x + pictureBounds.width / 2, pictureBounds.y + pictureBounds.height / 2};
+        const Point dropped{grab.x + 180 * unitsPerPixel, grab.y + 90 * unitsPerPixel};
+        InputState dragInput;
+        InputStateTestAccess::Press(dragInput);
+        Check(panel.ProcessInput(dragInput, grab, picture.Id(), router), "Pressing the picture starts a drag.");
+        InputStateTestAccess::Hold(dragInput);
+        Check(panel.ProcessInput(dragInput, dropped, picture.Id(), router) &&
+                  window.Position() == WindowPosition{100, 540} && fieldText(positionX) == L"280",
+              "A drag shows its position and leaves the window in place until the release.");
+        InputStateTestAccess::Release(dragInput);
+        static_cast<void>(panel.ProcessInput(dragInput, dropped, {}, router));
+        Check(window.Position() == WindowPosition{280, 450} &&
+                  settings.Values().windowPosition == WindowPosition{280, 450},
+              "Releasing the picture moves the window once and saves the position.");
+        click("Options.Position.Center");
+        Check(window.Position() == WindowPosition{480, 270} && !settings.Values().windowPosition.has_value(),
+              "Center returns the picture to the middle and removes the saved position.");
+        SetFileAttributesW(settings.Path().c_str(), FILE_ATTRIBUTE_READONLY);
+        click("Options.Position.X");
+        Check(panel.HandleKey(static_cast<std::uint16_t>('5'), router) && panel.HandleKey(VK_RETURN, router),
+              "Enter a position while the file is read-only.");
+        Check(window.Position() == WindowPosition{480, 270} && !settings.Values().windowPosition.has_value(),
+              "INI write failure puts the picture back.");
+        SetFileAttributesW(settings.Path().c_str(), FILE_ATTRIBUTE_NORMAL);
+        click("Options.Position.X");
+        for (const auto key : {'1', '0', '0'})
+            Check(panel.HandleKey(static_cast<std::uint16_t>(key), router), "Capture position digit.");
+        Check(panel.HandleKey(VK_RETURN, router) && settings.Values().windowPosition == WindowPosition{100, 270},
+              "The position is saved again once the file is writable.");
         Check(RequireDropdown(FindNode(canvas.Root(), "Options.Notation.Combo")).SelectedIndex() == 0,
               "Song texts start in their first notation.");
         Check(panel.ProcessAction(Select(canvas, "Options.Notation.Combo", 1)) &&
@@ -737,6 +818,7 @@ namespace
         Check(restored.Values().renderRate == RenderRateMode::DisplayDouble, "The frame limit survives restart.");
         Check(restored.Values().windowMode == WindowMode::Borderless, "The window mode survives restart.");
         Check(restored.Values().dspBufferLength == 512, "The audio buffer survives restart.");
+        Check(restored.Values().windowPosition == WindowPosition{100, 270}, "The screen position survives restart.");
         Check(restored.Values().restartKey == VK_F8, "The restart key survives restart.");
         candidate.windowWidth = 0;
         Check(!settings.Save(candidate, error), "Invalid saved resolution rejected.");
@@ -1330,6 +1412,22 @@ namespace
         OptionSettings invalidWindowMode(folder / "BadWindowMode.ini");
         Check(!invalidWindowMode.Load(error) && invalidWindowMode.Values().windowMode == WindowMode::Windowed,
               "An unknown window mode falls back to defaults.");
+        Check(!missingBeam.Values().windowPosition.has_value(),
+              "A file without the entries keeps the default window placement.");
+        {
+            std::ofstream file(folder / "Position.ini");
+            file << "[Display]\nWindowX=-20\nWindowY=35\n";
+        }
+        OptionSettings positioned(folder / "Position.ini");
+        Check(positioned.Load(error) && positioned.Values().windowPosition == WindowPosition{-20, 35},
+              "The saved window position is read from the file.");
+        {
+            std::ofstream file(folder / "BadPosition.ini");
+            file << "[Display]\nWindowX=left\n";
+        }
+        OptionSettings invalidPosition(folder / "BadPosition.ini");
+        Check(!invalidPosition.Load(error) && !invalidPosition.Values().windowPosition.has_value(),
+              "A window position that is not a number falls back to defaults.");
         OptionSettings invalidRate(folder / "BadRate.ini");
         Check(!invalidRate.Load(error) && invalidRate.Values().renderRate == RenderRateMode::Display,
               "An unknown frame limit falls back to defaults.");

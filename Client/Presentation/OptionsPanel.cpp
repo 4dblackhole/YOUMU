@@ -199,6 +199,10 @@ void OptionsPanel::Shutdown() noexcept
     skinLabel_ = skinCombo_ = nullptr;
     resolutionLabel_ = resolutionCombo_ = nullptr;
     windowModeLabel_ = windowModeCombo_ = nullptr;
+    positionLabel_ = positionBox_ = positionMonitor_ = positionPicture_ = positionCenter_ = nullptr;
+    positionFields_ = {};
+    positionDrag_.reset();
+    positionEdit_.reset();
     notationLabel_ = notationCombo_ = nullptr;
     renderRateLabel_ = renderRateCombo_ = nullptr;
     middlewareLabel_ = outputLabel_ = driverLabel_ = bufferLabel_ = nullptr;
@@ -238,6 +242,7 @@ void OptionsPanel::Toggle()
     CollapseCombos();
     sliderDrag_.reset();
     offsetDrag_.reset();
+    positionDrag_.reset();
     scrollbar_.Release();
     railKeyboard_ = railPointerInside_ = false;
     railHoverSeconds_ = 0.0F;
@@ -317,6 +322,11 @@ bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inpu
             EditOffset(virtualKey);
             return true;
         }
+        if (positionEdit_)
+        {
+            EditPosition(virtualKey);
+            return true;
+        }
         return false;
     }
     if (VisibleKeyOverlay() != nullptr)
@@ -387,6 +397,8 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
         return consumedKey;
     // A finished offset drag also drops the click the release produced, so no keyboard edit starts.
     if (ProcessOffsetDrag(input, canvasPointer, hoveredNode))
+        return true;
+    if (ProcessPositionDrag(input, canvasPointer, hoveredNode))
         return true;
     // The shared scrollbar follows its drag even when the pointer leaves the panel.
     if (const auto offset = scrollbar_.Track(canvasPointer, input.IsMouseButtonDown(MouseButton::Left)))

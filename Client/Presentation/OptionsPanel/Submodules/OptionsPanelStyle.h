@@ -25,6 +25,9 @@ namespace options_ui
     constexpr float KeyCardHeight = 64;
     // Inline slider rows (the three volumes): caption, track and value on one 36-tall row each.
     constexpr float InlineRowHeight = 36;
+    // Screen position: the monitor box, a gap, then the X, Y and Center row.
+    constexpr float PositionBoxHeight = 120, PositionRowGap = 8;
+    constexpr float PositionControlHeight = PositionBoxHeight + PositionRowGap + ControlHeight;
 
     constexpr auto DrawerColor = ui_colors::Rgb(0xF3F8FE);
     constexpr auto RailColor = ui_colors::theme::BrandDeep;
@@ -188,6 +191,43 @@ namespace options_ui
         default:
             return std::wstring(text.noSound);
         }
+    }
+
+    // One key of a whole-number draft (offset, screen position): digits, a leading minus, Backspace and
+    // Delete. The first key after the field was clicked replaces the shown value.
+    inline void EditNumberDraft(std::wstring &draft, bool &replace, const std::uint16_t key)
+    {
+        if (key == VK_BACK)
+        {
+            if (replace)
+                draft.clear();
+            else if (!draft.empty())
+                draft.pop_back();
+            replace = false;
+            return;
+        }
+        if (key == VK_DELETE)
+        {
+            draft.clear();
+            replace = false;
+            return;
+        }
+        wchar_t character = 0;
+        if (key >= '0' && key <= '9')
+            character = static_cast<wchar_t>(key);
+        else if (key >= VK_NUMPAD0 && key <= VK_NUMPAD9)
+            character = static_cast<wchar_t>('0' + key - VK_NUMPAD0);
+        else if (key == VK_OEM_MINUS || key == VK_SUBTRACT)
+            character = L'-';
+        if (!character)
+            return;
+        if (replace)
+        {
+            draft.clear();
+            replace = false;
+        }
+        if (draft.size() < 11 && (character != L'-' || draft.empty()))
+            draft += character;
     }
 
     constexpr std::array Outputs{PhantomCore::AudioOutputBackend::Automatic, PhantomCore::AudioOutputBackend::Wasapi,

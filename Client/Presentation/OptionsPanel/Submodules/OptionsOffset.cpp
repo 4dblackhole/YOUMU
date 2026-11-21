@@ -92,8 +92,12 @@ void OptionsPanel::CancelKeyboardEdit()
     capturingRestartKey_ = false;
     editingOffset_ = false;
     replaceOffsetDraft_ = false;
+    positionEdit_.reset();
+    replacePositionDraft_ = false;
     if (offsetField_)
         RefreshOffsetControls();
+    if (positionBox_)
+        RefreshPositionControls();
     if (!keyRows_.empty())
         RefreshKeyControls();
 }
@@ -123,38 +127,7 @@ void OptionsPanel::EditOffset(std::uint16_t key)
 {
     if (key == VK_RETURN)
         ApplyOffset();
-    else if (key == VK_BACK)
-    {
-        if (replaceOffsetDraft_)
-            offsetDraft_.clear();
-        else if (!offsetDraft_.empty())
-            offsetDraft_.pop_back();
-        replaceOffsetDraft_ = false;
-    }
-    else if (key == VK_DELETE)
-    {
-        offsetDraft_.clear();
-        replaceOffsetDraft_ = false;
-    }
     else
-    {
-        wchar_t character = 0;
-        if (key >= '0' && key <= '9')
-            character = static_cast<wchar_t>(key);
-        else if (key >= VK_NUMPAD0 && key <= VK_NUMPAD9)
-            character = static_cast<wchar_t>('0' + key - VK_NUMPAD0);
-        else if (key == VK_OEM_MINUS || key == VK_SUBTRACT)
-            character = L'-';
-        if (character)
-        {
-            if (replaceOffsetDraft_)
-            {
-                offsetDraft_.clear();
-                replaceOffsetDraft_ = false;
-            }
-            if (offsetDraft_.size() < 11 && (character != L'-' || offsetDraft_.empty()))
-                offsetDraft_ += character;
-        }
-    }
+        EditNumberDraft(offsetDraft_, replaceOffsetDraft_, key);
     RefreshOffsetControls();
 }
