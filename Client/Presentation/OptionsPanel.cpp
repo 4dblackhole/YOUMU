@@ -1,4 +1,5 @@
 #include "OptionsPanel.h"
+#include "Presentation/SceneWheel.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "OptionsPanel/Submodules/OptionsPanelStyle.h"
 #include "Presentation/SkinVisualComponent.h"
@@ -404,9 +405,9 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
     if (!insidePanel)
         return consumedKey;
 
-    if (input.MouseWheelDelta() != 0.0F && !AnyComboExpanded())
+    if (SceneWheelDelta(input) != 0.0F && !AnyComboExpanded())
     {
-        scrollOffset_ -= input.MouseWheelDelta() * 36.0F;
+        scrollOffset_ -= SceneWheelDelta(input) * 36.0F;
         heldSection_.reset();
         ApplyScrollOffset(inputRouter);
     }

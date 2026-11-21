@@ -2,12 +2,14 @@
 #include "Mode/PlayGameModeFactory.h"
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
+#include "Presentation/SceneWheel.h"
 #include "Presentation/UiAlert.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiDropdown.h"
 #include "Presentation/UiTextWrap.h"
 #include "Presentation/UiScrollbar.h"
 #include "Presentation/UiTooltip.h"
+#include "Presentation/VolumeOverlay.h"
 #include "YOUMUAssets.h"
 
 #include <Windows.h>
@@ -31,6 +33,12 @@ struct InputStateTestAccess
     static void Release(InputState &input) { input.BeginUpdate(); input.SetMouseButton(MouseButton::Left, false, 2); }
     // The next frame with the button still held: no new press edge.
     static void Hold(InputState &input) { input.BeginUpdate(); }
+    static void AltWheel(InputState &input, float delta)
+    {
+        input.Reset();
+        input.SetKey(VK_LMENU, true, 1);
+        input.AddMouseWheel(delta, 1);
+    }
 };
 } // namespace PhantomCore
 
@@ -1161,6 +1169,24 @@ namespace
         Check(!list.IsDragging() && wheel == 1, "The wheel over the strip reaches its host.");
     }
 
+    // Alt+wheel: 5% per notch on the chosen volume, kept within 0..100%, and no screen sees that wheel turn.
+    void TestAltWheelVolume()
+    {
+        constexpr AudioVolumes half{50, 50, 50};
+        Check(StepVolume(half, VolumeTarget::Master, 1) == AudioVolumes{55, 50, 50} &&
+                  StepVolume(half, VolumeTarget::Music, -2) == AudioVolumes{50, 40, 50},
+              "One wheel notch moves the chosen volume by 5%.");
+        Check(StepVolume({100, 0, 100}, VolumeTarget::Effects, 3).effects == 100 &&
+                  StepVolume({100, 0, 100}, VolumeTarget::Music, -1).music == 0,
+              "Alt+wheel keeps volumes within 0..100%.");
+        InputState input;
+        InputStateTestAccess::Wheel(input, 1);
+        Check(SceneWheelDelta(input) == 1.0F, "Without Alt the screens see the wheel.");
+        InputStateTestAccess::AltWheel(input, 1);
+        Check(SceneWheelDelta(input) == 0.0F && input.MouseWheelDelta() == 1.0F,
+              "With Alt held the wheel belongs to the volume control, not to a screen.");
+    }
+
     void TestVolumes(const std::filesystem::path &folder)
     {
         constexpr AudioVolumes half{50, 50, 100};
@@ -1308,6 +1334,7 @@ int main()
         TestExtraOptions(folder);
         TestSectionsAndJapanese(folder);
         TestVolumes(folder);
+        TestAltWheelVolume();
         TestTooltip();
         TestTextWrap();
         TestAlert();

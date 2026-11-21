@@ -53,6 +53,8 @@ class GameplayAudioSession final
 
     void PlayNow(std::span<const AudioCueRequest> cues) { router_.PlayNow(cues); }
     void ApplyAutomation(std::span<const AutomationValue> values) { router_.ApplyAutomation(values); }
+    // Player volumes changed while playing (Alt+wheel); the automation keeps multiplying on top.
+    void SetVolumes(const AudioVolumes &volumes) { router_.SetVolumes(volumes.Music(), volumes.Effects()); }
     void ResetAutomation() { router_.ResetAutomation(); }
     void SetMusicFade(float fade) { router_.SetMusicFade(fade); }
     void PauseMusicAndStopSamples() { router_.PauseMusicAndStopSamples(); }

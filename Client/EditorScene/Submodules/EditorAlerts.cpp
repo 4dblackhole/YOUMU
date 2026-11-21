@@ -1,4 +1,5 @@
 #include "EditorPatternCreation.h"
+#include "Presentation/SceneWheel.h"
 #include "EditorView.h"
 using namespace PhantomCore;
 
@@ -56,7 +57,7 @@ bool EditorView::UpdateAlert(const InputState &input)
     pointer.leftButtonDown = input.IsMouseButtonDown(MouseButton::Left);
     pointer.leftButtonPressed = input.WasMouseButtonPressed(MouseButton::Left);
     pointer.leftButtonReleased = input.WasMouseButtonReleased(MouseButton::Left);
-    pointer.wheelDelta = input.MouseWheelDelta();
+    pointer.wheelDelta = SceneWheelDelta(input);
     alertInput_.Process(target, pointer);
     static_cast<void>(target.TakeActions());
     const auto purpose = alertPurpose_;

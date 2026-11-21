@@ -8,11 +8,13 @@ using namespace PhantomCore;
 
 EditorScene::EditorScene(ScreenVisual2DManager &visuals,
                          std::shared_ptr<GameplayLaunchStore> request,
-                         TextCatalog &texts)
+                         TextCatalog &texts, const OptionSettings *options)
+    : options_(options)
 {
     if (!request)
         throw std::invalid_argument("Editor requires a launch store.");
     workspace_ = std::make_unique<EditorWorkspace>(request->Snapshot());
+    appliedVolumes_ = workspace_->StartVolumes();
     view_ = std::make_unique<EditorView>(visuals, *workspace_, texts);
 }
 EditorScene::~EditorScene() = default;
@@ -36,6 +38,12 @@ void EditorScene::Update(const UpdateContext &context, SceneManager &scenes)
     {
         static_cast<void>(scenes.ChangeScene(EditorSongSelectSceneId));
         return;
+    }
+    const bool volumesChanged = options_ != nullptr && options_->Values().volumes != appliedVolumes_;
+    if (volumesChanged)
+    {
+        appliedVolumes_ = options_->Values().volumes;
+        workspace_->SetVolumes(appliedVolumes_);
     }
     workspace_->UpdatePlayback();
 }

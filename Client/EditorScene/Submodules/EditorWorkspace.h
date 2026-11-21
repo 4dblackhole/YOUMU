@@ -30,6 +30,9 @@ class EditorWorkspace final : public IEditorContext
         playback_.Initialize(audio);
         playback_.SetVolumes(request_.volumes.Music(), request_.volumes.Effects());
     }
+    // Player volumes changed while editing (Alt+wheel).
+    void SetVolumes(const AudioVolumes &volumes) noexcept { playback_.SetVolumes(volumes.Music(), volumes.Effects()); }
+    [[nodiscard]] const AudioVolumes &StartVolumes() const noexcept { return request_.volumes; }
     void ShutdownPlayback() noexcept { playback_.Shutdown(); }
     void UpdatePlayback();
     void TogglePlayback();

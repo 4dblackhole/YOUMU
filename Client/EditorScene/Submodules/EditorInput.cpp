@@ -1,4 +1,5 @@
 #include "EditorView.h"
+#include "Presentation/SceneWheel.h"
 #include "EditorTime.h"
 #include <shellapi.h>
 #include <algorithm>
@@ -275,9 +276,9 @@ void EditorView::UpdateTimelineNavigation(const InputState &input, bool keyboard
     const bool modified = control || input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU);
     if (keyboardAllowed && !modified && input.WasKeyPressed(VK_SPACE))
         state_.TogglePlayback();
-    if (!pointerAllowed || input.MouseWheelDelta() == 0)
+    if (!pointerAllowed || SceneWheelDelta(input) == 0)
         return;
-    const int direction = input.MouseWheelDelta() > 0 ? -1 : 1;
+    const int direction = SceneWheelDelta(input) > 0 ? -1 : 1;
     const auto point = DesignPoint(input);
     const bool composePanel = point && state_.Tab() == EditorTab::Compose && state_.Panel();
     const bool overPanel = composePanel && point->x >= frame_.width - editor_layout::InspectorWidth;
