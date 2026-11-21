@@ -391,7 +391,18 @@ namespace
         Check(state.TimeMilliseconds() == 123 && state.Mode().CancelInteraction() &&
                   !state.Mode().HasPendingPlacement(),
               "Realtime long-note placement must preserve time and support cancellation.");
+        canvas.rectangles.clear();
+        canvas.rectangleColors.clear();
         state.Mode().DrawTools(canvas, state, TestCatalog(Language::English));
+        // Roll, tick roll and balloon buttons draw a gold long-note body; the buzz body takes its Don/Kat colour.
+        const auto bodies = [&canvas](float red, float green) {
+            return std::ranges::count_if(std::views::iota(std::size_t{}, canvas.rectangles.size()), [&](std::size_t i) {
+                const auto &color = canvas.rectangleColors[i];
+                const bool wide = canvas.rectangles[i].width >= 20 && canvas.rectangles[i].height < 16;
+                return wide && std::abs(color.red - red) < .01F && std::abs(color.green - green) < .01F;
+            });
+        };
+        Check(bodies(.96F, .80F) == 3 && bodies(1, .33F) == 1, "Long-note tool buttons must show a long-note body.");
         canvas.actions.front()();
         state.Mode().DrawChart(canvas, state, TestCatalog(Language::English));
         state.Mode().EditScore(state, {700, LaneY}, false);
