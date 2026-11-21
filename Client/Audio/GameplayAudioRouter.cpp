@@ -266,7 +266,7 @@ AudioPreparationState GameplayAudioRouter::PrepareMusicAt(RhythmTime position)
     return Preparation::Loading;
 }
 
-bool GameplayAudioRouter::StartPreparedMusic(RhythmTime position, const RhythmTimer &timer)
+bool GameplayAudioRouter::StartPreparedMusic(RhythmTime sourceStart, const RhythmTimer &timer)
 {
     if (musicPastEnd_ || musicVoice_ == InvalidAudioPlaybackId)
         return true; // No source audio remains beyond the song's end.
@@ -277,7 +277,7 @@ bool GameplayAudioRouter::StartPreparedMusic(RhythmTime position, const RhythmTi
         lastError_ = "The prepared music voice is no longer available.";
         return false;
     }
-    if (!voice->SetDelay(timer.ToDspClock(std::max(position, RhythmTime{})), 0, error) ||
+    if (!voice->SetDelay(timer.ToDspClock(sourceStart), 0, error) ||
         !voice->SetPaused(false, error))
     {
         lastError_ = std::move(error);

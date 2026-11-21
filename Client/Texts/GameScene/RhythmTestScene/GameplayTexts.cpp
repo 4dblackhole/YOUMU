@@ -8,5 +8,5 @@ GameplayTextSet Gameplay(const TextCatalog &texts)
             texts.Get("Gameplay.early"),       texts.Get("Gameplay.late"),
             texts.Get("Gameplay.averageErrorUnit"), texts.Get("Gameplay.averageErrorEmpty"),
             texts.Get("Gameplay.errorEffect"), texts.Get("Gameplay.errorAudio"),
-            texts.Get("Gameplay.errorBackground")};
+            texts.Get("Gameplay.errorBackground"), texts.Get("Gameplay.localOffsetFormat")};
 }

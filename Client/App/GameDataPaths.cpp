@@ -14,3 +14,8 @@ std::filesystem::path PlayRecordDatabasePath()
         GameDataDirectory() / L"Result" / L"plays.sqlite3", PlayRecordStore::LegacyPath());
     return path;
 }
+
+std::filesystem::path LocalOffsetFilePath()
+{
+    return GameDataDirectory() / L"LocalOffsets.txt";
+}

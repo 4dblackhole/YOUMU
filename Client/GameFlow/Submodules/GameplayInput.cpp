@@ -72,8 +72,31 @@ bool GameplaySessionController::RestartHoldCompleted(const UpdateContext &contex
 
 void GameplaySessionController::ProcessControlKeys(const UpdateContext &context)
 {
+    ProcessLocalOffsetKeys(context.input);
     if (RestartHoldCompleted(context))
         ResetTimeline();
+}
+
+void GameplaySessionController::ProcessLocalOffsetKeys(const InputState &input)
+{
+    for (const auto &event : input.Events())
+    {
+        if (event.type != InputEventType::KeyPressed)
+            continue;
+        const bool plus = event.code == VK_OEM_PLUS || event.code == VK_ADD;
+        const bool minus = event.code == VK_OEM_MINUS || event.code == VK_SUBTRACT;
+        if (!plus && !minus)
+            continue;
+        // A key bound to the mode plays notes instead.
+        if (session_->InputMapping().contains(event.code))
+            continue;
+        std::int32_t step = 5;
+        if (input.IsKeyDown(VK_MENU))
+            step = 1;
+        else if (input.IsKeyDown(VK_SHIFT))
+            step = 20;
+        static_cast<void>(AdjustLocalOffset(plus ? step : -step));
+    }
 }
 
 void GameplaySessionController::ToggleDebugTimeline(const UpdateContext &context,

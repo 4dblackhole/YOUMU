@@ -1,3 +1,4 @@
+#include "Records/LocalOffsetStore.h"
 #include "Records/PlayRecordStore.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "TestSupport.h"
@@ -240,5 +241,45 @@ namespace tests
                 "An existing game-folder database is never replaced or merged with the legacy one.");
         Require(PlayRecordStore::AdoptLegacyDatabase(database, {}) == database,
                 "Without LOCALAPPDATA there is no legacy database to adopt.");
+    }
+
+    void TestLocalOffsetStore()
+    {
+        TemporaryDirectory directory("youmu-local-offsets");
+        const auto file = directory.Path() / "Data" / "LocalOffsets.txt";
+        const auto first = directory.Path() / "Songs" / "A" / "Hard.ymp";
+        const auto second = directory.Path() / "Songs" / "B" / "Easy.ymp";
+        LocalOffsetStore store(file);
+        Require(store.Get(first) == 0 && !std::filesystem::exists(file), "Without a file every offset is zero.");
+        std::string error;
+        Require(store.Set(first, 15, error) && store.Set(second, -40, error) && error.empty(), "Offsets save.");
+        Require(LocalOffsetStore(file).Get(first) == 15 && LocalOffsetStore(file).Get(second) == -40,
+                "A new store instance reads each pattern's offset.");
+        auto spelled = directory.Path() / "songs" / "a" / "." / "HARD.YMP";
+        Require(store.Get(spelled) == 15, "Patterns are matched by their normalized, case-insensitive path.");
+        Require(store.Set(first, 5000, error) && store.Get(first) == LocalOffsetStore::Limit,
+                "Offsets are clamped to the limit.");
+        Require(store.Set(first, 0, error) && store.Get(first) == 0 && store.Get(second) == -40,
+                "A zero offset is removed without touching other patterns.");
+        {
+            std::ofstream damaged(file, std::ios::app | std::ios::binary);
+            damaged << "not-a-number\tsomething\r\n";
+        }
+        Require(store.Get(second) == -40, "A damaged line is skipped.");
+        Require(!std::filesystem::exists(file.string() + ".tmp"), "No temporary file is left.");
+    }
+
+    void TestTimerTimelineShift()
+    {
+        RhythmTimer timer;
+        timer.Start(1'000, 1'000, RhythmTime{250'000});
+        timer.AnchorDspClock(RhythmTime{250'000}, 48'000, 48'000);
+        const auto before = timer.Now(2'000);
+        const auto dspBefore = timer.ToDspClock(RhythmTime{1'000'000});
+        timer.ShiftTimeline(RhythmDuration{-5'000});
+        Require(timer.Now(2'000) == before - RhythmDuration{5'000},
+                "Shifting the timeline moves every instant's rhythm time by the shift.");
+        Require(timer.ToDspClock(RhythmTime{1'000'000} - RhythmDuration{5'000}) == dspBefore,
+                "The DSP mapping moves with it, so scheduled audio keeps its physical time.");
     }
 } // namespace tests

@@ -40,8 +40,7 @@ std::unique_ptr<PlaySession> GameplaySessionFactory::Create(const GameplayLaunch
     }
     auto mode = CreatePlayGameMode(
         request.mode,
-        {RhythmDuration{static_cast<std::int64_t>(request.globalOffsetMs) * 1000},
-         request.inputKeys, request.playOptions});
+        {request.CompiledOffset(), request.inputKeys, request.playOptions});
     return TakeLoadedSession(mode->LoadSession(request.patternPath, request.effectPath));
 }
 

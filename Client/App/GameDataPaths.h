@@ -12,3 +12,6 @@
 // per-user location (%LOCALAPPDATA%/YOUMU/Records) by copying them when the game folder
 // has no database yet; see PlayRecordStore::AdoptLegacyDatabase. Thread-safe.
 [[nodiscard]] std::filesystem::path PlayRecordDatabasePath();
+
+// <game>/Data/LocalOffsets.txt: per-pattern local offsets (LocalOffsetStore).
+[[nodiscard]] std::filesystem::path LocalOffsetFilePath();

@@ -58,7 +58,8 @@ public:
     // Preserve a live music voice; transient samples must never resume.
     void PauseMusicAndStopSamples();
     PhantomCore::AudioPreparationState PrepareMusicAt(RhythmTime position);
-    bool StartPreparedMusic(RhythmTime position, const RhythmTimer &timer);
+    // Unpauses the prepared voice so its prepared source position sounds at chart time `sourceStart`.
+    bool StartPreparedMusic(RhythmTime sourceStart, const RhythmTimer &timer);
     void ResetAutomation();
     void Update();
 

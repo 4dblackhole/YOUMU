@@ -20,6 +20,8 @@ namespace tests
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
     void TestRecordDatabaseAdoption();
+    void TestLocalOffsetStore();
+    void TestTimerTimelineShift();
     void TestRecordFilters();
     void TestSampleRestartGateMixerPeriods();
     void TestSampleRestartGateDenseTicks();

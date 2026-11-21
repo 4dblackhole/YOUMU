@@ -120,6 +120,17 @@ class GameplaySessionController final
     // Transfer an already finalized Ending result once; never retain play objects.
     std::unique_ptr<IPlayResult> TakeResult();
 
+    // The pattern's local offset (osu!-style), adjustable before the first note reaches the
+    // judgement line. The session was compiled with the launch request's offset; a later
+    // change moves the chart clock and the music lead instead of recompiling.
+    [[nodiscard]] std::int32_t LocalOffsetMs() const noexcept { return launchRequest_.localOffsetMs + offsetChangeMs_; }
+    [[nodiscard]] bool LocalOffsetChanged() const noexcept { return offsetChangeMs_ != 0; }
+    // Advances whenever the local offset changes, so the screen can show the new value.
+    [[nodiscard]] std::uint64_t LocalOffsetRevision() const noexcept { return offsetRevision_; }
+    [[nodiscard]] bool CanAdjustLocalOffset() const noexcept;
+    // Adds milliseconds, clamped to LocalOffsetStore::Limit; false when not allowed or unchanged.
+    bool AdjustLocalOffset(std::int32_t milliseconds);
+
   private:
 #if defined(_DEBUG)
     static constexpr bool ReferenceTimeDebug = true;
@@ -141,6 +152,8 @@ class GameplaySessionController final
                     PlayControlType action);
     void ResetTimeline();
     void ProcessControlKeys(const PhantomCore::UpdateContext &context);
+    // +/- (and the numeric pad) change the local offset by 5 ms; Alt makes it 1 ms, Shift 20 ms.
+    void ProcessLocalOffsetKeys(const PhantomCore::InputState &input);
     // True once the launch request's restart key has been held for half a second.
     bool RestartHoldCompleted(const PhantomCore::UpdateContext &context);
     void ToggleDebugTimeline(const PhantomCore::UpdateContext &context, std::int64_t ticks);
@@ -172,6 +185,9 @@ class GameplaySessionController final
     double restartHoldProgress_{}; // Fraction of the hold reached while restartHoldStart_ is set.
     std::optional<double> retryFadeElapsed_; // Seconds since a pause-menu Retry was chosen.
     double completedElapsedSeconds_{};
+    std::int32_t offsetChangeMs_{}; // Local offset change since the session was compiled.
+    std::uint64_t offsetRevision_{};
+    RhythmTime firstNoteTime_{RhythmTime::max()};
     double playbackRate_{1.0};
     bool playbackRequested_{};
     bool debugMode_{};

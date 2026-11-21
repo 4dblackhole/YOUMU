@@ -25,6 +25,10 @@ public:
     void Seek(
         RhythmTime timelinePosition,
         std::int64_t performanceCounterTicks) noexcept;
+    // Moves the whole timeline by `delta` against both the QPC and the DSP
+    // mapping: every instant reads `delta` later in rhythm time afterwards.
+    // Audio already scheduled on the DSP clock keeps its physical time.
+    void ShiftTimeline(RhythmDuration delta) noexcept;
 
     [[nodiscard]] State CurrentState() const noexcept;
     [[nodiscard]] RhythmTime Now(

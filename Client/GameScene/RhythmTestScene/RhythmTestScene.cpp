@@ -1,5 +1,7 @@
 #include "RhythmTestScene.h"
 #include "App/AssetPaths.h"
+#include "App/GameDataPaths.h"
+#include "Records/LocalOffsetStore.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
 #include <cmath>
@@ -13,6 +15,7 @@
 #include "Gauge/HpGaugeKind.h"
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <stdexcept>
 
 using namespace PhantomCore;
@@ -53,7 +56,7 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
           debug, request ? request->TakeValidatedSession() : nullptr)),
       view_(std::make_unique<GameplayPresenter>(visuals, texts)),
       pauseMenu_(std::make_unique<GameplayPauseMenu>(visuals, texts)),
-      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals), screenFade_(visuals)
+      visuals_(visuals), texts_(texts), launch_(request->Snapshot()), errorLine_(visuals), screenFade_(visuals), offsetNotice_(visuals)
 {
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
     view_->ConfigureKeyBeamOpacity(launch_.keyBeamOpacity);
@@ -183,6 +186,7 @@ void RhythmTestScene::BeginScene()
 }
 void RhythmTestScene::EndScene() noexcept
 {
+    SaveLocalOffset();
     view_->SetVisible(false);
     errorLine_.Hide();
     screenFade_.Present(0.0, 0, 0);
@@ -210,6 +214,7 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
         return;
     }
     controller_->Update(context);
+    PresentLocalOffset(context.deltaSeconds);
     PresentLoadingScreen();
     UpdatePauseMenu(context, scenes);
     if (controller_->CurrentState() == PlayState::Gameplay)
@@ -222,6 +227,37 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
     PresentScreenFade();
     if (controller_->ShouldShowResult())
         ShowResult(scenes);
+}
+void RhythmTestScene::PresentLocalOffset(const double deltaSeconds)
+{
+    const auto revision = controller_->LocalOffsetRevision();
+    if (revision != shownOffsetRevision_ && services_)
+    {
+        shownOffsetRevision_ = revision;
+        const auto value = controller_->LocalOffsetMs();
+        // An explicit plus for late, a typographic minus for early, no sign at zero.
+        const auto sign = value > 0 ? std::wstring(L"+") : (value < 0 ? std::wstring(L"−") : std::wstring());
+        const auto number = sign + std::to_wstring(value < 0 ? -value : value);
+        offsetNotice_.Show(std::vformat(Gameplay(texts_).localOffsetFormat, std::make_wformat_args(number)),
+                           services_->windowWidth, services_->windowHeight);
+        return;
+    }
+    offsetNotice_.Update(deltaSeconds);
+}
+void RhythmTestScene::SaveLocalOffset() noexcept
+{
+    if (!controller_ || !controller_->LocalOffsetChanged() || !launch_.IsValid())
+        return;
+    try
+    {
+        std::string error;
+        if (!LocalOffsetStore(LocalOffsetFilePath()).Set(launch_.patternPath, controller_->LocalOffsetMs(), error))
+            OutputDebugStringA(("Local offset was not saved: " + error + "\n").c_str());
+    }
+    catch (const std::exception &failure)
+    {
+        OutputDebugStringA((std::string("Local offset was not saved: ") + failure.what() + "\n").c_str());
+    }
 }
 void RhythmTestScene::PresentScreenFade()
 {
@@ -322,6 +358,7 @@ void RhythmTestScene::OnResize(std::uint32_t width, std::uint32_t height)
     view_->OnResize(width, height);
     errorLine_.OnResize(width, height);
     screenFade_.OnResize(width, height);
+    offsetNotice_.OnResize(width, height);
     UpdateLoadingBackgroundLayout();
     pauseMenu_->OnResize(width, height);
 }
@@ -330,6 +367,7 @@ void RhythmTestScene::Shutdown() noexcept
     pauseMenu_->Shutdown();
     errorLine_.Shutdown();
     screenFade_.Shutdown();
+    offsetNotice_.Shutdown();
     loadingBackground_ = nullptr;
     loadingCard_ = nullptr;
     loadingBarPiece_ = nullptr;

@@ -61,6 +61,9 @@
 - DSP 기준점과 그 기준으로 읽는 재생 위치는 같은 clock snapshot 추정값을 쓰고,
   예약 시각을 mixer가 지났는지는 날 DSP clock과 비교합니다. [시계 구분](../Features/Gameplay/Rules.md#한-개의-타이머)
 
+- 개별 오프셋(사용자 지시 2026-11-21, osu!와 같음): 패턴마다 저장하고 글로벌 오프셋에 더해 컴파일합니다. 첫 노트 시각 전에만
+  `+`/`-`로 5 ms(Alt 1 ms, Shift 20 ms)씩 바꾸며, 재생 중인 음악은 건드리지 않고 차트 시계만 옮깁니다.
+
 상세: [Rules](../Features/Gameplay/Rules.md#한-개의-타이머), [Audio](../Features/Gameplay/Audio.md).
 검증: InputOrderingTests, PlayPauseTests, GameplayPauseTests와 전체 노트 replay.
 

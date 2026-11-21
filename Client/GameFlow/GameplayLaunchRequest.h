@@ -30,6 +30,8 @@ struct GameplayLaunchRequest
     std::wstring patternCreator;
     // Freeze settings for this attempt, including a Result retry.
     std::int32_t globalOffsetMs{};
+    // This pattern's local offset when the attempt was entered (LocalOffsetStore); added to the global one.
+    std::int32_t localOffsetMs{};
     AudioVolumes volumes;
     std::map<std::string, std::vector<std::uint16_t>> inputKeys;
     std::uint16_t restartKey{DefaultRestartKey}; // Held for half a second to restart the attempt.
@@ -55,6 +57,12 @@ struct GameplayLaunchRequest
                                    : SongLayout::SongFolderOfPattern(patternPath);
     }
 
+    // The offset compiled into the session's note and effect times.
+    [[nodiscard]] RhythmDuration CompiledOffset() const noexcept
+    {
+        return RhythmDuration{(static_cast<std::int64_t>(globalOffsetMs) + localOffsetMs) * 1000};
+    }
+
     [[nodiscard]] bool IsValid() const noexcept
     {
         return !patternPath.empty() && !musicPath.empty();
@@ -72,6 +80,7 @@ struct GameplayLaunchRequest
         editorNewDifficulty.reset();
         timingProbe = nullptr;
         globalOffsetMs = 0;
+        localOffsetMs = 0;
         volumes = {};
         playOptions = {};
         inputKeys.clear();

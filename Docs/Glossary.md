@@ -64,6 +64,7 @@
 | Accelerate | 재생 속도 0.5~2.0배. 시계와 음악이 함께 빨라지고 판정 폭은 실제 시간 기준으로 줄어듦 |
 | PlayState | 플레이 실행 상태 Loading · Gameplay · Pause · Ending([플레이 구조](Architecture/Gameplay.md#상태-전이)) |
 | Resume · Rewind · Retry · Retire | 일시정지 메뉴의 재개·몇 마디 되감기·처음부터 새 시도·포기하고 결과로([Pause](Features/Gameplay/Pause.md)) |
+| 개별 오프셋 | 패턴마다 저장하는 오프셋. 첫 노트 전에 +/- 키로 바꾸고 글로벌 오프셋에 더해짐([Audio](Features/Gameplay/Audio.md#개별-오프셋)) |
 | 재시작 키 | 플레이 중 누르고 있으면(0.5초) 처음부터 다시 시작. 옵션에서 키를 바꿈 |
 | 결과 · 기록 DB | 플레이가 끝나면 결과(`IPlayResult`)를 결과 화면으로 넘기고, 기록 DB(사용자 데이터, 게임 폴더 `Data/Result/plays.sqlite3`)에 저장함([Results](Features/Gameplay/Results.md)) |
 
