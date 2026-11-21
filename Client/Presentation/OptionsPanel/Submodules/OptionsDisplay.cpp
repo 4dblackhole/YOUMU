@@ -1,10 +1,19 @@
 #include "OptionsPanelStyle.h"
 #include "Presentation/OptionsPanel.h"
 #include <algorithm>
+#include <array>
 
 using namespace PhantomCore;
 
 using namespace options_ui;
+
+namespace
+{
+    // In drop-down order.
+    constexpr std::array RenderRateChoices{RenderRateMode::Display, RenderRateMode::DisplayDouble,
+                                           RenderRateMode::Unlimited};
+} // namespace
+
 void OptionsPanel::CreateDisplayControls()
 {
     const float top = NextField(ControlHeight);
@@ -22,6 +31,14 @@ void OptionsPanel::CreateDisplayControls()
         "Options.Notation.Combo");
     ConfigureCombo(*notationCombo_);
     AddFieldLine(*content_, *notationCombo_, "Options.Notation.Line");
+    // How often the engine renders: the display refresh rate, twice that rate, or after every update.
+    const float renderRateTop = NextField(ControlHeight);
+    renderRateLabel_ = &CreateFieldLabel(*content_, renderRateTop, "Options.RenderRate.Label");
+    renderRateCombo_ = &CreateDropdown(
+        *content_, TopLeft({ContentLeft, renderRateTop + ControlOffset, FieldWidth, ControlHeight}, contentHeight_), {},
+        "Options.RenderRate.Combo");
+    ConfigureCombo(*renderRateCombo_);
+    AddFieldLine(*content_, *renderRateCombo_, "Options.RenderRate.Line");
     CreateKeyBeamOpacityControl();
     CreateBackgroundBrightnessControl();
 }
@@ -57,6 +74,26 @@ void OptionsPanel::RefreshDisplayControls()
     auto &notation = RequireDropdown(*notationCombo_);
     notation.SetItems({std::wstring(texts_.Get("Options.notationFirst")), std::wstring(texts_.Get("Options.notationRomanized"))});
     notation.SetSelectedIndex(options_.Values().notation == TextNotation::Romanized ? 1 : 0);
+    SetCaption(*renderRateLabel_, std::wstring(texts_.Get("Options.renderRate")));
+    auto &renderRate = RequireDropdown(*renderRateCombo_);
+    renderRate.SetItems({std::wstring(texts_.Get("Options.renderRateDisplay")),
+                         std::wstring(texts_.Get("Options.renderRateDouble")),
+                         std::wstring(texts_.Get("Options.renderRateUnlimited"))});
+    const auto shown = std::ranges::find(RenderRateChoices, options_.Values().renderRate);
+    renderRate.SetSelectedIndex(
+        shown == RenderRateChoices.end() ? 0 : static_cast<std::size_t>(shown - RenderRateChoices.begin()));
+}
+
+void OptionsPanel::SelectRenderRate(const std::size_t index)
+{
+    if (index >= RenderRateChoices.size())
+        return;
+    auto candidate = options_.Values();
+    candidate.renderRate = RenderRateChoices[index];
+    // The game applies the saved value to the engine on its next update.
+    static_cast<void>(SaveOptions(candidate));
+    RefreshDisplayControls();
+    RefreshStatus();
 }
 
 void OptionsPanel::SelectNotation(const std::size_t index)

@@ -27,6 +27,8 @@ struct OptionValues
     int keyBeamOpacity{100};
     // Play-screen background brightness, 0 (black) .. 100 (the image as it is); osu!'s background dim.
     int backgroundBrightness{100};
+    // How often the engine renders: the display refresh rate, twice that rate, or after every update.
+    PhantomCore::RenderRateMode renderRate{PhantomCore::RenderRateMode::Display};
     std::int32_t globalOffsetMs{};
     std::filesystem::path songsPath; // Empty selects the development/deployment default.
     std::uint16_t restartKey{DefaultRestartKey}; // [Controls] RestartKey; a missing entry keeps the default.

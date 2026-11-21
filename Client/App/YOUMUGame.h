@@ -47,5 +47,6 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     TextCatalog texts_;
     OptionSettings optionSettings_;
     PerformanceBand performanceBand_;
+    PhantomCore::IRenderRateControl *renderRateControl_{}; // Engine-owned.
     std::uint64_t lastPerformanceMeasurementIndex_{};
 };

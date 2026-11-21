@@ -70,6 +70,25 @@ namespace
         }
     }
 
+    std::string_view RenderRateName(const RenderRateMode mode)
+    {
+        switch (mode)
+        {
+        case RenderRateMode::Display: return "display";
+        case RenderRateMode::DisplayDouble: return "double";
+        case RenderRateMode::Unlimited: return "unlimited";
+        default: throw std::runtime_error("Invalid render rate option.");
+        }
+    }
+
+    RenderRateMode ReadRenderRate(const std::string_view value)
+    {
+        for (const auto mode : {RenderRateMode::Display, RenderRateMode::DisplayDouble, RenderRateMode::Unlimited})
+            if (value == RenderRateName(mode))
+                return mode;
+        throw std::runtime_error("RenderRate must be display, double or unlimited.");
+    }
+
     bool IsSingleLine(const std::string_view value)
     {
         return value.size() <= 4096 && value.find_first_of("\r\n\0", 0, 3) ==
@@ -161,6 +180,7 @@ namespace
         if (!AudioVolumes::IsValidPercent(values.backgroundBrightness))
             throw std::runtime_error("Background brightness must be a whole percentage within 0..100.");
         static_cast<void>(OutputName(values.audioOutput));
+        static_cast<void>(RenderRateName(values.renderRate));
         if (!IsValidWindowExtent(values.windowWidth) || !IsValidWindowExtent(values.windowHeight))
             throw std::runtime_error("Window dimensions must be within 1..16384 pixels.");
         const auto layouts = AvailableInputLayouts();
@@ -226,6 +246,8 @@ namespace
                 values.keyBeamOpacity = ReadInteger<int>(value);
             else if (key == "BackgroundBrightness")
                 values.backgroundBrightness = ReadInteger<int>(value);
+            else if (key == "RenderRate")
+                values.renderRate = ReadRenderRate(value);
         }
         else if (section == "Controls")
         {
@@ -360,6 +382,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nNotation=" << (values.notation == TextNotation::Romanized ? "romanized" : "first")
              << "\r\nKeyBeamOpacity=" << values.keyBeamOpacity
              << "\r\nBackgroundBrightness=" << values.backgroundBrightness
+             << "\r\nRenderRate=" << RenderRateName(values.renderRate)
              << "\r\n\r\n[Audio]\r\nMiddleware=" << values.audioMiddleware
              << "\r\nOutput=" << OutputName(values.audioOutput) << "\r\nDriverIndex=" << values.driverIndex
              << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master
