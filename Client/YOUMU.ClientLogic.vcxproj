@@ -39,6 +39,8 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\ScreenMarkThinning.cpp" />
     <ClInclude Include="Records\PlayRecordStore.h" />
     <ClCompile Include="Records\PlayRecordStore.cpp" />
+    <ClInclude Include="Records\RecordJudgements.h" />
+    <ClCompile Include="Records\RecordJudgements.cpp" />
     <ClInclude Include="Records\LocalOffsetStore.h" />
     <ClCompile Include="Records\LocalOffsetStore.cpp" />
     <ClInclude Include="Records\RecordCondition.h" />

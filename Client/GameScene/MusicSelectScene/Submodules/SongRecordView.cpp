@@ -5,6 +5,7 @@
 #include "Presentation/RankName.h"
 #include "Presentation/ScoreText.h"
 #include "Presentation/UiDropdown.h"
+#include "Records/RecordJudgements.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
@@ -27,11 +28,11 @@ namespace
     constexpr float ContentLeft = 48.0F, ContentRight = 308.0F;
     constexpr float ControlSize = 32.0F, PagerTop = 560.0F, PagerCenter = 192.0F, PagerWidth = 124.0F;
 
-    // The accuracy, then only what differs from a plain play.
-    [[nodiscard]] std::wstring OptionSummary(const PlayRecord &record)
+    // Only what differs from a plain play, each part after " · ".
+    [[nodiscard]] std::wstring OptionTokens(const PlayRecord &record)
     {
         const auto &o = record.options;
-        std::wstring text = AccuracyText(record.accuracy);
+        std::wstring text;
         const auto add = [&text](const std::wstring &token) { text += L" · " + token; };
         if (o.accelerate != 1.0)
             add(std::format(L"{:.2f}x", o.accelerate));
@@ -45,6 +46,35 @@ namespace
             add(L"MIR");
         if (o.random)
             add(L"RND");
+        return text;
+    }
+
+    // The accuracy, then the options.
+    [[nodiscard]] std::wstring OptionSummary(const PlayRecord &record)
+    {
+        return AccuracyText(record.accuracy) + OptionTokens(record);
+    }
+
+    // What a row does not show: the mode, the judge level the play used and its maximum combo, the
+    // judgement counts (two to a line, so four-digit counts still fit the tooltip's 300 width),
+    // every option and the time it was played (UTC, like the row's date).
+    [[nodiscard]] std::wstring RecordTooltip(const PlayRecord &record,
+                                             const std::vector<std::pair<std::string_view, std::size_t>> &judgements,
+                                             const TextCatalog &texts)
+    {
+        std::wstring text = DecodeDisplayText(record.mode) + std::format(L" · JL {:.2f} · ", record.judgeLevel.Value()) +
+                            std::wstring(texts.Get("Records.maximumCombo")) + L" " + std::to_wstring(record.maximumCombo);
+        for (std::size_t i = 0; i < judgements.size(); ++i)
+        {
+            text += i % 2 == 0 ? L"\n" : L" · ";
+            text += std::wstring(texts.Get(judgements[i].first)) + L" " + std::to_wstring(judgements[i].second);
+        }
+        if (const auto options = OptionTokens(record); !options.empty())
+            text += L"\n" + options.substr(3);
+        const auto played = std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{record.playedAtMilliseconds}};
+        text += std::format(L"\n{:%Y.%m.%d %H:%M} UTC", std::chrono::floor<std::chrono::minutes>(played));
+        if (record.pauseMenuUsed)
+            text += L" · " + std::wstring(texts.Get("Records.pauseMenuUsed"));
         return text;
     }
 } // namespace
@@ -177,7 +207,11 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
         ShowPager(false);
         std::vector<NodeId> ids;
         for (const auto &child : rows_->Children())
+        {
             ids.push_back(child->Id());
+            if (tooltip_ != nullptr)
+                tooltip_->Set(*child, {});
+        }
         for (auto id : ids)
             static_cast<void>(rows_->RemoveChild(id));
         shownRecords_.clear();
@@ -211,8 +245,27 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
         job_ = std::async(std::launch::async,
                                 [database, pattern, mode, condition = query_, offset = offset_]
                                 {
-                                    return PlayRecordStore(database.empty() ? PlayRecordDatabasePath() : database)
-                                        .Query(pattern, mode, condition, offset, PageSize + 1);
+                                    const PlayRecordStore store(database.empty() ? PlayRecordDatabasePath() : database);
+                                    std::vector<LoadedRecord> rows;
+                                    for (auto &record : store.Query(pattern, mode, condition, offset, PageSize + 1))
+                                        rows.push_back({std::move(record), {}});
+                                    // The shown rows' details give their tooltips' judgement counts.
+                                    for (std::size_t i = 0; i < std::min(rows.size(), PageSize); ++i)
+                                    {
+                                        auto &record = rows[i].record;
+                                        try
+                                        {
+                                            record.detail = store.LoadDetail(record.id);
+                                        }
+                                        catch (const std::exception &)
+                                        {
+                                            // The row shows without counts; opening it reports the error.
+                                        }
+                                        rows[i].judgements = RecordJudgementCounts(record);
+                                        // Opening the record reads the detail again; the list stays light.
+                                        std::string{}.swap(record.detail);
+                                    }
+                                    return rows;
                                 });
     }
 }
@@ -235,7 +288,7 @@ void SongRecordView::SetMessage(std::wstring message)
     text.SetText(std::move(message));
 }
 
-void SongRecordView::Show(const std::vector<PlayRecord> &records)
+void SongRecordView::Show(const std::vector<LoadedRecord> &records)
 {
     ShowMessage(records.empty());
     SetMessage(std::wstring(texts_.Get("MusicSelect.noRecord")));
@@ -245,11 +298,13 @@ void SongRecordView::Show(const std::vector<PlayRecord> &records)
     constexpr float mainLeft = ContentLeft + 58.0F, detailsWidth = 144.0F;
     for (std::size_t i = 0; i < std::min(records.size(), PageSize); ++i)
     {
-        const auto &r = records[i];
+        const auto &r = records[i].record;
         // A row is a button: clicking it opens the record's result screen.
         auto &row = CreateButton(*rows_, TopLeft({0.0F, static_cast<float>(i) * RowPitch, RowWidth, RowHeight}, height),
                                  L"", "PlayRecord");
         shownRecords_.emplace_back(row.Id(), r);
+        if (tooltip_ != nullptr)
+            tooltip_->Set(row, {RecordTooltip(r, records[i].judgements, texts_)});
         ApplySkinPart(row, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
         static_cast<void>(CreateNumber(row, {ContentLeft, 7.0F, 48.0F, 38.0F}, std::wstring(RankName(r.accuracy)), 20.0F,
                                        800, theme::BrandText, "Rank", TextAlignment::Center));

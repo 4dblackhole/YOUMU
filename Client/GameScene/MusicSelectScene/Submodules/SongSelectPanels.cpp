@@ -180,6 +180,7 @@ void MusicSelectView::CreateSongBrowser()
                                height));
     songList_.Attach(*canvas_, inputRouter_, viewport);
     songList_.SetTooltip(tooltip_);
+    records_.SetTooltip(tooltip_);
 }
 
 void MusicSelectView::CreateFooter()

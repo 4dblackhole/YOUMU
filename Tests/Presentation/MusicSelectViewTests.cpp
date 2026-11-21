@@ -8,6 +8,8 @@
 #include "GameScene/MusicSelectScene/Submodules/SongCatalogLoader.h"
 #include "GameFlow/PlaySessionLoader.h"
 #include "Judgement/AccuracyRange.h"
+#include "Mode/PlayGameModeFactory.h"
+#include "Taiko/Results/TaikoPlayResult.h"
 #include "Presentation/AccuracyText.h"
 #include "Presentation/MarqueeTextComponent.h"
 #include "Presentation/PerformanceBand.h"
@@ -1324,8 +1326,12 @@ namespace
         std::ofstream(patternPath)<<"Mode: Taiko";
         PlayRecord record;record.patternPath=patternPath;record.mode="Taiko";record.completed=true;record.cleared=true;
         record.totalNotes=record.processedNotes=1;
+        // The newest Random play keeps a result detail: its row's tooltip lists the judgement counts.
+        TaikoPlayResult judged;judged.judgements={5,4,3,2,1,0};judged.okCount=7;judged.poorCount=8;
+        const auto judgedDetail=CreatePlayGameMode("Taiko")->SaveResultDetail(judged);
         for(int i=0;i<8;++i)
         {
+            record.detail=i==6?judgedDetail:std::string{};record.pauseMenuUsed=i==6;record.maximumCombo=i==6?321:0;
             record.options.random=i%2==0;record.judgeLevel=record.options.random?70:50;
             // The newest play was left early.
             record.completed=record.cleared=i!=7;
@@ -1418,6 +1424,14 @@ namespace
             Check(textOf("Score")==L"90,006,000","The newest Random play shows its score on the large line.");
             Check(textOf("Details").starts_with(AccuracyText(AccuracyScore::FromRate(.90+6*.001))+L" · "),
                   "The details start with the play's accuracy.");
+            // Resting on the row hints what it does not show.
+            Rest(view,input,Centre(newest));
+            const auto *tip=ShownTooltip(canvas->Root());
+            const std::wstring hint=tip?std::wstring(tip->Text()):L"";
+            Check(hint.starts_with(L"Taiko · JL 70.00 · Max combo 321\nMAX 5 · PERFECT 4\nGREAT 3 · GOOD 2\nBAD 1 · OK 7\nMISS 0 · POOR 8\nRND\n"),
+                  "A record row's tooltip gives the mode, judge level, maximum combo, judgement counts and options.");
+            Check(hint.find(L" UTC · Pause menu used")!=std::wstring::npos,"The tooltip ends with the play time and the pause menu use.");
+            input={};
             Click(*canvas,newest);
             Check(view.Update(input,0)==SongSelectCommand::OpenRecord,"Clicking a record row asks to open its result.");
             const auto opened=view.TakeOpenedRecord();
