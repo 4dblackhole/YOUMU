@@ -266,7 +266,7 @@ AllNotesGameplayTests, GameplayJudgementTests와 GameplayTimingProbe 전후 비�
 | Metronome | 활성/비활성, 컴파일한 4분음표 박과 마디 강조 |
 | Mirror | 작은 동/캇, 큰 동/큰 캇, 동/캇 Buzz 반전; 보라·롤·풍선·뎅뎅 유지 |
 | Random | 지정 그룹 안의 **재배치 시도 확률**. 100%도 반드시 다른 색이 되는 것은 아님. 같은 uint64 시드는 같은 결과, 롱노트는 한 번만 추첨 |
-| Accelerate | 0.5~2.0x. 실제 판정 폭은 기본/배속. 시계 배율 외에 판정 프로필을 다시 나눠 이중 축소하지 않음 |
+| Accelerate | 0.5~2.0x, 또는 목표 BPM(사용자 요청, 채보 Base BPM으로 나눈 배수를 0.5~2.0x로 맞춤). 실제 판정 폭은 기본/배속. 시계 배율 외에 판정 프로필을 다시 나눠 이중 축소하지 않음 |
 | 음정 | BGM/HIT 음정 유지 여부를 독립 선택. 현재 HIT 유지는 원본 음정/길이, BGM은 준비 단계의 PCM 변환 사용 |
 | JudgeLevel | 채보 기본값 또는 0.01 단위 덮어쓰기, 실제 사용 값을 결과/기록에 보존 |
 
