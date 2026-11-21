@@ -273,7 +273,7 @@ namespace
         OptionSettings settings(path);
         std::string error;
         for (const std::string content : {"[General]\nLanguage=zz\n", "missing separator\n",
-                                          "[Audio]\nMiddleware=uninstalled\n"})
+                                          "[Audio]\nMiddleware=uninstalled\n", "[Audio]\nDspBufferLength=300\n"})
         {
             auto previous = settings.Values();
             previous.driverIndex = 7;
@@ -524,6 +524,14 @@ namespace
                   RequireDropdown(FindNode(canvas.Root(), "Options.Notation.Combo")).SelectedIndex() == 1,
               "The notation choice is saved at once.");
         Section(panel, canvas, "Audio");
+        // The audio buffer is saved at once and read by the engine at the next start.
+        Check(settings.Values().dspBufferLength == 256 &&
+                  RequireDropdown(FindNode(canvas.Root(), "Options.Buffer.Combo")).SelectedIndex() == 1,
+              "The audio buffer starts at the engine's 256 samples.");
+        Check(panel.ProcessAction(Select(canvas, "Options.Buffer.Combo", 2)) && settings.Values().dspBufferLength == 512,
+              "Choosing an audio buffer saves it.");
+        Check(RequireDropdown(FindNode(canvas.Root(), "Options.Buffer.Combo")).SelectedIndex() == 2,
+              "The buffer list shows the saved choice.");
         click("Options.Offset.Field");
         Check(panel.OwnsKeyboard(), "Offset field captures numeric input.");
         for (const auto key : {'1', '0', '0'})
@@ -676,6 +684,7 @@ namespace
         Check(restored.Values().modeKeys == candidate.modeKeys,
               "Resolution, offset and all mode profiles survive restart.");
         Check(restored.Values().notation == TextNotation::Romanized, "The notation choice survives restart.");
+        Check(restored.Values().dspBufferLength == 512, "The audio buffer survives restart.");
         Check(restored.Values().restartKey == VK_F8, "The restart key survives restart.");
         candidate.windowWidth = 0;
         Check(!settings.Save(candidate, error), "Invalid saved resolution rejected.");
