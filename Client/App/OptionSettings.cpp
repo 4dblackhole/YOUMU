@@ -156,6 +156,8 @@ namespace
             throw std::runtime_error("Only the FMOD audio middleware is installed.");
         if (!values.volumes.IsValid())
             throw std::runtime_error("Volumes must be whole percentages within 0..100.");
+        if (std::ranges::find(DspBufferLengths, values.dspBufferLength) == DspBufferLengths.end())
+            throw std::runtime_error("DspBufferLength must be 128, 256, 512 or 1024 samples.");
         if (!AudioVolumes::IsValidPercent(values.keyBeamOpacity))
             throw std::runtime_error("Key beam opacity must be a whole percentage within 0..100.");
         if (!AudioVolumes::IsValidPercent(values.backgroundBrightness))
@@ -268,6 +270,7 @@ namespace
             else if (key == "MasterVolume") values.volumes.master = ReadInteger<int>(value);
             else if (key == "MusicVolume") values.volumes.music = ReadInteger<int>(value);
             else if (key == "EffectsVolume") values.volumes.effects = ReadInteger<int>(value);
+            else if (key == "DspBufferLength") values.dspBufferLength = ReadInteger<std::uint32_t>(value);
         }
     }
 
@@ -364,6 +367,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nOutput=" << OutputName(values.audioOutput) << "\r\nDriverIndex=" << values.driverIndex
              << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master
              << "\r\nMusicVolume=" << values.volumes.music << "\r\nEffectsVolume=" << values.volumes.effects
+             << "\r\nDspBufferLength=" << values.dspBufferLength
              << "\r\n\r\n[Controls]\r\nRestartKey=" << values.restartKey << "\r\n";
         for (const auto &[mode, bindings] : values.modeKeys)
         {

@@ -1,4 +1,5 @@
 #include "SongFavoritesPanel.h"
+#include "Presentation/SceneWheel.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Presentation/ValueDialog.h"
@@ -239,8 +240,8 @@ bool SongFavoritesPanel::ProcessAction(const Action &action)
 void SongFavoritesPanel::ProcessInput(const InputState &input, std::optional<Point> pointer)
 {
     if (!IsVisible()) return;
-    if (pointer && list_->BoundsInCanvas().Contains(*pointer) && input.MouseWheelDelta() != 0)
-        MoveList(input.MouseWheelDelta() > 0 ? -1 : 1);
+    if (pointer && list_->BoundsInCanvas().Contains(*pointer) && SceneWheelDelta(input) != 0)
+        MoveList(SceneWheelDelta(input) > 0 ? -1 : 1);
     if (discardKeys_) { discardKeys_ = false; return; }
     if (waitRelease_)
     {

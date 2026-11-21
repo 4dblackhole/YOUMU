@@ -15,7 +15,7 @@ inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "Result.pauseUsed", "Result.rewindUsed", "Result.noHpData", "Result.noTimingData",
     "Gameplay.audioInitializationFailed", "Pause.preparing", "Pause.retryDescription", "Pause.retireDescription",
     "Options.windowError", "Options.inputError", "Options.noDrivers",
-    "Options.saveError", "Options.audioError", "Options.outputFallback", "Options.driverUnavailable", "Options.loadWarning",
+    "Options.saveError", "Options.audioError", "Options.outputFallback", "Options.driverUnavailable", "Options.loadWarning", "Options.bufferRestart",
     "Startup.decodeError",
     "Records.loading", "Records.saving", "Records.saved", "Records.saveError", "Records.saveFailedMessage", "Records.openFailedMessage", "Records.loadError",
     "SongFilter.invalidNotes", "SongFilter.invalidBpm", "SongFilter.invalidJudgeLevel",

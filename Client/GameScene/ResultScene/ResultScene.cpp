@@ -1,4 +1,5 @@
 #include "ResultScene.h"
+#include "Presentation/SceneWheel.h"
 #include "GameFlow/YOUMUSceneIds.h"
 #include "Submodules/ResultViewFactory.h"
 #include <stdexcept>
@@ -127,7 +128,7 @@ void ResultScene::UpdateRecordAlert(const InputState &input)
     pointer.leftButtonDown = input.IsMouseButtonDown(MouseButton::Left);
     pointer.leftButtonPressed = input.WasMouseButtonPressed(MouseButton::Left);
     pointer.leftButtonReleased = input.WasMouseButtonReleased(MouseButton::Left);
-    pointer.wheelDelta = input.MouseWheelDelta();
+    pointer.wheelDelta = SceneWheelDelta(input);
     recordAlertInput_.Process(canvas, pointer);
     static_cast<void>(canvas.TakeActions());
     if (recordAlert_.Update(input) == RetryButton)

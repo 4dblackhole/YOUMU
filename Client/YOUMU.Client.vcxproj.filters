@@ -218,6 +218,9 @@
     <ClInclude Include="Presentation\UiScrollbar.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\PerformanceBand.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClInclude Include="Presentation\PerformanceBand.h"><Filter>Presentation</Filter></ClInclude>
+    <ClCompile Include="Presentation\VolumeOverlay.cpp"><Filter>Presentation</Filter></ClCompile>
+    <ClInclude Include="Presentation\VolumeOverlay.h"><Filter>Presentation</Filter></ClInclude>
+    <ClInclude Include="Presentation\SceneWheel.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\UiModal.cpp"><Filter>Presentation</Filter></ClCompile>
     <ClInclude Include="Presentation\UiModal.h"><Filter>Presentation</Filter></ClInclude>
     <ClInclude Include="Presentation\ModePresentation.h"><Filter>Presentation</Filter></ClInclude>

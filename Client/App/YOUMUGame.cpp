@@ -55,6 +55,8 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     const auto color = ui_colors::ClearBackground;
     config.clearColor = {color.red, color.green, color.blue, color.alpha};
     config.audio.preferredBackend = optionSettings_.Values().audioOutput;
+    // The mixer buffer is chosen in the options and only read here, at start.
+    config.audio.dspBufferLength = optionSettings_.Values().dspBufferLength;
     // Restore the named device after enumeration instead of trusting a stale index.
     config.audio.driverIndex = -1;
     config.audio.fallBackToWasapi = true;
@@ -109,7 +111,7 @@ void YOUMUGame::RegisterScenes(SceneManager &scenes)
                                                              std::ref(optionSettings_)));
     requireRegistered(scenes.RegisterScene<EditorScene>(std::string(EditorSceneId),
                                                         SceneRetention::DestroyOnExit, std::ref(ScreenVisuals()),
-                                                        launchRequest_, std::ref(texts_)));
+                                                        launchRequest_, std::ref(texts_), &optionSettings_));
     requireRegistered(scenes.RegisterScene<RhythmTestScene>(std::string(RhythmTestSceneId),
                                                             // Gameplay routes keep only their factory while inactive.
                                                             // The concrete mode Scene is constructed on entry and
@@ -162,6 +164,8 @@ void YOUMUGame::OnClientInitialized(const EngineServices &services)
     // chooses F7 independently from Engine scheduling.
     performanceBand_.Initialize(ScreenVisuals(), texts_);
     performanceBand_.SetVisible(showPerformanceOverlay_);
+    // Alt+wheel volume on every screen; it runs after the screens, which ignore the wheel while Alt is held.
+    volumeOverlay_.Initialize(ScreenVisuals(), optionSettings_, services.windowControl);
 }
 
 void YOUMUGame::OnClientUpdated(const UpdateContext &context)
@@ -179,11 +183,13 @@ void YOUMUGame::OnClientUpdated(const UpdateContext &context)
         lastPerformanceMeasurementIndex_ = context.performance.measurementIndex;
     }
     performanceBand_.Update();
+    volumeOverlay_.Update(context.input, context.deltaSeconds);
 }
 
 void YOUMUGame::OnClientShuttingDown() noexcept
 {
     performanceBand_.Shutdown();
+    volumeOverlay_.Shutdown();
 }
 
 void YOUMUGame::RestoreSavedAudioDriver(AudioSystem &audio)

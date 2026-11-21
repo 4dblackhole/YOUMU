@@ -7,6 +7,7 @@
 #include "App/OptionSettings.h"
 #include "Mode/Results/IPlayResult.h"
 #include "Presentation/PerformanceBand.h"
+#include "Presentation/VolumeOverlay.h"
 
 #include <cstdint>
 #include <memory>
@@ -47,5 +48,6 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     TextCatalog texts_;
     OptionSettings optionSettings_;
     PerformanceBand performanceBand_;
+    VolumeOverlay volumeOverlay_;
     std::uint64_t lastPerformanceMeasurementIndex_{};
 };
