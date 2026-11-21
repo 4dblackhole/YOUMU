@@ -26,7 +26,8 @@ enum class SongSelectCommand
     Back,
     Launch,
     CreateDifficulty,
-    ConvertOsu
+    ConvertOsu,
+    OpenRecord // A record row was clicked; TakeOpenedRecord gives it.
 };
 class MusicSelectView final
 {
@@ -61,6 +62,8 @@ class MusicSelectView final
     // (Import with the checked ones, or Cancel) is taken once with TakeOsuImportChoice.
     void OpenOsuImportPanel(std::wstring folder, std::vector<OsuImportDifficulty> difficulties);
     [[nodiscard]] std::optional<OsuImportChoice> TakeOsuImportChoice() { return osuImportPanel_.TakeChoice(); }
+    // The record whose row was clicked (SongSelectCommand::OpenRecord), taken once.
+    [[nodiscard]] std::optional<PlayRecord> TakeOpenedRecord() noexcept { return records_.TakeOpenedRecord(); }
     // The scene reports whether the focused song is the one being heard.
     void SetNowPlaying(const bool playing) { songList_.SetNowPlaying(playing); }
 

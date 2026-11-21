@@ -7,7 +7,12 @@
 #include "Submodules/EditorOsuImport.h"
 #include "Submodules/OsuImportPanel.h"
 #include "GameFlow/PlaySessionLoader.h"
+#include "Mode/Results/IPlayResult.h"
+#include <functional>
+#include <future>
 #include <memory>
+#include <optional>
+#include <string>
 
 class MusicSelectView;
 class SongLibrary;
@@ -16,12 +21,15 @@ class SongSelectionState;
 class MusicSelectScene final : public PhantomCore::GameScene
 {
   public:
+    // Hands a record's restored result to the result screen (shown again, never saved again).
+    using RecordedResultHandler = std::function<void(std::unique_ptr<IPlayResult>)>;
     explicit MusicSelectScene(PhantomCore::ScreenVisual2DManager &screenVisuals,
                               std::shared_ptr<SongLibrary> library,
                               std::shared_ptr<GameplayLaunchStore> launchRequest,
                               SongSelectPurpose purpose,
                               TextCatalog &texts,
-                              OptionSettings &options);
+                              OptionSettings &options,
+                              RecordedResultHandler openRecordedResult = {});
 
     ~MusicSelectScene() override;
 
@@ -34,7 +42,14 @@ class MusicSelectScene final : public PhantomCore::GameScene
     void Shutdown() noexcept override;
 
   private:
+    // The launch request for the selected pattern (and its chart name), or none when nothing
+    // playable is selected; an unsupported mode shows its error.
+    std::optional<GameplayLaunchRequest> SelectedLaunchRequest(std::string *patternName = nullptr);
     bool StartSelectedPattern(PhantomCore::SceneManager &scenes);
+    // A clicked record: its detail loads on a worker, then the result screen opens with Back and
+    // Retry (the selected pattern), without saving the record again.
+    void OpenRecord();
+    void PollRecordOpen(PhantomCore::SceneManager &scenes);
     void CreateDifficulty(PhantomCore::SceneManager &scenes);
     void ConvertOsu();
     void PollOsuImport();
@@ -60,4 +75,7 @@ class MusicSelectScene final : public PhantomCore::GameScene
     std::wstring osuImportFolder_; // Name of the osu! song folder being imported, for the list's heading.
     PlaySessionLoader patternLoader_;
     std::optional<GameplayLaunchRequest> pendingLaunch_;
+    RecordedResultHandler openRecordedResult_;
+    std::future<std::unique_ptr<IPlayResult>> recordOpen_;
+    std::optional<GameplayLaunchRequest> pendingRecordLaunch_;
 };

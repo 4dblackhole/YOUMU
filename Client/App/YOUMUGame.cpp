@@ -95,7 +95,13 @@ void YOUMUGame::RegisterScenes(SceneManager &scenes)
     requireRegistered(scenes.RegisterScene<MusicSelectScene>(std::string(LobbySceneId),
                                                              SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
                                                              songLibrary_, launchRequest_, SongSelectPurpose::Gameplay,
-                                                             std::ref(texts_), std::ref(optionSettings_)));
+                                                             std::ref(texts_), std::ref(optionSettings_),
+                                                             MusicSelectScene::RecordedResultHandler(
+                                                                 [this](std::unique_ptr<IPlayResult> result)
+                                                                 {
+                                                                     pendingResult_ = std::move(result);
+                                                                     pendingResultRecorded_ = true;
+                                                                 })));
     requireRegistered(scenes.RegisterScene<MusicSelectScene>(std::string(EditorSongSelectSceneId),
                                                              SceneRetention::KeepAlive, std::ref(ScreenVisuals()),
                                                              std::move(editorSongLibrary), launchRequest_,
@@ -123,7 +129,11 @@ std::unique_ptr<GameScene> YOUMUGame::CreateResultScene()
     display.backgroundPath = launch.backgroundPath;
     display.backgroundOffsetX = launch.backgroundOffsetX;
     display.backgroundOffsetY = launch.backgroundOffsetY;
-    if (!smokeTest_ && !rhythmDebugMode_ && launch.IsValid()) display.recordDatabase = PlayRecordDatabasePath();
+    // A play saves its record once; a record opened from song select is only shown again.
+    const bool recorded = std::exchange(pendingResultRecorded_, false);
+    const bool realPlay = !smokeTest_ && !rhythmDebugMode_;
+    if (realPlay && !recorded && launch.IsValid())
+        display.recordDatabase = PlayRecordDatabasePath();
     ResultScene::RetryHandler retry;
     if (display.canRetry)
         retry = [store = launchRequest_, snapshot = std::move(launch)](SceneManager &scenes) mutable

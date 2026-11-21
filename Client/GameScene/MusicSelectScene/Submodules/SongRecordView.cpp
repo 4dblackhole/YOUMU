@@ -3,10 +3,12 @@
 #include "Catalog/SongCatalog.h"
 #include "Presentation/AccuracyText.h"
 #include "Presentation/RankName.h"
+#include "Presentation/ScoreText.h"
 #include "Presentation/UiDropdown.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
+#include <algorithm>
 #include <chrono>
 #include <format>
 
@@ -25,11 +27,11 @@ namespace
     constexpr float ContentLeft = 48.0F, ContentRight = 308.0F;
     constexpr float ControlSize = 32.0F, PagerTop = 560.0F, PagerCenter = 192.0F, PagerWidth = 124.0F;
 
-    // Only what differs from a plain play, after the judge level the play actually used.
+    // The accuracy, then only what differs from a plain play.
     [[nodiscard]] std::wstring OptionSummary(const PlayRecord &record)
     {
         const auto &o = record.options;
-        std::wstring text = std::format(L"JL {:.2f}", record.judgeLevel.Value());
+        std::wstring text = AccuracyText(record.accuracy);
         const auto add = [&text](const std::wstring &token) { text += L" · " + token; };
         if (o.accelerate != 1.0)
             add(std::format(L"{:.2f}x", o.accelerate));
@@ -135,7 +137,11 @@ SongRecordAction SongRecordView::ProcessAction(const Action& action)
         ++revision_;
         return SongRecordAction::PageChanged;
     }
-    return SongRecordAction::None;
+    const auto shown = std::ranges::find(shownRecords_, action.source, &std::pair<NodeId, PlayRecord>::first);
+    if (shown == shownRecords_.end())
+        return SongRecordAction::None;
+    openedRecord_ = shown->second;
+    return SongRecordAction::OpenRecord;
 }
 
 void SongRecordView::ShowPager(const bool visible)
@@ -174,6 +180,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
             ids.push_back(child->Id());
         for (auto id : ids)
             static_cast<void>(rows_->RemoveChild(id));
+        shownRecords_.clear();
         // A song without a chart leaves the record column empty.
         ShowMessage(!pattern.empty());
         SetMessage(std::wstring(texts_.Get("Records.loading")));
@@ -239,13 +246,15 @@ void SongRecordView::Show(const std::vector<PlayRecord> &records)
     for (std::size_t i = 0; i < std::min(records.size(), PageSize); ++i)
     {
         const auto &r = records[i];
-        auto &row = CreatePanel(*rows_, TopLeft({0.0F, static_cast<float>(i) * RowPitch, RowWidth, RowHeight}, height),
-                                "PlayRecord");
+        // A row is a button: clicking it opens the record's result screen.
+        auto &row = CreateButton(*rows_, TopLeft({0.0F, static_cast<float>(i) * RowPitch, RowWidth, RowHeight}, height),
+                                 L"", "PlayRecord");
+        shownRecords_.emplace_back(row.Id(), r);
         ApplySkinPart(row, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
         static_cast<void>(CreateNumber(row, {ContentLeft, 7.0F, 48.0F, 38.0F}, std::wstring(RankName(r.accuracy)), 20.0F,
                                        800, theme::BrandText, "Rank", TextAlignment::Center));
-        static_cast<void>(CreateNumber(row, {mainLeft, 5.0F, 150.0F, 24.0F}, AccuracyText(r.accuracy), 20.0F, 800,
-                                       theme::Ink, "Accuracy"));
+        static_cast<void>(CreateNumber(row, {mainLeft, 5.0F, 150.0F, 24.0F}, ScoreText(r.score), 20.0F, 800,
+                                       theme::Ink, "Score"));
         auto &details = CreateNumber(row, {mainLeft, 29.0F, detailsWidth, 18.0F}, OptionSummary(r), 13.0F, 500,
                                      theme::Caption, "Details", TextAlignment::Leading, false);
         details.SetClipRect({0.0F, 0.0F, detailsWidth, 18.0F});
@@ -286,5 +295,7 @@ void SongRecordView::Shutdown() noexcept
     filterPanel_.Shutdown();
     panel_ = selector_ = messagePlate_ = emptyMessage_ = pageLabel_ = nullptr;
     queryButton_ = pagerPlate_ = previousButton_ = nextButton_ = rows_ = nullptr;
+    shownRecords_.clear();
+    openedRecord_.reset();
     ++revision_;
 }

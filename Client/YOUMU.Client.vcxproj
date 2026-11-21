@@ -281,6 +281,7 @@
     <ClCompile Include="Presentation\MarqueeTextComponent.cpp" />
     <ClInclude Include="Presentation\MarqueeTextComponent.h" />
     <ClInclude Include="Presentation\AccuracyText.h" />
+    <ClInclude Include="Presentation\ScoreText.h" />
     <ClInclude Include="Presentation\RankName.h" />
     <ClInclude Include="Presentation\UiFonts.h" />
     <ClCompile Include="Presentation\UiAlert.cpp" />
