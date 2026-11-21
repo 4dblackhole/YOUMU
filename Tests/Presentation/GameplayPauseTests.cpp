@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include "YOUMUAssets.h"
 #include "GameFlow/GameplaySessionController.h"
+#include "GameScene/RhythmTestScene/Submodules/GameplayLoadingSettings.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplayPauseMenu.h"
 #include "GameScene/RhythmTestScene/RhythmTestScene.h"
 #include "Taiko/Results/TaikoPlayResult.h"
@@ -26,6 +27,8 @@ struct InputStateTestAccess
     static void Begin(InputState &input) { input.BeginUpdate(); }
     static void Press(InputState &input, std::uint16_t key, std::int64_t ticks) { input.SetKey(key, true, ticks); }
     static void Release(InputState &input, std::uint16_t key, std::int64_t ticks) { input.SetKey(key, false, ticks); }
+    static void Pointer(InputState &input, float x, float y) { input.SetMousePosition(static_cast<std::int32_t>(x), static_cast<std::int32_t>(y), true); }
+    static void Button(InputState &input, bool down) { input.SetMouseButton(MouseButton::Left, down, 1); }
 };
 } // namespace PhantomCore
 
@@ -810,6 +813,8 @@ namespace
                 CheckDebugTimeline(ctx);
                 CheckRestartHold(ctx);
                 CheckLocalOffsetKeys(ctx);
+                CheckLoadingSettings();
+                CheckHeldStart(ctx);
                 CheckSharedLifecycle(ctx);
                 CheckCompletionEscape(ctx);
                 CheckTransientVoices(ctx);
@@ -1280,6 +1285,73 @@ namespace
             Check(after.LocalOffsetMs() == 0 && after.LocalOffsetRevision() == 0,
                   "Plus after the first note's time does nothing.");
             after.Shutdown();
+        }
+
+        // The loading screen's play settings (rhythmgameUI play-settings A): a 304-wide plate 40 from the
+        // right edge, vertically centred. Screen = canvas at 1280x720, so the layout's numbers are pixels.
+        void CheckLoadingSettings()
+        {
+            GameplayLoadingSettings settings(visuals_, texts_);
+            settings.Show(1280, 720);
+            settings.SetValues(80, 15);
+            InputState input;
+            const auto frame = [&](float x, float y, bool down)
+            {
+                InputStateTestAccess::Begin(input);
+                InputStateTestAccess::Pointer(input, x, y);
+                InputStateTestAccess::Button(input, down);
+                return settings.Update(input);
+            };
+            constexpr float PlateLeft = 1280 - 40 - 304, PlateTop = 360 - 91;
+            Check(frame(PlateLeft + 20, PlateTop + 20, false).holdStart, "Resting the pointer on the plate holds the start.");
+            Check(!frame(400, 300, false).holdStart, "Elsewhere the start is not held.");
+            const float rowTwo = PlateTop + 80 + 18;
+            const auto plus = frame(1280 - 40 - 20 - 16, rowTwo, true);
+            Check(plus.offsetStepMs == 5 && plus.holdStart, "The plus button adds 5 ms.");
+            static_cast<void>(frame(1280 - 40 - 20 - 16, rowTwo, false));
+            const auto minus = frame(PlateLeft + 106 + 16, rowTwo, true);
+            Check(minus.offsetStepMs == -5, "The minus button removes 5 ms.");
+            static_cast<void>(frame(PlateLeft + 106 + 16, rowTwo, false));
+            const float trackLeft = PlateLeft + 106, trackWidth = 304 - 20 - 46 - 6 - 106, rowOne = PlateTop + 42 + 18;
+            const auto start = frame(trackLeft + trackWidth * .25F, rowOne, true);
+            Check(start.brightness == 25 && start.holdStart && !start.brightnessCommitted,
+                  "Pressing the slider sets the brightness under the pointer.");
+            const auto drag = frame(trackLeft + trackWidth * .75F, rowOne + 60, true);
+            Check(drag.brightness == 75 && drag.holdStart, "Dragging keeps following the pointer off the row and holds the start.");
+            static_cast<void>(frame(600, 300, true));
+            const auto release = frame(600, 300, false);
+            Check(release.brightnessCommitted && release.brightness == 0 && !release.holdStart,
+                  "Releasing commits the shown brightness; a drag that left the plate clamps to the track's end.");
+            settings.Hide();
+            Check(!frame(PlateLeft + 20, PlateTop + 20, true).holdStart, "A hidden plate never holds the start.");
+            settings.Shutdown();
+        }
+
+        // While the start is held the prepared attempt waits; releasing it starts at once.
+        void CheckHeldStart(const UpdateContext &ctx)
+        {
+            auto pattern = Pattern();
+            pattern.notes.push_back({.position = {0, {}}, .keyType = 1});
+            auto loaded = TaikoMode(PlaySessionOptions{}).CreateSession(pattern);
+            Check(loaded.Succeeded(), "Held start fixture must load.");
+            GameplaySessionController controller({"probe.ymp", {}, "probe-music.mp3", "Taiko"}, playback_, false,
+                                                 std::move(loaded.session));
+            controller.InitializeSession();
+            controller.SetStartHeld(true);
+            controller.Start(*services_, RhythmTime{-2'000'000});
+            InputState input;
+            for (int i = 0; i < 40; ++i)
+            {
+                InputStateTestAccess::Begin(input);
+                controller.Update({0.005, ctx.totalSeconds + i * 0.01, ctx.updateIndex, input, ctx.audio, {}});
+                std::this_thread::sleep_for(std::chrono::milliseconds{5});
+            }
+            Check(controller.CurrentState() == PlayState::Loading && !controller.AttemptStarted(),
+                  "A held start keeps the attempt on the loading screen.");
+            controller.SetStartHeld(false);
+            WaitForGameplay(controller, ctx);
+            Check(controller.CurrentState() == PlayState::Gameplay, "Releasing the hold starts the attempt.");
+            controller.Shutdown();
         }
 
         void CheckTransientVoices(const UpdateContext &ctx)

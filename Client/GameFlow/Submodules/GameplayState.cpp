@@ -86,6 +86,8 @@ void GameplaySessionController::PrepareGameplay(const UpdateContext &context)
         FailPlaybackPreparation();
         return;
     }
+    if (startHeld_)
+        return;
     ScheduleGameplay(context);
 }
 

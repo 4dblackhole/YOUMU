@@ -76,6 +76,7 @@ osu!처럼 **패턴(난이도)마다** 따로 두는 오프셋입니다(사용�
   바뀌면 화면 위쪽에 "개별 오프셋 +5 ms"가 1.5초 동안 보입니다(`GameplayOffsetNotice`).
 - 동작 방식: 이미 재생 중인 음악은 건드리지 않고 차트 시계를 바뀐 만큼 뒤로 옮깁니다(`RhythmTimer::ShiftTimeline`, QPC·DSP 대응 함께).
   그 뒤 음악을 다시 맞추는 모든 경우(시작·재개·되감기·Retry)에는 음원 위치를 차트 시각 + 누적 변경량으로 준비합니다(`GameplayAudioSession::SetMusicLead`).
+- 로딩 화면의 플레이 설정 판에서도 −/+ 버튼으로 같은 규칙대로 바꿉니다([Presentation](Presentation.md)).
 - 저장 시점: 씬을 나갈 때 바뀐 값이 있으면 저장합니다. 결과 화면의 Retry는 저장된 값을 다시 읽어 새 세션을 만듭니다.
 
 ### 측정으로 확인한 것
