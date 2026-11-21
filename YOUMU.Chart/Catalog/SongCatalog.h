@@ -26,6 +26,8 @@ struct SongCatalogPattern
     std::optional<double> chartLengthSeconds;
     // Client-calculated value. Empty until calculation; not stored in YMP or the disk index.
     std::optional<double> calculatedDifficulty;
+    // SHA-256 of the pattern file (ChartHash.h); empty when the file could not be read.
+    std::string chartHash;
 };
 
 struct SongCatalogEntry
@@ -87,6 +89,8 @@ public:
         std::optional<std::size_t> noteCount;
         std::optional<std::pair<double, double>> bpmRange;
         std::optional<double> chartLengthSeconds;
+        // Pattern files only: ChartFileHash of the bytes that were parsed.
+        std::string contentHash;
     };
     mutable std::map<std::filesystem::path, CachedDocument<MusicDocument>> musicCache_;
     mutable std::map<std::filesystem::path, CachedDocument<PatternDocument>> patternCache_;

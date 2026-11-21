@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include "MusicSelectTestInput.h"
 #include "App/AssetPaths.h"
+#include "Catalog/ChartHash.h"
 #include "SongSearchInputTests.h"
 #include "GameScene/MusicSelectScene/Submodules/EditorOsuImport.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
@@ -849,13 +850,14 @@ namespace
             for (std::size_t i = 0; i < 3; ++i)
             {
                 song.patterns[i].patternPath = "build/favorite-view-" + std::to_string(i) + ".ymp";
+                song.patterns[i].chartHash = ChartBytesHash("favorite-view-" + std::to_string(i));
                 song.patterns[i].noteCount = (i + 1) * 100;
             }
-            const auto key = SongFavorites::PatternKey(song.patterns[2].patternPath);
+            const auto key = song.patterns[2].chartHash;
             state.catalog_.songs.push_back(std::move(song));
             SongFavoritesValues values;
             for (std::size_t i = 0; i < 12; ++i) values.Create(L"Folder " + std::to_wstring(i + 1));
-            values.SetMembership(1, SongFavorites::PatternKey(state.catalog_.songs[0].patterns[0].patternPath), true);
+            values.SetMembership(1, state.catalog_.songs[0].patterns[0].chartHash, true);
             values.SetMembership(1, key, true);
             std::string error;
             Check(state.favorites_.Save(values, error), "Seed in-memory favorites.");
@@ -894,9 +896,9 @@ namespace
             auto *overlay = Find(canvas->Root(), "Favorites.Overlay");
             Check(overlay && overlay->IsVisible(), "Favorites opens one modal folder/membership editor.");
             click("Favorites.Member.2");
-            Check(!state.favorites_.Values().Find(2)->patternKeys.contains(key), "Membership edits remain a draft.");
+            Check(!state.favorites_.Values().Find(2)->charts.contains(key), "Membership edits remain a draft.");
             click("Favorites.Close");
-            Check(!state.favorites_.Values().Find(2)->patternKeys.contains(key), "Close cancels membership changes.");
+            Check(!state.favorites_.Values().Find(2)->charts.contains(key), "Close cancels membership changes.");
             click("Favorites.Manage");
             InputState blocked;
             InputStateTestAccess::Key(blocked, VK_SPACE, true);
@@ -905,8 +907,40 @@ namespace
                   "Favorites modal blocks navigation and launch keys.");
             click("Favorites.Member.2");
             click("Favorites.Apply");
-            Check(state.favorites_.Values().Find(1)->patternKeys.contains(key) && state.favorites_.Values().Find(2)->patternKeys.contains(key),
+            Check(state.favorites_.Values().Find(1)->charts.contains(key) && state.favorites_.Values().Find(2)->charts.contains(key),
                   "Apply preserves simultaneous membership in multiple folders.");
+            Check(state.favorites_.Values().Find(2)->charts.at(key).title == L"Favorite song",
+                  "A chart added to a collection keeps its song name for shared files.");
+            {
+                // Export writes the chosen collection; importing a file is a draft until Apply.
+                const auto shared = std::filesystem::temp_directory_path() /
+                                    ("youmu-collection-view-" + std::to_string(static_cast<int>(purpose)) + ".json");
+                std::optional<std::filesystem::path> answer = shared;
+                std::wstring suggested;
+                view.SetCollectionFilePicker([&](bool, const std::wstring &name)
+                {
+                    suggested = name;
+                    return answer;
+                });
+                click("Favorites.Manage");
+                click("Favorites.Folder.1");
+                click("Favorites.Export");
+                Check(suggested == L"Folder 1.json" && SongFavorites::ReadCollectionFile(shared).charts.contains(key),
+                      "Export saves the selected collection under its name.");
+                auto received = SongFavorites::ReadCollectionFile(shared);
+                received.name = L"Shared";
+                SongFavorites::WriteCollectionFile(shared, received);
+                click("Favorites.Import");
+                const auto status = std::wstring(Find(canvas->Root(), "Favorites.Status")->GetComponent<TextVisualComponent>()->Text());
+                Check(status.starts_with(L"Imported: Shared") && Find(canvas->Root(), "Favorites.Folder.13"),
+                      "Import adds the file's collection to the draft and says so.");
+                Check(state.favorites_.Values().folders.size() == 12, "An import is saved only by Apply.");
+                answer.reset();
+                click("Favorites.Import");
+                click("Favorites.Close");
+                std::error_code ignored;
+                std::filesystem::remove(shared, ignored);
+            }
             click("Favorites.Manage");
             FavoriteNameDialog(view, *canvas, "Favorites.Create", L"練習 한글 🎵");
             FavoriteNameDialog(view, *canvas, "Favorites.Rename", L"Renamed 練習");

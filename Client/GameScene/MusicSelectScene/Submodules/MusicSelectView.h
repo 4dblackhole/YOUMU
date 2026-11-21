@@ -64,6 +64,8 @@ class MusicSelectView final
     [[nodiscard]] std::optional<OsuImportChoice> TakeOsuImportChoice() { return osuImportPanel_.TakeChoice(); }
     // The record whose row was clicked (SongSelectCommand::OpenRecord), taken once.
     [[nodiscard]] std::optional<PlayRecord> TakeOpenedRecord() noexcept { return records_.TakeOpenedRecord(); }
+    // Collection import/export asks this for files; tests answer without the Windows dialog.
+    void SetCollectionFilePicker(CollectionFilePicker picker);
     // The scene reports whether the focused song is the one being heard.
     void SetNowPlaying(const bool playing) { songList_.SetNowPlaying(playing); }
 

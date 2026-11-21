@@ -1,12 +1,14 @@
 #include "SongLibrary.h"
 #include "Catalog/SongLayout.h"
+#include "YOUMUAssets.h"
 
 using namespace PhantomCore;
 
 SongLibrary::SongLibrary(AudioPlaybackManager &playback, OptionSettings &options)
     : options_(options), player_(playback)
 {
-    selection_.favorites_ = SongFavorites{options.Path().parent_path() / L"favorites.json"};
+    // Collections sit in the Asset folder to be shared; favorites.json beside Option.ini is the old file.
+    selection_.favorites_ = SongFavorites{UserAssetRoot() / L"Collections", options.Path().parent_path() / L"favorites.json"};
 }
 
 void SongLibrary::Initialize(AudioSystem &audio)
