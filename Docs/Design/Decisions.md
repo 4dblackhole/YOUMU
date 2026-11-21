@@ -426,6 +426,10 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
   채보는 경로가 아니라 YMP 파일의 SHA-256으로 찾습니다. 관리 패널에 Import/Export가 있고 같은 이름을 가져오면 합칩니다
   (사용자 결정 2026-11-21: 채보 파일 해시, 컬렉션마다 파일 하나, 합치기).
   예전 `favorites.json`은 처음 읽을 때 옮기고 `favorites.v1.json`으로 보관합니다. 상세 계약은 [선곡](../Features/SongSelect.md#컬렉션즐겨찾기-폴더)에 있습니다.
+- 게임·에디터 곡 선택의 곡 카드와 난이도 줄은 osu!처럼 우클릭 메뉴(New difficulty, Edit, 삭제, Open folder, Collections…)를 엽니다.
+  삭제는 누른 곳에 따라 난이도 하나(YMP와 다른 차트가 쓰지 않는 YME) 또는 곡 폴더 전체이고, 늘 확인 창(Enter는 취소)을 거쳐
+  Windows 휴지통으로 보냅니다. 게임 곡 선택의 New difficulty·Edit는 에디터로 갑니다(사용자 결정 2026-11-22: 누른 곳에 따라, 휴지통,
+  Open folder·Collections…·Edit 추가, 게임 곡 선택의 새 난이도는 에디터로). 상세는 [선곡](../Features/SongSelect.md#우클릭-메뉴).
 - 플레이 모드/플레이 옵션은 선곡 하단, 전역 설정은 별도 패널입니다.
 - 기록은 사용자가 지정한 기존 왼쪽 기록 영역에서 표시하며 별도 넓은 열람 창으로 옮기지 않습니다.
   기록 필터만 별도 패널에서 편집합니다. 적용/닫기 뒤 검색·선택 곡/패턴·목록 스크롤을 유지합니다.

@@ -33,6 +33,7 @@
 ## 새 난이도 생성
 
 에디터 곡 카드의 맨 오른쪽 `+`는 그 곡을 고르고 바로 새 난이도를 엽니다(사용자 결정으로 팝업과 그 안의 가져오기 항목을 없앴습니다).
+곡 카드·난이도 줄의 [우클릭 메뉴](SongSelect.md#우클릭-메뉴)의 New difficulty도 같습니다. 에디터 곡 선택의 우클릭 메뉴에는 Edit가 없습니다(난이도 클릭이 이미 에디터를 엽니다).
 새 난이도는 입력 창 없이 에디터를 그 곡의 [만들기 전 상태](ChartEditor.md#새-난이도)로 엽니다(Metadata 탭, `New` 표시,
 저장 버튼은 Create, Compose·Audio 잠김). Taiko·120 BPM·offset 0ms·4/4이며 노트·타이밍 명령·YME 효과는 비어 있습니다.
 Metadata에서 난이도명, 제작자, 태그, Accuracy Difficulty(JudgeLevel 1.00~100.00, 0.01 단위, 기본 50.00), HP, 기본 BPM과
