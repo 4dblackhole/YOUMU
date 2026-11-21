@@ -49,6 +49,8 @@ private:
         std::vector<std::pair<std::string_view, std::size_t>> judgements;
     };
     void Show(const std::vector<LoadedRecord>& records);
+    // The afterimage icon and the stroke count left of the date; returns where the details line ends.
+    float ShowStrokes(PhantomCore::Visual2DNode &row, const PlayRecord &record, float dateLeft);
     void ShowPager(bool visible);
     void ShowMessage(bool visible);
     void SetMessage(std::wstring message);
@@ -67,6 +69,7 @@ private:
     // Rows on screen and their records, for opening one.
     std::vector<std::pair<PhantomCore::NodeId, PlayRecord>> shownRecords_;
     std::optional<PlayRecord> openedRecord_;
+    PhantomCore::ImageHandle strokesIcon_;
     PhantomCore::Visual2DNode *panel_{}, *selector_{}, *messagePlate_{}, *emptyMessage_{};
     PhantomCore::Visual2DNode *queryButton_{}, *queryIcon_{}, *pagerPlate_{}, *previousButton_{}, *nextButton_{}, *rows_{}, *pageLabel_{};
 };
