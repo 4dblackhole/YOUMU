@@ -31,7 +31,7 @@
 | 기본 HP 게이지(클리어 60%) | [YMP의 HP](Formats/Ymp.md#hp-게이지) |
 | 곡 선택(검색·필터·정렬·즐겨찾기 폴더·미리듣기·F1 플레이 옵션) | [SongSelect](Features/SongSelect.md) |
 | 차트 에디터(Compose·Audio·Metadata, 새 난이도, osu! 가져오기) | [ChartEditor](Features/ChartEditor.md), [EditorSongSelect](Features/EditorSongSelect.md) |
-| 옵션·언어·글꼴·키 설정·키빔 불투명도 | [TextManagement](Features/TextManagement.md) |
+| 옵션·언어·글꼴·키 설정·키빔 불투명도·배경 밝기 | [TextManagement](Features/TextManagement.md) |
 | 스킨·내장 자산·배포 | [자산·스킨](Features/Assets.md) |
 
 ## 진행 중
