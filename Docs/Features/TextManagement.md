@@ -137,7 +137,7 @@ UI-02 리디자인([UI-02](../Design/Decisions.md#ui-02-ui-리디자인), [옵�
 - 본문 안에서 휠, 공용 [스크롤바](#스크롤바), 가운데 버튼 드래그, 빈 영역의 왼쪽 버튼 드래그로 스크롤합니다.
   스크롤 위치와 켜진 분류는 같은 View에서 다시 열 때 유지하며 INI에는 저장하지 않습니다.
   분류를 옮기면 펼친 드롭다운과 입력 대기를 정리합니다.
-- 섹션: General(설명 언어·Songs 폴더), Display(스킨·해상도·`Song text`·키빔 불투명도·배경 밝기), Audio(전체·음악·효과음 음량, 미들웨어·출력 방식·드라이버,
+- 섹션: General(설명 언어·Songs 폴더), Display(스킨·해상도·`Song text`·프레임 제한·키빔 불투명도·배경 밝기), Audio(전체·음악·효과음 음량, 미들웨어·출력 방식·드라이버,
   글로벌 오프셋), Input(재시작 키, 모드별 키 설정 카드). 항목명은 칸 위의 작은 글자이고 입력칸은 흰 바탕과 아래 2px 줄입니다.
   설명 문단은 두지 않습니다.
 - 오류·설정 복구 안내는 본문 밖 아래 칸에 왼쪽 색 띠·아이콘과 함께 두며 본문과 같은 clip을 쓰지 않습니다.
@@ -337,6 +337,7 @@ Height=720
 Notation=first
 KeyBeamOpacity=100
 BackgroundBrightness=100
+RenderRate=display
 
 [Keys.Taiko]
 LeftKat=68,70
@@ -369,6 +370,10 @@ RestartKey=192
 - `Display/BackgroundBrightness`: 플레이·로딩 화면 배경의 밝기, 0(검정)~100(그림 그대로) 정수 %. osu!의 background dim과 같은 기능입니다
   (사용자 지시). 누락 시 100(기존 모습). 범위 밖은 오류입니다. 로딩 화면의 플레이 설정 판에서 바꿔도 여기에 저장됩니다.
   옵션의 슬라이더는 음량과 같은 모양이며 놓을 때 저장합니다.
+- `Display/RenderRate`: 화면을 그리는 빈도(옵션의 "프레임 제한"). `display`는 모니터 주사율의 1배, `double`은 2배,
+  `unlimited`는 Update 한 번마다 한 번 그립니다. 누락 시 `display`, 다른 값은 오류입니다. 고르면 바로 저장하고
+  `YOUMUGame`이 다음 Update에서 엔진의 `IRenderRateControl`에 넘깁니다. 판정은 입력의 QPC 시각을 쓰므로 그리는 빈도와
+  무관하지만, `unlimited`에서는 루프마다 그리기가 들어가 입력 시각의 오차가 프레임 한 장의 시간까지 늘 수 있습니다.
 - `Controls/RestartKey`: 0.5초 길게 눌러 재시작하는 키의 십진 Virtual-Key. 누락 시 192(백틱).
   설치된 모드의 연주 키나 ESC/Space/F7이면 오류입니다.
 - `Keys.<mode ID>`: binding ID별 십진 Virtual-Key 목록. 첫 값은 기본 키, 이후는 보조 키입니다.
