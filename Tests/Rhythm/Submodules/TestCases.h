@@ -7,6 +7,7 @@ namespace tests
     void TestSongBaseBpmSort();
     void TestSongFilters();
     void TestSongFavoritesPersistence();
+    void TestSongFavoritesMigration();
     void TestSongFavoriteSelection();
     void TestHpFormat();
     void TestHpTimingRecovery();

@@ -23,3 +23,5 @@ Client/Assets/Languages/
 # A build copy of the converter (the asset root's Submodules folder).
 Client/Assets/Submodules/
 TODOLIST.txt
+# Collections the development build saves (Asset/Collections) are the player's own.
+Client/Assets/Collections/

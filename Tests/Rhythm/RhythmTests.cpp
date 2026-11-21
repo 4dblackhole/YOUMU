@@ -39,6 +39,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestSongBaseBpmSort", TestSongBaseBpmSort},
         {"TestSongFilters", TestSongFilters},
         {"TestSongFavoritesPersistence", TestSongFavoritesPersistence},
+        {"TestSongFavoritesMigration", TestSongFavoritesMigration},
         {"TestSongFavoriteSelection", TestSongFavoriteSelection},
         {"TestHpFormat", TestHpFormat},
         {"TestHpTimingRecovery", TestHpTimingRecovery},

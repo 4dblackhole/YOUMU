@@ -3,10 +3,24 @@
 
 using namespace PhantomCore;
 
+namespace
+{
+    // What a collection file says about a chart: the song's first name and artist and the pattern name.
+    SongCollectionChart CollectionLabel(const SongCatalogEntry &song, const SongCatalogPattern &pattern)
+    {
+        SongCollectionChart label;
+        if (!song.music.names.empty()) label.title = song_select::DecodeDisplayText(song.music.names.front());
+        if (!song.music.artists.empty()) label.artist = song_select::DecodeDisplayText(song.music.artists.front());
+        label.pattern = song_select::DecodeDisplayText(pattern.pattern.name);
+        return label;
+    }
+}
+
 void MusicSelectView::OpenFavoritesPanel()
 {
     SetSearchFocus(false);
-    std::filesystem::path pattern;
+    std::string chartHash;
+    SongCollectionChart label;
     std::wstring name;
     if (!selection_.catalogLoading_ && selection_.focusedSongPosition_ < selection_.visibleSongIndices_.size())
     {
@@ -14,12 +28,26 @@ void MusicSelectView::OpenFavoritesPanel()
         if (selection_.selectedPatternIndex_ < song.patterns.size())
         {
             const auto &entry = song.patterns[selection_.selectedPatternIndex_];
-            pattern = entry.patternPath;
+            chartHash = entry.chartHash;
+            label = CollectionLabel(song, entry);
             name = song_select::SongTitle(song, selection_.notation_) + L" / " +
                    song_select::PatternName(entry, selection_.notation_);
         }
     }
-    favoritesPanel_.Open(selection_.favorites_, pattern, std::move(name));
+    // Charts moved over from favorites.json have no label yet; the catalog names the ones it has.
+    std::set<std::string> unlabeled;
+    for (const auto &folder : selection_.favorites_.Values().folders)
+        for (const auto &[hash, kept] : folder.charts)
+            if (kept == SongCollectionChart{}) unlabeled.insert(hash);
+    std::map<std::string, SongCollectionChart> known;
+    for (const auto &song : selection_.catalog_.songs)
+        for (const auto &entry : song.patterns)
+            if (unlabeled.contains(entry.chartHash)) known.emplace(entry.chartHash, CollectionLabel(song, entry));
+    favoritesPanel_.Open(selection_.favorites_, std::move(chartHash), std::move(label), std::move(name), known);
+}
+void MusicSelectView::SetCollectionFilePicker(CollectionFilePicker picker)
+{
+    favoritesPanel_.SetFilePicker(std::move(picker));
 }
 bool MusicSelectView::ProcessFavoritesPanel(const InputState &input)
 {

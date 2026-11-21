@@ -10,9 +10,11 @@
     <Filter Include="Parsing\Submodules" />
     <Filter Include="Timing" />
     <Filter Include="Utility" />
+    <ClCompile Include="Catalog\ChartHash.cpp"><Filter>Catalog</Filter></ClCompile>
     <ClCompile Include="Catalog\SongCatalog.cpp"><Filter>Catalog</Filter></ClCompile>
     <ClCompile Include="Catalog\SongCatalogIndex.cpp"><Filter>Catalog</Filter></ClCompile>
     <ClCompile Include="Catalog\SongLayout.cpp"><Filter>Catalog</Filter></ClCompile>
+    <ClInclude Include="Catalog\ChartHash.h"><Filter>Catalog</Filter></ClInclude>
     <ClInclude Include="Catalog\SongCatalogCacheVersion.h"><Filter>Catalog</Filter></ClInclude>
     <ClInclude Include="Catalog\SongCatalog.h"><Filter>Catalog</Filter></ClInclude>
     <ClInclude Include="Catalog\SongLayout.h"><Filter>Catalog</Filter></ClInclude>

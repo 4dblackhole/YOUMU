@@ -2,7 +2,10 @@
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Presentation/ValueDialog.h"
+#include <shobjidl.h>
+#include <wrl/client.h>
 #include <algorithm>
+#include <memory>
 #include <utility>
 
 using namespace PhantomCore;
@@ -16,6 +19,40 @@ namespace
     {
         if (input.IsKeyDown(VK_RETURN) || input.IsKeyDown(VK_ESCAPE)) return true;
         return input.WasKeyPressed(VK_RETURN) || input.WasKeyPressed(VK_ESCAPE);
+    }
+    // The Windows open/save dialog for one collection file (*.json).
+    std::optional<std::filesystem::path> ShowCollectionFileDialog(const bool save, const std::wstring &suggestedName,
+                                                                  const std::wstring &title, const std::wstring &fileType)
+    {
+        const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        struct ComScope
+        {
+            HRESULT result;
+            ~ComScope()
+            {
+                if (SUCCEEDED(result)) CoUninitialize();
+            }
+        } scope{initialized};
+        Microsoft::WRL::ComPtr<IFileDialog> dialog;
+        HRESULT result = save ? CoCreateInstance(__uuidof(FileSaveDialog), nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))
+                              : CoCreateInstance(__uuidof(FileOpenDialog), nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
+        const COMDLG_FILTERSPEC types[]{{fileType.c_str(), L"*.json"}};
+        const FILEOPENDIALOGOPTIONS options =
+            FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | (save ? FOS_OVERWRITEPROMPT : FOS_FILEMUSTEXIST);
+        if (SUCCEEDED(result)) result = dialog->SetOptions(options);
+        if (SUCCEEDED(result)) result = dialog->SetFileTypes(1, types);
+        if (SUCCEEDED(result)) result = dialog->SetDefaultExtension(L"json");
+        if (SUCCEEDED(result)) result = dialog->SetTitle(title.c_str());
+        if (SUCCEEDED(result) && save) result = dialog->SetFileName(suggestedName.c_str());
+        if (SUCCEEDED(result)) result = dialog->Show(GetActiveWindow());
+        if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return std::nullopt;
+        Microsoft::WRL::ComPtr<IShellItem> item;
+        if (SUCCEEDED(result)) result = dialog->GetResult(&item);
+        PWSTR raw{};
+        if (SUCCEEDED(result)) result = item->GetDisplayName(SIGDN_FILESYSPATH, &raw);
+        const std::unique_ptr<wchar_t, decltype(&CoTaskMemFree)> path(raw, &CoTaskMemFree);
+        if (FAILED(result) || !path) throw std::runtime_error("The collection file dialog failed.");
+        return std::filesystem::path(path.get());
     }
 }
 Visual2DNode &SongFavoritesPanel::Button(Visual2DNode &parent, std::string name)
@@ -52,6 +89,8 @@ void SongFavoritesPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts)
     status_ = label("Favorites.Status", 14);
     list_ = &panel_->CreateChild("Favorites.Folders");
     create_ = &Button(*panel_, "Favorites.Create");
+    import_ = &Button(*panel_, "Favorites.Import");
+    export_ = &Button(*panel_, "Favorites.Export");
     rename_ = &Button(*panel_, "Favorites.Rename");
     remove_ = &Button(*panel_, "Favorites.Delete");
     apply_ = &Button(*panel_, "Favorites.Apply");
@@ -62,14 +101,28 @@ void SongFavoritesPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts)
     Text(*next_, L"↓");
     ApplyButtonStyle(*apply_, AccentBlue, AccentHover, PureWhite);
     overlay_->SetVisible(false);
+    picker_ = [this](const bool save, const std::wstring &suggestedName)
+    {
+        const auto title = std::wstring{texts_->Get(save ? "Favorites.export" : "Favorites.import")};
+        return ShowCollectionFileDialog(save, suggestedName, title, std::wstring{texts_->Get("Favorites.fileType")});
+    };
     RefreshTexts();
     Layout();
 }
-void SongFavoritesPanel::Open(const SongFavorites &favorites, const std::filesystem::path &pattern, std::wstring name)
+void SongFavoritesPanel::Open(const SongFavorites &favorites, std::string chartHash, SongCollectionChart label,
+                              std::wstring name, const std::map<std::string, SongCollectionChart> &known)
 {
     draft_ = favorites.Values();
-    key_ = SongFavorites::PatternKey(pattern);
+    for (auto &folder : draft_.folders)
+        for (auto &[hash, kept] : folder.charts)
+        {
+            const auto found = known.find(hash);
+            if (kept == SongCollectionChart{} && found != known.end()) kept = found->second;
+        }
+    chartHash_ = std::move(chartHash);
+    label_ = std::move(label);
     patternName_ = std::move(name);
+    notice_.clear();
     error_ = favorites.LoadWarning();
     selected_ = draft_.folders.empty() ? 0 : draft_.folders.front().id;
     first_ = 0;
@@ -87,7 +140,7 @@ void SongFavoritesPanel::Close() noexcept
 void SongFavoritesPanel::Shutdown() noexcept
 {
     Close();
-    overlay_ = panel_ = nullptr;
+    overlay_ = panel_ = import_ = export_ = nullptr;
     canvas_ = nullptr;
     texts_ = nullptr;
     rowIds_.clear();
@@ -114,6 +167,10 @@ void SongFavoritesPanel::Layout()
     remove_->SetBounds({40 + third * 2, 90, third, 32});
     status_->SetBounds({24, 53, width - 48, 32});
     apply_->SetBounds({width - 144, 12, 120, 32});
+    // Import and export share the bottom row with Apply.
+    const float file = std::clamp((width - 184) / 2, 1.0F, 120.0F);
+    import_->SetBounds({24, 12, file, 32});
+    export_->SetBounds({32 + file, 12, file, 32});
     RefreshRows();
 }
 void SongFavoritesPanel::RefreshTexts()
@@ -121,15 +178,18 @@ void SongFavoritesPanel::RefreshTexts()
     if (!panel_) return;
     for (const auto &[node, key] : std::vector<std::pair<Visual2DNode *, const char *>>{
         {title_, "Favorites.title"}, {create_, "Favorites.create"}, {rename_, "Favorites.rename"},
-        {remove_, "Favorites.remove"}, {apply_, "Favorites.apply"}, {close_, "Favorites.close"}})
+        {remove_, "Favorites.remove"}, {apply_, "Favorites.apply"}, {close_, "Favorites.close"},
+        {import_, "Favorites.import"}, {export_, "Favorites.export"}})
     {
         Text(*node, std::wstring{texts_->Get(key)});
         texts_->ApplyFont(RequireComponent<TextVisualComponent>(*node));
     }
-    Text(*pattern_, key_.empty() ? std::wstring{texts_->Get("Favorites.noPattern")} :
+    Text(*pattern_, chartHash_.empty() ? std::wstring{texts_->Get("Favorites.noPattern")} :
         std::wstring{texts_->Get("Favorites.pattern")} + patternName_);
-    Text(*status_, error_.empty() ? std::wstring{texts_->Get("Favorites.hint")} :
-        std::wstring{texts_->Get("Favorites.error")} + DecodeDisplayText(error_));
+    // An error wins over the last import/export notice, which wins over the hint.
+    std::wstring status = notice_.empty() ? std::wstring{texts_->Get("Favorites.hint")} : notice_;
+    if (!error_.empty()) status = std::wstring{texts_->Get("Favorites.error")} + DecodeDisplayText(error_);
+    Text(*status_, std::move(status));
     for (auto *node : {pattern_, status_}) texts_->ApplyFont(RequireComponent<TextVisualComponent>(*node));
     RequireComponent<TextVisualComponent>(*status_).SetTextColor(error_.empty() ? MutedBlue : ui_colors::Error);
     RefreshRows();
@@ -149,8 +209,8 @@ void SongFavoritesPanel::RefreshRows()
         const float y = 175 - static_cast<float>(row) * 35;
         auto &member = Button(*list_, "Favorites.Member." + std::to_string(folder.id));
         member.SetBounds({0, y, 30, 30});
-        member.SetEnabled(!key_.empty());
-        const bool checked = !key_.empty() && folder.patternKeys.contains(key_);
+        member.SetEnabled(!chartHash_.empty());
+        const bool checked = !chartHash_.empty() && folder.charts.contains(chartHash_);
         Text(member, checked ? L"✓" : L"");
         ApplyButtonStyle(member, checked ? AccentBlue : PaleBlue, FocusBlue, checked ? PureWhite : DeepBlue);
         auto &name = Button(*list_, "Favorites.Folder." + std::to_string(folder.id));
@@ -172,8 +232,10 @@ void SongFavoritesPanel::RefreshRows()
         text.SetFontSize(16);
         texts_->ApplyFont(text);
     }
-    rename_->SetEnabled(draft_.Find(selected_) != nullptr);
-    remove_->SetEnabled(draft_.Find(selected_) != nullptr);
+    const bool chosen = draft_.Find(selected_) != nullptr;
+    rename_->SetEnabled(chosen);
+    remove_->SetEnabled(chosen);
+    export_->SetEnabled(chosen);
     previous_->SetEnabled(first_ > 0);
     next_->SetEnabled(first_ + Rows < draft_.folders.size());
 }
@@ -190,7 +252,10 @@ void SongFavoritesPanel::EditName(bool create)
     std::vector<DialogValue> fields{{std::wstring{texts_->Get("Favorites.name")}, create ? L"" : folder->name}};
     const bool accepted = ShowValueDialog(std::wstring{texts_->Get(create ? "Favorites.create" : "Favorites.rename")}, fields,
         std::wstring{texts_->Get("Favorites.ok")}, std::wstring{texts_->Get("Favorites.cancel")}, [&]
-        { fields[0].value = SongFavoritesValues::FolderName(fields[0].value); });
+        {
+            fields[0].value = SongFavoritesValues::FolderName(fields[0].value);
+            draft_.RequireNameAvailable(fields[0].value, create ? 0 : selected_);
+        });
     discardKeys_ = waitRelease_ = true;
     if (!accepted) return;
     if (create)
@@ -201,6 +266,42 @@ void SongFavoritesPanel::EditName(bool create)
     else draft_.Rename(selected_, std::move(fields[0].value));
     RefreshRows();
 }
+void SongFavoritesPanel::ShowSelected()
+{
+    const auto found = std::ranges::find(draft_.folders, selected_, &SongFavoriteFolder::id);
+    const auto index = static_cast<std::size_t>(found - draft_.folders.begin());
+    if (index < first_) first_ = index;
+    else if (index >= first_ + Rows) first_ = index + 1 - Rows;
+}
+void SongFavoritesPanel::ImportCollection()
+{
+    const auto path = picker_ ? picker_(false, L"") : std::nullopt;
+    discardKeys_ = waitRelease_ = true;
+    if (!path) return;
+    auto collection = SongFavorites::ReadCollectionFile(*path);
+    // A collection with the same name takes the file's charts; otherwise the file adds a collection.
+    const bool merged = draft_.FindName(collection.name) != nullptr;
+    const auto name = collection.name;
+    const auto count = collection.charts.size();
+    selected_ = draft_.Merge(std::move(collection));
+    ShowSelected();
+    error_.clear();
+    notice_ = std::wstring{texts_->Get(merged ? "Favorites.merged" : "Favorites.imported")} + name + L" (" +
+              std::to_wstring(count) + L")";
+    RefreshTexts();
+}
+void SongFavoritesPanel::ExportCollection()
+{
+    const auto *folder = draft_.Find(selected_);
+    if (!folder) return;
+    const auto path = picker_ ? picker_(true, SongFavorites::CollectionFileStem(folder->name) + L".json") : std::nullopt;
+    discardKeys_ = waitRelease_ = true;
+    if (!path) return;
+    SongFavorites::WriteCollectionFile(*path, *folder);
+    error_.clear();
+    notice_ = std::wstring{texts_->Get("Favorites.exported")} + path->filename().wstring();
+    RefreshTexts();
+}
 bool SongFavoritesPanel::ProcessAction(const Action &action)
 {
     if (!IsVisible() || action.type != ActionType::Clicked) return false;
@@ -209,6 +310,8 @@ bool SongFavoritesPanel::ProcessAction(const Action &action)
     try
     {
         if (action.source == create_->Id()) { EditName(true); return true; }
+        if (action.source == import_->Id()) { ImportCollection(); return true; }
+        if (action.source == export_->Id()) { ExportCollection(); return true; }
         if (action.source == rename_->Id()) { EditName(false); return true; }
         if (action.source == remove_->Id())
         {
@@ -225,10 +328,10 @@ bool SongFavoritesPanel::ProcessAction(const Action &action)
             RefreshRows();
             return true;
         }
-        for (const auto &[node, id] : memberIds_) if (action.source == node && !key_.empty())
+        for (const auto &[node, id] : memberIds_) if (action.source == node && !chartHash_.empty())
         {
             const auto *folder = draft_.Find(id);
-            if (folder) draft_.SetMembership(id, key_, !folder->patternKeys.contains(key_));
+            if (folder) draft_.SetMembership(id, chartHash_, !folder->charts.contains(chartHash_), label_);
             RefreshRows();
             return true;
         }

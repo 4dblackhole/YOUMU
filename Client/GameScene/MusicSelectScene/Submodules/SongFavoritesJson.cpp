@@ -1,12 +1,16 @@
 #include "SongFavoritesJson.h"
+#include "Catalog/ChartHash.h"
 #include <Windows.h>
+#include <algorithm>
 #include <charconv>
 #include <limits>
 #include <stdexcept>
 
 namespace
 {
-    [[noreturn]] void Invalid() { throw std::invalid_argument("Invalid or unsupported favorites.json."); }
+    constexpr std::wstring_view CollectionFormat = L"YOUMU collection";
+
+    [[noreturn]] void Invalid() { throw std::invalid_argument("Invalid or unsupported collection file."); }
     // The value of one hexadecimal digit, or 16 when the character is not one.
     unsigned HexDigitValue(const wchar_t ch)
     {
@@ -37,49 +41,37 @@ namespace
         if (!WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, text.data(), size, result.data(), count, nullptr, nullptr)) Invalid();
         return result;
     }
+    std::string LowerHash(std::wstring_view text)
+    {
+        std::string hash;
+        for (const wchar_t ch : text)
+        {
+            if (ch > 127) Invalid();
+            hash.push_back(static_cast<char>(ch >= L'A' && ch <= L'F' ? ch - L'A' + L'a' : ch));
+        }
+        if (!IsChartHash(hash)) Invalid();
+        return hash;
+    }
     // Fixed schema reader: objects are order-independent, with duplicate/unknown
     // members rejected. Invalid files are preserved rather than partially loaded.
     class Reader
     {
       public:
-        explicit Reader(std::wstring source) : source_(std::move(source)) {}
-        SongFavoritesValues Read()
+        explicit Reader(std::string_view source)
         {
-            SongFavoritesValues result;
-            unsigned fields{};
-            Object([&](const std::wstring &key)
-            {
-                if (key == L"version") { Field(fields, 1); if (Number() != 1) Invalid(); }
-                else if (key == L"nextId") { Field(fields, 2); result.nextId = Number(); }
-                else if (key == L"folders")
-                {
-                    Field(fields, 4);
-                    Array([&] { result.folders.push_back(Folder()); });
-                }
-                else Invalid();
-            });
-            Space();
-            if (fields != 7 || cursor_ != source_.size()) Invalid();
-            ValidateSongFavorites(result);
-            return result;
+            if (source.starts_with("\xEF\xBB\xBF")) source.remove_prefix(3);
+            source_ = Wide(source);
         }
-      private:
         static void Field(unsigned &fields, unsigned bit)
         {
             if (fields & bit) Invalid();
             fields |= bit;
         }
-        void Space()
-        {
-            while (cursor_ < source_.size() && std::wstring_view{L" \t\r\n"}.find(source_[cursor_]) != std::wstring_view::npos) ++cursor_;
-        }
-        bool Take(wchar_t character)
+        void End()
         {
             Space();
-            if (cursor_ < source_.size() && source_[cursor_] == character) { ++cursor_; return true; }
-            return false;
+            if (cursor_ != source_.size()) Invalid();
         }
-        void Expect(wchar_t character) { if (!Take(character)) Invalid(); }
         template<class Function> void Object(Function member)
         {
             Expect(L'{');
@@ -105,19 +97,6 @@ namespace
             const auto parsed = std::from_chars(digits.data(), digits.data() + digits.size(), value);
             if (parsed.ec != std::errc{} || parsed.ptr != digits.data() + digits.size()) Invalid();
             return value;
-        }
-        wchar_t Hex()
-        {
-            unsigned value{};
-            for (unsigned i = 0; i < 4; ++i)
-            {
-                if (cursor_ == source_.size()) Invalid();
-                const auto ch = source_[cursor_++];
-                const unsigned digit = HexDigitValue(ch);
-                if (digit == 16) Invalid();
-                value = value * 16 + digit;
-            }
-            return static_cast<wchar_t>(value);
         }
         std::wstring String()
         {
@@ -145,23 +124,30 @@ namespace
             }
             Invalid();
         }
-        SongFavoriteFolder Folder()
+
+      private:
+        void Space()
         {
-            SongFavoriteFolder folder;
-            unsigned fields{};
-            Object([&](const std::wstring &key)
+            while (cursor_ < source_.size() && std::wstring_view{L" \t\r\n"}.find(source_[cursor_]) != std::wstring_view::npos) ++cursor_;
+        }
+        bool Take(wchar_t character)
+        {
+            Space();
+            if (cursor_ < source_.size() && source_[cursor_] == character) { ++cursor_; return true; }
+            return false;
+        }
+        void Expect(wchar_t character) { if (!Take(character)) Invalid(); }
+        wchar_t Hex()
+        {
+            unsigned value{};
+            for (unsigned i = 0; i < 4; ++i)
             {
-                if (key == L"id") { Field(fields, 1); folder.id = Number(); }
-                else if (key == L"name") { Field(fields, 2); folder.name = String(); }
-                else if (key == L"patterns")
-                {
-                    Field(fields, 4);
-                    Array([&] { folder.patternKeys.insert(Utf8(String())); });
-                }
-                else Invalid();
-            });
-            if (fields != 7) Invalid();
-            return folder;
+                if (cursor_ == source_.size()) Invalid();
+                const unsigned digit = HexDigitValue(source_[cursor_++]);
+                if (digit == 16) Invalid();
+                value = value * 16 + digit;
+            }
+            return static_cast<wchar_t>(value);
         }
         std::wstring source_;
         std::size_t cursor_{};
@@ -178,48 +164,133 @@ namespace
         }
         return result + '"';
     }
+    std::pair<std::string, SongCollectionChart> ReadChart(Reader &in)
+    {
+        std::string hash;
+        SongCollectionChart label;
+        unsigned fields{};
+        in.Object([&](const std::wstring &key)
+        {
+            if (key == L"sha256") { Reader::Field(fields, 1); hash = LowerHash(in.String()); }
+            else if (key == L"title") { Reader::Field(fields, 2); label.title = in.String(); }
+            else if (key == L"artist") { Reader::Field(fields, 4); label.artist = in.String(); }
+            else if (key == L"pattern") { Reader::Field(fields, 8); label.pattern = in.String(); }
+            else Invalid();
+        });
+        if ((fields & 1) == 0) Invalid();
+        return {std::move(hash), std::move(label)};
+    }
+} // namespace
+
+void ValidateSongCollection(const SongFavoriteFolder &collection)
+{
+    if (SongFavoritesValues::FolderName(collection.name) != collection.name) Invalid();
+    static_cast<void>(Utf8(collection.name));
+    for (const auto &[hash, label] : collection.charts)
+    {
+        if (!IsChartHash(hash) || LowerHash(Wide(hash)) != hash) Invalid();
+        for (const auto *text : {&label.title, &label.artist, &label.pattern})
+            static_cast<void>(Utf8(*text));
+    }
 }
 
 void ValidateSongFavorites(const SongFavoritesValues &values)
 {
-    std::set<std::uint64_t> ids;
-    for (const auto &folder : values.folders)
-    {
-        if (folder.id == 0 || folder.id >= values.nextId) Invalid();
-        if (!ids.insert(folder.id).second || SongFavoritesValues::FolderName(folder.name) != folder.name) Invalid();
-        static_cast<void>(Utf8(folder.name));
-        for (const auto &key : folder.patternKeys)
-        {
-            const auto wide = Wide(key);
-            const std::filesystem::path path{wide};
-            if (wide.empty() || wide.find(L'\0') != wide.npos) Invalid();
-            if (!path.is_absolute() || SongFavorites::PatternKey(path) != key) Invalid();
-        }
-    }
     if (values.nextId == 0) Invalid();
-}
-SongFavoritesValues ReadSongFavoritesJson(std::string_view source)
-{
-    if (source.starts_with("\xEF\xBB\xBF")) source.remove_prefix(3);
-    return Reader{Wide(source)}.Read();
-}
-std::string WriteSongFavoritesJson(const SongFavoritesValues &values)
-{
-    ValidateSongFavorites(values);
-    std::string result = "{\n  \"version\": 1,\n  \"nextId\": " + std::to_string(values.nextId) + ",\n  \"folders\": [";
+    std::set<std::uint64_t> ids;
     for (std::size_t i = 0; i < values.folders.size(); ++i)
     {
         const auto &folder = values.folders[i];
-        result += (i ? ",\n" : "\n");
-        result += "    {\"id\": " + std::to_string(folder.id) + ", \"name\": " + Quote(folder.name) + ", \"patterns\": [";
-        bool first = true;
-        for (const auto &key : folder.patternKeys)
-        {
-            if (!first) result += ", ";
-            result += Quote(Wide(key));
-            first = false;
-        }
-        result += "]}";
+        if (folder.id == 0 || folder.id >= values.nextId) Invalid();
+        if (!ids.insert(folder.id).second) Invalid();
+        ValidateSongCollection(folder);
+        for (std::size_t j = 0; j < i; ++j)
+            if (SongFavoritesValues::SameName(values.folders[j].name, folder.name)) Invalid();
     }
-    return result + "\n  ]\n}\n";
+}
+
+SongFavoriteFolder ReadSongCollectionJson(std::string_view source)
+{
+    Reader in{source};
+    SongFavoriteFolder collection;
+    unsigned fields{};
+    in.Object([&](const std::wstring &key)
+    {
+        if (key == L"format") { Reader::Field(fields, 1); if (in.String() != CollectionFormat) Invalid(); }
+        else if (key == L"version") { Reader::Field(fields, 2); if (in.Number() != 1) Invalid(); }
+        else if (key == L"name") { Reader::Field(fields, 4); collection.name = SongFavoritesValues::FolderName(in.String()); }
+        else if (key == L"charts")
+        {
+            Reader::Field(fields, 8);
+            in.Array([&]
+            {
+                auto [hash, label] = ReadChart(in);
+                // A chart listed twice keeps the first label that says something.
+                auto &kept = collection.charts[hash];
+                if (kept == SongCollectionChart{}) kept = std::move(label);
+            });
+        }
+        else Invalid();
+    });
+    in.End();
+    if (fields != 15) Invalid();
+    ValidateSongCollection(collection);
+    return collection;
+}
+
+std::string WriteSongCollectionJson(const SongFavoriteFolder &collection)
+{
+    ValidateSongCollection(collection);
+    std::string result = "{\n  \"format\": " + Quote(CollectionFormat) + ",\n  \"version\": 1,\n  \"name\": " +
+                         Quote(collection.name) + ",\n  \"charts\": [";
+    bool first = true;
+    for (const auto &[hash, label] : collection.charts)
+    {
+        result += first ? "\n" : ",\n";
+        first = false;
+        result += "    {\"sha256\": \"" + hash + "\"";
+        for (const auto &[key, text] : {std::pair{"title", &label.title}, std::pair{"artist", &label.artist},
+                                        std::pair{"pattern", &label.pattern}})
+            if (!text->empty()) result += std::string(", \"") + key + "\": " + Quote(*text);
+        result += "}";
+    }
+    return result + (first ? "]\n}\n" : "\n  ]\n}\n");
+}
+
+std::vector<LegacyFavoriteFolder> ReadLegacyFavoritesJson(std::string_view source)
+{
+    Reader in{source};
+    std::vector<LegacyFavoriteFolder> folders;
+    unsigned fields{};
+    in.Object([&](const std::wstring &key)
+    {
+        if (key == L"version") { Reader::Field(fields, 1); if (in.Number() != 1) Invalid(); }
+        else if (key == L"nextId") { Reader::Field(fields, 2); static_cast<void>(in.Number()); }
+        else if (key == L"folders")
+        {
+            Reader::Field(fields, 4);
+            in.Array([&]
+            {
+                LegacyFavoriteFolder folder;
+                unsigned folderFields{};
+                in.Object([&](const std::wstring &member)
+                {
+                    if (member == L"id") { Reader::Field(folderFields, 1); static_cast<void>(in.Number()); }
+                    else if (member == L"name") { Reader::Field(folderFields, 2); folder.name = SongFavoritesValues::FolderName(in.String()); }
+                    else if (member == L"patterns")
+                    {
+                        Reader::Field(folderFields, 4);
+                        in.Array([&] { folder.patternPaths.push_back(Utf8(in.String())); });
+                    }
+                    else Invalid();
+                });
+                if (folderFields != 7) Invalid();
+                folders.push_back(std::move(folder));
+            });
+        }
+        else Invalid();
+    });
+    in.End();
+    if (fields != 7) Invalid();
+    return folders;
 }

@@ -1,4 +1,5 @@
 #include "Catalog/SongCatalog.h"
+#include "Catalog/ChartHash.h"
 
 #include "Catalog/SongLayout.h"
 #include "Parsing/ChartParser.h"
@@ -134,8 +135,17 @@ namespace
             std::optional<std::size_t> noteCount;
             std::optional<std::pair<double, double>> bpmRange;
             std::optional<double> chartLength;
+            std::string contentHash;
             if constexpr (requires { parsed.document.notes; })
             {
+                try
+                {
+                    contentHash = ChartFileHash(path);
+                }
+                catch (const std::exception &)
+                {
+                    // An unreadable file has already failed parsing; it simply has no identity.
+                }
                 if (parsed.Succeeded() && countNotes)
                     noteCount = countNotes(parsed.document);
                 if (parsed.Succeeded())
@@ -161,7 +171,8 @@ namespace
                 if (metadataOnly) parsed.document = {};
             CheckChartLoadCancellation(stop);
             return typename Cache::mapped_type{modified, size,
-                std::make_shared<const Parsed>(std::move(parsed)), noteCount, bpmRange, chartLength};
+                std::make_shared<const Parsed>(std::move(parsed)), noteCount, bpmRange, chartLength,
+                std::move(contentHash)};
         };
         std::error_code error;
         const auto modified = file.last_write_time(error);
@@ -454,6 +465,7 @@ SongCatalogLoadResult SongCatalog::Load(
         std::optional<std::size_t> noteCount;
         std::optional<std::pair<double, double>> bpmRange;
         std::optional<double> chartLength;
+        std::string chartHash;
         try
         {
             InvalidateChangedPatternEffect(patternCache_, effectCache_, path);
@@ -477,6 +489,7 @@ SongCatalogLoadResult SongCatalog::Load(
             noteCount = cached.noteCount;
             bpmRange = cached.bpmRange;
             chartLength = cached.chartLengthSeconds;
+            chartHash = cached.contentHash;
         }
         catch (const ChartLoadCancelled&) { throw; }
         catch (const std::exception& exception)
@@ -559,6 +572,7 @@ SongCatalogLoadResult SongCatalog::Load(
         pattern.noteCount = noteCount;
         pattern.bpmRange = bpmRange;
         pattern.chartLengthSeconds = chartLength;
+        pattern.chartHash = std::move(chartHash);
         auto& song = result.songs[songIndex];
         song.patterns.push_back(std::move(pattern));
         if (progress)

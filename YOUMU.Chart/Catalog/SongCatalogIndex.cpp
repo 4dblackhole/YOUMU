@@ -1,4 +1,5 @@
 #include "Catalog/SongCatalog.h"
+#include "Catalog/ChartHash.h"
 #include "Catalog/SongCatalogCacheVersion.h"
 #include <algorithm>
 #include <atomic>
@@ -153,6 +154,7 @@ namespace
             if (entry.bpmRange) { out.Number(entry.bpmRange->first); out.Number(entry.bpmRange->second); }
             out.Number(static_cast<std::uint8_t>(entry.chartLengthSeconds.has_value()));
             if (entry.chartLengthSeconds) out.Number(*entry.chartLengthSeconds);
+            out.Text(entry.contentHash);
             Write(out, entry.parsed->document);
             out.Count(entry.parsed->diagnostics.size());
             for (const auto &d : entry.parsed->diagnostics)
@@ -182,6 +184,9 @@ namespace
             if (in.Number<std::uint8_t>()) bpmRange = {in.Number<double>(), in.Number<double>()};
             std::optional<double> chartLength;
             if (in.Number<std::uint8_t>()) chartLength = in.Number<double>();
+            auto contentHash = in.Text();
+            if (!contentHash.empty() && !IsChartHash(contentHash))
+                throw std::runtime_error("Invalid catalog chart hash.");
             auto parsed = std::make_shared<typename Cache::mapped_type::Parsed>();
             parsed->document.sourcePath = path;
             Read(in, parsed->document);
@@ -198,7 +203,7 @@ namespace
                 parsed->diagnostics.push_back(std::move(d));
             }
             if (!cache.emplace(path, typename Cache::mapped_type{modified, size, std::move(parsed),
-                noteCount, bpmRange, chartLength}).second)
+                noteCount, bpmRange, chartLength, std::move(contentHash)}).second)
                 throw std::runtime_error("Duplicate catalog cache record.");
         }
     }

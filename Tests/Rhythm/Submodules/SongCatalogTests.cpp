@@ -1,4 +1,5 @@
 #include "TestSupport.h"
+#include "Catalog/ChartHash.h"
 #include "Catalog/SongCatalogCacheVersion.h"
 #include "Catalog/SongLayout.h"
 #include "Mode/PlayGameModeFactory.h"
@@ -296,6 +297,12 @@ namespace tests
                 "A new catalog instance must reuse the disk index without rewriting it.");
         Require(std::filesystem::last_write_time(cache) == savedAt,
                 "A new catalog instance must reuse the disk index without rewriting it.");
+        // Collections find charts by the SHA-256 of the pattern file; the index keeps it.
+        Require(ChartBytesHash("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                "Chart hashes are SHA-256 in lowercase hex.");
+        Require(first.songs.front().patterns.front().chartHash == ChartFileHash(pattern) &&
+                restored.songs.front().patterns.front().chartHash == ChartBytesHash(source),
+                "A pattern carries its file hash, also when it comes from the disk index.");
         const auto readVersion = [&](std::streamoff offset)
         {
             std::ifstream file(cache, std::ios::binary);
@@ -317,8 +324,11 @@ namespace tests
         source.replace(source.find("Pattern Name: Valid"), 19, "Pattern Name: Other");
         WriteTextFile(pattern, source);
         std::filesystem::last_write_time(pattern, beforeEdit + std::chrono::seconds{2});
-        Require(load().songs.front().patterns.front().pattern.name == "Other",
+        const auto edited = load();
+        Require(edited.songs.front().patterns.front().pattern.name == "Other",
             "Same-size source edits must invalidate cached metadata by modification time.");
+        Require(edited.songs.front().patterns.front().chartHash == ChartBytesHash(source),
+            "An edited chart gets the hash of its new bytes.");
         {
             std::fstream file(cache, std::ios::binary | std::ios::in | std::ios::out);
             file.seekp(12); // Parser revision, independent of the payload checksum.
