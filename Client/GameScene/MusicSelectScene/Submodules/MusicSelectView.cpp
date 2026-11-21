@@ -40,7 +40,7 @@ void MusicSelectView::Initialize(const EngineServices &services)
     CreateSongBrowser();
     favoriteTabs_.Initialize(*browserPanel_, screenVisuals_, texts_);
     CreateFooter();
-    CreateAdditionMenu();
+    CreateImportButton();
     options_.Initialize(*canvas_, services.audio, services.windowControl);
     if (services.windowControl)
     {
@@ -100,10 +100,7 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         input.IsKeyDown(VK_LCONTROL) || input.IsKeyDown(VK_RCONTROL);
     const bool optionsShortcut = controlDown && input.WasKeyPressed(static_cast<std::uint16_t>('O'));
     if (!IsSelectionModalVisible() && !options_.OwnsKeyboard() && optionsShortcut)
-    {
-        CloseAdditionMenu();
         options_.Toggle();
-    }
     // F1 opens Play options straight away (game song select only). The opening frame ends here so the
     // panel does not also read this F1 as its close key.
     const bool playOptionsShortcut = playOptionsButtonId_ != 0 && input.WasKeyPressed(VK_F1);
@@ -114,10 +111,10 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
         return command_;
     }
     ProcessPointer(input);
-    // Hints rest while a panel, the options drawer or the addition menu covers the screen.
+    // Hints rest while a panel or the options drawer covers the screen.
     const bool covered = IsSelectionModalVisible() || options_.IsVisible();
     songList_.RefreshNameHints();
-    tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !covered && !IsAdditionMenuOpen(), canvasPointer_);
+    tooltip_.Update(deltaSeconds, input, inputRouter_.HoveredNode(), !covered, canvasPointer_);
     // Panels are processed in order; the first one that consumes input stops the rest.
     if (ProcessOsuImportPanel(input))
     {
@@ -127,11 +124,6 @@ SongSelectCommand MusicSelectView::Update(const InputState &input,
     const bool panelConsumed =
         ProcessPlayOptionsPanel(input) || ProcessRecordFilterPanel(input) || ProcessFavoritesPanel(input);
     if (panelConsumed || ProcessFilterPanel(input))
-    {
-        UpdateSearchInputVisibility();
-        return command_;
-    }
-    if (ProcessAdditionMenu(input))
     {
         UpdateSearchInputVisibility();
         return command_;
@@ -154,7 +146,6 @@ void MusicSelectView::OnResize(const std::uint32_t width, const std::uint32_t he
     height_ = height;
     if (canvas_ != nullptr)
     {
-        CloseAdditionMenu();
         UpdateResponsiveLayout();
         records_.Invalidate();
         songList_.Rebuild();
@@ -180,7 +171,7 @@ void MusicSelectView::Shutdown() noexcept
         inputRouter_.Reset(*canvas_);
     }
     options_.Shutdown();
-    additionMenu_ = newDifficultyItem_ = convertOsuItem_ = nullptr;
+    importButton_ = importLabel_ = importHelp_ = nullptr;
     canvasPointer_.reset();
     songList_.Shutdown();
     goErrorLabel_ = nullptr;
@@ -228,7 +219,6 @@ void MusicSelectView::ShowAlert(AlertContent content)
     if (canvas_ == nullptr)
         throw std::logic_error("Song select must be initialized before it shows an alert.");
     // Native text boxes would float above the alert, so their panels close without applying.
-    CloseAdditionMenu();
     filterPanel_.Close();
     favoritesPanel_.Close();
     osuImportPanel_.Close();

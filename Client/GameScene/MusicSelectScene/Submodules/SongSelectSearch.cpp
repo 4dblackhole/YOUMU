@@ -49,7 +49,7 @@ void MusicSelectView::UpdateSearchInputVisibility()
 {
     if (!searchInput_) return;
     const bool covered = IsSelectionModalVisible() || options_.IsVisible() || alert_.IsOpen();
-    const bool available = visible_ && !covered && !IsAdditionMenuOpen();
+    const bool available = visible_ && !covered;
     searchInput_->SetVisible(available);
     if (!available) searchFocused_ = false;
 }

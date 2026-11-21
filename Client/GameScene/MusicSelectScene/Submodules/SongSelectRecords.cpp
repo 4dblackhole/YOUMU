@@ -5,7 +5,6 @@ using namespace PhantomCore;
 void MusicSelectView::OpenRecordFilter()
 {
     SetSearchFocus(false);
-    CloseAdditionMenu();
     records_.OpenFilter();
 }
 

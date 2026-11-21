@@ -1704,25 +1704,19 @@ int main()
         Check(add->IsEnabled(), "Chart creation must be enabled after catalog loading.");
         Click(*canvas, *add);
         InputState input;
-        Check(editor.Update(input, 0) == SongSelectCommand::None && selection.focusedSongPosition_ == 0,
-              "Plus must select its song and open the menu without creating files.");
-        auto *menu = Find(canvas->Root(), "SongAddition.Menu");
-        auto *create = Find(canvas->Root(), "SongAddition.NewDifficulty");
-        auto *convert = Find(canvas->Root(), "SongAddition.ConvertOsu");
-        if (!menu || !create || !convert)
-            throw std::runtime_error("Song addition menu is incomplete.");
-        Check(menu->IsVisible(), "Plus must show the addition popup.");
-        Click(*canvas, *create);
-        Check(editor.Update(input, 0) == SongSelectCommand::CreateDifficulty && !menu->IsVisible(),
-              "New Difficulty must close the popup and preserve its existing command.");
-        add = Find(canvas->Root(), "AddDifficulty.0");
-        if (!add)
-            throw std::runtime_error("Refreshed plus button missing.");
-        Click(*canvas, *add);
-        static_cast<void>(editor.Update(input, 0));
-        Click(*canvas, *convert);
-        Check(editor.Update(input, 0) == SongSelectCommand::ConvertOsu && !menu->IsVisible(),
-              "Convert .osu must issue only the import command.");
+        Check(editor.Update(input, 0) == SongSelectCommand::CreateDifficulty && selection.focusedSongPosition_ == 0,
+              "Plus must select its song and start a new difficulty without a popup.");
+        Check(Find(canvas->Root(), "SongAddition.Menu") == nullptr, "The plus popup must be gone.");
+        // osu! import moved to the top of the left column, outside the song cards.
+        auto *importButton = Find(canvas->Root(), "SongAddition.ImportOsu");
+        if (!importButton)
+            throw std::runtime_error("The editor song select must offer Import osu! folder in its left column.");
+        const auto importBounds = importButton->BoundsInCanvas();
+        const auto size = canvas->LogicalSize();
+        Check(importBounds.x + importBounds.width <= -size.width * .5F + 362 && importBounds.y > 0,
+              "Import osu! folder must sit at the top of the left column.");
+        Click(*canvas, *importButton);
+        Check(editor.Update(input, 0) == SongSelectCommand::ConvertOsu, "Import osu! folder must issue the import command.");
         editor.Shutdown();
         TestRebuildKeepsDifficulty();
         TestNativeSongSearch();

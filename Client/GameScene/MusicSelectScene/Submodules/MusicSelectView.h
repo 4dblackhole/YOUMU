@@ -42,7 +42,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { CloseAdditionMenu(); filterPanel_.Close(); favoritesPanel_.Close(); osuImportPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
+        if (!visible) { filterPanel_.Close(); favoritesPanel_.Close(); osuImportPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); if (canvas_) CollapseDropdowns(*canvas_); }
         else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -77,10 +77,8 @@ class MusicSelectView final
     void CreateSongInformationPanel();
     void CreateSongBrowser();
     void CreateFooter();
-    void CreateAdditionMenu();
-    void OpenAdditionMenu(PhantomCore::Rect anchor);
-    void CloseAdditionMenu();
-    bool ProcessAdditionMenu(const PhantomCore::InputState &input);
+    // Editor song select: Import from osu! at the top of the left column (where game song select has records).
+    void CreateImportButton();
     void ApplyTexts();
     void ApplyTooltips();
     void RefreshPlayOptionsBadge();
@@ -106,7 +104,6 @@ class MusicSelectView final
         const bool filterOrRecords = filterPanel_.IsVisible() || records_.FilterVisible();
         return listPanel || filterOrRecords || playOptionsPanel_.IsVisible();
     }
-    [[nodiscard]] bool IsAdditionMenuOpen() const { return additionMenu_ && additionMenu_->IsVisible(); }
     void RefreshFilterButton();
     bool ProcessKeyboard(const PhantomCore::InputState &input);
     // The footer button and F1 open Play options with the current selection's options.
@@ -145,7 +142,7 @@ class MusicSelectView final
     bool searchFocused_{};
     bool visible_{true};
     std::unique_ptr<PhantomCore::ITextInput> searchInput_;
-    PhantomCore::Visual2DNode *additionMenu_{}, *newDifficultyItem_{}, *convertOsuItem_{};
+    PhantomCore::Visual2DNode *importButton_{}, *importLabel_{}, *importHelp_{};
     PhantomCore::ScreenCanvasHandle canvasHandle_;
     PhantomCore::Visual2DCanvas *canvas_{};
     PhantomCore::Visual2DInputRouter inputRouter_;

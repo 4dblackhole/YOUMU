@@ -19,8 +19,9 @@
 ## 에디터 전용 배치
 
 [UI-02](../Design/Decisions.md#ui-02-ui-리디자인) 설계대로 왼쪽 기록 열을 만들지 않고 그 자리는 BG가 보입니다.
+그 열의 위쪽(곡 정보 높이)에는 [osu! 가져오기](#osutaiko-가져오기) 버튼(`Import osu! folder`, 폴더 아이콘과 설명 한 줄)이 있습니다.
 곡 정보와 곡 목록은 게임 곡 선택과 같은 자리·같은 모양이고 같은 면(x 362부터 화면 오른쪽 끝) 위에 놓입니다. 하단 띠 가운데에는 옵션 톱니 하나만 있고
-게임 모드 선택과 `Play options`는 없습니다. 곡 카드 오른쪽의 `+`가 유일한 에디터 전용 부품입니다.
+게임 모드 선택과 `Play options`는 없습니다. 에디터 전용 부품은 곡 카드 오른쪽의 `+`와 왼쪽 열의 가져오기 버튼입니다.
 패턴이 없는 곡의 `+`에 두는 금빛 밑줄은 아직 없습니다.
 
 선택된 난이도 행을 누르거나 GO, Enter 또는 Space로 확정하면 선택 경로를 기록하고
@@ -31,9 +32,8 @@
 
 ## 새 난이도 생성
 
-에디터 곡 카드의 맨 오른쪽 `+`는 `New Difficulty`와 `Import osu! folder` 두 항목의 팝업을 엽니다. 팝업 밖 클릭이나 Escape는
-팝업만 닫으며 뒤 화면을 실행하지 않습니다.
-New Difficulty는 입력 창 없이 에디터를 그 곡의 [만들기 전 상태](ChartEditor.md#새-난이도)로 엽니다(Metadata 탭, `New` 표시,
+에디터 곡 카드의 맨 오른쪽 `+`는 그 곡을 고르고 바로 새 난이도를 엽니다(사용자 결정으로 팝업과 그 안의 가져오기 항목을 없앴습니다).
+새 난이도는 입력 창 없이 에디터를 그 곡의 [만들기 전 상태](ChartEditor.md#새-난이도)로 엽니다(Metadata 탭, `New` 표시,
 저장 버튼은 Create, Compose·Audio 잠김). Taiko·120 BPM·offset 0ms·4/4이며 노트·타이밍 명령·YME 효과는 비어 있습니다.
 Metadata에서 난이도명, 제작자, 태그, Accuracy Difficulty(JudgeLevel 1.00~100.00, 0.01 단위, 기본 50.00), HP, 기본 BPM과
 offset, BG를 입력하고 Create를 누르면 파일을 만든 뒤 같은 에디터에서 이어서 편집합니다. 곡 자체의 YMM과 음원은
@@ -54,7 +54,7 @@ deferred Editor 전환을 수행합니다. 모드의 `NewDocument`·`CreateDocum
 
 ## osu!taiko 가져오기
 
-`Import osu! folder`는 폴더 선택 대화창을 엽니다. 고르는 것은 `.osu` 파일과 음원이 함께 든 osu! 곡 폴더이며
+왼쪽 열의 `Import osu! folder` 버튼은 폴더 선택 대화창을 엽니다. 고르는 것은 `.osu` 파일과 음원이 함께 든 osu! 곡 폴더이며
 누른 카드와 다른 곡도 가져올 수 있습니다. 선택 취소는 아무것도 만들지 않습니다.
 변환기는 native Taiko(`Mode: 1`)만 지원합니다.
 
