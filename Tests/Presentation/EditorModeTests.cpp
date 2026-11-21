@@ -424,6 +424,20 @@ namespace
         redraw();
         state.Mode().ActivateScore(state, {x({1, 2}), ScoreY});
         Check(state.TimeMilliseconds() == secondMs, "Double-clicking empty score space must not move the cursor.");
+
+        redraw();
+        state.Mode().ToggleScoreNote(state, first);
+        redraw();
+        state.Mode().ToggleScoreNote(state, second);
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{firstId, secondId},
+              "Alt+click must add each clicked note to the selection.");
+        redraw();
+        state.Mode().ToggleScoreNote(state, first);
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{secondId},
+              "Alt+click on a selected note must take it out of the selection.");
+        state.Mode().ToggleScoreNote(state, {x({1, 2}), ScoreY});
+        Check(state.SelectedNoteIds() == std::set<std::size_t>{secondId},
+              "Alt+click on empty score space must keep the selection.");
     }
 
     // A placement replaces every note whose span shares a position with it (Taiko has

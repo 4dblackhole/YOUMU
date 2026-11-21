@@ -97,3 +97,30 @@ void TaikoEditorMode::ActivateScore(IEditorContext &state, Point point)
     state.Seek(static_cast<double>(state.Document().Timeline().Compile(*position).count()) / 1000.0);
     state.RequestRebuild();
 }
+
+void TaikoEditorMode::ToggleScoreNote(IEditorContext &state, Point point)
+{
+    if (state.Score().preview)
+        return;
+    const auto order = NoteAt(state, point);
+    const auto note = order ? state.Document().FindNote(*order) : std::nullopt;
+    if (!note)
+        return;
+    // Selection keeps heads and tails; a long note is added or removed as one.
+    std::vector<std::size_t> ids;
+    const auto head = note->head.note.sourceOrder;
+    const bool selected = state.SelectedNoteIds().contains(head);
+    for (const auto id : state.SelectedNoteIds())
+    {
+        const auto owner = state.Document().FindNote(id);
+        if (owner && owner->head.note.sourceOrder != head)
+            ids.push_back(id);
+    }
+    if (!selected)
+        ids.push_back(head);
+    inspector_.Clear();
+    if (ids.size() == 1)
+        inspector_.Select(state.Document(), ids.front());
+    state.SelectNotes(ids);
+    state.RequestRebuild();
+}

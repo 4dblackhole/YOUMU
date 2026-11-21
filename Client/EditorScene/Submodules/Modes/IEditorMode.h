@@ -111,6 +111,10 @@ class IEditorMode : public IEditorAudioSource
     virtual void ActivateScore(IEditorContext &, PhantomCore::Point)
     {
     }
+    // Alt+click on the score or lane: add the note there to the selection or take it out (Explorer-style).
+    virtual void ToggleScoreNote(IEditorContext &, PhantomCore::Point)
+    {
+    }
     virtual void DrawMetadata(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) = 0;
     virtual std::vector<EditorSoundChoice> SoundChoices(const TextCatalog &) const = 0;
     virtual std::wstring_view SoundEffectHelp(const TextCatalog &) const = 0;

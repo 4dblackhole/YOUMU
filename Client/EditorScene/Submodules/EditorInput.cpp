@@ -213,6 +213,12 @@ void EditorView::UpdatePointer(const UpdateContext &context)
     }
     if (!compose)
         return;
+    // Alt+click picks notes one by one, like Ctrl+click in Explorer; it neither edits nor starts a range.
+    if (input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU))
+    {
+        state_.Mode().ToggleScoreNote(state_, *point);
+        return;
+    }
     if (!state_.Mode().BeginScoreSelection(state_, *point))
         state_.Mode().EditScore(state_, *point, false);
     if (doubleClick)

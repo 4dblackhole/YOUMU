@@ -46,6 +46,7 @@ class TaikoEditorMode final : public IEditorMode
     bool BeginScoreSelection(IEditorContext &, PhantomCore::Point) override;
     bool UpdateScoreSelection(IEditorContext &, PhantomCore::Point, bool released) override;
     void ActivateScore(IEditorContext &, PhantomCore::Point) override;
+    void ToggleScoreNote(IEditorContext &, PhantomCore::Point) override;
     void DrawMetadata(IEditorModeCanvas &, IEditorContext &, const TextCatalog &) override;
     std::vector<EditorSoundChoice> SoundChoices(const TextCatalog &) const override;
     std::wstring_view SoundEffectHelp(const TextCatalog &) const override;
