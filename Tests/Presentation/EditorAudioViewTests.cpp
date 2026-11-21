@@ -686,6 +686,31 @@ int main(int argc, char** argv)
         clickFrame(rateLeft + 30 + 31, rateY);
         Check(state.PlaybackRate() == 1.0, "Clicking the rate value must return to 1.00x.");
         state.SetPlaybackRate(1);
+        // Channel heads: the caption beside the icon opens and closes the panel like the icon does.
+        {
+            namespace layout = editor_layout;
+            state.SelectTab(EditorTab::Compose);
+            state.ClosePanel();
+            const auto clickAt = [&](float x, float y) {
+                view.Build();
+                clickFrame(x, y);
+            };
+            const auto middle = [](EditorPanel channel) { return layout::ChannelTop(channel) + layout::ChannelHeight(channel) * .5F; };
+            clickAt(layout::HeadButtonWidth + 40, middle(EditorPanel::Volume));
+            Check(state.Panel() == EditorPanel::Volume, "Clicking a channel caption must open its panel.");
+            clickAt(layout::HeadWidth - 20, middle(EditorPanel::Volume));
+            Check(!state.Panel(), "Clicking the open channel's head again must close its panel.");
+            clickAt(18, middle(EditorPanel::Timing));
+            Check(state.Panel() == EditorPanel::Timing, "The head icon must still open its panel.");
+            clickAt(layout::HeadButtonWidth + 30, layout::LaneTop + 20);
+            Check(state.Panel() == EditorPanel::Notes, "The lane caption must open the Notes panel.");
+            const double zoom = state.Score().realtimeZoom;
+            clickAt(layout::HeadButtonWidth + 8 + 15, layout::LaneTop + layout::LaneHeight - 28);
+            Check(state.Panel() == EditorPanel::Notes && state.Score().realtimeZoom < zoom,
+                  "The lane head's spacing − must keep its own click.");
+            state.SetRealtimeZoom(zoom);
+            state.ClosePanel();
+        }
         // A hit-sound Volume Area: the Curve button cycles Linear → Exponential → Harmonic and wraps.
         // Its click runs after the frame that listed the curves, so it must not hold an iterator into it.
         {
