@@ -87,6 +87,14 @@ namespace
         click("PlayOptions.ignoreScroll"); click("PlayOptions.metronome");
         click("PlayOptions.accelerate.More");
         click("PlayOptions.musicPitch"); click("PlayOptions.overrideJudge");
+        const auto strokeTab = [&](std::string_view name) {
+            return Find(Find(canvas.Root(), name), "Underline").IsVisible();
+        };
+        Check(strokeTab("PlayOptions.MaxStrokes.2") && !strokeTab("PlayOptions.MaxStrokes.3"),
+              "Max strokes starts on its default tab, 2.");
+        click("PlayOptions.MaxStrokes.3");
+        Check(strokeTab("PlayOptions.MaxStrokes.3") && !strokeTab("PlayOptions.MaxStrokes.2"),
+              "A max strokes tab selects itself.");
         Check(window.edits[2]->visible && window.edits[3]->visible && window.edits[4]->visible,
               "Judge and Random reveal their own editors.");
         Check(Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas().height <= 720, "All expanded content fits 1280x720.");
@@ -107,7 +115,8 @@ namespace
               "Done preserves every independent existing option and uint64 precision.");
         Check(applied->judgeLevel == JudgeLevel{60} && applied->hpGauge == HpGaugeKind::Default,
               "Done preserves every independent existing option and uint64 precision.");
-        Check(ChangedPlayOptionCount(*applied) == 8 && ChangedPlayOptionCount({}) == 0,
+        Check(applied->maxStrokes == 3, "Done applies the chosen max strokes.");
+        Check(ChangedPlayOptionCount(*applied) == 9 && ChangedPlayOptionCount({}) == 0,
               "The Play options badge counts changed option groups; a plain play shows none.");
         Check(!panel.TakeApplied(), "A successful close publishes once.");
         const auto open = [&] { panel.Open(*applied); };
@@ -147,7 +156,7 @@ namespace
         Check(defaults->randomAttemptProbability == 1 && !defaults->preserveMusicPitch &&
               defaults->preserveHitSoundPitch,
               "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
-        Check(!defaults->judgeLevel,
+        Check(!defaults->judgeLevel && defaults->maxStrokes == 2,
               "Native Esc applies every existing default, including hidden fields and chart JudgeLevel.");
         open();
         Check(!panel.ProcessAction(ActionFor(canvas, "PlayOptions.hitPitch")), "Hidden pitch controls reject stale actions.");

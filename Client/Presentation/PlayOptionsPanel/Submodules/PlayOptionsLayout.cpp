@@ -36,6 +36,12 @@ namespace
         const float switches = FirstTop + SwitchHeight * 2 + FieldGap;
         return random ? switches + RandomGap + (LabelHeight + 6 + FieldHeight) * 2 + 8 : switches;
     }
+    // Assist: Ignore scroll effects and Metronome switches, then the max strokes label and its 1..4 tabs.
+    constexpr float StrokeTabWidth = 28, StrokeTabHeight = 28;
+    [[nodiscard]] constexpr float AssistHeight() noexcept
+    {
+        return FirstTop + SwitchHeight * 2 + FieldGap + LabelHeight + 6 + StrokeTabHeight;
+    }
 } // namespace
 
 void PlayOptionsPanel::SetViewport(const std::uint32_t height)
@@ -53,7 +59,7 @@ float PlayOptionsPanel::ColumnHeight(const std::size_t column) const noexcept
         return DifficultyHeight(rateExpanded_, overrideJudge_);
     if (column == 1)
         return LayoutHeight(randomDetails);
-    return FirstTop + SwitchHeight * 2 + FieldGap;
+    return AssistHeight();
 }
 
 void PlayOptionsPanel::PlaceSwitchRow(const Flag flag, const float left, const float top, const float width,
@@ -160,6 +166,24 @@ float PlayOptionsPanel::LayoutLayoutColumn(const float height)
     return top + LabelHeight + 6 + FieldHeight;
 }
 
+void PlayOptionsPanel::LayoutAssist(const float height)
+{
+    constexpr float left = ColumnLeft(2), width = ContentWidth(2);
+    PlaceSwitchRow(IgnoreScroll, left, FirstTop, width, height);
+    PlaceSwitchRow(Metronome, left, FirstTop + SwitchHeight + FieldGap, width, height);
+    float top = FirstTop + SwitchHeight * 2 + FieldGap;
+    const float labelWidth = EstimateWidth(strokeLabel_->GetComponent<TextVisualComponent>()->Text(), 13);
+    Place(*strokeLabel_, {left, top, labelWidth + 4, LabelHeight}, height);
+    Place(*strokeRange_, {left + labelWidth + 8, top + 1, width - labelWidth - 8, 16}, height);
+    top += LabelHeight + 6;
+    for (std::size_t i = 0; i < strokeTabs_.size(); ++i)
+    {
+        Place(*strokeTabs_[i], {left + (StrokeTabWidth + 8) * static_cast<float>(i), top, StrokeTabWidth,
+                                StrokeTabHeight}, height);
+        SetTabSelected(*strokeTabs_[i], draft_.maxStrokes == static_cast<int>(i) + 1);
+    }
+}
+
 void PlayOptionsPanel::Layout()
 {
     if (!canvas_ || !gauge_ || height_ == 0)
@@ -172,8 +196,7 @@ void PlayOptionsPanel::Layout()
         Place(*columnRules_[i], {(ColumnWidth + Gap) * static_cast<float>(i + 1), 0, 1, height}, height);
     static_cast<void>(LayoutDifficulty(height));
     static_cast<void>(LayoutLayoutColumn(height));
-    PlaceSwitchRow(IgnoreScroll, ColumnLeft(2), FirstTop, ContentWidth(2), height);
-    PlaceSwitchRow(Metronome, ColumnLeft(2), FirstTop + SwitchHeight + FieldGap, ContentWidth(2), height);
+    LayoutAssist(height);
     for (std::size_t i = 0; i < fields_.size(); ++i)
         StyleField(*fields_[i], inputs_[i] && inputs_[i]->HasFocus(), true);
     UpdateInputs();

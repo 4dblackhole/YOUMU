@@ -8,8 +8,8 @@
 #include <optional>
 
 // Options that differ from a plain play, counted by group as the Play options badge shows them: scroll speed or
-// unit, Accelerate, either pitch setting, JudgeLevel override, Mirror, Random, Ignore scroll effects, Metronome
-// and a non-default HP gauge.
+// unit, Accelerate, either pitch setting, JudgeLevel override, Mirror, Random, Ignore scroll effects, Metronome,
+// a non-default HP gauge and a non-default max strokes.
 [[nodiscard]] inline std::size_t ChangedPlayOptionCount(const PlayOptions &options) noexcept
 {
     const PlayOptions plain;
@@ -19,7 +19,7 @@
                        options.preserveHitSoundPitch != plain.preserveHitSoundPitch;
     const std::array changed{scroll, rate, pitch, options.judgeLevel.has_value(),
                              options.mirror, options.random, options.ignoreScrollEffects, options.metronome,
-                             options.hpGauge != plain.hpGauge};
+                             options.hpGauge != plain.hpGauge, options.maxStrokes != plain.maxStrokes};
     return static_cast<std::size_t>(std::ranges::count(changed, true));
 }
 
@@ -53,6 +53,7 @@ class PlayOptionsPanel final
     void Layout();
     float LayoutDifficulty(float height);
     float LayoutLayoutColumn(float height);
+    void LayoutAssist(float height);
     void PlaceSwitchRow(Flag flag, float left, float top, float width, float height);
     void UpdateInputs();
     void SynchronizeText();
@@ -69,6 +70,9 @@ class PlayOptionsPanel final
     std::array<PhantomCore::Visual2DNode *, 2> subRules_{};
     PhantomCore::Visual2DNode *rateRange_{}, *rateMore_{}, *rateMoreIcon_{}, *judgeUnit_{}, *probabilityUnit_{};
     PhantomCore::Visual2DNode *gaugeLabel_{}, *gaugeClear_{}, *gauge_{};
+    // Max strokes 1..4 as tabs under the Assist switches.
+    PhantomCore::Visual2DNode *strokeLabel_{}, *strokeRange_{};
+    std::array<PhantomCore::Visual2DNode *, PlayOptions::MaximumStrokes> strokeTabs_{};
     std::array<PhantomCore::Visual2DNode *, FieldCount> labels_{}, fields_{};
     std::array<std::unique_ptr<PhantomCore::ITextInput>, FieldCount> inputs_;
     std::array<std::wstring, FieldCount> numbers_;

@@ -32,6 +32,10 @@ struct PlayOptions
     bool preserveHitSoundPitch{true};
     std::optional<JudgeLevel> judgeLevel;
     HpGaugeKind hpGauge{HpGaugeKind::Default};
+    // Taiko: how many of each column's assigned keys play, counted in slot order from the primary key
+    // (LimitKeysPerBinding). The other assigned keys do nothing during the attempt.
+    int maxStrokes{2};
+    static constexpr int MinimumStrokes = 1, MaximumStrokes = 4;
 
     void Validate() const
     {
@@ -49,6 +53,8 @@ struct PlayOptions
                                         "0.5..2 (or a positive target BPM) required.");
         if (FindHpGauge(hpGauge) == nullptr)
             throw std::invalid_argument("Invalid play options: unknown HP gauge.");
+        if (maxStrokes < MinimumStrokes || maxStrokes > MaximumStrokes)
+            throw std::invalid_argument("Invalid play options: max strokes 1..4 required.");
     }
     // The Accelerate multiplier for a chart. A target BPM is divided by the chart's base BPM and kept within
     // 0.5..2x, the range a multiplier may take.

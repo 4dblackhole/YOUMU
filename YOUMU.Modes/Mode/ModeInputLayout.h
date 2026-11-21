@@ -35,3 +35,6 @@ struct PlaySessionOptions
 [[nodiscard]] bool IsReservedGameControlKey(PhysicalKey key) noexcept;
 // Resolve and validate before publishing settings or constructing a session.
 [[nodiscard]] ModeInputLayout ResolveInputLayout(ModeInputLayout defaults, const InputKeyOverrides &overrides);
+// Keeps the first `keys` assigned keys of each binding, in slot order, and unassigns (0) the rest; the slot count
+// stays. Used for Taiko's max strokes play option.
+[[nodiscard]] ModeInputLayout LimitKeysPerBinding(ModeInputLayout layout, std::size_t keys);

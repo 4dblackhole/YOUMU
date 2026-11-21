@@ -137,6 +137,7 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
         TooltipText hint;
         Color fill{Brand};
         Color ink{White};
+        std::wstring glyph{}; // Drawn in place of a missing icon.
     };
     const auto text = [&](const char *key) { return std::wstring(texts_.Get(key)); };
     const auto option = [&](const char *key) { return std::wstring(texts_.Get(std::string("PlayOptions.") + key)); };
@@ -179,9 +180,15 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
     if (o.ignoreScrollEffects)
         tiles.push_back({"ignoreScrollEffects", optionImages_.ignoreScrollEffects, text("Result.optionIgnoreScroll"),
                          {option("ignoreScroll")}});
+    // The default stroke count is a plain play; another one shows the count over "KEYS".
+    if (o.maxStrokes != PlayOptions{}.maxStrokes)
+        tiles.push_back({"maxStrokes", {}, text("Result.optionMaxStrokes"),
+                         {option("maxStrokes"), {}, std::format(L"{} {}", option("maxStrokesRange"), o.maxStrokes)},
+                         Brand, White, std::to_wstring(o.maxStrokes)});
     // The default gauge is a plain play; another chosen gauge shows its name (HP-02 has none yet).
     if (const auto *gauge = FindHpGauge(o.hpGauge); gauge && o.hpGauge != HpGaugeKind::Default)
-        tiles.push_back({"hpGauge", {}, std::wstring(gauge->name.begin(), gauge->name.end()), {option("hpGauge")}});
+        tiles.push_back({"hpGauge", {}, std::wstring(gauge->name.begin(), gauge->name.end()), {option("hpGauge")},
+                         Brand, White, text("Result.hp")});
 
     // Rows of up to eight tiles fit the 448-wide middle of the centre column; each row is centred.
     constexpr float tileWidth = 46, tileHeight = 50, gap = 6, top = 525, iconSize = 24, captionSize = 11;
@@ -203,7 +210,7 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
                 Image(root, {x + (tileWidth - iconSize) * 0.5F, y + 7, iconSize, iconSize}, tile.icon, "Result.OptionIcon",
                       tile.ink);
             else
-                NumberLabel(root, {x, y + 7, tileWidth, iconSize}, text("Result.hp"), {18, 800, tile.ink, TextAlignment::Center});
+                NumberLabel(root, {x, y + 7, tileWidth, iconSize}, tile.glyph, {18, 800, tile.ink, TextAlignment::Center});
             // A long value shrinks to stay inside its tile.
             const float width = std::max(EstimateNumberWidth(tile.caption, captionSize), 1.0F);
             const float size = std::min(captionSize, captionSize * (tileWidth - 6) / width);

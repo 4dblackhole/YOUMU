@@ -61,3 +61,28 @@ ModeInputLayout ResolveInputLayout(ModeInputLayout layout, const InputKeyOverrid
     }
     return layout;
 }
+
+ModeInputLayout LimitKeysPerBinding(ModeInputLayout layout, const std::size_t keys)
+{
+    if (keys == 0)
+        throw std::invalid_argument("A binding must keep at least one key.");
+    for (auto &binding : layout.bindings)
+    {
+        std::size_t kept = 0;
+        for (auto &key : binding.keys)
+        {
+            if (key == 0)
+                continue;
+            if (kept < keys)
+            {
+                ++kept;
+                continue;
+            }
+            // Only a layout with empty slots can lose a key; elsewhere every slot must hold one.
+            if (!layout.allowUnassignedKeys)
+                throw std::invalid_argument("This input layout cannot leave key slots unassigned.");
+            key = 0;
+        }
+    }
+    return layout;
+}

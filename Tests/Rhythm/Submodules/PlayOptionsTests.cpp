@@ -144,6 +144,47 @@ namespace tests
             catch (const std::invalid_argument &) { multiplierRejected = true; }
             Require(zeroRejected && multiplierRejected, "Target BPM must be positive and a multiplier stays 0.5..2.");
         }
+        // Max strokes: each column plays only its first assigned keys in slot order (default 2, range 1..4).
+        {
+            PlaySessionOptions strokes;
+            strokes.inputKeys["LeftKat"] = {'D', 'F', 'G', 'H'};
+            strokes.inputKeys["LeftDon"] = {0, 'V', 0, 'B'};
+            const auto keysFor = [&](const int limit, const std::string &id) {
+                strokes.play.maxStrokes = limit;
+                auto session = TaikoMode(strokes).CreateSession(pattern);
+                Require(session.Succeeded(), "Max strokes 1..4 is a valid play option.");
+                const auto &bindings = session.session->InputLayout().bindings;
+                return std::ranges::find(bindings, id, &ModeInputBinding::id)->keys;
+            };
+            Require(PlayOptions{}.maxStrokes == 2, "Max strokes starts at 2.");
+            Require(keysFor(2, "LeftKat") == std::vector<PhysicalKey>{'D', 'F', 0, 0},
+                    "Two strokes keep the primary key and the first secondary key.");
+            Require(keysFor(4, "LeftKat") == std::vector<PhysicalKey>{'D', 'F', 'G', 'H'},
+                    "Four strokes keep every assigned key.");
+            Require(keysFor(1, "LeftDon") == std::vector<PhysicalKey>{0, 'V', 0, 0},
+                    "Empty slots do not count as strokes; the first assigned key stays.");
+            const auto hit = [&](const PhysicalKey key) {
+                strokes.play.maxStrokes = 3;
+                auto session = TaikoMode(strokes).CreateSession(pattern);
+                return session.session->ProcessInput(key, InputEdge::Pressed, RhythmTime{}).audioCues.size();
+            };
+            Require(hit('G') > 0 && hit('H') == 0, "A key beyond the limit plays nothing, not even a free hit.");
+            PlayOptions invalid;
+            bool lowRejected{}, highRejected{};
+            invalid.maxStrokes = 0;
+            try { invalid.Validate(); }
+            catch (const std::invalid_argument &) { lowRejected = true; }
+            invalid.maxStrokes = 5;
+            try { invalid.Validate(); }
+            catch (const std::invalid_argument &) { highRejected = true; }
+            Require(lowRejected && highRejected, "Max strokes stays within 1..4.");
+            ModeInputLayout fixed{"Fixed", {{"A", "A", 1, {'A', 'S'}}}, false};
+            bool fixedRejected{};
+            try { static_cast<void>(LimitKeysPerBinding(fixed, 1)); }
+            catch (const std::invalid_argument &) { fixedRejected = true; }
+            Require(fixedRejected && LimitKeysPerBinding(fixed, 2).bindings.front().keys.size() == 2,
+                    "A layout without empty slots cannot drop a key.");
+        }
         options.play.random = true;
         options.play.randomAttemptProbability = 0;
         auto unchanged = TaikoMode(options).CreateSession(pattern);

@@ -272,6 +272,7 @@ AllNotesGameplayTests, GameplayJudgementTests와 GameplayTimingProbe 전후 비�
 | Accelerate | 0.5~2.0x, 또는 목표 BPM(사용자 요청, 채보 Base BPM으로 나눈 배수를 0.5~2.0x로 맞춤). 실제 판정 폭은 기본/배속. 시계 배율 외에 판정 프로필을 다시 나눠 이중 축소하지 않음 |
 | 음정 | BGM/HIT 음정 유지 여부를 독립 선택. 현재 HIT 유지는 원본 음정/길이, BGM은 준비 단계의 PCM 변환 사용 |
 | JudgeLevel | 채보 기본값 또는 0.01 단위 덮어쓰기, 실제 사용 값을 결과/기록에 보존 |
+| Max strokes | Taiko 열마다 쓰는 할당 키 수 1~4, 기본 2(사용자 요청). 슬롯 순서로 할당 키만 세고 넘는 키는 입력 없음. 판정·점수 규칙 불변 |
 
 Mirror 다음 Random 순서입니다. 앱 실행 중 선택을 유지하고 시작 때 값으로 복사하며,
 Retry는 방금 플레이한 옵션/시드를 다시 사용합니다. 원본 YMM/YMP/YME는 수정하지 않습니다.
