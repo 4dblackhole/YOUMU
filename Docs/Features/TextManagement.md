@@ -217,6 +217,7 @@ offscreen context에서는 선택을 비활성화합니다. GPU 한도에 따라
 설정은 다음 플레이/에디터 진입 Snapshot에서 사용합니다. MusicalTimeline의 실행용 정수 us
 오프셋으로 컴파일하고 원본 YMP/YME·Pattern Offset은 수정하지 않습니다.
 에디터 Copy/Replace/타이밍 수정/저장에도 이 분리를 유지합니다.
+패턴마다 따로 두는 개별 오프셋(플레이 중 +/- 키)은 글로벌 오프셋에 더해 컴파일됩니다([개별 오프셋](Gameplay/Audio.md#개별-오프셋)).
 
 OptionsPanel은 Canvas/스크롤/키보드 소유권과 서랍 틀·안내 칸을 맡고, Submodules의 OptionsRail(분류 막대·섹션 배치·스크롤),
 OptionsVolume, OptionsDisplay, OptionsSongs, OptionsOffset, OptionsKeys(키 카드·키 설정 창)가 각 표시·적용 함수를 나눕니다.

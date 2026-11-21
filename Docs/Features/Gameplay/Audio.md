@@ -63,6 +63,21 @@ Raw Input 히트사운드는 timestamp를 판정에만 사용하고 즉시 재�
 이동/Retry 시 히트사운드 bus 볼륨과 DSP bypass를 기본 상태로 돌린 뒤 이동 위치의 자동화를
 적용하여 이전 위치의 효과가 남지 않게 합니다. 음악/UI 볼륨은 변경하지 않습니다.
 
+### 개별 오프셋
+
+osu!처럼 **패턴(난이도)마다** 따로 두는 오프셋입니다(사용자 지시·결정 2026-11-21).
+
+- 저장: 게임 폴더 `Data/LocalOffsets.txt`(`LocalOffsetStore`). 한 줄에 `<ms>`, 탭, `<패턴 키>`, 키는 기록 DB와 같은 정규화된 절대 경로(소문자)입니다.
+  0은 저장하지 않고, 값은 ±1000 ms로 제한합니다. 파일은 임시 파일을 쓴 뒤 바꿔치기합니다.
+- 적용: 곡 선택이 진입 요청에 그 패턴의 값을 넣고(`GameplayLaunchRequest::localOffsetMs`), 세션은 글로벌 + 개별 오프셋으로
+  노트·효과 시각을 컴파일합니다(`CompiledOffset`). YMP Pattern Offset은 채보 데이터라 따로 그대로 더해집니다. 에디터는 글로벌 오프셋만 씁니다.
+- 플레이 중 조절: 첫 노트의 시각이 오기 전(Loading·Gameplay)에 `+`/`-`(숫자 패드 포함)로 5 ms, Alt와 함께 1 ms, Shift와 함께 20 ms씩 바꿉니다.
+  모드 키로 지정된 키는 노트 입력이 우선입니다. 일시정지 중과 첫 노트 시각 이후에는 바뀌지 않습니다.
+  바뀌면 화면 위쪽에 "개별 오프셋 +5 ms"가 1.5초 동안 보입니다(`GameplayOffsetNotice`).
+- 동작 방식: 이미 재생 중인 음악은 건드리지 않고 차트 시계를 바뀐 만큼 뒤로 옮깁니다(`RhythmTimer::ShiftTimeline`, QPC·DSP 대응 함께).
+  그 뒤 음악을 다시 맞추는 모든 경우(시작·재개·되감기·Retry)에는 음원 위치를 차트 시각 + 누적 변경량으로 준비합니다(`GameplayAudioSession::SetMusicLead`).
+- 저장 시점: 씬을 나갈 때 바뀐 값이 있으면 저장합니다. 결과 화면의 Retry는 저장된 값을 다시 읽어 새 세션을 만듭니다.
+
 ### 측정으로 확인한 것
 
 [GameplayTimingProbe](../../../Tests/Presentation/README.md#gameplaytimingprobe)로 이 PC(i5-7600 4코어, FMOD WASAPI 48 kHz, DSP 버퍼 256×4,

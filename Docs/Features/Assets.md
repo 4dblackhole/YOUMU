@@ -34,7 +34,7 @@ Git이 직접 추적합니다. 빌드는 곡을 복사하지 않고 `YOUMU.Asset
   빈 값은 기존 자동 기본 경로이고, 상대경로는 EXE 폴더 기준입니다. 사용자 스킨은 `<자산 루트>/Skins`입니다.
 - 편집 가능한 UTF-8 UI 문구: `<자산 루트>/Languages/{ko,en}.ini`
 - `Option.ini`: 자산 루트와 별개로 항상 EXE 옆
-- 게임이 쓰는 사용자 데이터: EXE 옆 `Data/`(기록 DB는 `Data/Result/plays.sqlite3`, [PlayOptions](Gameplay/PlayOptions.md)). 배포 묶음에 넣지 않고 실행 중 만들어집니다.
+- 게임이 쓰는 사용자 데이터: EXE 옆 `Data/`(기록 DB는 `Data/Result/plays.sqlite3`, [PlayOptions](Gameplay/PlayOptions.md); 개별 오프셋은 `Data/LocalOffsets.txt`, [Audio](Gameplay/Audio.md#개별-오프셋)). 배포 묶음에 넣지 않고 실행 중 만들어집니다.
 
 개발용 폴더의 존재 여부로 구분하므로 배포 폴더는 저장소의 빌드 위치와 분리합니다.
 내장 글꼴과 누락 스킨의 기본본은 기존 RCDATA 캐시에서 읽습니다.
