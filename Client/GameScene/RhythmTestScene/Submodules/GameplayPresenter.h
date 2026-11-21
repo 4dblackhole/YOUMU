@@ -33,6 +33,9 @@ class GameplayPresenter final
     {
         keyBeam_.SetOpacity(static_cast<float>(percent) / 100.0F);
     }
+    // Percent of the background's brightness (osu!'s background dim): 0 draws it black,
+    // 100 as the image is. Applies at once when the play screen already exists.
+    void ConfigureBackgroundBrightness(int percent);
     void ConfigureBackground(std::filesystem::path path, double x, double y)
     {
         backgroundPath_ = std::move(path);
@@ -64,6 +67,8 @@ class GameplayPresenter final
     PhantomCore::ImageHandle backgroundImage_{};
     PhantomCore::Size backgroundSize_{};
     PhantomCore::Point backgroundOffset_{};
+    float backgroundBrightness_{1.0F};
+    void ApplyBackgroundBrightness();
     std::filesystem::path backgroundPath_;
     std::string backgroundWarning_;
 

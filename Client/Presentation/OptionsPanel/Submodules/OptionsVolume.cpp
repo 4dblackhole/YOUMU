@@ -43,6 +43,15 @@ void OptionsPanel::CreateKeyBeamOpacityControl()
     CreatePercentSlider(KeyBeamOpacitySlider, "Options.KeyBeamOpacity");
 }
 
+void OptionsPanel::CreateBackgroundBrightnessControl()
+{
+    sliders_[BackgroundBrightnessSlider] = {
+        [](const OptionValues &values) { return values.backgroundBrightness; },
+        [](OptionValues &values, const int percent) { values.backgroundBrightness = percent; },
+        "Options.backgroundBrightness"};
+    CreatePercentSlider(BackgroundBrightnessSlider, "Options.BackgroundBrightness");
+}
+
 void OptionsPanel::CreatePercentSlider(const std::size_t index, const std::string &name,
                                        const std::optional<float> inlineTop)
 {

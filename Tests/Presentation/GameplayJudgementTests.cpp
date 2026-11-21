@@ -920,6 +920,17 @@ namespace
         presenter.ApplyFeedback({.keyPressed = true, .result = empty});
         Check(Near(dimmed().alpha, 0.0F), "A 0% key beam is invisible.");
         presenter.ConfigureKeyBeamOpacity(100);
+        // Background brightness darkens the background toward black (osu!'s dim) and leaves its alpha.
+        const auto backgroundColor = [&] { return Node(root, "Background").GetComponent<SpriteVisualComponent>()->Style().normal; };
+        const auto plain = backgroundColor();
+        presenter.ConfigureBackgroundBrightness(25);
+        Check(Near(backgroundColor().red, plain.red * .25F) && Near(backgroundColor().blue, plain.blue * .25F) &&
+                  Near(backgroundColor().alpha, 1.0F),
+              "A 25% background brightness scales the background colour to a quarter.");
+        presenter.ConfigureBackgroundBrightness(0);
+        Check(Near(backgroundColor().red, 0.0F) && Near(backgroundColor().green, 0.0F), "0% draws the background black.");
+        presenter.ConfigureBackgroundBrightness(100);
+        Check(Near(backgroundColor().red, plain.red), "100% restores the background as it was.");
         NoteProcessResult wrong;
         wrong.events.push_back(Event(NoteEventType::InputRejected, JudgementGrade::Perfect));
         presenter.ApplyFeedback({.keyPressed = false, .result = wrong});

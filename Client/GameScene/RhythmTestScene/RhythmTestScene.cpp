@@ -60,6 +60,7 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
 {
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
     view_->ConfigureKeyBeamOpacity(launch_.keyBeamOpacity);
+    view_->ConfigureBackgroundBrightness(launch_.backgroundBrightness);
 }
 RhythmTestScene::~RhythmTestScene() = default;
 void RhythmTestScene::Initialize(const EngineServices &services)
@@ -122,7 +123,9 @@ void RhythmTestScene::PrepareLoadingBackground()
         if (size.width <= 0 || size.height <= 0)
             throw std::runtime_error("Loading background image has no size.");
         auto &sprite = *loadingBackground_->GetComponent<SpriteVisualComponent>();
-        sprite.SetTint({1, 1, 1, 1});
+        // The loading screen shows the background at the play screen's brightness.
+        const float brightness = static_cast<float>(std::clamp(launch_.backgroundBrightness, 0, 100)) / 100.0F;
+        sprite.SetTint({brightness, brightness, brightness, 1});
         sprite.SetImage(image);
         loadingBackgroundSize_ = size;
         UpdateLoadingBackgroundLayout();
