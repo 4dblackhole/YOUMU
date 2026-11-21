@@ -163,12 +163,12 @@ namespace tests
                     "Four strokes keep every assigned key.");
             Require(keysFor(1, "LeftDon") == std::vector<PhysicalKey>{0, 'V', 0, 0},
                     "Empty slots do not count as strokes; the first assigned key stays.");
-            const auto hit = [&](const PhysicalKey key) {
+            const auto cuesFor = [&](const PhysicalKey key) {
                 strokes.play.maxStrokes = 3;
                 auto session = TaikoMode(strokes).CreateSession(pattern);
                 return session.session->ProcessInput(key, InputEdge::Pressed, RhythmTime{}).audioCues.size();
             };
-            Require(hit('G') > 0 && hit('H') == 0, "A key beyond the limit plays nothing, not even a free hit.");
+            Require(cuesFor('G') > 0 && cuesFor('H') == 0, "A key beyond the limit plays nothing, not even a free hit.");
             PlayOptions invalid;
             bool lowRejected{}, highRejected{};
             invalid.maxStrokes = 0;
