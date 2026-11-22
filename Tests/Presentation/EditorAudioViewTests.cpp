@@ -17,6 +17,10 @@
 #include <atomic>
 #include <iostream>
 #include <fstream>
+#include <functional>
+#include <map>
+#include <span>
+#include <stdexcept>
 #include <thread>
 
 using namespace PhantomCore;
@@ -110,6 +114,52 @@ namespace
         {
         }
     };
+    // Keeps the pixels of every live pixel image and refuses new ones past its capacity.
+    class PixelRecordingRenderer final : public Visual2DRenderSystem
+    {
+      public:
+        struct Pixels
+        {
+            std::uint32_t width{}, height{};
+            std::vector<std::uint8_t> rgba;
+        };
+        std::map<std::uint64_t, Pixels> alive;
+        std::size_t capacity{1024};
+        std::uint64_t nextId{1};
+        ImageHandle LoadImageFile(const std::filesystem::path &) override
+        {
+            return {nextId++};
+        }
+        Size GetImageSize(ImageHandle) const noexcept override
+        {
+            return {};
+        }
+        ImageHandle CreatePixelImage(std::uint32_t width, std::uint32_t height,
+                                     std::span<const std::uint8_t> rgba8) override
+        {
+            Check(rgba8.size() == static_cast<std::size_t>(width) * height * 4,
+                  "Pixel images need width * height * 4 bytes.");
+            if (alive.size() >= capacity)
+                throw std::length_error("No pixel image slot is free.");
+            const auto id = nextId++;
+            alive.emplace(id, Pixels{width, height, {rgba8.begin(), rgba8.end()}});
+            return {id};
+        }
+        void ReleaseImage(ImageHandle image) noexcept override
+        {
+            alive.erase(image.value);
+        }
+        void SubmitScreen(const Visual2DCanvas &, const RenderContext &, Point, std::uint32_t) override {}
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &, Size,
+                         const Float4x4 &) override
+        {
+        }
+        RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override
+        {
+            return {};
+        }
+        void RenderToTexture(const Visual2DCanvas &, const RenderTargetTextureHandle &, const RenderContext &) override {}
+    };
     Visual2DNode *FindNode(Visual2DNode &node, const std::string_view name)
     {
         if (node.Name() == name)
@@ -128,6 +178,90 @@ namespace
                     if (tile->Name() == "Spectrum.Tile")
                         if (auto *geometry = tile->GetComponent<EditorVisual>()) geometry->AppendDrawPackets(result);
         return result;
+    }
+
+    // With pixel images each spectrum tile is one texture; rectangles remain when slots run out.
+    void TestSpectrumTextures(EditorWorkspace &state, MeshRenderSystem &meshes, TextRenderSystem &textRendering,
+                              AudioSystem &audio, TextCatalog &texts,
+                              const std::function<std::shared_ptr<const SpectrumTile>()> &visibleDetail)
+    {
+        PixelRecordingRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1920, 1080});
+        state.SelectTab(EditorTab::Audio);
+        state.Seek(state.Document().Notes().front().timing.count() / 1000.0 + 1000);
+        EditorView view(visuals, state, texts);
+        view.Initialize({meshes, textRendering, renderer, audio, 1920, 1080});
+        const auto build = [&] {
+            view.Build();
+            const auto until = std::chrono::steady_clock::now() + std::chrono::seconds{90};
+            while (state.Analysis().SpectrumRunning() && std::chrono::steady_clock::now() < until)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds{5});
+                state.UpdateAnalysis();
+            }
+            view.Build();
+        };
+        build();
+        auto *canvas = visuals.FindCanvas(1);
+        Check(canvas != nullptr, "Editor Canvas missing");
+        const auto count = [&](DrawPacketType type) {
+            return std::ranges::count_if(SpectrumGeometry(canvas->Root()), [&](const auto &packet) {
+                return packet.type == type;
+            });
+        };
+        const auto images = static_cast<std::size_t>(count(DrawPacketType::Image));
+        Check(images >= 8 && count(DrawPacketType::RectangleBatch) == 0,
+              "Every spectrum tile must draw one texture instead of rectangles.");
+        Check(renderer.alive.size() == images, "Each texture must belong to a tile on screen.");
+
+        // Rows run top down, so the first row is the highest band; quiet levels stay transparent.
+        const auto shown = visibleDetail();
+        Check(shown != nullptr, "The first visible music tile must have finished its detail analysis.");
+        const auto &detail = *shown;
+        Check(std::ranges::any_of(detail.levels,
+                                  [](auto level) { return level * 15 + SpectrumLevelMaximum / 2 >= SpectrumLevelMaximum; }),
+              "The first visible music tile must have audible levels.");
+        const auto matches = [&](const PixelRecordingRenderer::Pixels &pixels) {
+            if (pixels.width != detail.columns || pixels.height != detail.bands)
+                return false;
+            for (std::size_t row = 0; row < detail.bands; ++row)
+                for (std::size_t column = 0; column < detail.columns; ++column)
+                {
+                    const auto level = detail.levels[column * detail.bands + detail.bands - 1 - row];
+                    const bool quiet = level * 15 + SpectrumLevelMaximum / 2 < SpectrumLevelMaximum;
+                    if (quiet != (pixels.rgba[(row * detail.columns + column) * 4 + 3] == 0))
+                        return false;
+                }
+            return true;
+        };
+        Check(std::ranges::any_of(renderer.alive, [&](const auto &entry) { return matches(entry.second); }),
+              "A detail tile texture must hold its levels with the highest band in the first row.");
+
+        // A zoom rebuilds every tile and must give back the old textures.
+        const auto before = renderer.alive;
+        const auto oldWindow = state.audioWindow;
+        state.audioWindow /= 2;
+        view.Build();
+        Check(std::ranges::none_of(before, [&](const auto &entry) { return renderer.alive.contains(entry.first); }),
+              "Changing audio zoom must release the previous tile textures.");
+        state.audioWindow = oldWindow;
+        build();
+
+        // Out of slots, the remaining tiles draw rectangles and turn into textures once slots return.
+        renderer.capacity = renderer.alive.size() / 2;
+        state.audioWindow /= 2;
+        view.Build();
+        Check(renderer.alive.size() == renderer.capacity && count(DrawPacketType::RectangleBatch) > 0,
+              "Tiles without a free slot must fall back to rectangles.");
+        renderer.capacity = 1024;
+        view.Build();
+        Check(count(DrawPacketType::RectangleBatch) == 0 && renderer.alive.size() == static_cast<std::size_t>(
+                                                                 count(DrawPacketType::Image)),
+              "Fallback tiles must retry a texture when slots are free again.");
+        state.audioWindow = oldWindow;
+        view.Shutdown();
+        Check(renderer.alive.empty(), "Shutting the editor view down must release every tile texture.");
     }
 
     // Save publishes the YME it actually wrote, so the session keeps opening that file.
@@ -905,6 +1039,14 @@ int main(int argc, char** argv)
         Check(hasText(L"50%"), "Realtime view must expose the note spacing buttons and current spacing.");
         view.Shutdown();
         Check(visuals.CanvasCount() == 0, "Editor Canvas survived shutdown");
+        state.SetRealtime(false);
+        TestSpectrumTextures(state, meshes, textRendering, audio, texts, [&] {
+            const double seconds = state.audioWindow / visibleColumns * 128;
+            const double first = std::floor((state.TimeMilliseconds() / 1000 - state.audioWindow * .25) / seconds);
+            return state.Analysis().Spectrum({0, {first * seconds, seconds, 128, detailBands, 20,
+                                                  state.Analysis().Data().sounds.at("Music").maximumFrequencyHz}});
+        });
+        state.SelectTab(EditorTab::Compose);
         visuals.OnResize(1920, 1080);
         TestEditorModes(visuals, {meshes, textRendering, renderer, audio, 1920, 1080}, texts,
                         [&renderer]() -> const std::vector<DrawPacket> & { return renderer.packets; });

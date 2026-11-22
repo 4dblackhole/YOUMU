@@ -262,7 +262,18 @@ class EditorView final : public IEditorModeCanvas
     {
         PhantomCore::Visual2DNode *node{};
         std::shared_ptr<const SpectrumTile> detail;
+        // Levels on screen (overview or detail) and the texture holding them; rectangles when it is empty.
+        std::shared_ptr<const SpectrumTile> levels;
+        PhantomCore::ImageHandle image;
     };
+    void ShowSpectrumTile(AudioTile &, std::shared_ptr<const SpectrumTile> levels, PhantomCore::Rect rect,
+                          std::size_t visibleColumns);
+    void ReleaseSpectrumImage(AudioTile &) noexcept;
+    [[nodiscard]] bool CanRetrySpectrumImage(const AudioTile &) const noexcept;
+    // Set when the renderer has no pixel images; tiles then always draw rectangles.
+    bool spectrumImagesUnsupported_{};
+    // Set for the rest of a frame once every pixel image slot is taken.
+    bool spectrumImagesFull_{};
     std::array<PhantomCore::Visual2DNode *, 2> audioRoots_{};
     std::array<EditorVisual *, 2> audioOverlays_{};
     std::array<std::map<std::int64_t, AudioTile>, 2> audioTiles_;

@@ -173,9 +173,12 @@ PCM/FFT 자체는 `YOUMU.Editor/Audio/EditorAudioAnalysis`만 읽으면 됩니�
 화면 구간의 롱노트는 ChartEditor의 시간/마디 구간 인덱스로 조회합니다. 양 끝점이
 화면 밖이어도 몸체가 보이면 포함합니다. 노트·BPM·delay·효과 원본 트리와 안정 ID는
 그대로 유지하고 문서 revision 변경 뒤 첫 조회에서 불변 projection을 갱신합니다.
-오디오 탭은 128열 시간 타일의 집계와 FFT geometry를 캐시합니다. 재생/seek에서 기존
-타일 위치를 옮기고 새로 보이는 타일만 만들며, 줌·분석·주파수·문서 변경은 캐시를
-무효화합니다. ruler/cursor와 waveform min/max는 현재 시간으로 갱신합니다.
+오디오 탭은 128열 시간 타일의 집계와 FFT 그림을 캐시합니다. 타일마다 16단계 색을 칠한
+픽셀 이미지 하나를 엔진 [픽셀 이미지](../../Dependencies/PhantomCore/Docs/Visual2DRendererLifecycle.md#픽셀-이미지)로
+만들어 그립니다. 재생/seek에서 기존 타일 위치를 옮기고 새로 보이는 타일만 만들며,
+줌·분석·주파수·문서 변경은 캐시를 무효화합니다. 타일을 지우거나 다시 그릴 때 이미지를 반납합니다.
+렌더러에 픽셀 이미지가 없거나 슬롯(`MaxPixelImages`)이 모두 쓰이면 그 타일은 색 구간별 사각형으로
+그리고, 슬롯이 돌아온 프레임에 이미지로 바꿉니다. ruler/cursor와 waveform min/max는 현재 시간으로 갱신합니다.
 
 ## 조작
 
