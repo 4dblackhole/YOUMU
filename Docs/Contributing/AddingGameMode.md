@@ -14,7 +14,7 @@
 | 등록 위치 | 등록할 것 |
 | --- | --- |
 | [PlayGameModeFactory](../../YOUMU.Modes/Mode/PlayGameModeFactory.cpp) | 모드 ID와 생성 함수. 같은 표로 지원 여부와 설정 화면용 입력 레이아웃을 조회합니다. |
-| [ModePresentation](../../Client/Presentation/ModePresentation.cpp) | 모드별 데이터 항목 하나를 추가합니다. `HitSounds/<폴더>` 아래 기본 타격음 파일과 그 파일을 공유하는 사운드 ID 목록, 선택적인 키 오버레이(노드 이름 접두사·제목 문구 키와 바인딩별 입력 패널 키 이미지·색·위치), 바인딩 번역 키를 선언합니다. 게임플레이 오디오, [옵션 키 편집](../../Client/Presentation/OptionsPanel/Submodules/OptionsKeys.cpp), 옵션 문구와 에디터는 이 데이터를 모드 분기 없이 읽습니다. 항목이 없는 모드는 기본 타격음 없이 옵션 Input 섹션의 줄 단위 키 편집과 레이아웃의 표시 이름을 사용합니다. |
+| [ModePresentation](../../Client/Presentation/ModePresentation.cpp) | 모드별 데이터 항목 하나를 추가합니다. `HitSounds/<폴더>` 아래 기본 타격음 파일과 그 파일을 공유하는 사운드 ID 목록, 선택적인 키 오버레이(노드 이름 접두사·제목 문구 키와 바인딩별 입력 패널 키 이미지·색·위치), 바인딩 번역 키를 선언합니다. 게임플레이 오디오, [옵션 키 편집](../../Client/Presentation/OptionsPanel/Submodules/OptionsInput.cpp), 옵션 문구와 에디터는 이 데이터를 모드 분기 없이 읽습니다. 항목이 없는 모드는 기본 타격음 없이 옵션 Input 섹션의 줄 단위 키 편집과 레이아웃의 표시 이름을 사용합니다. |
 | [EditorModeFactory](../../Client/EditorScene/Submodules/Modes/EditorModeFactory.cpp) | 에디터에서 사용할 `IEditorMode` 구현을 등록합니다. |
 | [ResultViewFactory](../../Client/GameScene/ResultScene/Submodules/ResultViewFactory.cpp) | 모드 결과를 표시할 화면을 등록합니다. [IPlayResult](../../YOUMU.Modes/Mode/Results/IPlayResult.h)와 [IPlayResultCollector](../../YOUMU.Modes/Mode/Results/IPlayResultCollector.h)를 모드의 결과 데이터와 집계 규칙에 맞춰 구현합니다. |
 

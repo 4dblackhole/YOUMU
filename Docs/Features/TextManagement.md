@@ -229,10 +229,47 @@ offscreen context에서는 선택을 비활성화합니다. GPU 한도에 따라
 에디터 Copy/Replace/타이밍 수정/저장에도 이 분리를 유지합니다.
 패턴마다 따로 두는 개별 오프셋(플레이 중 +/- 키)은 글로벌 오프셋에 더해 컴파일됩니다([개별 오프셋](Gameplay/Audio.md#개별-오프셋)).
 
-OptionsPanel은 Canvas/스크롤/키보드 소유권과 서랍 틀·안내 칸을 맡고, Submodules의 OptionsRail(분류 막대·섹션 배치·스크롤),
-OptionsVolume, OptionsDisplay, OptionsSongs, OptionsOffset, OptionsKeys(키 카드·키 설정 창)가 각 표시·적용 함수를 나눕니다.
-OptionsPanelStyle은 서랍 치수·색과 글자 모양을 모읍니다. OptionSettings는 지속 값의
-검증/원자적 저장을 맡으며 창·오디오 핸들은 소유하지 않습니다.
+OptionsPanel은 서랍 틀(머리·닫기·안내 칸), 분류 막대와 섹션 배치·스크롤(OptionsRail), 열고 닫는 움직임, 입력 분배,
+저장과 안내 칸 상태를 맡습니다. 각 섹션은 분류 클래스 하나가 맡습니다(`Client/Presentation/OptionsPanel/Submodules`).
+
+- `OptionsGeneral`: 설명 언어, Songs 폴더(경로·Browse·기본 폴더).
+- `OptionsDisplay`: 스킨, 해상도, 창 모드, 화면 위치(`OptionsDisplayPosition.cpp`), `Song text`, 프레임 제한, 키빔 불투명도, 배경 밝기.
+- `OptionsAudio`: 음량 셋, 미들웨어·출력·드라이버·버퍼, 글로벌 오프셋(입력·끌기). 안내 칸의 출력 대체·드라이버·재시작 알림도 냅니다.
+- `OptionsInput`: 재시작 키, 모드별 키 줄·키 카드와 키 설정 창(모달).
+
+분류는 `OptionsCategory`를 따릅니다. 자기 칸 높이(`FieldHeights`)를 알려 주면 패널이 섹션을 배치하고, 그 높이대로 칸을 만들고(`Create`)
+문구·값을 고치고(`Refresh`) 자기 액션·끌기·키 입력을 처리해 저장합니다. 옵션을 하나 더할 때는 그 분류 클래스만 고칩니다.
+분류는 패널을 `OptionsContext`로만 봅니다. 저장·안내 칸, 배치 위치(`NextField`), 패널 전체 규칙(키보드 편집은 하나만,
+펼친 드롭다운은 하나만), 아이콘·스킨 부품이 그 안에 있습니다. 공용 부품으로 퍼센트 슬라이더(`OptionsPercentSlider`, Audio와 Display),
+캡션과 드롭다운 칸(`OptionsCategory::CreateComboField`), 서랍 치수·색·글자 모양과 칸 높이 계산(`OptionsPanelStyle`)이 있습니다.
+OptionSettings는 지속 값의 검증/원자적 저장을 맡으며 창·오디오 핸들은 소유하지 않습니다.
+
+```mermaid
+classDiagram
+    class OptionsPanel {
+        틀 · 분류 막대 · 섹션 배치 · 스크롤
+        입력 분배 · 저장 · 안내 칸
+    }
+    class OptionsContext {
+        <<interface>>
+        Save · Status · NextField
+        CancelKeyboardEdit · CollapseCombos
+    }
+    class OptionsCategory {
+        <<abstract>>
+        FieldHeights · Create · Refresh
+        ProcessAction · ProcessPointer · HandleKey
+    }
+    OptionsPanel ..|> OptionsContext
+    OptionsPanel *-- "4" OptionsCategory
+    OptionsCategory <|-- OptionsGeneral
+    OptionsCategory <|-- OptionsDisplay
+    OptionsCategory <|-- OptionsAudio
+    OptionsCategory <|-- OptionsInput
+    OptionsCategory --> OptionsContext
+    OptionsDisplay *-- OptionsPercentSlider
+    OptionsAudio *-- OptionsPercentSlider
+```
 서랍 바탕·분류 막대·분류 버튼·키 카드·키 칸은 스킨 `[Options]` 그림이고 아이콘은 `[Common]`의 `Icons.*`입니다
 ([BuiltInAssets](Assets.md)).
 
