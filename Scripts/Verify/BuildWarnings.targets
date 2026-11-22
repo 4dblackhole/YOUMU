@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Build.ps1의 솔루션 빌드가 ForceImportAfterCppTargets로 모든 프로젝트 끝에 끼워 넣습니다.
-     이름이 .Tests로 끝나는 프로젝트(YOUMU.Rhythm.Tests, 형제 저장소의 OsuTaikoConverter.Tests)만 컴파일·링크 경고를 오류로 올립니다.
+     솔루션의 모든 프로젝트(게임, 도메인 라이브러리, 테스트, 엔진, 형제 저장소의 변환기)에서 컴파일·링크·라이브러리 경고를 오류로 올립니다.
      경고가 난 파일은 오브젝트가 생기지 않아, 바뀐 파일만 다시 빌드해도 고칠 때까지 매번 다시 컴파일되고 실패합니다.
      Visual Studio에서 직접 빌드할 때는 적용되지 않습니다. -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemDefinitionGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+  <ItemDefinitionGroup>
     <ClCompile>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
+    <Lib>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+    </Lib>
   </ItemDefinitionGroup>
 </Project>
