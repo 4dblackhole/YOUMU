@@ -123,10 +123,10 @@ void TaikoResultView::UpdateRingTooltip(std::optional<Point> pointer)
 }
 void TaikoResultView::BuildOptions(Visual2DNode &root)
 {
-    // Mode and option tiles under the ring, like osu!'s mod icons: the mode first, then only the
-    // options that differ from a plain play. A tile is the skin's white tile tinted (navy mode,
-    // gold Accelerate, cobalt others) with a line icon and a short value under it. Resting on a
-    // tile names the option and its settings. A new option adds one tile to this list.
+    // Option tiles under the ring, like osu!'s mod icons: only the options that differ from a plain
+    // play (the mode is the badge at the top left; user decision: no mode tile). A tile is the
+    // skin's white tile tinted (gold Accelerate, cobalt others) with a line icon and a short value
+    // under it. Resting on a tile names the option and its settings. A new option adds one tile.
     using ui_colors::theme::Brand, ui_colors::theme::BrandDeep, ui_colors::theme::Sun;
     const auto &o = result_.summary.playOptions;
     struct Tile
@@ -142,8 +142,6 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
     const auto text = [&](const char *key) { return std::wstring(texts_.Get(key)); };
     const auto option = [&](const char *key) { return std::wstring(texts_.Get(std::string("PlayOptions.") + key)); };
     std::vector<Tile> tiles;
-    tiles.push_back({"mode", modeIcon_, text("Result.modeName"),
-                     {text("Tooltips.gameMode"), {}, text("Result.modeName")}, BrandDeep});
     if (o.accelerate != 1.0)
     {
         auto note = std::format(L"{:.2f}x", o.accelerate);
