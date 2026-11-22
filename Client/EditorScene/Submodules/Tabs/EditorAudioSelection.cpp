@@ -1,5 +1,5 @@
-#include "EditorTime.h"
-#include "EditorView.h"
+#include "../EditorTime.h"
+#include "EditorAudioTab.h"
 #include <algorithm>
 #include <string>
 
@@ -7,7 +7,7 @@ using namespace PhantomCore;
 
 using namespace editor_ui;
 
-void EditorView::InitializeAudioSelection()
+void EditorAudioTab::InitializeAudioSelection()
 {
     for (std::size_t index = 0; index < audioSelectionNodes_.size(); ++index)
     {
@@ -22,9 +22,9 @@ void EditorView::InitializeAudioSelection()
     }
 }
 
-void EditorView::UpdateAudioSelection(Visual2DNode &target, const PointerEvent &event)
+void EditorAudioTab::UpdateAudioSelection(Visual2DNode &target, const PointerEvent &event)
 {
-    if (state_.Tab() != EditorTab::Audio || buildFailed_)
+    if (state_.Tab() != EditorTab::Audio || view_.BuildFailed())
         return;
     const bool press = event.type == PointerEventType::Press && event.button == PointerButton::Left;
     const bool release = event.type == PointerEventType::Release && event.button == PointerButton::Left;
@@ -50,7 +50,7 @@ void EditorView::UpdateAudioSelection(Visual2DNode &target, const PointerEvent &
         audioSelectionAnchor_.reset();
 }
 
-void EditorView::DrawAudioSelection(const double begin)
+void EditorAudioTab::DrawAudioSelection(const double begin)
 {
     const auto waveform = audioTracks_[0];
     const Rect line{waveform.x, waveform.y + waveform.height + 8, waveform.width, 20};

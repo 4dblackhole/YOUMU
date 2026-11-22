@@ -1,6 +1,5 @@
 #include "EditorView.h"
 #include "Presentation/SceneWheel.h"
-#include "EditorTime.h"
 #include <shellapi.h>
 #include <algorithm>
 #include <format>
@@ -171,8 +170,8 @@ bool EditorView::UpdateKeyboard(const InputState &input)
         if (input.WasKeyPressed('X'))
             state_.SeekLastNote();
     }
-    if (state_.Tab() == EditorTab::Compose && !controlDown && !altDown)
-        state_.Mode().HandleToolKeys(state_, input);
+    if (!controlDown && !altDown)
+        CurrentTab().UpdateKeys(input);
     if (input.WasKeyPressed(VK_LEFT))
         state_.Seek(state_.TimeMilliseconds() - 1);
     if (input.WasKeyPressed(VK_RIGHT))
@@ -205,16 +204,9 @@ void EditorView::UpdatePointer(const UpdateContext &context)
         }
         return;
     }
-    const bool compose = state_.Tab() == EditorTab::Compose && !buildFailed_;
-    if (compose && state_.Mode().UpdateScoreSelection(state_, *point, !input.IsMouseButtonDown(MouseButton::Left)))
+    // A failed build shows no tab body, so only the shell takes the pointer.
+    if (!buildFailed_ && CurrentTab().UpdatePointer(input, *point))
         return;
-    if (input.WasMouseButtonPressed(MouseButton::Right) && compose)
-    {
-        if (state_.Mode().OpenToolMenu(*point))
-            state_.RequestRebuild();
-        else
-            state_.Mode().EditScore(state_, *point, true);
-    }
     if (!input.WasMouseButtonPressed(MouseButton::Left))
         return;
     const bool doubleClick = IsDoubleClick(input, *point);
@@ -233,18 +225,8 @@ void EditorView::UpdatePointer(const UpdateContext &context)
         action();
         return;
     }
-    if (!compose)
-        return;
-    // Alt+click picks notes one by one, like Ctrl+click in Explorer; it neither edits nor starts a range.
-    if (input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU))
-    {
-        state_.Mode().ToggleScoreNote(state_, *point);
-        return;
-    }
-    if (!state_.Mode().BeginScoreSelection(state_, *point))
-        state_.Mode().EditScore(state_, *point, false);
-    if (doubleClick)
-        state_.Mode().ActivateScore(state_, *point);
+    if (!buildFailed_)
+        CurrentTab().Press(input, *point, doubleClick);
 }
 
 bool EditorView::IsDoubleClick(const InputState &input, Point point)
@@ -279,19 +261,7 @@ void EditorView::UpdateTimelineNavigation(const InputState &input, bool keyboard
     if (!pointerAllowed || SceneWheelDelta(input) == 0)
         return;
     const int direction = SceneWheelDelta(input) > 0 ? -1 : 1;
-    const auto point = DesignPoint(input);
-    const bool composePanel = point && state_.Tab() == EditorTab::Compose && state_.Panel();
-    const bool overPanel = composePanel && point->x >= frame_.width - editor_layout::InspectorWidth;
-    if (overPanel)
-        state_.listOffset = static_cast<std::size_t>(
-            std::max<std::int64_t>(0, static_cast<std::int64_t>(state_.listOffset) + direction));
-    else if (state_.Tab() == EditorTab::Audio)
-        state_.Seek(StepEditorTimeline(state_.Document().Timeline(), state_.TimeMilliseconds(),
-                                       state_.Score().division, direction).count() / 1000.0);
-    else if (state_.Tab() == EditorTab::Compose && control && state_.Score().realtime)
-        StepSpacing(-direction);
-    else if (state_.Tab() == EditorTab::Compose)
-        state_.Mode().ScrollScore(state_, direction);
+    CurrentTab().Wheel(direction, DesignPoint(input), control);
     state_.RequestRebuild();
 }
 

@@ -154,15 +154,15 @@
     <ClInclude Include="EditorScene\Submodules\EditorAnalysisController.h" />
     <ClCompile Include="EditorScene\Submodules\EditorSpectrumCache.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorSpectrumCache.h" />
-    <ClCompile Include="EditorScene\Submodules\EditorAudioView.cpp" />
-    <ClCompile Include="EditorScene\Submodules\EditorAudioSelection.cpp" />
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorAudioTab.cpp" />
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorAudioSelection.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorShellView.cpp" />
-    <ClCompile Include="EditorScene\Submodules\EditorPanelView.cpp" />
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorComposePanels.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorInput.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorMenuBar.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorMenuBar.h" />
-    <ClCompile Include="EditorScene\Submodules\EditorComposeView.cpp" />
-    <ClCompile Include="EditorScene\Submodules\EditorChannelView.cpp" />
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorComposeTab.cpp" />
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorComposeChannels.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorAlerts.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorCurvesDialog.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorTextFields.cpp" />
@@ -170,6 +170,12 @@
     <ClInclude Include="EditorScene\Submodules\EditorSupport.h" />
     <ClCompile Include="EditorScene\Submodules\EditorTextDialog.cpp" />
     <ClCompile Include="EditorScene\Submodules\EditorView.cpp" />
+    <ClInclude Include="EditorScene\Submodules\Tabs\IEditorTab.h" />
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorTabBase.h" />
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorComposeTab.h" />
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorAudioTab.h" />
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorMetadataTab.h" />
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorMetadataTab.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorView.h" />
     <ClInclude Include="EditorScene\Submodules\EditorVisual.h" />
     <ClCompile Include="EditorScene\Submodules\EditorWorkspace.cpp" />
@@ -388,7 +394,7 @@
   <ItemGroup>
     <ClInclude Include="EditorScene\Submodules\EditorMetronome.h" />
     <ClCompile Include="EditorScene\Submodules\EditorMetronome.cpp" />
-    <ClCompile Include="EditorScene\Submodules\EditorAudioControls.cpp" />
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorAudioControls.cpp" />
     <ClInclude Include="EditorScene\Submodules\EditorPatternCreation.h" />
     <ClCompile Include="EditorScene\Submodules\EditorPatternCreation.cpp" />
   </ItemGroup>

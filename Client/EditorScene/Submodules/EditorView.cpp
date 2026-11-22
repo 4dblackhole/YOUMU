@@ -2,6 +2,9 @@
 #include "App/AssetPaths.h"
 #include "Catalog/SongLayout.h"
 #include "Presentation/UiFonts.h"
+#include "Tabs/EditorAudioTab.h"
+#include "Tabs/EditorComposeTab.h"
+#include "Tabs/EditorMetadataTab.h"
 #include <algorithm>
 #include <format>
 #include <cwctype>
@@ -10,6 +13,22 @@ using namespace PhantomCore;
 
 using namespace editor_ui;
 namespace layout = editor_layout;
+namespace theme = ui_colors::theme;
+
+EditorView::EditorView(ScreenVisual2DManager &manager, EditorWorkspace &state, TextCatalog &texts)
+    : visuals(manager), state_(state), texts_(texts)
+{
+    tabs_[static_cast<std::size_t>(EditorTab::Compose)] = std::make_unique<EditorComposeTab>(*this, state, texts);
+    tabs_[static_cast<std::size_t>(EditorTab::Audio)] = std::make_unique<EditorAudioTab>(*this, state, texts, manager);
+    tabs_[static_cast<std::size_t>(EditorTab::Metadata)] = std::make_unique<EditorMetadataTab>(*this, state, texts);
+}
+
+EditorView::~EditorView() = default;
+
+IEditorTab &EditorView::CurrentTab() const noexcept
+{
+    return *tabs_[static_cast<std::size_t>(state_.Tab())];
+}
 
 void EditorView::Initialize(const EngineServices &services)
 {
@@ -33,7 +52,8 @@ void EditorView::Initialize(const EngineServices &services)
     divisionSliderNode_->GetComponent<SpriteVisualComponent>()->SetStyle(sliderStyle);
     timelineSliderNode_ = &CreateSlider(*node, {}, 0, "Editor timeline");
     timelineSliderNode_->GetComponent<SpriteVisualComponent>()->SetStyle(sliderStyle);
-    InitializeAudioSelection();
+    for (auto &tab : tabs_)
+        tab->Initialize(*node);
     menuBar_.Initialize(*node, texts_);
     alert_.Initialize(*canvas.Get(), &visuals);
     fields_.Initialize(services.windowControl);
@@ -43,7 +63,6 @@ void EditorView::Initialize(const EngineServices &services)
 
 void EditorView::Shutdown() noexcept
 {
-    state_.Analysis().StopSpectrum();
     controls.clear();
     if (canvas.Get())
     {
@@ -54,21 +73,13 @@ void EditorView::Shutdown() noexcept
     menuBar_.Shutdown();
     fields_.Shutdown();
     fieldRects_.clear();
-    for (auto &tiles : audioTiles_)
-    {
-        for (auto &entry : tiles)
-            ReleaseSpectrumImage(entry.second);
-        tiles.clear();
-    }
-    audioRoots_.fill(nullptr);
-    audioOverlays_.fill(nullptr);
-    audioColumnsKey_.reset();
+    for (auto &tab : tabs_)
+        tab->Shutdown();
     canvas.Reset();
     node = nullptr;
     divisionSliderNode_ = nullptr;
     timelineSliderNode_ = nullptr;
-    audioSelectionNodes_.fill(nullptr);
-    audioSelectionAnchor_.reset();
+    divisionRect_.reset();
     visual = nullptr;
 }
 
@@ -84,8 +95,14 @@ void EditorView::PlaceNode(Visual2DNode &target, Rect r) const
 
 float EditorView::ContentRight() const noexcept
 {
-    const bool inspector = state_.Tab() == EditorTab::Compose && state_.Panel().has_value();
-    return layout::ContentRight(frame_.width, inspector);
+    return layout::ContentRight(frame_.width, CurrentTab().HasInspector());
+}
+
+Rect EditorView::PanelBody() const noexcept
+{
+    const float left = frame_.width - layout::InspectorWidth;
+    return {left + 20, layout::TrackTop + 48 + 12, layout::InspectorWidth - 40,
+            layout::FooterTop - layout::TrackTop - 48 - 12 - 16};
 }
 
 std::optional<Point> EditorView::DesignPoint(const InputState &input) const
@@ -103,10 +120,8 @@ void EditorView::ReloadSize()
     frame_ = layout::CalculateFrame(canvas.Get()->LogicalSize().width);
     node->Transform().SetScale(frame_.scale, frame_.scale, 1);
     menuBar_.Resize(frame_.width);
-    LayoutAudioTracks();
-    for (std::size_t index = 0; index < audioSelectionNodes_.size(); ++index)
-        if (audioSelectionNodes_[index])
-            PlaceNode(*audioSelectionNodes_[index], audioTracks_[index]);
+    for (auto &tab : tabs_)
+        tab->Resize();
     sliderInput_.InvalidateHitTest();
     state_.RequestRebuild();
 }
@@ -238,6 +253,15 @@ void EditorView::FlatButton(Rect r, std::wstring text, std::function<void()> act
     Button(r, std::move(text), std::move(action), primary);
 }
 
+void EditorView::DrawSwitch(Rect row, std::wstring caption, bool on, std::function<void()> toggle)
+{
+    Label({row.x, row.y, row.width - 56, row.height}, std::move(caption), {14, theme::Ink, TextAlignment::Leading, 600});
+    const Rect track{row.x + row.width - 44, row.y + (row.height - 24) * .5F, 44, 24};
+    Box(track, on ? theme::Brand : ui_colors::Rgb(0x0F2A47, .2F), 12);
+    Box({on ? track.x + 22 : track.x + 2, track.y + 2, 20, 20}, White, 10);
+    Control(row, std::move(toggle));
+}
+
 void EditorView::Field(Rect r, const wchar_t *label, std::string &value)
 {
     InputField(r, label, Wide(value), [this, &value](const std::string &typed) {
@@ -313,24 +337,18 @@ EditorModeAreas EditorView::Areas() const noexcept
 
 void EditorView::BuildContent()
 {
-    if (state_.Tab() != EditorTab::Audio)
-        state_.Analysis().StopSpectrum();
-    for (auto *root : audioRoots_)
-        if (root)
-            root->SetVisible(state_.Tab() == EditorTab::Audio);
+    const auto current = static_cast<std::size_t>(state_.Tab());
+    for (std::size_t index = 0; index < tabs_.size(); ++index)
+        tabs_[index]->Show(index == current);
     controls.clear();
+    divisionRect_.reset();
     fieldRects_.clear();
     fields_.Begin();
     // Native editors would sit above a modal, so fields beneath one are drawn only.
     fieldsCovered_ = curvesOpen_ || findOpen_ || alert_.IsOpen();
     visual->Clear();
     Box({0, 0, frame_.width, layout::Height}, ui_colors::theme::Surface);
-    if (state_.Tab() == EditorTab::Compose)
-        DrawCompose();
-    else if (state_.Tab() == EditorTab::Metadata)
-        state_.Mode().DrawMetadata(*this, state_, texts_);
-    else
-        DrawAudio();
+    CurrentTab().Build();
     DrawTabs();
     SyncInputControls();
     DrawFooter();
@@ -364,18 +382,15 @@ void EditorView::Build()
         // correction available, with no automatic retry until the next action.
         state_.SetStatus(error.what());
         buildFailed_ = true;
-        for (auto *root : audioRoots_)
-            if (root)
-                root->SetVisible(false);
+        for (auto &tab : tabs_)
+            tab->BuildFailed();
         controls.clear();
+        divisionRect_.reset();
         fieldRects_.clear();
         fields_.Begin();
         visual->Clear();
         sliderInput_.Reset(*canvas.Get());
         divisionSliderNode_->SetVisible(false);
-        for (auto *track : audioSelectionNodes_)
-            track->SetVisible(false);
-        audioSelectionAnchor_.reset();
         sliderInput_.InvalidateHitTest();
         Box({0, 0, frame_.width, layout::Height}, ui_colors::theme::Surface);
         Label({24, layout::BodyTop + 16, frame_.width - 48, 24}, Wide(state_.Status()),

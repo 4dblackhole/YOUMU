@@ -1,4 +1,4 @@
-#include "EditorView.h"
+#include "EditorComposeTab.h"
 #include <algorithm>
 #include <format>
 using namespace PhantomCore;
@@ -27,7 +27,7 @@ namespace
     }
 } // namespace
 
-bool EditorView::EffectInPanel(std::size_t row, EditorPanel panel) const
+bool EditorComposeTab::EffectInPanel(std::size_t row, EditorPanel panel) const
 {
     const auto &effects = state_.Document().Effects();
     if (row < effects.commands.size())
@@ -35,7 +35,7 @@ bool EditorView::EffectInPanel(std::size_t row, EditorPanel panel) const
     return panel == EditorPanel::HitSounds && row - effects.commands.size() < effects.hitSoundChanges.size();
 }
 
-std::wstring EditorView::EffectLabel(const EditorEffectSelection &selection) const
+std::wstring EditorComposeTab::EffectLabel(const EditorEffectSelection &selection) const
 {
     if (const auto *type = std::get_if<EffectCommandType>(&selection))
     {
@@ -52,9 +52,9 @@ std::wstring EditorView::EffectLabel(const EditorEffectSelection &selection) con
     return std::to_wstring(key);
 }
 
-void EditorView::SelectEffectRow(std::size_t row)
+void EditorComposeTab::SelectEffectRow(std::size_t row)
 {
-    state_.SelectListRow(row, toggleSelection_, rangeSelection_);
+    state_.SelectListRow(row, view_.ToggleSelection(), view_.RangeSelection());
     auto draft = state_.effectForm;
     draft.Load(state_.Document().Effects(), row);
     if (const auto *sound = std::get_if<EditorHitSoundTarget>(&draft.selection))
@@ -67,7 +67,7 @@ void EditorView::SelectEffectRow(std::size_t row)
     state_.RequestRebuild();
 }
 
-void EditorView::DrawListHeader(Rect body, std::span<const std::pair<std::wstring_view, float>> columns)
+void EditorComposeTab::DrawListHeader(Rect body, std::span<const std::pair<std::wstring_view, float>> columns)
 {
     float x = body.x;
     for (const auto &[caption, columnWidth] : columns)
@@ -78,7 +78,7 @@ void EditorView::DrawListHeader(Rect body, std::span<const std::pair<std::wstrin
     Box({body.x, body.y + 25, body.width, 1}, theme::RuleStrong);
 }
 
-void EditorView::DrawListRow(Rect row, std::span<const std::pair<std::wstring, float>> cells, bool selected, bool primary,
+void EditorComposeTab::DrawListRow(Rect row, std::span<const std::pair<std::wstring, float>> cells, bool selected, bool primary,
                              std::function<void()> select, Color color)
 {
     if (selected)
@@ -96,7 +96,7 @@ void EditorView::DrawListRow(Rect row, std::span<const std::pair<std::wstring, f
     Control(row, std::move(select));
 }
 
-float EditorView::DrawPanelActions(Rect body, std::size_t selected, std::function<void()> remove,
+float EditorComposeTab::DrawPanelActions(Rect body, std::size_t selected, std::function<void()> remove,
                                    std::function<void()> add, std::function<void()> apply)
 {
     const float y = body.y + body.height - ActionHeight;
@@ -122,7 +122,7 @@ float EditorView::DrawPanelActions(Rect body, std::size_t selected, std::functio
     return y;
 }
 
-void EditorView::Segmented(Rect row, std::span<const std::wstring> options, std::size_t selected,
+void EditorComposeTab::Segmented(Rect row, std::span<const std::wstring> options, std::size_t selected,
                            std::function<void(std::size_t)> choose)
 {
     const float gap = 4, w = (row.width - gap * static_cast<float>(options.size() - 1)) / static_cast<float>(options.size());
@@ -131,7 +131,7 @@ void EditorView::Segmented(Rect row, std::span<const std::wstring> options, std:
                [choose, i] { choose(i); }, i == selected);
 }
 
-void EditorView::DrawTimingPanel(Rect body)
+void EditorComposeTab::DrawTimingPanel(Rect body)
 {
     const auto &text = Texts();
     const auto &timing = state_.Document().Timing();
@@ -166,7 +166,7 @@ void EditorView::DrawTimingPanel(Rect body)
             std::pair{value, body.width - positionWidth - typeWidth}};
         DrawListRow({body.x, y, body.width, RowHeight}, cells, state_.IsListRowSelected(i), state_.ListAnchor() == i,
                     [this, t, i] {
-                        state_.SelectListRow(i, toggleSelection_, rangeSelection_);
+                        state_.SelectListRow(i, view_.ToggleSelection(), view_.RangeSelection());
                         auto &edited = state_.timingForm;
                         edited.measure = std::to_string(t.position.measure + 1);
                         edited.fraction = Fraction(t.position.fraction);
@@ -235,7 +235,7 @@ void EditorView::DrawTimingPanel(Rect body)
                      [this] { state_.ApplyTimingRow(); });
 }
 
-void EditorView::DrawEffectPanel(Rect body, EditorPanel panel)
+void EditorComposeTab::DrawEffectPanel(Rect body, EditorPanel panel)
 {
     const auto &text = Texts();
     const auto &effects = state_.Document().Effects();
@@ -440,7 +440,7 @@ void EditorView::DrawEffectPanel(Rect body, EditorPanel panel)
                      [this] { state_.ApplyEffectRow(); });
 }
 
-void EditorView::SelectEffectType(const EditorEffectSelection &selection)
+void EditorComposeTab::SelectEffectType(const EditorEffectSelection &selection)
 {
     auto &draft = state_.effectForm;
     draft.selection = selection;
@@ -462,7 +462,7 @@ void EditorView::SelectEffectType(const EditorEffectSelection &selection)
     state_.RequestRebuild();
 }
 
-void EditorView::CursorPositionButton(Rect r, std::string &measure, std::string *fraction)
+void EditorComposeTab::CursorPositionButton(Rect r, std::string &measure, std::string *fraction)
 {
     Box(r, White);
     Box({r.x, r.y, r.width, 1}, theme::RuleStrong);
@@ -480,7 +480,7 @@ void EditorView::CursorPositionButton(Rect r, std::string &measure, std::string 
     });
 }
 
-void EditorView::DrawExcludeChips(Rect row)
+void EditorComposeTab::DrawExcludeChips(Rect row)
 {
     // Syncopation On: notes exactly on a ticked grid keep their normal windows.
     auto &draft = state_.effectForm;
@@ -530,7 +530,7 @@ void EditorView::DrawExcludeChips(Rect row)
                true, false);
 }
 
-void EditorView::DrawCurveRow(Rect row)
+void EditorComposeTab::DrawCurveRow(Rect row)
 {
     // Built-in curves and the YME's own [Interpolation] names; Curves… edits the table.
     auto &draft = state_.effectForm;
@@ -555,10 +555,10 @@ void EditorView::DrawCurveRow(Rect row)
         state_.RequestRebuild();
     });
     Button({row.x + row.width - buttonWidth, row.y, buttonWidth, row.height}, std::wstring(texts_.Get("Editor.curvesButton")),
-           [this] { OpenCurves(); });
+           [this] { view_.OpenCurves(); });
 }
 
-void EditorView::DrawMusicPanel(Rect body)
+void EditorComposeTab::DrawMusicPanel(Rect body)
 {
     const auto offset = state_.Document().Pattern().patternOffsetMilliseconds;
     Label({body.x, body.y, 60, 32}, std::wstring(texts_.Get("Editor.offset")), {13, theme::InkSoft, TextAlignment::Leading, 700});
@@ -575,13 +575,4 @@ void EditorView::DrawMusicPanel(Rect body)
                state_.Metronome().Enabled(), [this] { state_.ToggleMetronome(); });
     Button({body.x, body.y + 96, 96, 32}, std::wstring(texts_.Get("Editor.tabs.1")),
            [this] { state_.SelectTab(EditorTab::Audio); });
-}
-
-void EditorView::DrawSwitch(Rect row, std::wstring caption, bool on, std::function<void()> toggle)
-{
-    Label({row.x, row.y, row.width - 56, row.height}, std::move(caption), {14, theme::Ink, TextAlignment::Leading, 600});
-    const Rect track{row.x + row.width - 44, row.y + (row.height - 24) * .5F, 44, 24};
-    Box(track, on ? theme::Brand : ui_colors::Rgb(0x0F2A47, .2F), 12);
-    Box({on ? track.x + 22 : track.x + 2, track.y + 2, 20, 20}, White, 10);
-    Control(row, std::move(toggle));
 }
