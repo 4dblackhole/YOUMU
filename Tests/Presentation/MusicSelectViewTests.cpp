@@ -143,7 +143,10 @@ namespace
             }
             state.RebuildVisibleSongs();
             if (purpose == SongSelectPurpose::Editor) state.sortMode_ = SongSelectionState::SortMode::BaseBpm;
-            MusicSelectView view(visuals, state, purpose, texts, options);
+            // The view is about 10 KB. Every test keeps it on the heap: with it on the stack a function
+            // sits close to the 16 KB frame the analyser allows (C6262).
+            const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, purpose, texts, options);
+            auto &view = *viewOwner;
             view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
             auto *canvas = visuals.FindCanvas(1);
             if (!canvas) throw std::runtime_error("BPM sort Canvas missing.");
@@ -249,7 +252,8 @@ namespace
         state.catalog_.songs[0].music.names = {"Alpha", "Alpha Alias"};
         state.catalog_.songs[0].patterns[0].pattern.name = "Konpaku Sariel Extremely Long Inner Oni Remix Edition";
         state.RebuildVisibleSongs();
-        MusicSelectView view(visuals, state, purpose, texts, options);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, purpose, texts, options);
+        auto &view = *viewOwner;
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         Check(canvas != nullptr, "Common parts Canvas missing.");
@@ -397,7 +401,8 @@ namespace
             song.patterns[0].patternPath = options.SongsRoot() / L"Panel regression/Chart/Set/panel.ymp";
             selection.catalog_.songs.push_back(std::move(song));
         }
-        MusicSelectView view(visuals,selection,purpose,texts,options);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals,selection,purpose,texts,options);
+        auto &view = *viewOwner;
         view.Initialize({meshes,textRendering,renderer,audio,1280,720});
         view.SetVisible(true);
         auto *canvas = visuals.FindCanvas(1);
@@ -602,7 +607,8 @@ namespace
         TextCatalog texts("Client/Texts/Languages");
         OptionSettings options("build/osu-import-panel-unused.ini");
         SongSelectionState state;
-        MusicSelectView view(visuals, state, SongSelectPurpose::Editor, texts, options);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, SongSelectPurpose::Editor, texts, options);
+        auto &view = *viewOwner;
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas) throw std::runtime_error("Import list Canvas missing.");
@@ -680,7 +686,8 @@ namespace
         {
             selection.SelectVisibleSong(0);
             selection.selectedPatternIndex_ = 0;
-            MusicSelectView clickable(visuals, selection, purpose, texts, options);
+            const auto clickableOwner = std::make_unique<MusicSelectView>(visuals, selection, purpose, texts, options);
+            auto &clickable = *clickableOwner;
             clickable.Initialize(services);
             auto *canvas = visuals.FindCanvas(purpose == SongSelectPurpose::Gameplay ? 2 : 3);
             if (!canvas)
@@ -745,7 +752,8 @@ namespace
                 other.patterns.resize(1);
                 state.catalog_.songs.push_back(std::move(other));
             }
-            MusicSelectView view(visuals, state, purpose, texts, options);
+            const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, purpose, texts, options);
+            auto &view = *viewOwner;
             view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
             auto *canvas = visuals.FindCanvas(1);
             if (!canvas) throw std::runtime_error("Metadata-lines Canvas missing.");
@@ -863,7 +871,8 @@ namespace
             values.SetMembership(1, key, true);
             std::string error;
             Check(state.favorites_.Save(values, error), "Seed in-memory favorites.");
-            MusicSelectView view(visuals, state, purpose, texts, options);
+            const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, purpose, texts, options);
+            auto &view = *viewOwner;
             view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
             auto *canvas = visuals.FindCanvas(1);
             if (!canvas) throw std::runtime_error("Favorites Canvas missing.");
@@ -994,7 +1003,8 @@ namespace
             for (std::size_t i = 0; i < 3; ++i) song.patterns[i].noteCount = 100 * i;
             state.catalog_.songs.push_back(std::move(song));
             state.filter_.minimumNotes = 100;
-            MusicSelectView view(visuals, state, purpose, texts, options);
+            const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, purpose, texts, options);
+            auto &view = *viewOwner;
             view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
             auto *canvas = visuals.FindCanvas(1);
             if (!canvas) throw std::runtime_error("Filter projection Canvas missing.");
@@ -1076,7 +1086,8 @@ namespace
             song.patterns.resize(2);
             song.patterns[0].pattern.hpLevel = HpLevel{17.25};
             selection.catalog_.songs.push_back(std::move(song));
-            MusicSelectView view(visuals, selection, purpose, texts, options);
+            const auto viewOwner = std::make_unique<MusicSelectView>(visuals, selection, purpose, texts, options);
+            auto &view = *viewOwner;
             view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
             auto *canvas = visuals.FindCanvas(1);
             if (!canvas) throw std::runtime_error("HP information Canvas missing.");
@@ -1150,7 +1161,8 @@ namespace
             song.patterns.push_back(std::move(pattern));
         }
         selection.catalog_.songs.push_back(std::move(song));
-        MusicSelectView view(visuals, selection, purpose, texts, options);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, selection, purpose, texts, options);
+        auto &view = *viewOwner;
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas) throw std::runtime_error("Song menu Canvas missing.");
@@ -1283,7 +1295,8 @@ namespace
         song.patterns.front().pattern.baseBpm = 150.0;
         selection.selectedDurationMicroseconds_ = 125'000'000;
         selection.catalog_.songs.push_back(std::move(song));
-        MusicSelectView view(visuals, selection, purpose, texts, options);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, selection, purpose, texts, options);
+        auto &view = *viewOwner;
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas) throw std::runtime_error("Background Canvas missing.");
@@ -1316,7 +1329,9 @@ namespace
             for (std::size_t i = 0; i < rules.size(); ++i)
             {
                 const auto *rule = Find(canvas->Root(), ("Detail.Rule." + std::to_string(i)).c_str());
-                Check(rule != nullptr && rule->IsVisible(), "Every figure table rule is shown for a chart.");
+                if (rule == nullptr)
+                    throw std::runtime_error("Every figure table rule is shown for a chart.");
+                Check(rule->IsVisible(), "Every figure table rule is shown for a chart.");
                 rules[i] = rule->BoundsInCanvas();
             }
             Check(std::abs(rules[0].x - tableLeft) < .01F && std::abs(rules[0].width - 448.0F) < .01F &&
@@ -1484,7 +1499,8 @@ namespace
             selection.catalog_.songs.push_back(std::move(extra));
         }
         selection.searchText_=L"Record";
-        MusicSelectView view(visuals,selection,SongSelectPurpose::Gameplay,texts,options,database);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals,selection,SongSelectPurpose::Gameplay,texts,options,database);
+        auto &view = *viewOwner;
         view.Initialize({meshes,textRendering,renderer,audio,1280,720});auto *canvas=visuals.FindCanvas(1);
         Check(canvas!=nullptr,"Record history owns its selection canvas.");InputState input;
         const auto rows=[&]{return Find(canvas->Root(),"RecordRows")->Children().size();};
@@ -1633,7 +1649,9 @@ namespace
         if (!button || !panel)
             throw std::runtime_error("Options toggle controls missing.");
         const auto *mode = Find(canvas.Root(), "GameModeSelect");
-        Check(mode && mode->BoundsInCanvas().x + mode->BoundsInCanvas().width <= button->BoundsInCanvas().x, "Mode and the gear must have separate footer bounds.");
+        if (mode == nullptr)
+            throw std::runtime_error("Mode and the gear must have separate footer bounds.");
+        Check(mode->BoundsInCanvas().x + mode->BoundsInCanvas().width <= button->BoundsInCanvas().x, "Mode and the gear must have separate footer bounds.");
         const auto *playOptions = Find(canvas.Root(), "PlayOptions");
         Check(playOptions && mode->BoundsInCanvas().x + mode->BoundsInCanvas().width <= playOptions->BoundsInCanvas().x &&
                   playOptions->BoundsInCanvas().x + playOptions->BoundsInCanvas().width <= button->BoundsInCanvas().x,
@@ -1690,7 +1708,8 @@ namespace
         state.sortMode_ = SongSelectionState::SortMode::Title;
         state.RebuildVisibleSongs();
         state.SelectVisibleSong(1);
-        MusicSelectView view(visuals, state, SongSelectPurpose::Gameplay, texts, options);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, SongSelectPurpose::Gameplay, texts, options);
+        auto &view = *viewOwner;
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas) throw std::runtime_error("Notation Canvas missing.");
@@ -1743,7 +1762,8 @@ namespace
         song.patterns.resize(1);
         state.catalog_.songs.push_back(std::move(song));
         state.RebuildVisibleSongs();
-        MusicSelectView view(visuals, state, SongSelectPurpose::Gameplay, texts, options);
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, state, SongSelectPurpose::Gameplay, texts, options);
+        auto &view = *viewOwner;
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas) throw std::runtime_error("Alert Canvas missing.");
@@ -1887,7 +1907,9 @@ int main()
             song.patterns.resize(2);
             selection.catalog_.songs.push_back(std::move(song));
         }
-        MusicSelectView view(visuals, selection, SongSelectPurpose::Gameplay, texts, options);
+        const auto viewOwner =
+            std::make_unique<MusicSelectView>(visuals, selection, SongSelectPurpose::Gameplay, texts, options);
+        auto &view = *viewOwner;
         view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         auto *canvas = visuals.FindCanvas(1);
         if (!canvas)
@@ -1921,7 +1943,9 @@ int main()
         selection.searchText_.clear();
         TestDifficultyClick(visuals, selection, texts, options, {meshes, textRendering, renderer, audio, 1280, 720});
         selection.catalog_.songs[0].patterns.clear();
-        MusicSelectView editor(visuals, selection, SongSelectPurpose::Editor, texts, options);
+        const auto editorOwner =
+            std::make_unique<MusicSelectView>(visuals, selection, SongSelectPurpose::Editor, texts, options);
+        auto &editor = *editorOwner;
         editor.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
         canvas = visuals.FindCanvas(4);
         if (!canvas)

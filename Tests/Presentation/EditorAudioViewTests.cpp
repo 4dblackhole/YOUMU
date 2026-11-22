@@ -169,8 +169,8 @@ namespace
         EditorSpectrumCache one;
         one.Store(request(0, 0), tile());
         const auto tileBytes = one.Bytes();
-        Check(tileBytes >= 128 * 64 && EditorSpectrumCache::DefaultByteLimit == 32 * 1024 * 1024,
-              "A stored tile must count at least its levels against the 32 MiB limit.");
+        static_assert(EditorSpectrumCache::DefaultByteLimit == 32 * 1024 * 1024, "The spectrum cache limit is 32 MiB.");
+        Check(tileBytes >= 128 * 64, "A stored tile must count at least its levels against the 32 MiB limit.");
 
         EditorSpectrumCache cache(tileBytes * 3);
         const auto first = tile();
@@ -874,7 +874,9 @@ int main(int argc, char** argv)
                 static_cast<void>(frame(VK_ESCAPE));
             static_cast<void>(frame(0));
             const auto *discard = FindNode(canvas->Root(), "Alert.Button0");
-            Check(discard != nullptr && alertOpen(), "The alert must reopen with its Discard button.");
+            if (discard == nullptr)
+                throw std::runtime_error("The alert must reopen with its Discard button.");
+            Check(alertOpen(), "The alert must reopen with its Discard button.");
             const auto bounds = discard->BoundsInCanvas();
             const auto logical = canvas->LogicalSize();
             const int x = static_cast<int>((bounds.x + bounds.width * .5F + logical.width * .5F) * 1.5F);

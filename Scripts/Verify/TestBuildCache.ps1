@@ -1,8 +1,11 @@
-﻿# Presentation 러너의 테스트 exe 빌드 캐시. Test.ps1이 dot-source 합니다.
+﻿# Presentation 러너의 테스트 exe 빌드: 경고를 오류로 올리고, 바뀌지 않은 exe는 다시 만들지 않습니다. Test.ps1이 dot-source 합니다.
 #
 # 러너(Tests/Presentation/Run*.ps1)는 실행할 때마다 `cl`로 테스트 소스를 컴파일하고 Client 오브젝트와 링크합니다.
 # 이 파일을 dot-source 하면 `cl` 함수가 cl.exe를 가려서, 입력이 지난번과 같을 때는 지난번에 만든 exe를 그대로 가져다 놓습니다.
-# 테스트 실행 여부는 여기서 정하지 않습니다. 컴파일·링크 시간만 줄입니다. 지난 컴파일이 낸 출력(경고 포함)도 그대로 다시 적습니다.
+# 테스트 실행 여부는 여기서 정하지 않습니다. 컴파일·링크 시간만 줄입니다. 지난 컴파일이 낸 출력도 그대로 다시 적습니다.
+#
+# 경고는 오류입니다. 컴파일러(분석 경고 포함)에는 /WX를, 링커에는 /link 뒤에 /WX를 붙입니다. 캐시를 꺼도 붙습니다.
+# 경고가 난 빌드는 exe가 생기지 않으므로 보관되지 않고, 고칠 때까지 실행할 때마다 다시 빌드되어 실패합니다.
 #
 # 같다고 보는 조건(하나라도 다르면 다시 빌드):
 #   - cl 명령줄(/Fe·/Fo 출력 경로 제외), cl.exe 자체, INCLUDE·LIB 환경
@@ -58,6 +61,10 @@ function Save-TestBuildHeaders([string]$DependencyDir, [string]$HeaderList) {
 function cl {
     $cache = $global:YoumuTestBuild
     $arguments = @($args | ForEach-Object { "$_" })
+    # 경고는 오류: 컴파일러 옵션은 맨 앞에, 링커 옵션은 /link 뒤(맨 끝)에 둡니다. 캐시 키에도 들어갑니다.
+    $linkerWarnings = @('/WX')
+    if ([Array]::IndexOf($arguments, '/link') -lt 0) { $linkerWarnings = @('/link', '/WX') }
+    $arguments = @('/WX') + $arguments + $linkerWarnings
     $outputArgument = $arguments | Where-Object { $_ -like '/Fe*' } | Select-Object -First 1
     if ($env:YOUMU_TEST_BUILD_CACHE -eq '0' -or -not $outputArgument) {
         & $cache.Compiler @arguments
