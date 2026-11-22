@@ -59,15 +59,15 @@ namespace
         return AccuracyText(record.accuracy) + OptionTokens(record);
     }
 
-    // What a row does not show: the mode, the judge level the play used and its maximum combo, the
-    // judgement counts (two to a line, so four-digit counts still fit the tooltip's 300 width),
-    // every option and the time it was played (UTC, like the row's date).
-    [[nodiscard]] std::wstring RecordTooltip(const PlayRecord &record,
-                                             const std::vector<std::pair<std::string_view, std::size_t>> &judgements,
-                                             const TextCatalog &texts)
+    // What a row does not show (the mode is the selector's, so it is left out): the judge level the play
+    // used and its combo, the judgement counts two to a line, every option, the stroke count and the time
+    // it was played (UTC, like the row's date). Shown large to the right of the row (user decision).
+    [[nodiscard]] TooltipText RecordTooltip(const PlayRecord &record,
+                                            const std::vector<std::pair<std::string_view, std::size_t>> &judgements,
+                                            const TextCatalog &texts)
     {
-        std::wstring text = DecodeDisplayText(record.mode) + std::format(L" · JL {:.2f} · ", record.judgeLevel.Value()) +
-                            std::wstring(texts.Get("Records.maximumCombo")) + L" " + std::to_wstring(record.maximumCombo);
+        std::wstring text = std::format(L"{} {:.2f} · {} {}", texts.Get("Records.judge"), record.judgeLevel.Value(),
+                                        texts.Get("Records.combo"), record.maximumCombo);
         for (std::size_t i = 0; i < judgements.size(); ++i)
         {
             text += i % 2 == 0 ? L"\n" : L" · ";
@@ -75,12 +75,15 @@ namespace
         }
         if (const auto options = OptionTokens(record); !options.empty())
             text += L"\n" + options.substr(3);
-        text += std::format(L"\n{} {}", texts.Get("PlayOptions.maxStrokes"), record.options.maxStrokes);
+        text += std::format(L"\n{} {}", texts.Get("Records.stroke"), record.options.maxStrokes);
         const auto played = std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{record.playedAtMilliseconds}};
         text += std::format(L"\n{:%Y.%m.%d %H:%M} UTC", std::chrono::floor<std::chrono::minutes>(played));
         if (record.pauseMenuUsed)
             text += L" · " + std::wstring(texts.Get("Records.pauseMenuUsed"));
-        return text;
+        TooltipText hint{std::move(text)};
+        hint.placement = TooltipPlacement::Right;
+        hint.large = true;
+        return hint;
     }
 } // namespace
 
@@ -324,7 +327,7 @@ void SongRecordView::Show(const std::vector<LoadedRecord> &records)
                                  L"", "PlayRecord");
         shownRecords_.emplace_back(row.Id(), r);
         if (tooltip_ != nullptr)
-            tooltip_->Set(row, {RecordTooltip(r, records[i].judgements, texts_)});
+            tooltip_->Set(row, RecordTooltip(r, records[i].judgements, texts_));
         ApplySkinPart(row, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
         static_cast<void>(CreateNumber(row, {ContentLeft, 7.0F, 48.0F, 38.0F}, std::wstring(RankName(r.accuracy)), 20.0F,
                                        800, theme::BrandText, "Rank", TextAlignment::Center));

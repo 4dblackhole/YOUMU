@@ -1611,10 +1611,15 @@ namespace
             Rest(view,input,Centre(newest));
             const auto *tip=ShownTooltip(canvas->Root());
             const std::wstring hint=tip?std::wstring(tip->Text()):L"";
-            Check(hint.starts_with(L"Taiko · JL 70.00 · Max combo 321\nMAX 5 · PERFECT 4\nGREAT 3 · GOOD 2\nBAD 1 · OK 7\nMISS 0 · POOR 8\nRND\n"),
-                  "A record row's tooltip gives the mode, judge level, maximum combo, judgement counts and options.");
+            Check(hint.starts_with(L"Judge 70.00 · Combo 321\nMAX 5 · PERFECT 4\nGREAT 3 · GOOD 2\nBAD 1 · OK 7\nMISS 0 · POOR 8\nRND\nStroke 2\n"),
+                  "A record row's tooltip gives the judge level, combo, judgement counts, options and strokes, not the mode.");
             Check(hint.find(L" UTC · Pause menu used")!=std::wstring::npos,"The tooltip ends with the play time and the pause menu use.");
-            Check(hint.find(L"\nMax strokes 2\n")!=std::wstring::npos,"The tooltip names the stroke count, the default included.");
+            {
+                // The record tooltip is large and sits to the right of its row.
+                const auto *plate=Find(*Find(canvas->Root(),"Tooltip"),"Plate");
+                const auto row=newest.BoundsInCanvas(), shown=plate->BoundsInCanvas();
+                Check(shown.x>=row.x+row.width && tip->FontSize()==15.0F,"The record tooltip is large, to the right of the row.");
+            }
             input={};
             Click(*canvas,newest);
             Check(view.Update(input,0)==SongSelectCommand::OpenRecord,"Clicking a record row asks to open its result.");
