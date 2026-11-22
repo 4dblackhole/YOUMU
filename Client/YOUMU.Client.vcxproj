@@ -372,8 +372,18 @@
   </ItemGroup>
   <ItemGroup><ClInclude Include="GameScene\MusicSelectScene\Submodules\SongCatalogLoader.h" /></ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsDisplay.cpp" /></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsKeys.cpp" /></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsOffset.cpp" /></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsCategory.cpp" /></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsPercentSlider.cpp" /></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsGeneral.cpp" /></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsDisplayPosition.cpp" /></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsAudio.cpp" /></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsInput.cpp" /></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsCategory.h" /></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsPercentSlider.h" /></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsGeneral.h" /></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsDisplay.h" /></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsAudio.h" /></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsInput.h" /></ItemGroup>
   <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsPanelStyle.h" /></ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorScene\Submodules\EditorMetronome.h" />
@@ -390,7 +400,6 @@
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorFindDialog.cpp" /></ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorSelection.cpp" /></ItemGroup>
   <ItemGroup><ClInclude Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorLayout.h" /></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsSongs.cpp" /></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Presentation\ValueDialog.h" />
     <ClCompile Include="Presentation\ValueDialog.cpp" />
@@ -415,7 +424,6 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsRail.cpp" /></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsVolume.cpp" /></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Texts\Submodules\ExplanationKeys.h" />
     <None Include="Texts\Languages\ja.ini" />

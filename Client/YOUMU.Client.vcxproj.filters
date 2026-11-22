@@ -283,8 +283,18 @@
   </ItemGroup>
   <ItemGroup><ClInclude Include="GameScene\MusicSelectScene\Submodules\SongCatalogLoader.h"><Filter>GameScene\MusicSelectScene\Submodules</Filter></ClInclude></ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsDisplay.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsKeys.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsOffset.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsCategory.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsPercentSlider.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsGeneral.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsDisplayPosition.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsAudio.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsInput.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsCategory.h"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClInclude></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsPercentSlider.h"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClInclude></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsGeneral.h"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClInclude></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsDisplay.h"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClInclude></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsAudio.h"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClInclude></ItemGroup>
+  <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsInput.h"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClInclude></ItemGroup>
   <ItemGroup><ClInclude Include="Presentation\OptionsPanel\Submodules\OptionsPanelStyle.h"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClInclude></ItemGroup>
   <ItemGroup><Filter Include="Presentation\OptionsPanel"/><Filter Include="Presentation\OptionsPanel\Submodules"/></ItemGroup>
   <ItemGroup>
@@ -302,7 +312,6 @@
   <ItemGroup><ClCompile Include="EditorScene\Submodules\EditorFindDialog.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup><ClCompile Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorSelection.cpp"><Filter>EditorScene\Submodules\Modes\Taiko</Filter></ClCompile></ItemGroup>
   <ItemGroup><ClInclude Include="EditorScene\Submodules\Modes\Taiko\TaikoEditorLayout.h"><Filter>EditorScene\Submodules\Modes\Taiko</Filter></ClInclude></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsSongs.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Presentation\ValueDialog.h"><Filter>Presentation</Filter></ClInclude>
     <ClCompile Include="Presentation\ValueDialog.cpp"><Filter>Presentation</Filter></ClCompile>
@@ -327,7 +336,6 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsRail.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
-  <ItemGroup><ClCompile Include="Presentation\OptionsPanel\Submodules\OptionsVolume.cpp"><Filter>Presentation\OptionsPanel\Submodules</Filter></ClCompile></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Texts\Submodules\ExplanationKeys.h"><Filter>Texts\Submodules</Filter></ClInclude>
     <None Include="Texts\Languages\ja.ini"><Filter>Texts\Languages</Filter></None>

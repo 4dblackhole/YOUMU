@@ -6,7 +6,7 @@ New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
 $units = @('Pch', 'SkinSetSelection', 'SkinManifest', 'SkinVisualComponent', 'LogoView', 'LogoLayout', 'LogoInput', 'LogoTexts', 'TitlePlayerView',
     'MusicSelectView', 'SongSelectLayout', 'SongSelectPanels', 'SongBackgroundPreview', 'SongFilterPanel', 'RecordFilterPanel', 'SongFavoriteTabs', 'SongFavoritesPanel', 'SongSelectFavorites', 'SongListView', 'SongSelectInput', 'SongSelectSearch', 'SongSelectCreateMenu', 'SongSelectMenu', 'SongContextMenu', 'SongSelectRecords', 'SongRecordView', 'GameDataPaths', 'PlayOptionsPanel', 'PlayOptionsLayout', 'ValueDialog', 'EditorOsuImport', 'OsuImportValidation', 'OsuSongPlacement', 'OsuImportPanel', 'MusicSelectTexts',
-    'OptionsPanel', 'OptionsRail', 'OptionsVolume', 'UiTooltip', 'UiDropdown', 'UiAlert', 'UiScrollbar', 'UiModal', 'OptionsDisplay', 'OptionsKeys', 'ModePresentation', 'OptionsOffset', 'OptionsSongs', 'OptionSettings',
+    'OptionsPanel', 'OptionsRail', 'OptionsCategory', 'OptionsPercentSlider', 'OptionsGeneral', 'OptionsDisplayPosition', 'OptionsAudio', 'OptionsInput', 'UiTooltip', 'UiDropdown', 'UiAlert', 'UiScrollbar', 'UiModal', 'OptionsDisplay', 'ModePresentation', 'OptionSettings',
     'OptionTexts', 'TextCatalog', 'LanguageFile')
 $objects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $libraries = @('Assets', 'Modes', 'Chart', 'Rhythm', 'ClientLogic') | ForEach-Object { "bin/x64/$Configuration/YOUMU.$_.lib" }

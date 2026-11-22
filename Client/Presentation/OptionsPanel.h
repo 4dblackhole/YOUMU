@@ -3,25 +3,30 @@
 #include "App/OptionSettings.h"
 #include "App/SkinSetSelection.h"
 #include "PhantomCore.h"
+#include "Presentation/OptionsPanel/Submodules/OptionsCategory.h"
 #include "Presentation/UiTooltip.h"
 #include "Presentation/UiScrollbar.h"
-#include "Mode/ModeInputLayout.h"
 #include "Texts/TextCatalog.h"
 
 #include <array>
+#include <memory>
 #include <optional>
 #include <vector>
 
-struct ModeKeyOverlay;
-
-// The left options drawer (UI-02): a category rail and one scrolling body in which the
-// General, Display, Audio and Input sections follow each other. Every choice applies and
-// saves at once; a mode with a key overlay edits its keys in a centred modal.
-class OptionsPanel final
+// The left options drawer (UI-02): a category rail and one scrolling body in which the General, Display,
+// Audio and Input sections follow each other. Every choice applies and saves at once.
+//
+// The panel owns the drawer: its frame, the rail, section layout and scrolling, the slide animation, input
+// distribution, saving and the footer notice. Each section is a category class (OptionsGeneral,
+// OptionsDisplay, OptionsAudio, OptionsInput under OptionsPanel/Submodules) that creates, refreshes and
+// applies its own options through OptionsContext, which the panel implements.
+class OptionsPanel final : private OptionsContext
 {
   public:
-    OptionsPanel(TextCatalog &texts, OptionSettings &options, PhantomCore::ScreenVisual2DManager *visuals = nullptr) noexcept
-        : texts_(texts), options_(options), visuals_(visuals) {}
+    OptionsPanel(TextCatalog &texts, OptionSettings &options, PhantomCore::ScreenVisual2DManager *visuals = nullptr);
+    ~OptionsPanel() override;
+    OptionsPanel(const OptionsPanel &) = delete;
+    OptionsPanel &operator=(const OptionsPanel &) = delete;
 
     void Initialize(PhantomCore::Visual2DCanvas &canvas, PhantomCore::AudioSystem &audio,
                     PhantomCore::IWindowControl *window = nullptr);
@@ -33,53 +38,47 @@ class OptionsPanel final
                       PhantomCore::NodeId hoveredNode, PhantomCore::Visual2DInputRouter &inputRouter);
     bool HandleKey(std::uint16_t virtualKey, PhantomCore::Visual2DInputRouter &inputRouter);
     [[nodiscard]] bool ProcessAction(const PhantomCore::Action &action);
-    void RefreshTexts();
-    [[nodiscard]] bool OwnsKeyboard() const noexcept
-    {
-        const bool editingNumber = editingOffset_ || positionEdit_.has_value();
-        return captureRow_.has_value() || capturingRestartKey_ || editingNumber;
-    }
+    void RefreshTexts() override;
+    // A number being typed or a key being captured in any category.
+    [[nodiscard]] bool OwnsKeyboard() const noexcept;
     [[nodiscard]] bool IsVisible() const noexcept;
 
   private:
-    static constexpr std::size_t SectionCount = 4;
+    static constexpr std::size_t SectionCount = 4; // General, Display, Audio, Input.
     struct Section
     {
         PhantomCore::Visual2DNode *railButton{}, *railIcon{}, *railLabel{};
         PhantomCore::Visual2DNode *headerIcon{}, *headerLabel{}, *rule{};
         float top{}, height{};
     };
-    struct KeyRow
-    {
-        std::string mode, binding, displayName;
-        std::size_t slot{};
-        PhantomCore::Visual2DNode *label{}, *button{};
-        PhantomCore::Visual2DNode *clear{};
-        // Whether the slot holds a key, as last drawn; the clear button needs one.
-        bool assigned{};
-    };
-    // A mode registered with a key overlay edits its keys in one centred modal opened
-    // from its Input card; its key rows are children of that modal.
-    struct KeyOverlay
-    {
-        const ModeKeyOverlay *description{};
-        std::string mode;
-        PhantomCore::Visual2DNode *scrim{}, *panel{}, *close{}, *status{}, *statusIcon{}, *title{};
-        PhantomCore::Visual2DNode *open{}, *openTitle{}, *openSummary{};
-        std::vector<PhantomCore::Visual2DNode *> faces;
-        std::size_t firstRow{}, rowCount{};
-    };
-    // A 0..100% slider: the three volumes (Audio) and the key beam opacity (Display) share it.
-    struct PercentSlider
-    {
-        int (*read)(const OptionValues &){};
-        void (*write)(OptionValues &, int){};
-        const char *textKey{};
-        PhantomCore::Visual2DNode *label{}, *track{}, *fill{}, *knob{}, *value{};
-        float trackWidth{}, trackHeight{};
-    };
-    static constexpr std::size_t VolumeSliderCount = 3, KeyBeamOpacitySlider = 3, BackgroundBrightnessSlider = 4,
-                                 SliderCount = 5;
+
+    // OptionsContext: what the categories use.
+    [[nodiscard]] TextCatalog &Texts() const noexcept override { return texts_; }
+    [[nodiscard]] OptionSettings &Settings() const noexcept override { return options_; }
+    [[nodiscard]] PhantomCore::ScreenVisual2DManager *Visuals() const noexcept override { return visuals_; }
+    [[nodiscard]] PhantomCore::AudioSystem &Audio() const noexcept override { return *audio_; }
+    [[nodiscard]] PhantomCore::IWindowControl *Window() const noexcept override { return window_; }
+    [[nodiscard]] PhantomCore::Visual2DCanvas &Canvas() const noexcept override { return *canvas_; }
+    [[nodiscard]] PhantomCore::Visual2DNode &Content() const noexcept override { return *content_; }
+    [[nodiscard]] float ContentHeight() const noexcept override { return contentHeight_; }
+    [[nodiscard]] bool IsOpen() const noexcept override { return targetOpen_; }
+    [[nodiscard]] float NextField(float controlHeight) override;
+    [[nodiscard]] float NextInlineRows(std::size_t rows) override;
+    bool Save(const OptionValues &candidate) override;
+    void SetStatus(OptionsStatus status) noexcept override { status_ = status; }
+    [[nodiscard]] OptionsStatus Status() const noexcept override { return status_; }
+    [[nodiscard]] std::string &StatusDetail() noexcept override { return statusDetail_; }
+    [[nodiscard]] std::wstring StatusText(bool &error) const override;
+    void RefreshStatus() override;
+    void CancelKeyboardEdit() override;
+    void CollapseCombos() override;
+    void InvalidateHitTest() noexcept override { hitTestDirty_ = true; }
+    void SkinChanged() override;
+    PhantomCore::Visual2DNode &CreateIcon(PhantomCore::Visual2DNode &parent, PhantomCore::Rect bounds, std::string key,
+                                          PhantomCore::Color tint, std::string name) override;
+    void SetIconKey(PhantomCore::Visual2DNode &icon, std::string key) override;
+    void RefreshIcons() override;
+    void BindPart(PhantomCore::Visual2DNode &node, std::string key) override;
 
     // Drawer frame, rail and section navigation (OptionsRail).
     void CreateFrame();
@@ -87,9 +86,6 @@ class OptionsPanel final
     void CreateSections();
     void LayoutSections();
     void CreateSectionHeader(std::size_t index);
-    [[nodiscard]] float NextField(float controlHeight);
-    // Reserves a block of inline slider rows and returns its top.
-    [[nodiscard]] float NextInlineRows(std::size_t rows);
     void RefreshRail();
     void UpdateRailExpansion(double deltaSeconds);
     void ApplyRailWidth();
@@ -98,106 +94,27 @@ class OptionsPanel final
     void SpySection();
     void UpdateContentLayout();
     void UpdateScrollbar();
-    void CollapseCombos();
-    [[nodiscard]] std::array<PhantomCore::Visual2DNode *, 10> Combos() const noexcept;
+    [[nodiscard]] std::vector<PhantomCore::Visual2DNode *> Combos() const;
     // An open drop-down owns the wheel: its list scrolls (or closes) and the body stays put.
     [[nodiscard]] bool AnyComboExpanded() const;
+    // The category whose modal is shown (the key settings), if any.
+    [[nodiscard]] OptionsCategory *ModalCategory() const noexcept;
     bool CanProcessAction(PhantomCore::NodeId source) const noexcept;
-    void RefreshIcons();
-    // Icons come from the skin's Common/Icons; bounds are from the parent's top-left.
-    PhantomCore::Visual2DNode &CreateIcon(PhantomCore::Visual2DNode &parent, PhantomCore::Rect bounds,
-                                          std::string key, PhantomCore::Color tint, std::string name);
-    void SetIconKey(PhantomCore::Visual2DNode &icon, std::string key);
     void ApplyIcon(PhantomCore::Visual2DNode &icon, const std::string &key);
-    void BindPart(PhantomCore::Visual2DNode &node, std::string key);
     void LayoutFooter();
-    [[nodiscard]] std::wstring StatusText(bool &error) const;
 
-    // Fields.
-    void CreateLanguageControls();
-    void CreateSongsControls();
-    void RefreshSongsControls();
-    void ChooseSongsFolder();
-    void CreateSkinControls();
-    void CreateDisplayControls();
-    void RefreshDisplayControls();
-    void SelectResolution(std::size_t index);
-    void SelectWindowMode(std::size_t index);
-    void SelectNotation(std::size_t index);
-    // Screen position: a box with the monitor and the game picture inside it, X and Y number fields and
-    // a Center button. Dragging the picture or entering a number moves the window when the drag ends or
-    // Enter is pressed, and saves the position. Only a Borderless picture smaller than its monitor moves.
-    struct PositionView
-    {
-        PhantomCore::WindowResolution monitor, size;
-        PhantomCore::WindowPosition position;
-        bool adjustable{};
-    };
-    void CreatePositionControls();
-    void RefreshPositionControls();
-    [[nodiscard]] PositionView CurrentPosition() const;
-    void ShowPosition(const PositionView &view, PhantomCore::WindowPosition position);
-    bool ProcessPositionDrag(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
-                             PhantomCore::NodeId hoveredNode);
-    void StartPositionEdit(std::size_t axis);
-    void EditPosition(std::uint16_t key);
-    void ApplyPosition(std::optional<PhantomCore::WindowPosition> position);
-    void SelectRenderRate(std::size_t index);
-    void CreateVolumeControls();
-    void CreateKeyBeamOpacityControl();
-    void CreateBackgroundBrightnessControl();
-    // A captioned slider row (caption above), or with inlineTop an inline row at that top.
-    void CreatePercentSlider(std::size_t index, const std::string &name, std::optional<float> inlineTop = {});
-    void RefreshSliderControls();
-    void ShowSlider(const PercentSlider &slider, int percent);
-    bool ProcessSliderPointer(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
-                              PhantomCore::NodeId hoveredNode);
-    void SaveSlider();
-    void CreateAudioControls();
-    void RefreshAudioControls();
-    void CreateOffsetControls();
-    void RefreshOffsetControls();
-    void EditOffset(std::uint16_t key);
-    // Pressing the offset field and moving left/right changes the offset by 1 ms per Canvas pixel; the
-    // release saves it. A press without movement stays a click that starts keyboard editing.
-    bool ProcessOffsetDrag(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
-                           PhantomCore::NodeId hoveredNode);
-    void ApplyOffset();
-    void CreateKeyControls();
-    void CreateKeyOverlay(const ModeInputLayout &layout, const ModeKeyOverlay &description);
-    void RefreshKeyControls();
-    void RefreshKeyOverlay(KeyOverlay &overlay);
-    void RefreshKeyImages();
-    void ShowKeyOverlay(KeyOverlay &overlay);
-    void UpdateKeyClearButtons(PhantomCore::NodeId hoveredNode);
-    void CaptureKey(std::uint16_t key);
-    // The restart key row heads the Input section; a play key or a fixed game control is refused.
-    void CreateRestartKeyControl();
-    void RefreshRestartKeyControl();
-    void CaptureRestartKey(std::uint16_t key);
-    [[nodiscard]] KeyOverlay *VisibleKeyOverlay() noexcept;
-    [[nodiscard]] const KeyOverlay *VisibleKeyOverlay() const noexcept;
-    void HideKeyOverlays() noexcept;
-
-    void CancelKeyboardEdit();
-    bool ProcessFieldAction(const PhantomCore::Action &action);
     void Close(PhantomCore::Visual2DInputRouter *inputRouter);
     void ApplyAnimationPosition();
     void ApplyScrollOffset(PhantomCore::Visual2DInputRouter &inputRouter);
-    void RefreshStatus();
-    void RefreshSkinSets();
-    bool SaveOptions(const OptionValues &candidate);
-    void SelectOutput(PhantomCore::AudioOutputBackend output);
-    void SelectDriver(int index);
-    // Saves the mixer buffer length; the engine reads it at the next start.
-    void SelectBuffer(std::size_t index);
-    // The saved buffer differs from the running mixer's, so a restart is still needed.
-    [[nodiscard]] bool BufferAwaitsRestart() const noexcept;
-    void RestoreAudio(PhantomCore::AudioOutputBackend output, int driver, std::string &error);
-    [[nodiscard]] std::string DriverName(int index) const;
+    // Drags of the categories, then the scrollbar, the wheel and the body drag.
+    bool ProcessPointer(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
+                        PhantomCore::NodeId hoveredNode, PhantomCore::Visual2DInputRouter &inputRouter, bool consumedKey);
 
     static constexpr float AnimationSeconds = 0.2F;
     static constexpr float RailExpandDelaySeconds = 0.3F;
+
+    // Sections in order; each owns its controls.
+    std::array<std::unique_ptr<OptionsCategory>, SectionCount> categories_;
 
     // Frame.
     PhantomCore::Visual2DNode *panel_{}, *rail_{}, *title_{}, *close_{}, *headerRule_{};
@@ -221,75 +138,15 @@ class OptionsPanel final
     UiTooltip tooltip_;
     double frameSeconds_{};
 
-    // Fields.
-    std::vector<ModeInputLayout> inputLayouts_;
-    std::vector<KeyRow> keyRows_;
-    std::vector<KeyOverlay> keyOverlays_;
-    std::vector<PhantomCore::Visual2DNode *> modeLabels_;
-    std::vector<PhantomCore::WindowResolution> resolutions_;
-    std::array<PercentSlider, SliderCount> sliders_{};
-    std::optional<std::size_t> sliderDrag_;
-    int sliderDraft_{}; // The dragged slider's shown percentage until the release saves it.
-    PhantomCore::IWindowControl *window_{};
-    PhantomCore::Visual2DNode *languageLabel_{}, *languageCombo_{};
-    PhantomCore::Visual2DNode *songsLabel_{}, *songsField_{}, *songsBrowse_{}, *songsDefault_{};
-    PhantomCore::Visual2DNode *skinLabel_{}, *skinCombo_{};
-    PhantomCore::Visual2DNode *resolutionLabel_{}, *resolutionCombo_{};
-    PhantomCore::Visual2DNode *windowModeLabel_{}, *windowModeCombo_{};
-    PhantomCore::Visual2DNode *positionLabel_{}, *positionBox_{}, *positionMonitor_{}, *positionPicture_{};
-    PhantomCore::Visual2DNode *positionCenter_{};
-    std::array<PhantomCore::Visual2DNode *, 2> positionFields_{}; // X, Y.
-    struct PositionDrag
-    {
-        PhantomCore::Point start;
-        PhantomCore::WindowPosition from, value;
-    };
-    std::optional<PositionDrag> positionDrag_;
-    std::optional<std::size_t> positionEdit_; // The axis whose number is being typed.
-    std::wstring positionDraft_;
-    bool replacePositionDraft_{};
-    float positionScale_{1}; // Box units per monitor pixel.
-    PhantomCore::Visual2DNode *notationLabel_{}, *notationCombo_{};
-    PhantomCore::Visual2DNode *renderRateLabel_{}, *renderRateCombo_{};
-    PhantomCore::Visual2DNode *middlewareLabel_{}, *outputLabel_{}, *driverLabel_{};
-    PhantomCore::Visual2DNode *middlewareCombo_{}, *outputCombo_{}, *driverCombo_{};
-    PhantomCore::Visual2DNode *bufferLabel_{}, *bufferCombo_{};
-    PhantomCore::Visual2DNode *offsetLabel_{}, *offsetField_{}, *offsetUnit_{};
-    std::optional<std::size_t> captureRow_;
-    PhantomCore::Visual2DNode *restartKeyLabel_{}, *restartKeyButton_{};
-    bool capturingRestartKey_{};
-    std::wstring offsetDraft_;
-    bool editingOffset_{}, replaceOffsetDraft_{};
-    struct OffsetDrag
-    {
-        float startX{};
-        std::int32_t start{}, value{};
-        bool moving{}; // Past the threshold: the press is a drag, not a click.
-    };
-    std::optional<OffsetDrag> offsetDrag_;
-
     TextCatalog &texts_;
     OptionSettings &options_;
     PhantomCore::ScreenVisual2DManager *visuals_{};
     PhantomCore::AudioSystem *audio_{};
+    PhantomCore::IWindowControl *window_{};
     PhantomCore::Visual2DCanvas *canvas_{};
-    enum class Status
-    {
-        None,
-        SaveFailed,
-        AudioFailed,
-        WindowFailed,
-        InvalidInput
-    };
-    Status status_{};
+    OptionsStatus status_{};
     std::string statusDetail_;
     PhantomCore::NodeId panelId_{};
-    PhantomCore::NodeId languageComboId_{};
-    PhantomCore::NodeId skinComboId_{};
-    PhantomCore::NodeId outputComboId_{};
-    PhantomCore::NodeId driverComboId_{};
-    std::vector<int> driverIndices_;
-    std::vector<std::wstring> skinNames_;
     std::optional<PhantomCore::Point> previousDragPoint_;
     float animationProgress_{};
     bool targetOpen_{};
