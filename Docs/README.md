@@ -48,6 +48,7 @@
 | 결정별 근거·조건·예외·구현 상태·재현 사례 | [Design/Decisions](Design/Decisions.md) |
 | 확정 UI 리디자인·공용 부품·스킨 부품·남은 미구현 | [Design/UI](Design/UI.md) |
 | Penpot 페이지·보드·자산 제작 | [Design/References](Design/References.md) |
+| 음원 고유값·같은 제목 다른 음원의 곡 폴더 | [Design/AudioIdentity](Design/AudioIdentity.md) |
 | 공용 미디어·랭크 무결성 제안(미구현) | [Design/Proposals/RankedContent](Design/Proposals/RankedContent.md) |
 
 ### 기능
