@@ -56,6 +56,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestOldRecordSchemaSetAside", TestOldRecordSchemaSetAside},
         {"TestRecordSchemaTwoUpgrade", TestRecordSchemaTwoUpgrade},
         {"TestRecordResultDetail", TestRecordResultDetail},
+        {"TestRecordOptionText", TestRecordOptionText},
         {"TestLocalOffsetStore", TestLocalOffsetStore},
         {"TestTimerTimelineShift", TestTimerTimelineShift},
         {"TestRecordFilters", TestRecordFilters},

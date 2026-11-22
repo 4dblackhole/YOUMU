@@ -1,5 +1,6 @@
 #include "Records/LocalOffsetStore.h"
 #include "Records/PlayRecordStore.h"
+#include "Records/RecordOptionText.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "TestSupport.h"
 #include <cctype>
@@ -563,5 +564,31 @@ namespace tests
                 "Shifting the timeline moves every instant's rhythm time by the shift.");
         Require(timer.ToDspClock(RhythmTime{1'000'000} - RhythmDuration{5'000}) == dspBefore,
                 "The DSP mapping moves with it, so scheduled audio keeps its physical time.");
+    }
+
+    // A record row lists only what changes the play, in two capitals, and marks options it had to leave out.
+    void TestRecordOptionText()
+    {
+        Require(RecordOptionTokens(PlayOptions{}).empty(), "A plain play lists no options.");
+        PlayOptions every;
+        every.accelerate = 1.5;
+        every.judgeLevel = JudgeLevel{70.0};
+        every.mirror = every.random = every.ignoreScrollEffects = true;
+        every.scrollSpeed = 2.0;
+        every.metronome = every.preserveMusicPitch = true;
+        every.maxStrokes = 3;
+        Require(RecordOptionTokens(every) == std::vector<std::wstring>{L"AC1.5x", L"JL", L"MR", L"RD", L"CS", L"SS2x"},
+                "Accelerate, judge level, Mirror, Random, constant speed and scroll speed; metronome, pitch and strokes stay out.");
+        PlayOptions bpm;
+        bpm.scrollUnit = PlayOptions::ScrollUnit::Bpm;
+        bpm.scrollSpeed = 180;
+        bpm.accelerate = 0.75;
+        Require(RecordOptionTokens(bpm) == std::vector<std::wstring>{L"AC0.75x", L"SS180"},
+                "A BPM scroll speed is a bare number; the Accelerate multiplier keeps its x.");
+        const std::vector<std::wstring> tokens{L"AC1.5x", L"MR", L"RD"};
+        Require(JoinRecordOptions(tokens, 3) == L"AC1.5x,MR,RD", "Options are joined with commas.");
+        Require(JoinRecordOptions(tokens, 1) == L"AC1.5x,…" && JoinRecordOptions(tokens, 0) == L"…",
+                "Options left out for room end in an ellipsis.");
+        Require(JoinRecordOptions({}, 0).empty(), "No options, no text.");
     }
 } // namespace tests
