@@ -35,6 +35,7 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
   private:
     std::unique_ptr<PhantomCore::GameScene> CreateResultScene();
     void RestoreSavedAudioDriver(PhantomCore::AudioSystem &audio);
+    void SaveDraggedWindowPosition();
 
     bool smokeTest_{};
     bool showPerformanceOverlay_{};
@@ -50,5 +51,6 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     PerformanceBand performanceBand_;
     PhantomCore::IRenderRateControl *renderRateControl_{}; // Engine-owned.
     VolumeOverlay volumeOverlay_;
+    PhantomCore::IWindowControl *windowControl_{};         // Engine-owned; null in offscreen runs.
     std::uint64_t lastPerformanceMeasurementIndex_{};
 };

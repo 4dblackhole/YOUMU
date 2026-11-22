@@ -53,6 +53,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.windowWidth = optionSettings_.Values().windowWidth;
     config.windowHeight = optionSettings_.Values().windowHeight;
     config.windowMode = optionSettings_.Values().windowMode;
+    config.windowPosition = optionSettings_.Values().windowPosition;
     const auto color = ui_colors::ClearBackground;
     config.clearColor = {color.red, color.green, color.blue, color.alpha};
     config.renderRateMode = optionSettings_.Values().renderRate;
@@ -163,6 +164,7 @@ void YOUMUGame::OnClientInitialized(const EngineServices &services)
     // This hook runs before the first update/render; output switching retains clips.
     RestoreSavedAudioDriver(services.audio);
     renderRateControl_ = services.renderRateControl;
+    windowControl_ = services.windowControl;
     // The performance band is Client presentation, so the game owns it and
     // chooses F7 independently from Engine scheduling.
     performanceBand_.Initialize(ScreenVisuals(), texts_);
@@ -176,6 +178,7 @@ void YOUMUGame::OnClientUpdated(const UpdateContext &context)
     // The options panel only saves the choice; the engine applies it from the next loop.
     if (renderRateControl_)
         renderRateControl_->SetMode(optionSettings_.Values().renderRate);
+    SaveDraggedWindowPosition();
     if (context.input.WasKeyPressed(VK_F7))
     {
         showPerformanceOverlay_ = !showPerformanceOverlay_;
@@ -190,6 +193,19 @@ void YOUMUGame::OnClientUpdated(const UpdateContext &context)
     }
     performanceBand_.Update();
     volumeOverlay_.Update(context.input, context.deltaSeconds);
+}
+
+// A framed window the user dragged starts in the same place next time.
+void YOUMUGame::SaveDraggedWindowPosition()
+{
+    WindowPosition position{};
+    if (!windowControl_ || !windowControl_->TakeUserMove(position))
+        return;
+    auto candidate = optionSettings_.Values();
+    candidate.windowPosition = position;
+    std::string error;
+    if (!optionSettings_.Save(candidate, error))
+        OutputDebugStringA(error.c_str());
 }
 
 void YOUMUGame::OnClientShuttingDown() noexcept

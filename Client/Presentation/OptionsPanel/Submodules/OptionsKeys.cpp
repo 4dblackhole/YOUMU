@@ -536,6 +536,18 @@ bool OptionsPanel::ProcessFieldAction(const Action &action)
             RefreshKeyControls();
             return true;
         }
+    for (std::size_t axis = 0; axis < positionFields_.size(); ++axis)
+        if (action.source == positionFields_[axis]->Id())
+        {
+            StartPositionEdit(axis);
+            return true;
+        }
+    if (action.source == positionCenter_->Id())
+    {
+        CancelKeyboardEdit();
+        ApplyPosition(std::nullopt);
+        return true;
+    }
     if (action.source == offsetField_->Id())
     {
         CancelKeyboardEdit();

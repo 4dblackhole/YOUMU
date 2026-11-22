@@ -36,7 +36,8 @@ class OptionsPanel final
     void RefreshTexts();
     [[nodiscard]] bool OwnsKeyboard() const noexcept
     {
-        return captureRow_.has_value() || capturingRestartKey_ || editingOffset_;
+        const bool editingNumber = editingOffset_ || positionEdit_.has_value();
+        return captureRow_.has_value() || capturingRestartKey_ || editingNumber;
     }
     [[nodiscard]] bool IsVisible() const noexcept;
 
@@ -123,6 +124,24 @@ class OptionsPanel final
     void SelectResolution(std::size_t index);
     void SelectWindowMode(std::size_t index);
     void SelectNotation(std::size_t index);
+    // Screen position: a box with the monitor and the game picture inside it, X and Y number fields and
+    // a Center button. Dragging the picture or entering a number moves the window when the drag ends or
+    // Enter is pressed, and saves the position. Only a Borderless picture smaller than its monitor moves.
+    struct PositionView
+    {
+        PhantomCore::WindowResolution monitor, size;
+        PhantomCore::WindowPosition position;
+        bool adjustable{};
+    };
+    void CreatePositionControls();
+    void RefreshPositionControls();
+    [[nodiscard]] PositionView CurrentPosition() const;
+    void ShowPosition(const PositionView &view, PhantomCore::WindowPosition position);
+    bool ProcessPositionDrag(const PhantomCore::InputState &input, std::optional<PhantomCore::Point> canvasPointer,
+                             PhantomCore::NodeId hoveredNode);
+    void StartPositionEdit(std::size_t axis);
+    void EditPosition(std::uint16_t key);
+    void ApplyPosition(std::optional<PhantomCore::WindowPosition> position);
     void SelectRenderRate(std::size_t index);
     void CreateVolumeControls();
     void CreateKeyBeamOpacityControl();
@@ -217,6 +236,19 @@ class OptionsPanel final
     PhantomCore::Visual2DNode *skinLabel_{}, *skinCombo_{};
     PhantomCore::Visual2DNode *resolutionLabel_{}, *resolutionCombo_{};
     PhantomCore::Visual2DNode *windowModeLabel_{}, *windowModeCombo_{};
+    PhantomCore::Visual2DNode *positionLabel_{}, *positionBox_{}, *positionMonitor_{}, *positionPicture_{};
+    PhantomCore::Visual2DNode *positionCenter_{};
+    std::array<PhantomCore::Visual2DNode *, 2> positionFields_{}; // X, Y.
+    struct PositionDrag
+    {
+        PhantomCore::Point start;
+        PhantomCore::WindowPosition from, value;
+    };
+    std::optional<PositionDrag> positionDrag_;
+    std::optional<std::size_t> positionEdit_; // The axis whose number is being typed.
+    std::wstring positionDraft_;
+    bool replacePositionDraft_{};
+    float positionScale_{1}; // Box units per monitor pixel.
     PhantomCore::Visual2DNode *notationLabel_{}, *notationCombo_{};
     PhantomCore::Visual2DNode *renderRateLabel_{}, *renderRateCombo_{};
     PhantomCore::Visual2DNode *middlewareLabel_{}, *outputLabel_{}, *driverLabel_{};

@@ -88,6 +88,23 @@ namespace
         throw std::runtime_error("WindowMode must be windowed or borderless.");
     }
 
+    // WindowX and WindowY are read one at a time; either one alone leaves the other axis at 0.
+    WindowPosition &PositionOf(OptionValues &values)
+    {
+        if (!values.windowPosition)
+            values.windowPosition.emplace();
+        return *values.windowPosition;
+    }
+
+    // The two position lines, or nothing while the mode's default placement is used.
+    std::string WindowPositionLines(const OptionValues &values)
+    {
+        if (!values.windowPosition)
+            return {};
+        return "\r\nWindowX=" + std::to_string(values.windowPosition->x) + "\r\nWindowY=" +
+               std::to_string(values.windowPosition->y);
+    }
+
     std::string_view RenderRateName(const RenderRateMode mode)
     {
         switch (mode)
@@ -271,6 +288,10 @@ namespace
                 values.renderRate = ReadRenderRate(value);
             else if (key == "WindowMode")
                 values.windowMode = ReadWindowMode(value);
+            else if (key == "WindowX")
+                PositionOf(values).x = ReadInteger<std::int32_t>(value);
+            else if (key == "WindowY")
+                PositionOf(values).y = ReadInteger<std::int32_t>(value);
         }
         else if (section == "Controls")
         {
@@ -403,7 +424,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nSkinSet=" << EncodeUtf8(values.skinSet) << "\r\nGlobalOffsetMs=" << values.globalOffsetMs
              << "\r\nSongsPath=" << EncodeUtf8(values.songsPath.wstring())
              << "\r\n\r\n[Display]\r\nWidth=" << values.windowWidth << "\r\nHeight=" << values.windowHeight
-             << "\r\nWindowMode=" << WindowModeName(values.windowMode)
+             << "\r\nWindowMode=" << WindowModeName(values.windowMode) << WindowPositionLines(values)
              << "\r\nNotation=" << (values.notation == TextNotation::Romanized ? "romanized" : "first")
              << "\r\nKeyBeamOpacity=" << values.keyBeamOpacity
              << "\r\nBackgroundBrightness=" << values.backgroundBrightness
