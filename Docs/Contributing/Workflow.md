@@ -128,7 +128,7 @@ PR을 열고 검사를 마치면 지휘 세션에 한 번 보냅니다. 사용�
 
 | 스크립트 | 하는 일 | 잠금 |
 | --- | --- | --- |
-| `Build.ps1 [-Configuration Release] [-Analyze]` | 솔루션 빌드(테스트 프로젝트의 경고는 실패), `-Analyze`는 Client 코드 분석(바뀐 파일만, 경고는 실패) | Engine(배타) / 분석은 Build(공유) |
+| `Build.ps1 [-Configuration Release] [-Analyze]` | 솔루션 빌드(모든 프로젝트의 경고는 실패), `-Analyze`는 Client 코드 분석(바뀐 파일만, 경고는 실패) | Engine(배타) / 분석은 Build(공유) |
 | `Test.ps1 -Core -Runners A,B` | 로직·smoke(`-Core`, 게임 exe만 실행하고 경로를 출력)와 Presentation 러너(바뀌지 않은 테스트 exe는 다시 빌드하지 않음, 테스트 빌드의 경고는 실패) | Engine |
 | `VerifyAll.ps1 [-Runners A,B] [-Full]` | 두 구성 빌드·테스트·분석, 아키텍처, 조건식 검사. `-Full`은 테스트 exe와 분석을 처음부터 | 단계마다 위와 같음 |
 | `SyntaxCheck.ps1 -Files a.cpp,b.cpp` | `cl /Zs` 문법만 검사(잠금 기다리는 동안) | 없음 |
