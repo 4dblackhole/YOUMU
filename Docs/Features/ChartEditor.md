@@ -155,12 +155,15 @@ Workspace는 선택·읽기 전용 복사본·공통 명령 연결을, 모드는
 
 수정 시 `Client/EditorScene/EditorScene.*`는 조립 흐름만 확인합니다.
 `Submodules/EditorWorkspace`는 문서와 모드의 수명 및 공통 편집 상태를,
-`EditorView`는 즉시 모드 화면 구성과 입력 사각형을, `EditorShellView`는 탭과 아래 띠를,
-`EditorComposeView`는 도구 줄·레인 머리·채널 머리를, `EditorChannelView`는 채널 그림·잘린 구간·구간 선택을,
-`EditorPanelView`는 편집 패널을, `EditorCurvesDialog`는 곡선 편집 창을, `EditorFindDialog`는 찾기·바꾸기 창을,
-`EditorAudioView`는 Audio 탭을 맡습니다. 패턴 일치와 바꾼 패턴 계산은 화면과 분리된 `EditorFindReplace`가 맡습니다.
+`EditorView`는 즉시 모드 화면 구성과 입력 사각형, 탭 배열을, `EditorShellView`는 탭 바와 아래 띠를,
+`EditorCurvesDialog`는 곡선 편집 창을, `EditorFindDialog`는 찾기·바꾸기 창을 맡습니다.
+탭 본문은 `Submodules/Tabs`의 `IEditorTab` 구현이 탭마다 따로 맡습니다. `EditorComposeTab`은 도구 줄·레인 머리·채널 머리를,
+`EditorComposeChannels`는 채널 그림·잘린 구간·구간 선택을, `EditorComposePanels`는 편집 패널을,
+`EditorAudioTab`(`EditorAudioSelection`·`EditorAudioControls`)은 Audio 탭을, `EditorMetadataTab`은 모드의 Metadata 그리기를 맡습니다.
+`EditorTabBase`는 탭이 쓰는 Workspace·문구와 View의 그리기 전달을 묶습니다. 새 탭은 `IEditorTab`을 구현하고
+`EditorTab`과 View의 탭 배열에 한 칸을 더합니다. 패턴 일치와 바꾼 패턴 계산은 화면과 분리된 `EditorFindReplace`가 맡습니다.
 `EditorTextFields`는 화면 위 Windows 입력칸의 풀과 확정/취소를 소유합니다.
-`EditorInput`은 공통 입력을 연결하고 모드별 좌표 해석은 모드 객체에 위임합니다.
+`EditorInput`은 공통 입력을 연결하고 남은 키·휠·포인터를 현재 탭에 넘기며, 모드별 좌표 해석은 모드 객체에 위임합니다.
 `EditorMenuBar`는 에디터 전용 Canvas 상단 메뉴와 열림/강조 상태를 맡고,
 저장·편집·폴더 열기 의도를 View로 반환합니다. 문서·모드·Scene을 참조하지 않습니다.
 `EditorAnalysisController`는 worker와 marker 캐시를 맡습니다.
@@ -215,7 +218,7 @@ PCM/FFT 자체는 `YOUMU.Editor/Audio/EditorAudioAnalysis`만 읽으면 됩니�
   실시간 뷰에서는 현재 재생 위치를 유지합니다. 악보·실시간·Preview·오디오 뷰의 휠은
   모두 현재 디바이더의 한 눈금씩 재생 위치를 이동합니다.
   Ctrl+휠은 실시간 노트 간격을 바꾸고, 편집 패널 위의 휠은 목록을 넘깁니다.
-  Space 재생/일시정지와 휠 입력은 EditorView의 공통 이동 함수가 처리합니다. 좌우키는 1ms 이동합니다.
+  Space 재생/일시정지는 EditorView의 공통 이동 함수가, 휠은 현재 탭이 처리합니다. 좌우키는 1ms 이동합니다.
 - 악보 화면의 박자 디바이더는 4분음표를 기준으로 나눕니다. 1/2는 8분음표,
   1/4는 16분음표이며 기본값은 1/4입니다. 슬라이더로 1/1부터 1/16까지
   정수 분모 눈금을 선택하고, 1/17부터 1/1024까지는 직접 입력합니다.
@@ -305,7 +308,11 @@ EditorScene
       ChartEditor               현재 YMP/YME 구현
     EditorAnalysisController    IEditorAudioSource의 파일/marker 비동기 분석
     EditorPlayback              revision별 Clip/cue, DSP 기준 재생/seek/정지
-  EditorView                    즉시 모드 화면 구성(탭·아래 띠·Compose 채널·편집 패널·곡선 창·Audio)
+  EditorView                    즉시 모드 화면 구성(탭 바·아래 띠·곡선 창·찾기 창)과 탭 배열
+    IEditorTab                  탭 본문의 그리기·입력 계약(EditorTab 순서로 하나씩)
+      Tabs/EditorComposeTab     도구 줄·채널 머리·Compose 채널·편집 패널
+      Tabs/EditorAudioTab       파형·스펙트럼·선택 영역
+      Tabs/EditorMetadataTab    모드의 Metadata 그리기
     EditorMenuBar               Canvas 상단 파일/편집 메뉴와 입력 점유 상태
     EditorTextFields            화면 위 Windows 입력칸 풀과 확정/취소
     IEditorModeCanvas           모드에 제공하는 Box/Text/Image/Button 그리기 계약
@@ -463,7 +470,7 @@ geometry 전체 대신 공유 handle을 복사하고 text와 geometry의 그리�
 세 트랙에서 왼쪽 버튼을 드래그하면 동일한 선택 영역을 표시하고 파형 아래에 시작·끝·길이를
 소수점 세 자리 ms(내부 정수 us)로 표시합니다. 역방향 드래그는 시간을 정렬하며 트랙 밖의
 드래그는 보이는 시간 범위에 맞춥니다. 입력과 표시가 같은 트랙 사각형/부모 변환을 공유합니다.
-EditorAudioSelection은 View의 입력·표시만, EditorWorkspace는 선택한 절대 시각만 소유합니다.
+EditorAudioSelection은 Audio 탭의 입력·표시만, EditorWorkspace는 선택한 절대 시각만 소유합니다.
 선택은 저장 데이터/dirty/revision을 바꾸거나 FFT 타일을 재생성하지 않습니다.
 헤드 기준 틱 간격에 정확히 맞는 유효한 테일도 플레이와 같은 마지막 틱으로 예측합니다.
 줌을 축소해도 짧은 타격을 놓치지 않도록 시간/주파수 구간의 최대 강도를 유지합니다.

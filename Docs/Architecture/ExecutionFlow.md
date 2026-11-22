@@ -104,7 +104,7 @@ Scene 전환 자체는 공통 재생을 중단하지 않습니다. Client 갱신
   YMP/YME를 `ChartEditor`로 읽고 유리수 누적합과 정수 us 캐시를 만듭니다.
   악보/실시간 뷰는 같은 모델을 편집하며 변경 시에만 캐시를 다시 계산합니다.
   모드는 도구 상태·좌표 해석·노트 그리기를, EditorAnalysisController는
-  모드가 제공한 파일/marker의 PCM/FFT worker를, EditorView는 공통 Canvas를 관리합니다.
+  모드가 제공한 파일/marker의 PCM/FFT worker를, EditorView는 공통 Canvas와 탭(`IEditorTab`) 배열을 관리합니다.
   모드와 문서는 Workspace와 함께 파기되고 worker는 복사한 파일 경로만 참조합니다.
   Scene 종료 시 worker 완료를 기다리지 않고 취소를 요청합니다. worker 자체는 프로세스 수명입니다.
   Ctrl+S는 같은 폴더에 저장하며 Escape는 미저장 변경을 확인한 뒤 돌아갑니다.

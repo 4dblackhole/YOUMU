@@ -333,6 +333,9 @@ PlayOptionsPanelTests(Done 적용·Reset·오류·HP gauge·배지·좁은 화�
 
 - IEditorDocument의 원본은 안정 ID/유리수 위치 트리이며 게임플레이 INote 상태와 분리합니다.
   IEditorMode는 모드별 도구/배치/표시 정책, Workspace는 공통 명령과 수명을 소유합니다.
+- 화면은 사용자 결정으로 탭 단위로 나눕니다. EditorView는 탭 바·아래 띠·공용 창(알림·곡선·찾기)과
+  `EditorTab` 순서의 `IEditorTab` 배열을 갖고, 탭 본문(Compose·Audio·Metadata)은 탭마다 따로 둔 클래스·파일이
+  그리기와 남은 입력을 맡습니다. 새 탭은 `IEditorTab`을 구현해 배열에 더합니다.
 - 편집 전체 32동작 Undo/Redo, 선택/다중 선택·복사·붙여넣기를 유지합니다.
   Ctrl+V는 실제 겹침 교체, Ctrl+Shift+V는 복사 영역의 공백까지 교체합니다.
   클릭 배치도 사용자 결정으로 겹치는 노트(롱노트는 통째로)를 모두 대체하며 Undo 한 번으로 되돌립니다.
