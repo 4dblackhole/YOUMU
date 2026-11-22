@@ -644,8 +644,9 @@ namespace
         Check(HasText(*canvas, texts.Get("Result.maximumCombo")) && textOf("Result.Score") == L"12,345,678" &&
                   textOf("Result.MaximumCombo") == std::to_wstring(taiko->summary.maximumCombo),
               "The result must display the carried score inside the ring and the maximum combo beside accuracy.");
-        for(const auto key:{"scrollSpeed","metronome","mirror","random","accelerate","judgeLevel","ignoreScrollEffects"})
+        for(const auto key:{"scrollSpeed","mirror","random","accelerate","judgeLevel","ignoreScrollEffects"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
+        Check(FindNode(canvas->Root(),"Result.Option.metronome")==nullptr,"The metronome does not change the play and has no tile.");
         Check(FindNode(canvas->Root(),"Result.Option.mode")==nullptr,"The mode is the top-left badge, not a tile.");
         Check(FindNode(canvas->Root(),"Result.Option.hpGauge")==nullptr,"The default HP gauge is a plain play and has no tile.");
         Check(textOf("Result.OptionValue.accelerate")==L"1.50×" && textOf("Result.OptionValue.random")==L"35%",

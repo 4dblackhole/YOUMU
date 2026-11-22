@@ -173,8 +173,7 @@ void TaikoResultView::BuildOptions(Visual2DNode &root)
         tiles.push_back({"scrollSpeed", optionImages_.scrollSpeed, ScrollCaption(o),
                          {option("scrollSpeed"), {}, std::format(L"{:g}{}", o.scrollSpeed, bpm ? L" BPM" : L"x")}});
     }
-    if (o.metronome)
-        tiles.push_back({"metronome", optionImages_.metronome, text("Result.optionMetronome"), {option("metronome")}});
+    // The metronome only adds a click; it does not change the play, so it has no tile (user decision 2026-11-22).
     if (o.ignoreScrollEffects)
         tiles.push_back({"ignoreScrollEffects", optionImages_.ignoreScrollEffects, text("Result.optionIgnoreScroll"),
                          {option("ignoreScroll")}});
