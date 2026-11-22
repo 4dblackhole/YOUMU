@@ -1,7 +1,10 @@
 #include "OptionsPanel.h"
-#include "Presentation/SceneWheel.h"
-#include "Mode/PlayGameModeFactory.h"
+#include "OptionsPanel/Submodules/OptionsAudio.h"
+#include "OptionsPanel/Submodules/OptionsDisplay.h"
+#include "OptionsPanel/Submodules/OptionsGeneral.h"
+#include "OptionsPanel/Submodules/OptionsInput.h"
 #include "OptionsPanel/Submodules/OptionsPanelStyle.h"
+#include "Presentation/SceneWheel.h"
 #include "Presentation/SkinVisualComponent.h"
 
 #include "Texts/Options/OptionTexts.h"
@@ -23,12 +26,25 @@ namespace
     constexpr float StatusTextWidth = 282, StatusLineHeight = 18;
 } // namespace
 
+OptionsPanel::OptionsPanel(TextCatalog &texts, OptionSettings &options, ScreenVisual2DManager *visuals)
+    // The categories see the panel only as OptionsContext, a private base converted here inside the class.
+    : categories_{std::make_unique<OptionsGeneral>(static_cast<OptionsContext &>(*this)),
+                  std::make_unique<OptionsDisplay>(static_cast<OptionsContext &>(*this)),
+                  std::make_unique<OptionsAudio>(static_cast<OptionsContext &>(*this)),
+                  std::make_unique<OptionsInput>(static_cast<OptionsContext &>(*this))},
+      texts_(texts), options_(options), visuals_(visuals)
+{
+}
+
+OptionsPanel::~OptionsPanel() = default;
+
 void OptionsPanel::Initialize(Visual2DCanvas &canvas, AudioSystem &audio, IWindowControl *window)
 {
     canvas_ = &canvas;
     audio_ = &audio;
     window_ = window;
-    inputLayouts_ = AvailableInputLayouts();
+    for (const auto &category : categories_)
+        category->Load();
     CreateFrame();
     CreateRail();
     CreateSections();
@@ -123,68 +139,19 @@ void OptionsPanel::RefreshIcons()
         ApplyIcon(*icon, key);
 }
 
-void OptionsPanel::CreateLanguageControls()
+void OptionsPanel::SkinChanged()
 {
-    const float top = NextField(ControlHeight);
-    languageLabel_ = &CreateFieldLabel(*content_, top, "Options.Language.Label");
-    std::vector<std::wstring> languageNames;
-    for (const LanguageProfile &profile : texts_.Languages())
-        languageNames.emplace_back(profile.displayName);
-    languageCombo_ = &CreateDropdown(*content_,
-                                     TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
-                                     std::move(languageNames), "Options.Language.Combo");
-    languageComboId_ = languageCombo_->Id();
-    ConfigureCombo(*languageCombo_);
-    AddFieldLine(*content_, *languageCombo_, "Options.Language.Line");
-}
-
-void OptionsPanel::CreateSkinControls()
-{
-    const float top = NextField(ControlHeight);
-    skinLabel_ = &CreateFieldLabel(*content_, top, "Options.Skin.Label");
-    skinNames_ = SkinSetSelection::Instance().AvailableNames();
-    skinCombo_ = &CreateDropdown(*content_,
-                                 TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
-                                 skinNames_, "Options.Skin.Combo");
-    skinComboId_ = skinCombo_->Id();
-    ConfigureCombo(*skinCombo_);
-    AddFieldLine(*content_, *skinCombo_, "Options.Skin.Line");
-}
-
-void OptionsPanel::CreateAudioControls()
-{
-    const std::array fields{std::pair{&middlewareLabel_, &middlewareCombo_}, std::pair{&outputLabel_, &outputCombo_},
-                            std::pair{&driverLabel_, &driverCombo_}, std::pair{&bufferLabel_, &bufferCombo_}};
-    const std::array<std::string, 4> names{"Middleware", "Output", "Driver", "Buffer"};
-    for (std::size_t i = 0; i < fields.size(); ++i)
-    {
-        const float top = NextField(ControlHeight);
-        *fields[i].first = &CreateFieldLabel(*content_, top, "Options." + names[i] + ".Label");
-        auto &combo = CreateDropdown(*content_,
-                                     TopLeft({ContentLeft, top + ControlOffset, FieldWidth, ControlHeight}, contentHeight_),
-                                     {}, "Options." + names[i] + ".Combo");
-        ConfigureCombo(combo);
-        AddFieldLine(*content_, combo, "Options." + names[i] + ".Line");
-        *fields[i].second = &combo;
-    }
-    RequireDropdown(*middlewareCombo_)
-        .SetItems({std::wstring(texts_.Get("Options.middlewareFmod"))});
-    outputComboId_ = outputCombo_->Id();
-    driverComboId_ = driverCombo_->Id();
+    RefreshIcons();
+    for (const auto &category : categories_)
+        category->OnSkinChanged();
 }
 
 void OptionsPanel::Shutdown() noexcept
 {
     tooltip_.Shutdown();
-    keyRows_.clear();
-    keyOverlays_.clear();
-    modeLabels_.clear();
-    inputLayouts_.clear();
-    resolutions_.clear();
+    for (const auto &category : categories_)
+        category->Shutdown();
     icons_.clear();
-    sliders_ = {};
-    sliderDrag_.reset();
-    offsetDrag_.reset();
     window_ = nullptr;
     sections_ = {};
     activeSection_ = 0;
@@ -194,28 +161,7 @@ void OptionsPanel::Shutdown() noexcept
     viewport_ = content_ = nullptr;
     scrollbar_.Detach();
     footer_ = footerRule_ = statusBar_ = statusIcon_ = statusLabel_ = nullptr;
-    languageLabel_ = languageCombo_ = nullptr;
-    songsLabel_ = songsField_ = songsBrowse_ = songsDefault_ = nullptr;
-    skinLabel_ = skinCombo_ = nullptr;
-    resolutionLabel_ = resolutionCombo_ = nullptr;
-    windowModeLabel_ = windowModeCombo_ = nullptr;
-    positionLabel_ = positionBox_ = positionMonitor_ = positionPicture_ = positionCenter_ = nullptr;
-    positionFields_ = {};
-    positionDrag_.reset();
-    positionEdit_.reset();
-    notationLabel_ = notationCombo_ = nullptr;
-    renderRateLabel_ = renderRateCombo_ = nullptr;
-    middlewareLabel_ = outputLabel_ = driverLabel_ = bufferLabel_ = nullptr;
-    middlewareCombo_ = outputCombo_ = driverCombo_ = bufferCombo_ = nullptr;
-    offsetLabel_ = offsetField_ = offsetUnit_ = nullptr;
-    captureRow_.reset();
-    restartKeyLabel_ = restartKeyButton_ = nullptr;
-    capturingRestartKey_ = false;
-    editingOffset_ = replaceOffsetDraft_ = false;
-    offsetDraft_.clear();
-    skinNames_.clear();
-    driverIndices_.clear();
-    panelId_ = languageComboId_ = skinComboId_ = outputComboId_ = driverComboId_ = {};
+    panelId_ = {};
     previousDragPoint_.reset();
     contentHeight_ = viewportHeight_ = footerHeight_ = layoutCursor_ = scrollOffset_ = 0.0F;
     railPointerInside_ = railKeyboard_ = railExpanded_ = false;
@@ -227,7 +173,7 @@ void OptionsPanel::Shutdown() noexcept
     optionRevision_ = 0;
     audio_ = nullptr;
     canvas_ = nullptr;
-    status_ = Status::None;
+    status_ = OptionsStatus::None;
     statusDetail_.clear();
 }
 
@@ -237,12 +183,11 @@ void OptionsPanel::Toggle()
         return;
     targetOpen_ = !targetOpen_;
     tooltip_.Hide();
-    HideKeyOverlays();
+    // Every drag stops and the key modal closes, whichever way the panel goes.
+    for (const auto &category : categories_)
+        category->OnToggle();
     CancelKeyboardEdit();
     CollapseCombos();
-    sliderDrag_.reset();
-    offsetDrag_.reset();
-    positionDrag_.reset();
     scrollbar_.Release();
     railKeyboard_ = railPointerInside_ = false;
     railHoverSeconds_ = 0.0F;
@@ -253,8 +198,8 @@ void OptionsPanel::Toggle()
     }
     if (targetOpen_)
     {
-        RefreshSkinSets();
-        RefreshDisplayControls();
+        for (const auto &category : categories_)
+            category->OnOpened();
         RefreshIcons();
     }
     panel_->SetVisible(true);
@@ -289,14 +234,33 @@ void OptionsPanel::Close(Visual2DInputRouter *inputRouter)
     dragging_ = false;
     previousDragPoint_.reset();
     scrollbar_.Release();
-    sliderDrag_.reset();
-    offsetDrag_.reset();
+    for (const auto &category : categories_)
+        category->OnClosed();
     railKeyboard_ = railPointerInside_ = false;
     CollapseCombos();
     if (inputRouter)
         inputRouter->Reset(*canvas_);
     else
         hitTestDirty_ = true;
+}
+
+bool OptionsPanel::OwnsKeyboard() const noexcept
+{
+    return std::ranges::any_of(categories_, [](const auto &category) { return category->OwnsKeyboard(); });
+}
+
+void OptionsPanel::CancelKeyboardEdit()
+{
+    for (const auto &category : categories_)
+        category->CancelKeyboardEdit();
+}
+
+OptionsCategory *OptionsPanel::ModalCategory() const noexcept
+{
+    const auto shown = std::ranges::find_if(categories_, [](const auto &category) {
+        return category->VisibleModal() != nullptr;
+    });
+    return shown == categories_.end() ? nullptr : shown->get();
 }
 
 bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inputRouter)
@@ -307,34 +271,18 @@ bool OptionsPanel::HandleKey(std::uint16_t virtualKey, Visual2DInputRouter &inpu
     {
         if (!targetOpen_)
             return false;
-        if (captureRow_)
-        {
-            CaptureKey(virtualKey);
-            return true;
-        }
-        if (capturingRestartKey_)
-        {
-            CaptureRestartKey(virtualKey);
-            return true;
-        }
-        if (editingOffset_)
-        {
-            EditOffset(virtualKey);
-            return true;
-        }
-        if (positionEdit_)
-        {
-            EditPosition(virtualKey);
-            return true;
-        }
-        return false;
+        // One keyboard edit at a time: the category that holds it takes the key.
+        const auto editing = std::ranges::find_if(categories_, [](const auto &category) {
+            return category->OwnsKeyboard();
+        });
+        if (editing == categories_.end())
+            return false;
+        (*editing)->HandleKey(virtualKey);
+        return true;
     }
-    if (VisibleKeyOverlay() != nullptr)
+    if (auto *modal = ModalCategory())
     {
-        if (captureRow_)
-            CancelKeyboardEdit();
-        else
-            HideKeyOverlays();
+        modal->EscapeModal();
         inputRouter.Reset(*canvas_);
         return true;
     }
@@ -351,7 +299,8 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
         hitTestDirty_ = false;
     }
     // Rail names matter while the rail is folded; the key modal has no hints.
-    const bool hints = targetOpen_ && VisibleKeyOverlay() == nullptr;
+    auto *modal = ModalCategory();
+    const bool hints = targetOpen_ && modal == nullptr;
     tooltip_.Update(frameSeconds_, input, hoveredNode, hints && !railExpanded_);
     if (input.WasKeyPressed(VK_ESCAPE) && HandleKey(VK_ESCAPE, inputRouter))
         return true;
@@ -364,10 +313,11 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
         if (consumed)
             return true;
     }
-    if (const auto *overlay = VisibleKeyOverlay())
+    modal = ModalCategory();
+    if (modal != nullptr)
     {
-        UpdateKeyClearButtons(hoveredNode);
-        return !canvasPointer || !overlay->panel->BoundsInCanvas().Contains(*canvasPointer);
+        modal->UpdateModal(hoveredNode);
+        return !canvasPointer || !modal->VisibleModal()->BoundsInCanvas().Contains(*canvasPointer);
     }
     const bool panelShown = IsVisible() && panel_ != nullptr;
     if (!panelShown)
@@ -392,14 +342,21 @@ bool OptionsPanel::ProcessInput(const InputState &input, const std::optional<Poi
     railPointerInside_ = canvasPointer.has_value() && rail_->BoundsInCanvas().Contains(*canvasPointer);
     if (consumedKey)
         inputRouter.InvalidateHitTest();
+    return ProcessPointer(input, canvasPointer, hoveredNode, inputRouter, consumedKey);
+}
 
-    if (ProcessSliderPointer(input, canvasPointer, hoveredNode))
-        return consumedKey;
-    // A finished offset drag also drops the click the release produced, so no keyboard edit starts.
-    if (ProcessOffsetDrag(input, canvasPointer, hoveredNode))
-        return true;
-    if (ProcessPositionDrag(input, canvasPointer, hoveredNode))
-        return true;
+bool OptionsPanel::ProcessPointer(const InputState &input, const std::optional<Point> canvasPointer,
+                                  const NodeId hoveredNode, Visual2DInputRouter &inputRouter, const bool consumedKey)
+{
+    // A slider drag holds the frame; a finished offset or position drag also drops the release's click.
+    for (const auto &category : categories_)
+    {
+        const auto pointer = category->ProcessPointer(input, canvasPointer, hoveredNode);
+        if (pointer == OptionsPointer::Sliding)
+            return consumedKey;
+        if (pointer == OptionsPointer::Consumed)
+            return true;
+    }
     // The shared scrollbar follows its drag even when the pointer leaves the panel.
     if (const auto offset = scrollbar_.Track(canvasPointer, input.IsMouseButtonDown(MouseButton::Left)))
     {
@@ -466,72 +423,7 @@ bool OptionsPanel::ProcessAction(const Action &action)
                 return true;
             }
     }
-    if (ProcessFieldAction(action))
-        return true;
-    if (action.type != ActionType::SelectionChanged)
-        return false;
-    if (action.source == languageComboId_)
-    {
-        const auto languages = texts_.Languages();
-        if (action.selectedIndex >= languages.size())
-            return false;
-        auto candidate = options_.Values();
-        candidate.language = languages[action.selectedIndex].language;
-        if (SaveOptions(candidate))
-            texts_.SetLanguage(candidate.language);
-        RefreshTexts();
-        return true;
-    }
-    if (action.source == skinComboId_)
-    {
-        if (action.selectedIndex >= skinNames_.size())
-            return false;
-        auto candidate = options_.Values();
-        candidate.skinSet = skinNames_[action.selectedIndex];
-        if (SaveOptions(candidate))
-        {
-            std::string error;
-            if (!SkinSetSelection::Instance().Select(candidate.skinSet, error))
-            {
-                status_ = Status::SaveFailed;
-                statusDetail_ = std::move(error);
-            }
-            RefreshIcons();
-            RefreshKeyImages();
-        }
-        RefreshTexts();
-        return true;
-    }
-    if (action.source == middlewareCombo_->Id())
-        return true; // FMOD is the sole installed middleware.
-    if (action.source == outputComboId_ && action.selectedIndex < Outputs.size())
-    {
-        SelectOutput(Outputs[action.selectedIndex]);
-        RefreshTexts();
-        return true;
-    }
-    if (action.source == driverComboId_ && action.selectedIndex < driverIndices_.size())
-    {
-        SelectDriver(driverIndices_[action.selectedIndex]);
-        RefreshTexts();
-        return true;
-    }
-    if (action.source == bufferCombo_->Id() && action.selectedIndex < DspBufferLengths.size())
-    {
-        SelectBuffer(action.selectedIndex);
-        RefreshTexts();
-        return true;
-    }
-    return false;
-}
-
-void OptionsPanel::RefreshSkinSets()
-{
-    skinNames_ = SkinSetSelection::Instance().AvailableNames();
-    if (skinCombo_ == nullptr)
-        return;
-    RequireDropdown(*skinCombo_).SetItems(skinNames_);
-    RefreshTexts();
+    return std::ranges::any_of(categories_, [&action](const auto &category) { return category->ProcessAction(action); });
 }
 
 void OptionsPanel::RefreshTexts()
@@ -550,176 +442,43 @@ void OptionsPanel::RefreshTexts()
         tooltip_.Set(*sections_[i].railButton, {name});
     }
     tooltip_.Set(*close_, {L"", L"Esc"});
-    SetCaption(*languageLabel_, std::wstring(text.language));
-    auto &combo = RequireDropdown(*languageCombo_);
-    const auto languages = texts_.Languages();
-    for (std::size_t index = 0; index < languages.size(); ++index)
-    {
-        if (languages[index].language == texts_.CurrentLanguage())
-        {
-            combo.SetSelectedIndex(index);
-            break;
-        }
-    }
-    SetCaption(*skinLabel_, std::wstring(text.skin));
-    auto &skinCombo = RequireDropdown(*skinCombo_);
-    const auto selected = std::ranges::find(skinNames_, SkinSetSelection::Instance().CurrentName());
-    if (selected != skinNames_.end())
-        skinCombo.SetSelectedIndex(static_cast<std::size_t>(selected - skinNames_.begin()));
-    RefreshAudioControls();
-    RefreshSliderControls();
-    RefreshDisplayControls();
-    RefreshOffsetControls();
-    RefreshSongsControls();
-    RefreshKeyControls();
+    for (const auto &category : categories_)
+        category->Refresh();
     RefreshStatus();
     RefreshRail();
     optionRevision_ = options_.Revision();
 }
 
-void OptionsPanel::RefreshAudioControls()
-{
-    const auto &text = Options(texts_);
-    const std::array labels{std::pair{middlewareLabel_, text.middleware}, std::pair{outputLabel_, text.output},
-                            std::pair{driverLabel_, text.driver}, std::pair{bufferLabel_, text.buffer}};
-    for (const auto &[node, value] : labels)
-        SetCaption(*node, std::wstring(value));
-
-    auto &output = RequireDropdown(*outputCombo_);
-    std::vector<std::wstring> names;
-    for (auto backend : Outputs)
-        names.push_back(OutputName(backend, text));
-    output.SetItems(std::move(names));
-    const auto requested = std::ranges::find(Outputs, audio_->RequestedOutput());
-    if (requested != Outputs.end())
-        output.SetSelectedIndex(static_cast<std::size_t>(requested - Outputs.begin()));
-
-    names.clear();
-    driverIndices_.clear();
-    for (const auto &driver : audio_->OutputDrivers())
-    {
-        driverIndices_.push_back(driver.driverIndex);
-        names.push_back(std::to_wstring(driver.driverIndex) + L": " + WideText(driver.name));
-    }
-    auto &driver = RequireDropdown(*driverCombo_);
-    if (names.empty())
-        names.emplace_back(text.noDrivers);
-    driver.SetItems(std::move(names));
-    driverCombo_->SetEnabled(!driverIndices_.empty());
-    const auto selected = std::ranges::find(driverIndices_, audio_->ActiveDriverIndex());
-    if (selected != driverIndices_.end())
-        driver.SetSelectedIndex(static_cast<std::size_t>(selected - driverIndices_.begin()));
-
-    // The saved buffer, which the running mixer uses only after a restart (StatusText says so).
-    names.clear();
-    for (const auto length : DspBufferLengths)
-        names.push_back(std::to_wstring(length) + L" " + std::wstring(text.bufferSamples));
-    auto &buffer = RequireDropdown(*bufferCombo_);
-    buffer.SetItems(std::move(names));
-    const auto savedBuffer = std::ranges::find(DspBufferLengths, options_.Values().dspBufferLength);
-    if (savedBuffer != DspBufferLengths.end())
-        buffer.SetSelectedIndex(static_cast<std::size_t>(savedBuffer - DspBufferLengths.begin()));
-}
-
-bool OptionsPanel::BufferAwaitsRestart() const noexcept
-{
-    // A backend that reports no buffer (none, or a test double) cannot be compared.
-    const auto running = audio_ != nullptr ? audio_->DspBufferLength() : 0U;
-    return running != 0 && running != options_.Values().dspBufferLength;
-}
-
-void OptionsPanel::SelectBuffer(const std::size_t index)
-{
-    auto candidate = options_.Values();
-    candidate.dspBufferLength = DspBufferLengths[index];
-    static_cast<void>(SaveOptions(candidate));
-}
-
-bool OptionsPanel::SaveOptions(const OptionValues &candidate)
+bool OptionsPanel::Save(const OptionValues &candidate)
 {
     const bool saved = options_.Save(candidate, statusDetail_);
-    status_ = saved ? Status::None : Status::SaveFailed;
+    status_ = saved ? OptionsStatus::None : OptionsStatus::SaveFailed;
     return saved;
-}
-
-std::string OptionsPanel::DriverName(const int index) const
-{
-    for (const auto &driver : audio_->OutputDrivers())
-        if (driver.driverIndex == index)
-            return driver.name;
-    return {};
-}
-
-void OptionsPanel::RestoreAudio(const AudioOutputBackend output, const int driver, std::string &error)
-{
-    std::string restorationError;
-    if (!audio_->SetOutputBackend(output, restorationError) ||
-        (driver >= 0 && !audio_->SetOutputDriver(driver, restorationError)))
-        error += " | Could not restore the previous audio selection: " + restorationError;
-}
-
-void OptionsPanel::SelectOutput(const AudioOutputBackend output)
-{
-    const auto previousOutput = audio_->RequestedOutput();
-    const int previousDriver = audio_->ActiveDriverIndex();
-    auto candidate = options_.Values();
-    candidate.audioOutput = output;
-    if (!audio_->SetOutputBackend(output, statusDetail_))
-    {
-        RestoreAudio(previousOutput, previousDriver, statusDetail_);
-        status_ = Status::AudioFailed;
-        return;
-    }
-    candidate.driverIndex = audio_->ActiveDriverIndex();
-    candidate.driverName = DriverName(candidate.driverIndex);
-    if (!SaveOptions(candidate))
-        RestoreAudio(previousOutput, previousDriver, statusDetail_);
-}
-
-void OptionsPanel::SelectDriver(const int index)
-{
-    const int previousDriver = audio_->ActiveDriverIndex();
-    auto candidate = options_.Values();
-    candidate.audioOutput = audio_->RequestedOutput();
-    candidate.driverIndex = index;
-    candidate.driverName = DriverName(index);
-    if (!audio_->SetOutputDriver(index, statusDetail_))
-    {
-        status_ = Status::AudioFailed;
-        return;
-    }
-    if (!SaveOptions(candidate))
-        RestoreAudio(audio_->RequestedOutput(), previousDriver, statusDetail_);
 }
 
 std::wstring OptionsPanel::StatusText(bool &error) const
 {
     const auto &text = Options(texts_);
     std::wstring value;
-    const auto &saved = options_.Values();
-    // A saved name identifies the driver; without one, a saved index must still be active.
-    const auto savedDriverUnavailable = [&]
-    {
-        const auto active = audio_->ActiveDriverIndex();
-        if (!saved.driverName.empty())
-            return saved.driverName != DriverName(active);
-        return saved.driverIndex >= 0 && saved.driverIndex != active;
-    };
-    error = status_ != Status::None;
-    if (status_ == Status::SaveFailed)
+    error = status_ != OptionsStatus::None;
+    if (status_ == OptionsStatus::SaveFailed)
         value = text.saveError;
-    else if (status_ == Status::AudioFailed)
+    else if (status_ == OptionsStatus::AudioFailed)
         value = text.audioError;
-    else if (status_ == Status::WindowFailed)
+    else if (status_ == OptionsStatus::WindowFailed)
         value = text.windowError;
-    else if (status_ == Status::InvalidInput)
+    else if (status_ == OptionsStatus::InvalidInput)
         value = text.inputError;
-    else if (audio_->RequestedOutput() != saved.audioOutput)
-        value = std::wstring(text.outputFallback) + L" " + OutputName(audio_->ActiveOutput(), text);
-    else if (savedDriverUnavailable())
-        value = text.driverUnavailable;
-    else if (BufferAwaitsRestart())
-        value = text.bufferRestart;
+    else
+    {
+        // Without a failure the first category notice shows (Audio's fallback output, driver or restart).
+        for (const auto &category : categories_)
+        {
+            value = category->Notice();
+            if (!value.empty())
+                break;
+        }
+    }
     if (!statusDetail_.empty())
         value += L"\n" + WideText(statusDetail_);
     if (!options_.LoadWarning().empty())
@@ -745,8 +504,8 @@ void OptionsPanel::RefreshStatus()
                                   : std::max(FooterMinimumHeight, 36.0F + StatusLineHeight * static_cast<float>(lines));
     footer_->SetVisible(!value.empty());
     LayoutFooter();
-    for (auto &overlay : keyOverlays_)
-        RefreshKeyOverlay(overlay);
+    for (const auto &category : categories_)
+        category->OnStatusChanged();
     UpdateContentLayout();
 }
 

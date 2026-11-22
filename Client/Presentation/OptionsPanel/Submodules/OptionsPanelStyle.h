@@ -29,6 +29,17 @@ namespace options_ui
     constexpr float PositionBoxHeight = 120, PositionRowGap = 8;
     constexpr float PositionControlHeight = PositionBoxHeight + PositionRowGap + ControlHeight;
 
+    // A captioned field's height in the body: its gap above, the caption line and the control.
+    [[nodiscard]] constexpr float FieldHeight(const float controlHeight) noexcept
+    {
+        return FieldGap + ControlOffset + controlHeight;
+    }
+    // A block of inline rows has no caption line above it.
+    [[nodiscard]] constexpr float InlineRowsHeight(const std::size_t rows) noexcept
+    {
+        return FieldGap + InlineRowHeight * static_cast<float>(rows);
+    }
+
     constexpr auto DrawerColor = ui_colors::Rgb(0xF3F8FE);
     constexpr auto RailColor = ui_colors::theme::BrandDeep;
     constexpr auto FieldColor = ui_colors::Rgb(0xFFFFFF, .74F), FieldHoverColor = ui_colors::Rgb(0xFFFFFF);

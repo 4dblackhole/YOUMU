@@ -1,5 +1,4 @@
 #include "OptionsPanelStyle.h"
-#include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
 #include "Presentation/SkinVisualComponent.h"
 #include <algorithm>
@@ -14,20 +13,8 @@ namespace
     constexpr std::array SectionIcons{"Icons.settings", "Icons.display", "Icons.volume", "Icons.keyboard"};
     constexpr Color Transparent{1, 1, 1, 0};
     constexpr auto RailHover = ui_colors::Rgb(0xFFFFFF, .07F), RailOn = ui_colors::Rgb(0xFFFFFF, .11F);
-    // Songs: path box with Browse, then the default-folder button below.
-    constexpr float SongsControlHeight = ControlHeight + 6 + 32;
     // A rail click scrolls a section's top to the body's top; the spy uses the same margin.
     constexpr float SectionSpyMargin = 24;
-
-    float FieldHeight(const float controlHeight)
-    {
-        return FieldGap + ControlOffset + controlHeight;
-    }
-    // A block of inline rows has no caption line above it.
-    float InlineRowsHeight(const std::size_t rows)
-    {
-        return FieldGap + InlineRowHeight * static_cast<float>(rows);
-    }
 } // namespace
 
 void OptionsPanel::CreateRail()
@@ -61,31 +48,12 @@ void OptionsPanel::CreateRail()
 
 void OptionsPanel::LayoutSections()
 {
-    // Field heights per section, each including its gap above.
-    const float control = FieldHeight(ControlHeight);
-    std::array<std::vector<float>, SectionCount> controls{
-        std::vector<float>{control, FieldHeight(SongsControlHeight)},
-        // Skin, resolution, window mode, screen position, notation, frame limit, key beam opacity, background brightness.
-        std::vector<float>{control, control, control, FieldHeight(PositionControlHeight), control, control, control, control},
-        // Volumes, then middleware, output, driver, buffer and offset.
-        std::vector<float>{InlineRowsHeight(VolumeSliderCount), control, control, control, control, control},
-        std::vector<float>{control}}; // Input: the restart key, then each mode's keys.
-    for (const auto &layout : inputLayouts_)
-    {
-        const auto *presentation = FindModePresentation(layout.modeId);
-        if (presentation && presentation->keyOverlay)
-        {
-            controls[3].push_back(FieldHeight(KeyCardHeight));
-            continue;
-        }
-        for (const auto &binding : layout.bindings)
-            controls[3].insert(controls[3].end(), binding.keys.size(), control);
-    }
+    // Each section is its header and its category's fields, which say their own heights.
     float top = 0;
     for (std::size_t i = 0; i < sections_.size(); ++i)
     {
         float height = SectionPaddingTop + SectionHeaderHeight + SectionPaddingBottom;
-        for (const float field : controls[i])
+        for (const float field : categories_[i]->FieldHeights())
             height += field;
         sections_[i].top = top;
         sections_[i].height = height;
@@ -102,25 +70,7 @@ void OptionsPanel::CreateSections()
     {
         CreateSectionHeader(i);
         layoutCursor_ = sections_[i].top + SectionPaddingTop + SectionHeaderHeight;
-        switch (i)
-        {
-        case 0:
-            CreateLanguageControls();
-            CreateSongsControls();
-            break;
-        case 1:
-            CreateSkinControls();
-            CreateDisplayControls();
-            break;
-        case 2:
-            CreateVolumeControls();
-            CreateAudioControls();
-            CreateOffsetControls();
-            break;
-        default:
-            CreateKeyControls();
-            break;
-        }
+        categories_[i]->Create();
         const float end = layoutCursor_ + SectionPaddingBottom;
         if (std::abs(end - (sections_[i].top + sections_[i].height)) > 0.5F)
             throw std::logic_error("Options section fields must match the section layout.");
@@ -190,7 +140,7 @@ void OptionsPanel::RefreshRail()
 
 void OptionsPanel::UpdateRailExpansion(const double deltaSeconds)
 {
-    if (railPointerInside_ && VisibleKeyOverlay() == nullptr)
+    if (railPointerInside_ && ModalCategory() == nullptr)
         railHoverSeconds_ += static_cast<float>(deltaSeconds);
     else
         railHoverSeconds_ = 0.0F;
@@ -254,10 +204,12 @@ void OptionsPanel::SpySection()
     activeSection_ = current;
 }
 
-std::array<PhantomCore::Visual2DNode *, 10> OptionsPanel::Combos() const noexcept
+std::vector<PhantomCore::Visual2DNode *> OptionsPanel::Combos() const
 {
-    return {languageCombo_, skinCombo_, middlewareCombo_, outputCombo_, driverCombo_, resolutionCombo_, notationCombo_,
-            renderRateCombo_, windowModeCombo_, bufferCombo_};
+    std::vector<PhantomCore::Visual2DNode *> combos;
+    for (const auto &category : categories_)
+        category->AppendCombos(combos);
+    return combos;
 }
 
 void OptionsPanel::CollapseCombos()
@@ -295,16 +247,17 @@ void OptionsPanel::UpdateScrollbar()
 bool OptionsPanel::CanProcessAction(NodeId source) const noexcept
 {
     const auto *node = canvas_->FindNode(source);
-    // A visible key overlay is modal: only its own descendants receive actions.
-    const auto *overlay = VisibleKeyOverlay();
-    bool admitted = overlay == nullptr;
+    // A visible modal (the key settings) admits only its own descendants.
+    const auto *category = ModalCategory();
+    const auto *modal = category ? category->VisibleModal() : nullptr;
+    bool admitted = modal == nullptr;
     if (!node)
         return false;
     for (; node; node = node->Parent())
     {
         if (!node->IsVisible() || !node->IsEnabled())
             return false;
-        admitted |= overlay && node == overlay->panel;
+        admitted |= modal && node == modal;
     }
     return admitted;
 }
