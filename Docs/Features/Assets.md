@@ -189,7 +189,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`POOR`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Band`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
-| `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `Options.Tile`, `Options.Accelerate/Mirror/Random/JudgeLevel/ScrollSpeed/Metronome/IgnoreScrollEffects/MaxStrokes`, `BackButton/RetryButton/ReplayButton` |
+| `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `Options.Tile`, `Options.Accelerate/Mirror/Random/JudgeLevel/ScrollSpeed/IgnoreScrollEffects/MaxStrokes`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
 | `Options` | `Drawer`(서랍 바탕), `Rail`, `RailButton`·`RailButton.On`(켜진 분류), `KeyCard`, `Keys.Slot.Main/Sub/Empty/Waiting` |
 | `Common` | `Icons.<이름>` 37개(흰색 36px 선 아이콘, 게임이 글자색을 곱해 씀) |
@@ -254,7 +254,7 @@ Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54,
 | `Result/Rank/Ring.png` | 516×516 | 랭크 원 틀(남색 띠와 12시 금빛 눈금) |
 | `Result/Rank/{Y,X,SS,S,AA,A,B,C,D,E,F}.png` | 각 708×354 | 정확도별 랭크(코발트 글자·흰 외곽), 투명 배경·원본 비율 유지 |
 | `Result/Options/Tile.png` | 69×75 | 모드·옵션 타일(모서리 두 곳 깎은 흰 판, 게임이 남색·금빛·코발트로 칠함) |
-| `Result/Options/{Accelerate,Mirror,Random,JudgeLevel,ScrollSpeed,Metronome,IgnoreScrollEffects,MaxStrokes}.png` | 각 36×36 | 옵션 아이콘(흰 선: 배속 `>>`, 미러 화살표와 점선, 주사위, 과녁, 왼쪽 화살표와 줄, 메트로놈, 물결에 사선, 흰 원과 오른쪽으로 옅어지는 잔상 호 둘) |
+| `Result/Options/{Accelerate,Mirror,Random,JudgeLevel,ScrollSpeed,IgnoreScrollEffects,MaxStrokes}.png` | 각 36×36 | 옵션 아이콘(흰 선: 배속 `>>`, 미러 화살표와 점선, 주사위, 과녁, 왼쪽 화살표와 줄, 물결에 사선, 흰 원과 오른쪽으로 옅어지는 잔상 호 둘) |
 
 외부 스킨은 `skin.ini`의 상대 경로로 각각 교체합니다. 글꼴은 내장 `Assets/Fonts/NotoSansKR.ttf`이며,
 원본 Google Fonts의 가변 굵기 파일과 `NotoSansKR-OFL.txt`(SIL OFL 1.1)를 함께 배포합니다.
