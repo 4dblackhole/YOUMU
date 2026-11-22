@@ -1543,14 +1543,15 @@ namespace
         {
             // Newest first: the fifth row is the three-stroke play. Its count sits between the details and the date.
             const auto &shown=Find(canvas->Root(),"RecordRows")->Children();
-            const auto *strokes=Find(*shown[4],"Strokes");
-            Check(strokes!=nullptr && strokes->GetComponent<TextVisualComponent>()->Text()==L"3" &&
-                      Find(*shown[4],"Strokes.Icon")!=nullptr,"A changed stroke count shows the afterimage icon and the count.");
-            const auto *two=Find(*shown[0],"Strokes");
-            Check(two!=nullptr && two->GetComponent<TextVisualComponent>()->Text()==L"2","The default two strokes show too.");
-            const auto details=Find(*shown[4],"Details")->BoundsInCanvas(), count=strokes->BoundsInCanvas();
-            const auto date=Find(*shown[4],"Date")->BoundsInCanvas();
-            Check(details.x+details.width<=Find(*shown[4],"Strokes.Icon")->BoundsInCanvas().x && count.x<date.x+date.width,
+            auto &three=*shown[4];
+            const auto *strokes=Find(three,"Strokes"), *icon=Find(three,"Strokes.Icon"), *two=Find(*shown[0],"Strokes");
+            if(!strokes||!icon) throw std::runtime_error("A changed stroke count shows the afterimage icon and the count.");
+            if(!two) throw std::runtime_error("The default two strokes show too.");
+            Check(strokes->GetComponent<TextVisualComponent>()->Text()==L"3","A changed stroke count shows the afterimage icon and the count.");
+            Check(two->GetComponent<TextVisualComponent>()->Text()==L"2","The default two strokes show too.");
+            const auto details=Find(three,"Details")->BoundsInCanvas(), count=strokes->BoundsInCanvas();
+            const auto date=Find(three,"Date")->BoundsInCanvas();
+            Check(details.x+details.width<=icon->BoundsInCanvas().x && count.x<date.x+date.width,
                   "The stroke count stays between the details and the date.");
         }
         Click(*canvas,*next);static_cast<void>(view.Update(input,0));wait(2);
@@ -1616,7 +1617,9 @@ namespace
             Check(hint.find(L" UTC · Pause menu used")!=std::wstring::npos,"The tooltip ends with the play time and the pause menu use.");
             {
                 // The record tooltip is large and sits to the right of its row.
-                const auto *plate=Find(*Find(canvas->Root(),"Tooltip"),"Plate");
+                auto *tooltip=Find(canvas->Root(),"Tooltip");
+                const auto *plate=tooltip?Find(*tooltip,"Plate"):nullptr;
+                if(!tip||!plate) throw std::runtime_error("The record tooltip is large, to the right of the row.");
                 const auto row=newest.BoundsInCanvas(), shown=plate->BoundsInCanvas();
                 Check(shown.x>=row.x+row.width && tip->FontSize()==15.0F,"The record tooltip is large, to the right of the row.");
             }
