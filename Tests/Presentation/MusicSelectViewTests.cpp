@@ -1480,6 +1480,8 @@ namespace
         {
             record.detail=i==6?judgedDetail:std::string{};record.pauseMenuUsed=i==6;record.maximumCombo=i==6?321:0;
             record.options.random=i%2==0;record.judgeLevel=record.options.random?70:50;
+            // One plain play used three strokes; every row shows its count, the default 2 included.
+            record.options.maxStrokes=i==3?3:2;
             // The newest play was left early.
             record.completed=record.cleared=i!=7;
             record.accuracy=AccuracyScore::FromRate(.90+i*.001);record.score=static_cast<std::uint32_t>(90'000'000+i*1'000);
@@ -1537,6 +1539,20 @@ namespace
             const auto plate=pagerPlate->BoundsInCanvas(), previous=Find(canvas->Root(),"RecordPrevious")->BoundsInCanvas();
             const auto following=next->BoundsInCanvas();
             Check(plate.x<=previous.x && following.x+following.width<=plate.x+plate.width,"The page plate lies under both page buttons.");
+        }
+        {
+            // Newest first: the fifth row is the three-stroke play. Its count sits between the details and the date.
+            const auto &shown=Find(canvas->Root(),"RecordRows")->Children();
+            auto &three=*shown[4];
+            const auto *strokes=Find(three,"Strokes"), *icon=Find(three,"Strokes.Icon"), *two=Find(*shown[0],"Strokes");
+            if(!strokes||!icon) throw std::runtime_error("A changed stroke count shows the afterimage icon and the count.");
+            if(!two) throw std::runtime_error("The default two strokes show too.");
+            Check(strokes->GetComponent<TextVisualComponent>()->Text()==L"3","A changed stroke count shows the afterimage icon and the count.");
+            Check(two->GetComponent<TextVisualComponent>()->Text()==L"2","The default two strokes show too.");
+            const auto details=Find(three,"Details")->BoundsInCanvas(), count=strokes->BoundsInCanvas();
+            const auto date=Find(three,"Date")->BoundsInCanvas();
+            Check(details.x+details.width<=icon->BoundsInCanvas().x && count.x<date.x+date.width,
+                  "The stroke count stays between the details and the date.");
         }
         Click(*canvas,*next);static_cast<void>(view.Update(input,0));wait(2);
         Click(*canvas,*Find(canvas->Root(),"RecordPrevious"));static_cast<void>(view.Update(input,0));wait(6);
@@ -1596,9 +1612,17 @@ namespace
             Rest(view,input,Centre(newest));
             const auto *tip=ShownTooltip(canvas->Root());
             const std::wstring hint=tip?std::wstring(tip->Text()):L"";
-            Check(hint.starts_with(L"Taiko · JL 70.00 · Max combo 321\nMAX 5 · PERFECT 4\nGREAT 3 · GOOD 2\nBAD 1 · OK 7\nMISS 0 · POOR 8\nRND\n"),
-                  "A record row's tooltip gives the mode, judge level, maximum combo, judgement counts and options.");
+            Check(hint.starts_with(L"Judge 70.00 · Combo 321\nMAX 5 · PERFECT 4\nGREAT 3 · GOOD 2\nBAD 1 · OK 7\nMISS 0 · POOR 8\nRND\nStroke 2\n"),
+                  "A record row's tooltip gives the judge level, combo, judgement counts, options and strokes, not the mode.");
             Check(hint.find(L" UTC · Pause menu used")!=std::wstring::npos,"The tooltip ends with the play time and the pause menu use.");
+            {
+                // The record tooltip is large and sits to the right of its row.
+                auto *tooltip=Find(canvas->Root(),"Tooltip");
+                const auto *plate=tooltip?Find(*tooltip,"Plate"):nullptr;
+                if(!tip||!plate) throw std::runtime_error("The record tooltip is large, to the right of the row.");
+                const auto row=newest.BoundsInCanvas(), shown=plate->BoundsInCanvas();
+                Check(shown.x>=row.x+row.width && tip->FontSize()==15.0F,"The record tooltip is large, to the right of the row.");
+            }
             input={};
             Click(*canvas,newest);
             Check(view.Update(input,0)==SongSelectCommand::OpenRecord,"Clicking a record row asks to open its result.");

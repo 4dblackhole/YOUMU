@@ -16,6 +16,8 @@ namespace
     constexpr float PaddingX = 10, PaddingY = 6, Gap = 10, Offset = 8, Margin = 8, ArrowSize = 10;
     constexpr float TextSize = 13, LineHeight = 18, ChipSize = 12, ChipHeight = 20, ChipMinWidth = 20;
     constexpr float ChipPadding = 5, MaxWidth = 300;
+    // A large hint (record rows): bigger text on a wider plate.
+    constexpr float LargeTextSize = 15, LargeLineHeight = 21, LargeMaxWidth = 380;
     constexpr auto PlateColour = ui_colors::theme::BrandDeep;
     constexpr Color NoteColour{1, 1, 1, .66F}, ChipColour{1, 1, 1, .14F}, ChipLineColour{1, 1, 1, .26F};
     constexpr Color SeparatorColour{1, 1, 1, .55F};
@@ -225,14 +227,21 @@ void UiTooltip::Show()
 
 void UiTooltip::BuildContent(const TooltipText &text)
 {
-    // A long name on its own breaks into lines at the plate's 300 width, like the mockup's tooltip.
+    textSize_ = text.large ? LargeTextSize : TextSize;
+    lineHeight_ = text.large ? LargeLineHeight : LineHeight;
+    maxWidth_ = text.large ? LargeMaxWidth : MaxWidth;
+    placement_ = text.placement;
+    // A long name on its own breaks into lines at the plate's width (300, or 380 when large), like the
+    // mockup's tooltip.
     const bool alone = text.keys.empty() && text.note.empty();
-    auto shown = alone ? options_ui::WrapText(text.label, TextSize, MaxWidth - PaddingX * 2) : text.label;
+    auto shown = alone ? options_ui::WrapText(text.label, textSize_, maxWidth_ - PaddingX * 2) : text.label;
     labelLines_ = 1 + static_cast<int>(std::ranges::count(shown, L'\n'));
     auto &label = Require<TextVisualComponent>(*label_);
     label.SetFont(ui_fonts::Text(shown));
+    label.SetFontSize(textSize_);
     label.SetText(std::move(shown));
     auto &note = Require<TextVisualComponent>(*note_);
+    note.SetFontSize(textSize_);
     note.SetText(text.note);
     note.SetFont(ui_fonts::Text(text.note));
     // "Ctrl+O" is one chord of chips joined by "+"; "Esc / Enter" offers alternatives.
@@ -300,6 +309,36 @@ UiTooltip::Chip &UiTooltip::ChipAt(const std::size_t index)
     return chips_[index];
 }
 
+bool UiTooltip::PlaceRight(const Rect &bounds, const Size &canvas, const float width, const float height, float &left,
+                           float &bottom)
+{
+    // Beside the control, centred on it and kept on screen; the arrow points left at the control.
+    if (placement_ != TooltipPlacement::Right)
+        return false;
+    left = bounds.x + bounds.width + Offset;
+    if (left + width > canvas.width * .5F - Margin)
+        return false;
+    const float middle = bounds.y + bounds.height * .5F;
+    const float lowest = -canvas.height * .5F + Margin;
+    bottom = std::clamp(middle - height * .5F, lowest, std::max(canvas.height * .5F - height - Margin, lowest));
+    arrow_->SetPosition({left, std::clamp(middle, bottom + ArrowSize, bottom + height - ArrowSize)});
+    return true;
+}
+
+void UiTooltip::PlaceBelow(const Rect &bounds, const Size &canvas, const float width, const float height, float &left,
+                           float &bottom)
+{
+    // Under the control unless that leaves the screen; the arrow points at the control's centre.
+    const float centre = bounds.x + bounds.width * .5F;
+    bottom = bounds.y - Offset - height;
+    const bool above = bottom < -canvas.height * .5F + Margin;
+    if (above)
+        bottom = bounds.y + bounds.height + Offset;
+    left = std::clamp(centre - width * .5F, -canvas.width * .5F + Margin,
+                      std::max(canvas.width * .5F - width - Margin, -canvas.width * .5F + Margin));
+    arrow_->SetPosition({std::clamp(centre, left + ArrowSize, left + width - ArrowSize), above ? bottom : bottom + height});
+}
+
 Visual2DNode &UiTooltip::SeparatorAt(const std::size_t index)
 {
     while (separators_.size() <= index)
@@ -331,8 +370,8 @@ void UiTooltip::Layout()
     }
     // Widths: label, note, then the chips with their separators.
     const bool hasLabel = label_->IsVisible(), hasNote = note_->IsVisible();
-    const float labelWidth = hasLabel ? TextWidth(*label_, TextSize) : 0.0F;
-    const float noteWidth = hasNote ? TextWidth(*note_, TextSize) : 0.0F;
+    const float labelWidth = hasLabel ? TextWidth(*label_, textSize_) : 0.0F;
+    const float noteWidth = hasNote ? TextWidth(*note_, textSize_) : 0.0F;
     std::vector<float> chipWidths(keyTexts_.size()), separatorWidths(separatorTexts_.size());
     float keysWidth = 0;
     for (std::size_t i = 0; i < keyTexts_.size(); ++i)
@@ -350,22 +389,16 @@ void UiTooltip::Layout()
         contentWidth += (contentWidth > 0 ? Gap : 0.0F) + noteWidth;
     if (!keyTexts_.empty())
         contentWidth += (contentWidth > 0 ? Gap : 0.0F) + keysWidth;
-    const float width = std::min(MaxWidth, contentWidth + PaddingX * 2);
-    const float height = PaddingY * 2 + (keyTexts_.empty() ? LineHeight * static_cast<float>(labelLines_) : ChipHeight);
+    const float width = std::min(maxWidth_, contentWidth + PaddingX * 2);
+    const float height = PaddingY * 2 + (keyTexts_.empty() ? lineHeight_ * static_cast<float>(labelLines_) : ChipHeight);
     laidOutWidth_ = width;
 
-    // Under the control unless that leaves the screen; the arrow points at the control's centre.
     const auto canvas = canvas_->LogicalSize();
     const auto bounds = target->BoundsInCanvas();
-    const float centre = bounds.x + bounds.width * .5F;
-    float bottom = bounds.y - Offset - height;
-    const bool above = bottom < -canvas.height * .5F + Margin;
-    if (above)
-        bottom = bounds.y + bounds.height + Offset;
-    const float left = std::clamp(centre - width * .5F, -canvas.width * .5F + Margin,
-                                  std::max(canvas.width * .5F - width - Margin, -canvas.width * .5F + Margin));
+    float left{}, bottom{};
+    if (!PlaceRight(bounds, canvas, width, height, left, bottom))
+        PlaceBelow(bounds, canvas, width, height, left, bottom);
     plate_->SetBounds({left, bottom, width, height});
-    arrow_->SetPosition({std::clamp(centre, left + ArrowSize, left + width - ArrowSize), above ? bottom : bottom + height});
 
     float x = left + PaddingX;
     if (hasLabel)

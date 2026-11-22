@@ -8,6 +8,14 @@
 #include <string>
 #include <vector>
 
+// Where a hint sits: under its control (above it when there is no room), or to its right (under it
+// when there is no room), for a row that should stay readable beside the hint.
+enum class TooltipPlacement
+{
+    Below,
+    Right
+};
+
 // A control's hint (UI-02 common part): its name, an optional lighter note and its shortcut keys.
 // Keys are written like L"Ctrl+O" or L"Esc / Enter" and are drawn as key chips.
 struct TooltipText
@@ -15,6 +23,9 @@ struct TooltipText
     std::wstring label;
     std::wstring keys;
     std::wstring note;
+    TooltipPlacement placement{TooltipPlacement::Below};
+    // Larger text and a wider plate, for a hint of several lines (a record row's details).
+    bool large{};
 
     [[nodiscard]] bool Empty() const noexcept
     {
@@ -23,7 +34,7 @@ struct TooltipText
 };
 
 // The tooltip of one Canvas: a navy plate with white text, 8px under the pointed control (above it
-// when there is no room), its arrow at the control's centre. It appears after the pointer rests on a
+// when there is no room) or 8px to its right, its arrow at the control's centre. It appears after the pointer rests on a
 // registered control for 0.5 s, at once when moving straight from one hint to the next, and hides on
 // a press, the wheel, a key or when its host hides it.
 class UiTooltip final
@@ -63,6 +74,12 @@ class UiTooltip final
     void Show();
     void BuildContent(const TooltipText &text);
     void Layout();
+    // Where the plate goes and its arrow: beside the control when the hint asks for it and it fits,
+    // otherwise under (or above) it.
+    [[nodiscard]] bool PlaceRight(const PhantomCore::Rect &bounds, const PhantomCore::Size &canvas, float width,
+                                  float height, float &left, float &bottom);
+    void PlaceBelow(const PhantomCore::Rect &bounds, const PhantomCore::Size &canvas, float width, float height,
+                    float &left, float &bottom);
     [[nodiscard]] float TextWidth(PhantomCore::Visual2DNode &node, float size) const;
     [[nodiscard]] Chip &ChipAt(std::size_t index);
     [[nodiscard]] PhantomCore::Visual2DNode &SeparatorAt(std::size_t index);
@@ -83,4 +100,7 @@ class UiTooltip final
     float laidOutWidth_{};
     // Lines of the shown label once a long name is broken to the plate width.
     int labelLines_{1};
+    // The shown hint's text size, line height, plate width limit and side.
+    float textSize_{13}, lineHeight_{18}, maxWidth_{300};
+    TooltipPlacement placement_{TooltipPlacement::Below};
 };

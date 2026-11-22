@@ -1,4 +1,5 @@
 #include "SongRecordView.h"
+#include "App/AssetPaths.h"
 #include "App/GameDataPaths.h"
 #include "Catalog/SongCatalog.h"
 #include "Presentation/AccuracyText.h"
@@ -27,6 +28,9 @@ namespace
     constexpr float RowWidth = 336.0F, RowHeight = 52.0F, RowPitch = 58.0F, RowsTop = 56.0F;
     constexpr float ContentLeft = 48.0F, ContentRight = 308.0F;
     constexpr float ControlSize = 32.0F, PagerTop = 560.0F, PagerCenter = 192.0F, PagerWidth = 124.0F;
+    // Max strokes on a row: the result tile's afterimage icon and the count, left of the date. Every row
+    // shows it, the default 2 included (user decision), so rankings with different counts read apart.
+    constexpr float StrokeIconSize = 14.0F, StrokeGap = 2.0F, StrokeMargin = 8.0F;
 
     // Only what differs from a plain play, each part after " · ".
     [[nodiscard]] std::wstring OptionTokens(const PlayRecord &record)
@@ -55,15 +59,15 @@ namespace
         return AccuracyText(record.accuracy) + OptionTokens(record);
     }
 
-    // What a row does not show: the mode, the judge level the play used and its maximum combo, the
-    // judgement counts (two to a line, so four-digit counts still fit the tooltip's 300 width),
-    // every option and the time it was played (UTC, like the row's date).
-    [[nodiscard]] std::wstring RecordTooltip(const PlayRecord &record,
-                                             const std::vector<std::pair<std::string_view, std::size_t>> &judgements,
-                                             const TextCatalog &texts)
+    // What a row does not show (the mode is the selector's, so it is left out): the judge level the play
+    // used and its combo, the judgement counts two to a line, every option, the stroke count and the time
+    // it was played (UTC, like the row's date). Shown large to the right of the row (user decision).
+    [[nodiscard]] TooltipText RecordTooltip(const PlayRecord &record,
+                                            const std::vector<std::pair<std::string_view, std::size_t>> &judgements,
+                                            const TextCatalog &texts)
     {
-        std::wstring text = DecodeDisplayText(record.mode) + std::format(L" · JL {:.2f} · ", record.judgeLevel.Value()) +
-                            std::wstring(texts.Get("Records.maximumCombo")) + L" " + std::to_wstring(record.maximumCombo);
+        std::wstring text = std::format(L"{} {:.2f} · {} {}", texts.Get("Records.judge"), record.judgeLevel.Value(),
+                                        texts.Get("Records.combo"), record.maximumCombo);
         for (std::size_t i = 0; i < judgements.size(); ++i)
         {
             text += i % 2 == 0 ? L"\n" : L" · ";
@@ -71,11 +75,15 @@ namespace
         }
         if (const auto options = OptionTokens(record); !options.empty())
             text += L"\n" + options.substr(3);
+        text += std::format(L"\n{} {}", texts.Get("Records.stroke"), record.options.maxStrokes);
         const auto played = std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{record.playedAtMilliseconds}};
         text += std::format(L"\n{:%Y.%m.%d %H:%M} UTC", std::chrono::floor<std::chrono::minutes>(played));
         if (record.pauseMenuUsed)
             text += L" · " + std::wstring(texts.Get("Records.pauseMenuUsed"));
-        return text;
+        TooltipText hint{std::move(text)};
+        hint.placement = TooltipPlacement::Right;
+        hint.large = true;
+        return hint;
     }
 } // namespace
 
@@ -102,6 +110,7 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
     // The magnifier; the button inverts while a filter is on.
     queryButton_ = button(L"Icons.search", "RecordQuery", &queryIcon_);
     RefreshQueryButton();
+    strokesIcon_ = visuals_.RegisterImage(Result(L"Options.MaxStrokes"));
     pagerPlate_ = &CreatePanel(panel, {}, "RecordPagerPlate");
     ApplyFlatStyle(*pagerPlate_, theme::SurfacePlate);
     SetCornerRadius(*pagerPlate_, 0.0F);
@@ -318,15 +327,20 @@ void SongRecordView::Show(const std::vector<LoadedRecord> &records)
                                  L"", "PlayRecord");
         shownRecords_.emplace_back(row.Id(), r);
         if (tooltip_ != nullptr)
-            tooltip_->Set(row, {RecordTooltip(r, records[i].judgements, texts_)});
+            tooltip_->Set(row, RecordTooltip(r, records[i].judgements, texts_));
         ApplySkinPart(row, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
         static_cast<void>(CreateNumber(row, {ContentLeft, 7.0F, 48.0F, 38.0F}, std::wstring(RankName(r.accuracy)), 20.0F,
                                        800, theme::BrandText, "Rank", TextAlignment::Center));
         static_cast<void>(CreateNumber(row, {mainLeft, 5.0F, 150.0F, 24.0F}, ScoreText(r.score), 20.0F, 800,
                                        theme::Ink, "Score"));
-        auto &details = CreateNumber(row, {mainLeft, 29.0F, detailsWidth, 18.0F}, OptionSummary(r), 13.0F, 500,
+        const auto timestamp =
+            std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{r.playedAtMilliseconds}};
+        auto date = std::format(L"{:%Y.%m.%d}", std::chrono::floor<std::chrono::days>(timestamp));
+        const float detailsRight = ShowStrokes(row, r, ContentRight - EstimateCaptionWidth(date, 13.0F));
+        const float shownDetails = std::min(detailsWidth, detailsRight - mainLeft);
+        auto &details = CreateNumber(row, {mainLeft, 29.0F, shownDetails, 18.0F}, OptionSummary(r), 13.0F, 500,
                                      theme::Caption, "Details", TextAlignment::Leading, false);
-        details.SetClipRect({0.0F, 0.0F, detailsWidth, 18.0F});
+        details.SetClipRect({0.0F, 0.0F, shownDetails, 18.0F});
 
         // Clear, a finished play below the clear line, or a play that was left early (shown as Failed).
         const char *statusKey = r.cleared ? "Records.cleared" : (r.completed ? "Records.practice" : "Records.failed");
@@ -339,12 +353,23 @@ void SongRecordView::Show(const std::vector<LoadedRecord> &records)
         static_cast<void>(CreateCaption(chip, {0.0F, 0.0F, chipWidth, 20.0F}, std::move(status), 12.0F, 700, statusColor,
                                         "StatusText", TextAlignment::Center));
 
-        const auto timestamp =
-            std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{r.playedAtMilliseconds}};
-        static_cast<void>(CreateNumber(row, {ContentRight - 84.0F, 29.0F, 84.0F, 18.0F},
-                                       std::format(L"{:%Y.%m.%d}", std::chrono::floor<std::chrono::days>(timestamp)),
-                                       13.0F, 500, theme::Caption, "Date", TextAlignment::Trailing, false));
+        static_cast<void>(CreateNumber(row, {ContentRight - 84.0F, 29.0F, 84.0F, 18.0F}, std::move(date), 13.0F, 500,
+                                       theme::Caption, "Date", TextAlignment::Trailing, false));
     }
+}
+
+float SongRecordView::ShowStrokes(Visual2DNode &row, const PlayRecord &record, const float dateLeft)
+{
+    // Returns where the details line must end: before the stroke count.
+    auto count = std::to_wstring(record.options.maxStrokes);
+    const float countWidth = EstimateCaptionWidth(count, 13.0F) + 2.0F;
+    const float left = dateLeft - StrokeMargin - countWidth - StrokeGap - StrokeIconSize;
+    auto &icon = CreateSprite(row, TopLeft({left, 31.0F, StrokeIconSize, StrokeIconSize}, RowHeight), strokesIcon_,
+                              "Strokes.Icon");
+    RequireComponent<SpriteVisualComponent>(icon).SetTint(theme::Caption);
+    static_cast<void>(CreateNumber(row, {left + StrokeIconSize + StrokeGap, 29.0F, countWidth, 18.0F}, std::move(count),
+                                   13.0F, 500, theme::Caption, "Strokes", TextAlignment::Leading, false));
+    return left - StrokeMargin;
 }
 
 void SongRecordView::RefreshTexts()
