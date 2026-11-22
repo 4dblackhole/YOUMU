@@ -3,6 +3,7 @@
 #include "App/GameDataPaths.h"
 #include "App/OptionSettings.h"
 #include "Records/LocalOffsetStore.h"
+#include "Presentation/BackgroundLayout.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
 #include <cmath>
@@ -144,17 +145,10 @@ void RhythmTestScene::UpdateLoadingBackgroundLayout()
 {
     if (!loadingBackground_ || !loadingCanvas_.Get()) return;
     const auto logical = loadingCanvas_.Get()->LogicalSize();
-    float width = logical.width, height = logical.height;
-    Point offset{};
-    if (loadingBackgroundSize_.width > 0 && loadingBackgroundSize_.height > 0)
-    {
-        offset = {static_cast<float>(launch_.backgroundOffsetX), static_cast<float>(launch_.backgroundOffsetY)};
-        const auto scale = std::max((logical.width + 2 * std::abs(offset.x)) / loadingBackgroundSize_.width,
-                                    (logical.height + 2 * std::abs(offset.y)) / loadingBackgroundSize_.height);
-        width = loadingBackgroundSize_.width * scale;
-        height = loadingBackgroundSize_.height * scale;
-    }
-    loadingBackground_->SetBounds({-width * .5F + offset.x, -height * .5F + offset.y, width, height});
+    const Point offset{static_cast<float>(launch_.backgroundOffsetX), static_cast<float>(launch_.backgroundOffsetY)};
+    // Same cover rule as the play screen; without a sized image the offset does not apply.
+    loadingBackground_->SetBounds(ChartBackgroundBounds(logical, loadingBackgroundSize_,
+                                                        loadingBackgroundSize_.width > 0 ? offset : Point{}));
 }
 bool RhythmTestScene::PreparePresentation()
 {

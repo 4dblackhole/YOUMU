@@ -84,6 +84,8 @@ class EditorView final : public IEditorModeCanvas
     // IEditorModeCanvas
     EditorModeAreas Areas() const noexcept override;
     void Image(PhantomCore::Rect, const std::filesystem::path &, PhantomCore::Color) override;
+    void ChartBackground(PhantomCore::Rect r, const std::filesystem::path &image, PhantomCore::Point offset,
+                         PhantomCore::Size screen) override;
     float PixelScale() const noexcept override;
     void Box(PhantomCore::Rect r, PhantomCore::Color color, float radius = 0) override;
     void Text(PhantomCore::Rect r, std::wstring text, float size = 20, PhantomCore::Color color = editor_ui::Ink) override;

@@ -1,5 +1,6 @@
 #include "GameplayPresenter.h"
 #include "GameplaySupport.h"
+#include "Presentation/BackgroundLayout.h"
 #include "Presentation/AccuracyText.h"
 #include "Presentation/UiColors.h"
 #include "Presentation/UiFonts.h"
@@ -215,18 +216,10 @@ void GameplayPresenter::UpdatePresentationLayout()
 
     if (background_ != nullptr)
     {
-        float width = logicalWidth, height = CanvasReferenceHeight;
-        if (backgroundImage_.value != 0)
-        {
-            // Cover the viewport at the authored centre offset without blank edges.
-            const auto scale =
-                std::max((logicalWidth + 2 * std::abs(backgroundOffset_.x)) / backgroundSize_.width,
-                         (CanvasReferenceHeight + 2 * std::abs(backgroundOffset_.y)) / backgroundSize_.height);
-            width = backgroundSize_.width * scale;
-            height = backgroundSize_.height * scale;
-        }
-        const auto offset = backgroundImage_.value ? backgroundOffset_ : Point{};
-        background_->SetBounds({-width * .5F + offset.x, -height * .5F + offset.y, width, height});
+        // Cover the viewport at the authored centre offset without blank edges.
+        const bool image = backgroundImage_.value != 0;
+        background_->SetBounds(ChartBackgroundBounds({logicalWidth, CanvasReferenceHeight},
+                                                     image ? backgroundSize_ : Size{}, image ? backgroundOffset_ : Point{}));
     }
     // The progress strip spans the bottom edge of the screen.
     progressView_.SetLayout(
