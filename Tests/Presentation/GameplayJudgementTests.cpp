@@ -1041,8 +1041,13 @@ namespace
     }
     std::string Number(Visual2DNode &root, std::string_view name)
     {
+        // HUD numbers are ASCII digits and signs, so each character narrows without loss.
         const auto text = Node(root, std::string(name)).GetComponent<TextVisualComponent>()->Text();
-        return std::string(text.begin(), text.end());
+        std::string number;
+        number.reserve(text.size());
+        for (const wchar_t character : text)
+            number.push_back(static_cast<char>(character));
+        return number;
     }
     void TestStatisticsHud()
     {

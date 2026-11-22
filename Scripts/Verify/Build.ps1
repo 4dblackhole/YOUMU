@@ -1,6 +1,8 @@
 ﻿param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug', [string]$Target = 'Build', [switch]$Analyze)
 # 솔루션을 빌드하거나(-Analyze) Client 프로젝트를 MSVC Code Analysis로 분석합니다. 로그: build/verify/
 # - 솔루션 빌드는 Engine 잠금을 씁니다. 형제 폴더의 OsuTaikoConverter 프로젝트도 이 워크트리의 YOUMU 소스(YOUMURoot)로 다시 빌드합니다.
+#   테스트 프로젝트(이름이 .Tests로 끝나는 프로젝트)의 컴파일·링크 경고는 오류입니다(TestWarnings.targets). 경고가 난 파일은
+#   오브젝트가 생기지 않아 고칠 때까지 빌드할 때마다 다시 컴파일되어 실패합니다.
 # - 코드 분석은 이 워크트리 안에만 쓰므로 공유 Build 잠금을 씁니다. 분석 전용 오브젝트 폴더(build/obj/YOUMU.Client.Analysis)에서
 #   컴파일과 분석 결과 보고(RunNativeCodeAnalysis)만 하고 링크하지 않습니다. 일반 빌드의 오브젝트와 exe를 건드리지 않고,
 #   지난 분석 뒤에 바뀐 파일과 그 헤더를 쓰는 파일만 다시 분석합니다.
@@ -23,7 +25,8 @@ try {
         msbuild Client/YOUMU.Client.vcxproj /m /nologo /v:m /t:RunNativeCodeAnalysis /p:Configuration=$Configuration /p:Platform=x64 /p:BuildProjectReferences=false /p:RunCodeAnalysis=true /p:CodeAnalysisTreatWarningsAsErrors=true /p:IgnoreWarnIntDirSharingDetected=true "/p:IntDir=$analysisDir\" "/p:ForceImportAfterCppTargets=$analysisTargets" *> $log
     } else {
         $log = Join-Path $script:VerifyLogDir "build-$Configuration.log"
-        msbuild YOUMU.sln /m /nologo /v:m /t:$Target /p:Configuration=$Configuration /p:Platform=x64 "/p:YOUMURoot=$root\" *> $log
+        $testWarnings = Join-Path $PSScriptRoot 'TestWarnings.targets'
+        msbuild YOUMU.sln /m /nologo /v:m /t:$Target /p:Configuration=$Configuration /p:Platform=x64 "/p:YOUMURoot=$root\" "/p:ForceImportAfterCppTargets=$testWarnings" *> $log
     }
     $code = $LASTEXITCODE
 }
