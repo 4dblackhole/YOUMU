@@ -1,4 +1,5 @@
 #include "OsuSongPlacement.h"
+#include "Catalog/ChartHash.h"
 #include "Catalog/SongLayout.h"
 #include "Model/Submodules/NotationText.h"
 #include "Parsing/ChartParser.h"
@@ -230,7 +231,8 @@ namespace
             Fail("Audio file is missing or lies outside the osu! song folder: " + Utf8(chart.music.audioFile));
         return audio;
     }
-    // The YMM of a song folder that already holds byte-identical audio; empty for a new song.
+    // The YMM of a song folder that already holds byte-identical audio, whatever its name; empty for a
+    // new song. The folder named after this song is tried first, so its own audio stays its home.
     fs::path FindSharedMusic(const fs::path &root, const fs::path &audio, const fs::path &preferredFolder)
     {
         const auto matches = [&](const fs::path &ymm) {
@@ -240,15 +242,6 @@ namespace
             const auto existing = fs::weakly_canonical(ymm.parent_path() / music.document.audioFile);
             return IsInside(existing, root) && fs::is_regular_file(existing) && SameContents(audio, existing);
         };
-        // A song folder without a Music folder (for example only a BG) still accepts new music.
-        if (fs::exists(preferredFolder / SongLayout::MusicFolder))
-        {
-            const auto existing = SongLayout::FindMusicMetadata(preferredFolder);
-            if (existing.status != SongLayout::MetadataStatus::Found || !matches(existing.path))
-                Fail("A song folder with this name holds different audio or invalid metadata: " +
-                     Utf8(preferredFolder));
-            return existing.path;
-        }
         std::vector<fs::path> candidates;
         std::error_code error;
         for (fs::directory_iterator entry(root, error), end; !error && entry != end; entry.increment(error))
@@ -260,8 +253,31 @@ namespace
                 candidates.push_back(music.path);
         }
         std::ranges::sort(candidates);
+        const auto own = std::ranges::find_if(candidates, [&](const fs::path &ymm) {
+            return SongLayout::SongFolderOfMusic(ymm) == preferredFolder;
+        });
+        if (own != candidates.end())
+            std::rotate(candidates.begin(), own, own + 1);
         const auto shared = std::ranges::find_if(candidates, matches);
         return shared == candidates.end() ? fs::path{} : *shared;
+    }
+    // The name of a new song folder. Artist - Title while no music has that name yet (a folder with only a
+    // BG still takes it); otherwise the name gets the first eight digits of the audio's SHA-256,
+    // `Artist - Title [3fa9c1d2]`, then sixteen and all 64 when other audio holds those names by chance
+    // (user decision 2026-11-23). The suffix is a naming habit like the rest of the name: nothing reads it
+    // back as a hash.
+    fs::path NewSongName(const fs::path &root, const fs::path &song, const fs::path &audio)
+    {
+        if (!fs::exists(root / song / SongLayout::MusicFolder))
+            return song;
+        const auto hash = AudioFileHash(audio);
+        for (const std::size_t digits : {std::size_t{8}, std::size_t{16}, hash.size()})
+        {
+            const auto name = fs::path(song.native() + L" [" + FromUtf8(hash.substr(0, digits)).native() + L"]");
+            if (!fs::exists(root / name / SongLayout::MusicFolder))
+                return name;
+        }
+        Fail("Every song folder name for this audio holds other music: " + Utf8(root / song));
     }
     // root is canonical. Throws when the chart can never be placed; an existing chart set is reported instead.
     OsuPlacement Resolve(const fs::path &root, const ConvertedOsuChart &chart)
@@ -278,12 +294,16 @@ namespace
         const auto preferredFolder = fs::weakly_canonical(root / song);
         if (!IsInside(preferredFolder, root))
             Fail("The song folder would lie outside Songs.");
+        // The same audio joins its song wherever it is; other audio under a taken name gets a folder of its own.
         const auto shared = FindSharedMusic(root, audio, preferredFolder);
         plan.newSong = shared.empty();
-        plan.songFolder = plan.newSong ? preferredFolder : SongLayout::SongFolderOfMusic(shared);
-        plan.audioName = fs::path(song.native() + audio.extension().native());
+        const auto songName = plan.newSong ? NewSongName(root, song, audio) : song;
+        plan.songFolder = plan.newSong ? fs::weakly_canonical(root / songName) : SongLayout::SongFolderOfMusic(shared);
+        if (!IsInside(plan.songFolder, root))
+            Fail("The song folder would lie outside Songs.");
+        plan.audioName = fs::path(songName.native() + audio.extension().native());
         plan.musicFile =
-            plan.newSong ? plan.songFolder / SongLayout::MusicFolder / fs::path(song.native() + L".ymm") : shared;
+            plan.newSong ? plan.songFolder / SongLayout::MusicFolder / fs::path(songName.native() + L".ymm") : shared;
         const auto chartSet = fs::weakly_canonical(plan.songFolder / SongLayout::ChartFolder /
                                                    SongLayout::FolderName(maker, chart.pattern.name));
         if (!IsInside(chartSet, root))

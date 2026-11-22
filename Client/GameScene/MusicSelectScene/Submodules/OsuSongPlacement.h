@@ -19,8 +19,9 @@ struct OsuPlacement
 {
     std::filesystem::path songFolder, musicFile, patternFile, effectFile;
     std::filesystem::path audioName; // File name of the audio beside the YMM.
-    // False when a song folder with byte-identical audio already exists: the chart joins it
-    // and that song's YMM and audio stay untouched.
+    // False when a song folder with byte-identical audio already exists (whatever its name): the chart
+    // joins it and that song's YMM and audio stay untouched. A new song whose Artist - Title folder
+    // already holds other music is named `Artist - Title [<first 8 digits of the audio's SHA-256>]`.
     bool newSong{};
     bool chartExists{};  // The chart set folder is already there; nothing would be written.
     std::string problem; // UTF-8. Not empty when the chart cannot be placed for another reason.
@@ -30,6 +31,7 @@ struct OsuPlacement
 // names, reuse of identical audio, copying audio and background, and safe publication.
 //
 //   Songs/<Artist - Title>/Music/<Artist - Title>.<audio extension> and .ymm
+//   (Songs/<Artist - Title [3fa9c1d2]>/Music/... when other audio already has the name)
 //                          Chart/<Creator - Version>/<Artist - Title> [<Version>].ymp and .yme
 //                          BG/<background file name>
 [[nodiscard]] OsuPlacement PlanOsuPlacement(const std::filesystem::path &songsRoot, const ConvertedOsuChart &chart);

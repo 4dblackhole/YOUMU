@@ -1,5 +1,6 @@
 #include "GameScene/MusicSelectScene/Submodules/OsuImportValidation.h"
 #include "GameScene/MusicSelectScene/Submodules/OsuSongPlacement.h"
+#include "Catalog/ChartHash.h"
 #include "Catalog/SongCatalog.h"
 #include "Editing/ChartEditor.h"
 #include "Parsing/ChartParser.h"
@@ -148,6 +149,10 @@ namespace
             return chart;
         }
     };
+    fs::path FromUtf8(const std::string_view text)
+    {
+        return fs::path(std::u8string(reinterpret_cast<const char8_t *>(text.data()), text.size()));
+    }
     template <typename Function> std::string Fails(Function function)
     {
         try { function(); }
@@ -222,14 +227,43 @@ namespace
         Check(fs::last_write_time(first.musicFile) == musicTime && fs::last_write_time(song / "BG/bg.png") == imageTime,
               "Another difficulty reuses the existing YMM, byte-identical audio and identical background.");
 
-        // Same names, same size, different bytes: nothing of the refused import may appear.
-        source.version = "Third";
+        // Same names, same size, different bytes: the new audio gets a song folder of its own, named with the
+        // first eight digits of its SHA-256, and the song already under the name keeps its audio and charts.
+        source.version = "Other";
         Write(source.folder / "audio/song.mp3", "audi0 fixture");
-        Check(!PlanOsuPlacement(songs, source.Convert()).problem.empty(), "Different audio under the same song name is a problem.");
-        Fails([&] { PlaceConvertedOsuChart(songs, source.Convert()); });
-        Check(!fs::exists(song / "Chart" / "Test author - Third") && Read(music / "Test artist - Test.mp3") == "audio fixture",
-              "Different audio must fail without publishing a chart or replacing music.");
+        const auto otherHash = AudioFileHash(source.folder / "audio/song.mp3");
+        Check(otherHash == ChartBytesHash("audi0 fixture"), "An audio file's hash is the SHA-256 of its bytes.");
+        const auto otherName = "Test artist - Test [" + otherHash.substr(0, 8) + "]";
+        const auto otherSong = songs / FromUtf8(otherName);
+        const auto otherPlan = PlanOsuPlacement(songs, source.Convert());
+        Check(otherPlan.problem.empty() && otherPlan.newSong && otherPlan.songFolder == otherSong,
+              "Different audio under a taken song name plans a folder with the audio hash's first eight digits.");
+        const auto other = PlaceConvertedOsuChart(songs, source.Convert());
+        Check(other.musicFile == otherSong / "Music" / FromUtf8(otherName + ".ymm") &&
+                  Read(otherSong / "Music" / FromUtf8(otherName + ".mp3")) == "audi0 fixture",
+              "The suffixed song names its YMM and audio like its folder.");
+        Check(other.patternFile == otherSong / "Chart" / "Test author - Other" / "Test artist - Test [Other].ymp",
+              "The chart keeps the plain Artist - Title [Version] name inside the suffixed song.");
+        Check(Read(music / "Test artist - Test.mp3") == "audio fixture" && !fs::exists(song / "Chart" / "Test author - Other"),
+              "The song already under the name keeps its audio and charts.");
+        // The same other audio again joins its suffixed song, even though the plain name holds other music.
+        source.version = "Other again";
+        const auto otherAgain = PlaceConvertedOsuChart(songs, source.Convert());
+        Check(!otherAgain.newSong && otherAgain.musicFile == other.musicFile && Patterns(songs) == 4,
+              "Importing the suffixed song's audio again joins that song.");
+        // A folder whose eight digits match by chance but holds other music pushes the name to sixteen digits.
+        source.version = "Collision";
+        Write(source.folder / "audio/song.mp3", "third audio");
+        const auto thirdHash = AudioFileHash(source.folder / "audio/song.mp3");
+        const auto taken = songs / FromUtf8("Test artist - Test [" + thirdHash.substr(0, 8) + "]");
+        Write(taken / "Music/taken.ymm", "Version: 1\nFile: taken.mp3\nMusic Name 1: Taken\nArtist 1: Someone\n");
+        Write(taken / "Music/taken.mp3", "not the third audio");
+        const auto longer = PlaceConvertedOsuChart(songs, source.Convert());
+        Check(longer.newSong && longer.songFolder == songs / FromUtf8("Test artist - Test [" + thirdHash.substr(0, 16) + "]"),
+              "When the eight-digit name holds other music, the folder takes sixteen digits.");
+        Check(Read(taken / "Music/taken.mp3") == "not the third audio", "The folder that had the eight digits is left alone.");
         Write(source.folder / "audio/song.mp3", "audio fixture");
+        source.version = "Third";
 
         // Identical audio under another title joins the registered song instead of duplicating it.
         source.title = "Different";
@@ -237,7 +271,7 @@ namespace
         Check(shared.musicFile == first.musicFile && !fs::exists(songs / "Test artist - Different") &&
               shared.patternFile.parent_path() == song / "Chart" / "Test author - Third",
               "Identical audio in a differently named source must reuse the registered song and join its folder.");
-        Check(Patterns(songs) == 3,
+        Check(Patterns(songs) == 6,
               "Identical audio in a differently named source must reuse the registered song and join its folder.");
         source.title = "Test";
 
@@ -250,7 +284,7 @@ namespace
         Write(source.folder / "other.jpg", "image C");
         source.background = "other.jpg";
         static_cast<void>(PlaceConvertedOsuChart(songs, source.Convert()));
-        Check(Read(song / "BG/bg.png") == "image A" && Read(song / "BG/other.jpg") == "image C" && Patterns(songs) == 4,
+        Check(Read(song / "BG/bg.png") == "image A" && Read(song / "BG/other.jpg") == "image C" && Patterns(songs) == 7,
               "Another image name on another difficulty keeps both images.");
 
         // Missing or escaping source files never reach Songs.
@@ -266,10 +300,38 @@ namespace
         Check(!PlanOsuPlacement(songs, source.Convert()).problem.empty(), "Missing audio is reported by the plan.");
         Fails([&] { PlaceConvertedOsuChart(songs, source.Convert()); });
         source.audio = "audio/song.mp3";
-        Check(!fs::exists(song / "Chart" / "Test author - Missing") && Patterns(songs) == 4,
+        Check(!fs::exists(song / "Chart" / "Test author - Missing") && Patterns(songs) == 7,
               "A chart whose audio or image cannot be copied is not published.");
         NoStagingLeft(base);
         Check(sourceFiles() == before + 1, "Placements only read the osu! song folder.");
+    }
+
+    // One osu! song folder with two mp3s under one title (a rate-changed copy, say): each difficulty
+    // lands with its own audio, in import order, and none fails.
+    void TestSameTitleTwoAudios(const fs::path &root)
+    {
+        const auto base = root / "two audios", songs = base / "Songs";
+        Source source{base / "osu", base / "converted"};
+        Write(source.folder / "normal.mp3", "normal rate");
+        Write(source.folder / "fast.mp3", "faster rate");
+        Write(source.folder / "nested/bg.png", "image");
+        source.audio = "normal.mp3";
+        source.version = "Normal";
+        const auto normal = PlaceConvertedOsuChart(songs, source.Convert());
+        source.audio = "fast.mp3";
+        source.version = "Fast";
+        const auto fastPlan = PlanOsuPlacement(songs, source.Convert());
+        Check(fastPlan.problem.empty() && fastPlan.newSong, "The second audio of a set is a new song, not a problem.");
+        const auto fast = PlaceConvertedOsuChart(songs, source.Convert());
+        const auto suffixed = "Test artist - Test [" + AudioFileHash(source.folder / "fast.mp3").substr(0, 8) + "]";
+        Check(normal.songFolder == songs / "Test artist - Test" && fast.songFolder == songs / FromUtf8(suffixed),
+              "The first audio takes Artist - Title and the second its hash-suffixed name.");
+        Check(Read(fast.songFolder / "Music" / FromUtf8(suffixed + ".mp3")) == "faster rate" && Patterns(songs) == 2,
+              "Each difficulty plays its own audio.");
+        source.version = "Fast 2";
+        Check(PlaceConvertedOsuChart(songs, source.Convert()).musicFile == fast.musicFile && Patterns(songs) == 3,
+              "Another difficulty on the second audio joins the suffixed song.");
+        NoStagingLeft(base);
     }
 
     // File-name rules, the import lock and rollback of a publication that fails half way.
@@ -367,6 +429,7 @@ int wmain(int count, wchar_t *arguments[])
         const auto &root = fixture.Path();
         TestValidation(root);
         TestPlacement(root);
+        TestSameTitleTwoAudios(root);
         TestNamesLockAndRollback(root);
         std::cout << "Osu import: converter result validation, song folder placement, audio/background reuse, "
                      "name rules, lock and rollback passed.\n";
