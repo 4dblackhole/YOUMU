@@ -24,6 +24,7 @@ namespace tests
     void TestOldRecordSchemaSetAside();
     void TestRecordSchemaTwoUpgrade();
     void TestRecordResultDetail();
+    void TestRecordOptionText();
     void TestLocalOffsetStore();
     void TestTimerTimelineShift();
     void TestRecordFilters();

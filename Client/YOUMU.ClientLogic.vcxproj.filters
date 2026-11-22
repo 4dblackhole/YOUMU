@@ -42,6 +42,8 @@
     <ClCompile Include="Records\PlayRecordStore.cpp"><Filter>Records</Filter></ClCompile>
     <ClInclude Include="Records\RecordJudgements.h"><Filter>Records</Filter></ClInclude>
     <ClCompile Include="Records\RecordJudgements.cpp"><Filter>Records</Filter></ClCompile>
+    <ClInclude Include="Records\RecordOptionText.h"><Filter>Records</Filter></ClInclude>
+    <ClCompile Include="Records\RecordOptionText.cpp"><Filter>Records</Filter></ClCompile>
     <ClInclude Include="Records\LocalOffsetStore.h"><Filter>Records</Filter></ClInclude>
     <ClCompile Include="Records\LocalOffsetStore.cpp"><Filter>Records</Filter></ClCompile>
     <ClInclude Include="Records\RecordCondition.h"><Filter>Records</Filter></ClInclude>

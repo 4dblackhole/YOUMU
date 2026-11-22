@@ -43,6 +43,8 @@
     <ClCompile Include="Records\PlayRecordStore.cpp" />
     <ClInclude Include="Records\RecordJudgements.h" />
     <ClCompile Include="Records\RecordJudgements.cpp" />
+    <ClInclude Include="Records\RecordOptionText.h" />
+    <ClCompile Include="Records\RecordOptionText.cpp" />
     <ClInclude Include="Records\LocalOffsetStore.h" />
     <ClCompile Include="Records\LocalOffsetStore.cpp" />
     <ClInclude Include="Records\RecordCondition.h" />

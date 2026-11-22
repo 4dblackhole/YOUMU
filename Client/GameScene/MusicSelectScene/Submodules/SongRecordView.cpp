@@ -1,5 +1,6 @@
 #include "SongRecordView.h"
 #include "App/AssetPaths.h"
+#include "App/SkinSetSelection.h"
 #include "App/GameDataPaths.h"
 #include "Catalog/SongCatalog.h"
 #include "Presentation/AccuracyText.h"
@@ -7,6 +8,7 @@
 #include "Presentation/ScoreText.h"
 #include "Presentation/UiDropdown.h"
 #include "Records/RecordJudgements.h"
+#include "Records/RecordOptionText.h"
 #include "SongSelectLayout.h"
 #include "SongSelectionText.h"
 #include "Texts/GameScene/MusicSelectScene/MusicSelectTexts.h"
@@ -31,6 +33,23 @@ namespace
     // Max strokes on a row: the result tile's afterimage icon and the count, left of the date. Every row
     // shows it, the default 2 included (user decision), so rankings with different counts read apart.
     constexpr float StrokeIconSize = 14.0F, StrokeGap = 2.0F, StrokeMargin = 8.0F;
+    // The options sit at the top right, after the score (osu!'s place for mods).
+    constexpr float ScoreSize = 20.0F, OptionSize = 13.0F, OptionTop = 8.0F, OptionHeight = 18.0F, OptionGap = 8.0F;
+
+    // Clear, a finished play below the clear line, or a play that was left early (shown as Failed).
+    [[nodiscard]] const char *StatusKey(const PlayRecord &record) noexcept
+    {
+        if (record.cleared)
+            return "Records.cleared";
+        return record.completed ? "Records.practice" : "Records.failed";
+    }
+    // The status colours the chips used: green, navy, red.
+    [[nodiscard]] Color StatusColor(const PlayRecord &record) noexcept
+    {
+        if (record.cleared)
+            return theme::Ok;
+        return record.completed ? theme::InkSoft : theme::Danger;
+    }
 
     // Only what differs from a plain play, each part after " · ".
     [[nodiscard]] std::wstring OptionTokens(const PlayRecord &record)
@@ -53,20 +72,16 @@ namespace
         return text;
     }
 
-    // The accuracy, then the options.
-    [[nodiscard]] std::wstring OptionSummary(const PlayRecord &record)
-    {
-        return AccuracyText(record.accuracy) + OptionTokens(record);
-    }
-
-    // What a row does not show (the mode is the selector's, so it is left out): the judge level the play
-    // used and its combo, the judgement counts two to a line, every option, the stroke count and the time
-    // it was played (UTC, like the row's date). Shown large to the right of the row (user decision).
+    // What a row does not show (the mode is the selector's, so it is left out): the status the band's colour
+    // stands for, the judge level the play used and its combo, the judgement counts two to a line, every
+    // option, the stroke count and the time it was played (UTC, like the row's date). Shown large to the
+    // right of the row (user decision).
     [[nodiscard]] TooltipText RecordTooltip(const PlayRecord &record,
                                             const std::vector<std::pair<std::string_view, std::size_t>> &judgements,
                                             const TextCatalog &texts)
     {
-        std::wstring text = std::format(L"{} {:.2f} · {} {}", texts.Get("Records.judge"), record.judgeLevel.Value(),
+        std::wstring text = std::wstring(texts.Get(StatusKey(record))) + L"\n" +
+                            std::format(L"{} {:.2f} · {} {}", texts.Get("Records.judge"), record.judgeLevel.Value(),
                                         texts.Get("Records.combo"), record.maximumCombo);
         for (std::size_t i = 0; i < judgements.size(); ++i)
         {
@@ -111,6 +126,7 @@ void SongRecordView::InitializeContent(Visual2DNode& panel)
     queryButton_ = button(L"Icons.search", "RecordQuery", &queryIcon_);
     RefreshQueryButton();
     strokesIcon_ = visuals_.RegisterImage(Result(L"Options.MaxStrokes"));
+    statusBand_ = visuals_.RegisterImage(SkinSetSelection::Instance().Image("MusicSelect", "Records.Band"));
     pagerPlate_ = &CreatePanel(panel, {}, "RecordPagerPlate");
     ApplyFlatStyle(*pagerPlate_, theme::SurfacePlate);
     SetCornerRadius(*pagerPlate_, 0.0F);
@@ -238,6 +254,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
         for (auto id : ids)
             static_cast<void>(rows_->RemoveChild(id));
         shownRecords_.clear();
+        optionLines_.clear();
         // A song without a chart leaves the record column empty.
         ShowMessage(!pattern.empty());
         SetMessage(std::wstring(texts_.Get("Records.loading")));
@@ -259,6 +276,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
             }
         }
     }
+    FitOptions();
     if (!job_.valid() && jobRevision_ != revision_)
     {
         jobRevision_ = revision_;
@@ -318,7 +336,7 @@ void SongRecordView::Show(const std::vector<LoadedRecord> &records)
     next_ = records.size() > PageSize;
     ShowPager(true);
     const float height = rows_->NodeSize().height;
-    constexpr float mainLeft = ContentLeft + 58.0F, detailsWidth = 144.0F;
+    constexpr float mainLeft = ContentLeft + 58.0F;
     for (std::size_t i = 0; i < std::min(records.size(), PageSize); ++i)
     {
         const auto &r = records[i].record;
@@ -331,30 +349,55 @@ void SongRecordView::Show(const std::vector<LoadedRecord> &records)
         ApplySkinPart(row, visuals_, "Records.Row", theme::SurfacePlate, 0.0F);
         static_cast<void>(CreateNumber(row, {ContentLeft, 7.0F, 48.0F, 38.0F}, std::wstring(RankName(r.accuracy)), 20.0F,
                                        800, theme::BrandText, "Rank", TextAlignment::Center));
-        static_cast<void>(CreateNumber(row, {mainLeft, 5.0F, 150.0F, 24.0F}, ScoreText(r.score), 20.0F, 800,
-                                       theme::Ink, "Score"));
+        // The play's status is a band along the plate's slanted right end, in the colour its chip had
+        // (user decision 2026-11-22); the tooltip's first line names it.
+        auto &band = CreateSprite(row, {0.0F, 0.0F, RowWidth, RowHeight}, statusBand_, "Status");
+        RequireComponent<SpriteVisualComponent>(band).SetTint(StatusColor(r));
+
+        // Top line: the score, then the options that change the play at the right end. Options that do
+        // not fit beside the score go, last first, with "…" (FitOptions).
+        auto &score = CreateNumber(row, {mainLeft, 5.0F, 150.0F, 24.0F}, ScoreText(r.score), ScoreSize, 800, theme::Ink,
+                                   "Score");
+        auto tokens = RecordOptionTokens(r.options);
+        auto &options = CreateNumber(row, {mainLeft, OptionTop, ContentRight - mainLeft, OptionHeight},
+                                     JoinRecordOptions(tokens, tokens.size()), OptionSize, 700, theme::BrandText,
+                                     "Options", TextAlignment::Trailing, false);
+        optionLines_.push_back({&options, &score, std::move(tokens), 0});
+        optionLines_.back().shown = optionLines_.back().tokens.size();
+
+        // Bottom line: the accuracy, the stroke count and the date.
         const auto timestamp =
             std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{r.playedAtMilliseconds}};
         auto date = std::format(L"{:%Y.%m.%d}", std::chrono::floor<std::chrono::days>(timestamp));
-        const float detailsRight = ShowStrokes(row, r, ContentRight - EstimateCaptionWidth(date, 13.0F));
-        const float shownDetails = std::min(detailsWidth, detailsRight - mainLeft);
-        auto &details = CreateNumber(row, {mainLeft, 29.0F, shownDetails, 18.0F}, OptionSummary(r), 13.0F, 500,
-                                     theme::Caption, "Details", TextAlignment::Leading, false);
-        details.SetClipRect({0.0F, 0.0F, shownDetails, 18.0F});
-
-        // Clear, a finished play below the clear line, or a play that was left early (shown as Failed).
-        const char *statusKey = r.cleared ? "Records.cleared" : (r.completed ? "Records.practice" : "Records.failed");
-        const char *chipKey = r.cleared ? "Records.Status.Clear" : (r.completed ? "Records.Status.Practice" : "Records.Status.Retired");
-        const Color statusColor = r.cleared ? theme::Ok : (r.completed ? theme::InkSoft : theme::Danger);
-        std::wstring status(texts_.Get(statusKey));
-        const float chipWidth = std::clamp(EstimateCaptionWidth(status, 12.0F) + 14.0F, 42.0F, 96.0F);
-        auto &chip = CreatePanel(row, TopLeft({ContentRight - chipWidth, 6.0F, chipWidth, 20.0F}, RowHeight), "Status");
-        ApplySkinPart(chip, visuals_, chipKey, {0.89F, 0.965F, 0.925F, 1.0F});
-        static_cast<void>(CreateCaption(chip, {0.0F, 0.0F, chipWidth, 20.0F}, std::move(status), 12.0F, 700, statusColor,
-                                        "StatusText", TextAlignment::Center));
+        const float accuracyRight = ShowStrokes(row, r, ContentRight - EstimateCaptionWidth(date, 13.0F));
+        static_cast<void>(CreateNumber(row, {mainLeft, 29.0F, std::max(accuracyRight - mainLeft, 1.0F), 18.0F},
+                                       AccuracyText(r.accuracy), 13.0F, 500, theme::Caption, "Accuracy",
+                                       TextAlignment::Leading, false));
 
         static_cast<void>(CreateNumber(row, {ContentRight - 84.0F, 29.0F, 84.0F, 18.0F}, std::move(date), 13.0F, 500,
                                        theme::Caption, "Date", TextAlignment::Trailing, false));
+    }
+}
+
+void SongRecordView::FitOptions()
+{
+    for (auto &line : optionLines_)
+    {
+        // The room right of the score, measured once the renderer has laid the score out.
+        const auto &scoreText = RequireComponent<TextVisualComponent>(*line.score);
+        const auto scoreSize = scoreText.MeasuredSize();
+        const float scoreWidth = scoreSize ? scoreSize->width : EstimateCaptionWidth(scoreText.Text(), ScoreSize);
+        const float lineWidth = line.label->NodeSize().width;
+        const float room = std::max(lineWidth - scoreWidth - OptionGap, 0.0F);
+        line.label->SetClipRect({lineWidth - room, 0.0F, room, OptionHeight});
+        // A changed text is measured the frame after, so one option goes per frame until the rest fit.
+        auto &text = RequireComponent<TextVisualComponent>(*line.label);
+        const auto measured = text.MeasuredSize();
+        const bool fits = !measured || measured->width <= room + 0.5F;
+        if (fits || line.shown == 0)
+            continue;
+        --line.shown;
+        text.SetText(JoinRecordOptions(line.tokens, line.shown));
     }
 }
 
@@ -390,6 +433,7 @@ void SongRecordView::Shutdown() noexcept
     panel_ = selector_ = messagePlate_ = emptyMessage_ = pageLabel_ = nullptr;
     queryButton_ = pagerPlate_ = previousButton_ = nextButton_ = rows_ = nullptr;
     shownRecords_.clear();
+    optionLines_.clear();
     openedRecord_.reset();
     ++revision_;
 }

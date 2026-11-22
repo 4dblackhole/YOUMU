@@ -1513,11 +1513,27 @@ namespace
             throw std::runtime_error("Record history page did not publish the expected rows.");
         };
         wait(6);
+        // The status is the colour of the band at the plate's slanted end; the chip is gone.
+        const auto bandColour=[&](Visual2DNode &row)
         {
-            const auto &firstRow=Find(canvas->Root(),"RecordRows")->Children().front();
-            const auto *status=Find(*firstRow,"StatusText");
-            const auto *label=status?status->GetComponent<TextVisualComponent>():nullptr;
-            Check(label!=nullptr && label->Text()==texts.Get("Records.failed"),"A play that was left early is shown as Failed.");
+            const auto *band=Find(row,"Status");
+            const auto *sprite=band?band->GetComponent<SpriteVisualComponent>():nullptr;
+            if(!sprite) throw std::runtime_error("A record row has its status band.");
+            std::vector<DrawPacket> packets;sprite->AppendDrawPackets(packets);
+            if(packets.empty()) throw std::runtime_error("The status band draws.");
+            return packets.front().color;
+        };
+        const auto sameColour=[](const Color a,const Color b)
+        {
+            const bool redGreen=std::abs(a.red-b.red)<.01F && std::abs(a.green-b.green)<.01F;
+            return redGreen && std::abs(a.blue-b.blue)<.01F;
+        };
+        {
+            auto &firstRow=*Find(canvas->Root(),"RecordRows")->Children().front();
+            Check(sameColour(bandColour(firstRow),ui_colors::theme::Danger),"A play that was left early has the red band.");
+            Check(sameColour(bandColour(*Find(canvas->Root(),"RecordRows")->Children()[1]),ui_colors::theme::Ok),
+                  "A cleared play has the green band.");
+            Check(!Find(firstRow,"StatusText"),"The status chip is gone.");
         }
         auto *next=Find(canvas->Root(),"RecordNext");if(!next)throw std::runtime_error("Record next page control is missing.");Check(next->IsEnabled(),"Actual history has an older page.");
         {
@@ -1549,10 +1565,11 @@ namespace
             if(!two) throw std::runtime_error("The default two strokes show too.");
             Check(strokes->GetComponent<TextVisualComponent>()->Text()==L"3","A changed stroke count shows the afterimage icon and the count.");
             Check(two->GetComponent<TextVisualComponent>()->Text()==L"2","The default two strokes show too.");
-            const auto details=Find(three,"Details")->BoundsInCanvas(), count=strokes->BoundsInCanvas();
-            const auto date=Find(three,"Date")->BoundsInCanvas();
-            Check(details.x+details.width<=icon->BoundsInCanvas().x && count.x<date.x+date.width,
-                  "The stroke count stays between the details and the date.");
+            const auto accuracy=Need(Find(three,"Accuracy"),"The bottom line starts with the accuracy.").BoundsInCanvas();
+            const auto count=strokes->BoundsInCanvas();
+            const auto date=Need(Find(three,"Date"),"The bottom line ends with the date.").BoundsInCanvas();
+            Check(accuracy.x+accuracy.width<=icon->BoundsInCanvas().x && count.x<date.x+date.width,
+                  "The stroke count stays between the accuracy and the date.");
         }
         Click(*canvas,*next);static_cast<void>(view.Update(input,0));wait(2);
         Click(*canvas,*Find(canvas->Root(),"RecordPrevious"));static_cast<void>(view.Update(input,0));wait(6);
@@ -1600,19 +1617,22 @@ namespace
         Check(selection.selectedPatternIndex_==selectedPattern,
               "Applying a record filter preserves song list scroll, search and the selected chart.");
         for(const auto &row:Find(canvas->Root(),"RecordRows")->Children())
-            Check(Find(*row,"Details")->GetComponent<TextVisualComponent>()->Text().find(L"RND")!=std::wstring::npos,"Only the Random plays appear.");
+        {
+            const auto *optionLine=Find(*row,"Options");
+            Check(optionLine && optionLine->GetComponent<TextVisualComponent>()->Text().find(L"RD")!=std::wstring::npos,"Only the Random plays appear.");
+        }
         {
             // A row shows the score on its large line and the accuracy where the judge level was.
             auto &newest=*Find(canvas->Root(),"RecordRows")->Children().front();
             const auto textOf=[&](const char *name){return std::wstring(Find(newest,name)->GetComponent<TextVisualComponent>()->Text());};
             Check(textOf("Score")==L"90,006,000","The newest Random play shows its score on the large line.");
-            Check(textOf("Details").starts_with(AccuracyText(AccuracyScore::FromRate(.90+6*.001))+L" · "),
-                  "The details start with the play's accuracy.");
+            Check(textOf("Accuracy")==AccuracyText(AccuracyScore::FromRate(.90+6*.001)),"The bottom line gives the accuracy.");
+            Check(textOf("Options")==L"RD","The top line ends with the play's options in two capitals.");
             // Resting on the row hints what it does not show.
             Rest(view,input,Centre(newest));
             const auto *tip=ShownTooltip(canvas->Root());
             const std::wstring hint=tip?std::wstring(tip->Text()):L"";
-            Check(hint.starts_with(L"Judge 70.00 · Combo 321\nMAX 5 · PERFECT 4\nGREAT 3 · GOOD 2\nBAD 1 · OK 7\nMISS 0 · POOR 8\nRND\nStroke 2\n"),
+            Check(hint.starts_with(L"Cleared\nJudge 70.00 · Combo 321\nMAX 5 · PERFECT 4\nGREAT 3 · GOOD 2\nBAD 1 · OK 7\nMISS 0 · POOR 8\nRND\nStroke 2\n"),
                   "A record row's tooltip gives the judge level, combo, judgement counts, options and strokes, not the mode.");
             Check(hint.find(L" UTC · Pause menu used")!=std::wstring::npos,"The tooltip ends with the play time and the pause menu use.");
             {
