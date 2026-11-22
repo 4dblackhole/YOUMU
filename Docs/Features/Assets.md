@@ -188,7 +188,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | --- | --- |
 | `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
 | `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`POOR`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
-| `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Status.Clear/Practice/Retired`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
+| `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Band`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `Options.Tile`, `Options.Accelerate/Mirror/Random/JudgeLevel/ScrollSpeed/Metronome/IgnoreScrollEffects/MaxStrokes`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
 | `Options` | `Drawer`(서랍 바탕), `Rail`, `RailButton`·`RailButton.On`(켜진 분류), `KeyCard`, `Keys.Slot.Main/Sub/Empty/Waiting` |
@@ -229,9 +229,11 @@ fallback을 사용합니다. 인디케이터의 색 구간은 별도 요소이�
 플레이는 `InGame`, 로고는 `Logo`, 곡 선택은 `MusicSelect`, 리절트는 `Result`를 사용합니다.
 각 폴더는 루트의 `skin.ini`와 같은 레벨입니다. 곡 선택의 부품은 UI 시안에서 1080p 기준(논리 × 1.5)으로 뽑은 PNG이며
 `MusicSelect` 아래 `Detail`(재킷 틀·빈 재킷·난이도 블록·값 배지), `Panels`(곡 정보·곡 목록 아래의 면과 가장자리 그림자 띠),
-`Records`(기록 선택 상자·기록 줄 판·상태 칩) 폴더로 나뉩니다. `Panels/Sheet.png`(1377×1080)는 논리 x 362부터 16:9 화면의 오른쪽 끝까지,
+`Records`(기록 선택 상자·기록 줄 판·상태 띠) 폴더로 나뉩니다. `Panels/Sheet.png`(1377×1080)는 논리 x 362부터 16:9 화면의 오른쪽 끝까지,
 `Panels/SheetEdge.png`(54×1080)는 논리 x 352에 놓이고 `Records/Row.png`(504×78)는 화면 왼쪽 끝에서 시작하는 기록 줄 판입니다.
 `Records/Selector.png`(372×48)는 정렬 선택 상자와 같은 모양에 바탕만 불투명한 스킨 바탕색입니다.
+`Records/Band.png`(504×78)는 기록 줄 판과 같은 크기의 흰 그림으로, 판의 비스듬한 오른쪽 끝을 따라 폭 9의 띠만 그려져 있습니다.
+게임이 기록 상태 색(초록·남색·빨강)으로 칠해 판 위에 겹칩니다.
 `Background`와 `PlayOptions`는 내장 그림이 없어 단색 배경과 글자 버튼으로 그립니다.
 옵션 서랍의 `Options` 폴더는 서랍 바탕(`Drawer.png` 648×1080), 분류 막대(`Rail.png` 96×1080, 펼치면 가로로 늘림),
 분류 버튼(`RailButton[.Hovered/.On].png` 276×90, 펼친 폭 기준), Input 카드(`KeyCard[.Hovered].png` 480×96)와
