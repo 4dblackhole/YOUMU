@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | YOUMU | `cca4101` (#132) | 게임 |
 | PhantomCore | `f392384` (#29) | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
-| OsuTaikoConverter | `5b94541` (#9) | YOUMU 솔루션이 형제 폴더로 참조 |
+| OsuTaikoConverter | `a8c2c2e` (#11) | YOUMU 솔루션이 형제 폴더로 참조 |
 
 ## 한눈에
 
