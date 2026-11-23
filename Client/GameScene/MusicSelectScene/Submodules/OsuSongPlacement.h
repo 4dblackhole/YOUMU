@@ -19,8 +19,8 @@ struct OsuPlacement
 {
     std::filesystem::path songFolder, musicFile, patternFile, effectFile;
     std::filesystem::path audioName; // File name of the audio beside the YMM.
-    // False when a song folder with byte-identical audio already exists: the chart joins it
-    // and that song's YMM and audio stay untouched.
+    // False when a song folder with byte-identical audio already exists, whatever its name: the
+    // chart joins it and that song's YMM and audio stay untouched.
     bool newSong{};
     bool chartExists{};  // The chart set folder is already there; nothing would be written.
     std::string problem; // UTF-8. Not empty when the chart cannot be placed for another reason.
@@ -29,9 +29,11 @@ struct OsuPlacement
 // The Client owns everything between the converter's three files and a playable song folder:
 // names, reuse of identical audio, copying audio and background, and safe publication.
 //
-//   Songs/<Artist - Title>/Music/<Artist - Title>.<audio extension> and .ymm
-//                          Chart/<Creator - Version>/<Artist - Title> [<Version>].ymp and .yme
-//                          BG/<background file name>
+//   Songs/<SHA-256 of the audio, 64 hex digits>/Music/<Title>.<audio extension> and .ymm
+//                                               Chart/<Creator - Version>/<Title> [<Version>].ymp and .yme
+//                                               BG/<background file name>
+//   The Title (and then the Version) in file names is shortened with "..." to keep paths within what Windows
+//   opens without long-path support (folders 247, files 259 characters); what still does not fit is refused.
 [[nodiscard]] OsuPlacement PlanOsuPlacement(const std::filesystem::path &songsRoot, const ConvertedOsuChart &chart);
 
 // Holds the Songs import lock, stages every file outside Songs, checks the staged files and
