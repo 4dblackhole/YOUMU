@@ -555,11 +555,12 @@ namespace
         importer.StartPlacement({0});
         const auto first = await([&] { return importer.PollPlacement(); });
         Check(first.success && first.changed, first.message.c_str());
-        const auto song = root / "Artist - Song";
-        Check(fs::exists(song / "Music/Artist - Song.ymm") && fs::exists(song / "Music/Artist - Song.mp3") &&
-              fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].ymp"),
+        // The song folder is named after the audio's SHA-256; the files inside after the Title.
+        const auto song = root / ChartBytesHash("audio fixture");
+        Check(fs::exists(song / "Music/Song.ymm") && fs::exists(song / "Music/Song.mp3") &&
+                  fs::exists(song / "Chart/Author - Oni/Song [Oni].ymp"),
               "The Client names and places the music, the chart pair and the background.");
-        Check(fs::exists(song / "Chart/Author - Oni/Artist - Song [Oni].yme") && fs::exists(song / "BG/bg.png"),
+        Check(fs::exists(song / "Chart/Author - Oni/Song [Oni].yme") && fs::exists(song / "BG/bg.png"),
               "The Client names and places the music, the chart pair and the background.");
         Check(!fs::exists(song / "Chart/Author - Hard") && sourceFiles() == 5,
               "Only the chosen difficulty is placed, and the osu! song folder stays as it was.");

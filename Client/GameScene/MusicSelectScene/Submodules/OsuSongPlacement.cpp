@@ -1,4 +1,5 @@
 #include "OsuSongPlacement.h"
+#include "Catalog/ChartHash.h"
 #include "Catalog/SongLayout.h"
 #include "Model/Submodules/NotationText.h"
 #include "Parsing/ChartParser.h"
@@ -230,8 +231,10 @@ namespace
             Fail("Audio file is missing or lies outside the osu! song folder: " + Utf8(chart.music.audioFile));
         return audio;
     }
-    // The YMM of a song folder that already holds byte-identical audio; empty for a new song.
-    fs::path FindSharedMusic(const fs::path &root, const fs::path &audio, const fs::path &preferredFolder)
+    // The YMM of a song folder that already holds byte-identical audio; empty for a new song. The folder named
+    // after the audio's hash is looked at first; any other song folder (older names, folders made by hand) with
+    // the same audio is joined too.
+    fs::path FindSharedMusic(const fs::path &root, const fs::path &audio, const fs::path &hashFolder)
     {
         const auto matches = [&](const fs::path &ymm) {
             const auto music = ChartParser{}.ParseMusicFile(ymm);
@@ -240,13 +243,14 @@ namespace
             const auto existing = fs::weakly_canonical(ymm.parent_path() / music.document.audioFile);
             return IsInside(existing, root) && fs::is_regular_file(existing) && SameContents(audio, existing);
         };
-        // A song folder without a Music folder (for example only a BG) still accepts new music.
-        if (fs::exists(preferredFolder / SongLayout::MusicFolder))
+        // A song folder without a Music folder (for example only a BG) still accepts new music. Other audio
+        // under the hash name only gets there by hand; it is reported, never replaced.
+        if (fs::exists(hashFolder / SongLayout::MusicFolder))
         {
-            const auto existing = SongLayout::FindMusicMetadata(preferredFolder);
+            const auto existing = SongLayout::FindMusicMetadata(hashFolder);
             if (existing.status != SongLayout::MetadataStatus::Found || !matches(existing.path))
-                Fail("A song folder with this name holds different audio or invalid metadata: " +
-                     Utf8(preferredFolder));
+                Fail("The song folder named after this audio's SHA-256 holds other audio or invalid metadata: " +
+                     Utf8(hashFolder));
             return existing.path;
         }
         std::vector<fs::path> candidates;
@@ -263,34 +267,122 @@ namespace
         const auto shared = std::ranges::find_if(candidates, matches);
         return shared == candidates.end() ? fs::path{} : *shared;
     }
+    // Lengths count UTF-16 units, as Windows does. Without long-path support Windows creates folders up to 247
+    // characters (CreateDirectory: under 248) and opens files up to 259. An import shortens its file names to stay
+    // inside instead of turning long paths on (user decision 2026-11-23, for compatibility).
+    constexpr std::size_t FolderLimit = 247, FileLimit = 259;
+    constexpr std::size_t ExtensionPart = 4; // ".ymm", ".ymp", ".yme"
+    constexpr std::wstring_view Ellipsis = L"..."; // Three dots (user decision 2026-11-23).
+    std::size_t Room(const std::size_t limit, const std::size_t used)
+    {
+        return limit - (std::min)(limit, used);
+    }
+    // The text cut to at most `length` UTF-16 units, ending in "...". A surrogate pair is never split, and spaces
+    // and dots before the "..." go. Unchanged when it fits; empty when not even one character fits.
+    std::wstring Shortened(const std::wstring &text, const std::size_t length)
+    {
+        if (text.size() <= length)
+            return text;
+        if (length <= Ellipsis.size())
+            return {};
+        auto kept = text.substr(0, length - Ellipsis.size());
+        if (IS_HIGH_SURROGATE(kept.back()))
+            kept.pop_back();
+        while (!kept.empty() && (kept.back() == L' ' || kept.back() == L'.'))
+            kept.pop_back();
+        return kept.empty() ? std::wstring{} : kept + std::wstring(Ellipsis);
+    }
+    // The chart file stem, Title [Version], in at most `length` characters: the Title gives way first, down to one
+    // character and "...", then the version inside the brackets. Empty when even that does not fit.
+    std::wstring ChartStem(const std::wstring &title, const std::wstring &version, const std::size_t length)
+    {
+        const auto bracketed = [](const std::wstring &text) { return L" [" + text + L"]"; };
+        if (title.size() + bracketed(version).size() <= length)
+            return title + bracketed(version);
+        const auto shortTitle = Shortened(title, Room(length, bracketed(version).size()));
+        if (!shortTitle.empty())
+            return shortTitle + bracketed(version);
+        const auto leastTitle = Shortened(title, Ellipsis.size() + 1);
+        const auto shortVersion = Shortened(version, Room(length, leastTitle.size() + bracketed({}).size()));
+        if (leastTitle.empty() || shortVersion.empty())
+            return {};
+        return leastTitle + bracketed(shortVersion);
+    }
+    // What shortening cannot fix (a long chart set folder or background name, a long Songs path) is refused
+    // before anything is written. The chart set folder moves into place whole, so a longer file inside it would
+    // land where the game cannot open it.
+    void RequireShortPath(const fs::path &path, const bool folder)
+    {
+        const std::size_t limit = folder ? FolderLimit : FileLimit;
+        if (path.native().size() > limit)
+            Fail("This path would be " + std::to_string(path.native().size()) + " characters; Windows allows " +
+                 std::to_string(limit) + (folder ? " for a folder: " : " for a file: ") + Utf8(path));
+    }
+    // Every folder and file this placement would create.
+    void RequireShortPaths(const OsuPlacement &plan, const fs::path &background)
+    {
+        RequireShortPath(plan.patternFile.parent_path(), true);
+        RequireShortPath(plan.patternFile, false);
+        RequireShortPath(plan.effectFile, false);
+        if (plan.newSong)
+        {
+            RequireShortPath(plan.musicFile.parent_path(), true);
+            RequireShortPath(plan.musicFile, false);
+            RequireShortPath(plan.musicFile.parent_path() / plan.audioName, false);
+        }
+        if (background.empty())
+            return;
+        RequireShortPath(plan.songFolder / SongLayout::BackgroundFolder, true);
+        RequireShortPath(plan.songFolder / SongLayout::BackgroundFolder / background, false);
+    }
     // root is canonical. Throws when the chart can never be placed; an existing chart set is reported instead.
     OsuPlacement Resolve(const fs::path &root, const ConvertedOsuChart &chart)
     {
         OsuPlacement plan;
         const auto audio = SourceAudio(chart);
-        // Song folders are named in romanized notation, by the same rule the screens use.
+        // The files inside are named by the Title in romanized notation, by the same rule the screens use
+        // (user decision 2026-11-23).
         const auto &music = chart.music;
-        const auto song = SongLayout::FolderName(
-            NotationText(music.artists, music.romanizedArtist, TextNotation::Romanized),
-            NotationText(music.names, music.romanizedName, TextNotation::Romanized));
+        const auto title =
+            FromUtf8(SongLayout::NamePart(NotationText(music.names, music.romanizedName, TextNotation::Romanized)))
+                .native();
         const std::string_view maker =
             chart.pattern.makers.empty() ? std::string_view{} : std::string_view{chart.pattern.makers.front()};
-        const auto preferredFolder = fs::weakly_canonical(root / song);
-        if (!IsInside(preferredFolder, root))
-            Fail("The song folder would lie outside Songs.");
-        const auto shared = FindSharedMusic(root, audio, preferredFolder);
+        // A new song folder is named after its audio: the SHA-256 of the bytes, all 64 digits, never shortened (user
+        // decision 2026-11-23). Other audio with the same title gets a folder of its own; nothing reads the name back.
+        const auto hashFolder = root / FromUtf8(AudioFileHash(audio));
+        const auto shared = FindSharedMusic(root, audio, hashFolder);
         plan.newSong = shared.empty();
-        plan.songFolder = plan.newSong ? preferredFolder : SongLayout::SongFolderOfMusic(shared);
-        plan.audioName = fs::path(song.native() + audio.extension().native());
-        plan.musicFile =
-            plan.newSong ? plan.songFolder / SongLayout::MusicFolder / fs::path(song.native() + L".ymm") : shared;
-        const auto chartSet = fs::weakly_canonical(plan.songFolder / SongLayout::ChartFolder /
-                                                   SongLayout::FolderName(maker, chart.pattern.name));
+        plan.songFolder = plan.newSong ? hashFolder : SongLayout::SongFolderOfMusic(shared);
+        // The YMM and the audio take the Title, shortened when the path would pass the file limit.
+        const auto extension = audio.extension().native();
+        const auto musicFolder = plan.songFolder / SongLayout::MusicFolder;
+        const auto musicName = Shortened(
+            title, Room(FileLimit, musicFolder.native().size() + 1 + (std::max)(ExtensionPart, extension.size())));
+        plan.audioName = musicName + extension;
+        plan.musicFile = plan.newSong ? musicFolder / (musicName + L".ymm") : shared;
+        // The chart pair takes Title [Version], shortened to fit. Its chart set folder keeps the full Creator -
+        // Version: shortened, two versions that differ only at the end would share one folder, and the second
+        // would pass for already imported.
+        const auto chartSetPath =
+            plan.songFolder / SongLayout::ChartFolder / SongLayout::FolderName(maker, chart.pattern.name);
+        const auto stem = ChartStem(title, FromUtf8(SongLayout::NamePart(chart.pattern.name)).native(),
+                                    Room(FileLimit, chartSetPath.native().size() + 1 + ExtensionPart));
+        const auto placeChart = [&](const fs::path &chartSet) {
+            plan.patternFile = chartSet / (stem + L".ymp");
+            plan.effectFile = chartSet / (stem + L".yme");
+        };
+        // Lengths first: Windows cannot resolve a longer path either.
+        placeChart(chartSetPath);
+        RequireShortPaths(plan, chart.pattern.backgroundFile.filename());
+        const bool unnamed = stem.empty() || (plan.newSong && musicName.empty());
+        if (unnamed)
+            Fail("Even shortened, this chart's file names do not fit within Windows' path limit: " +
+                 Utf8(chartSetPath));
+        const auto chartSet = fs::weakly_canonical(plan.patternFile.parent_path());
         if (!IsInside(chartSet, root))
             Fail("The chart set folder would lie outside Songs.");
-        const auto stem = Utf8(song) + " [" + SongLayout::NamePart(chart.pattern.name) + "]";
-        plan.patternFile = chartSet / FromUtf8(stem + ".ymp");
-        plan.effectFile = chartSet / FromUtf8(stem + ".yme");
+        placeChart(chartSet);
         plan.chartExists = fs::exists(chartSet);
         return plan;
     }

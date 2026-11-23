@@ -246,7 +246,7 @@ SceneStateTests와 RunMusicSelectViewTests는 같은 패턴 AND, 실제 인덱�
 | Collections… | 패턴이 있을 때 | 패턴이 있을 때 | 고른 패턴의 [컬렉션](#컬렉션즐겨찾기-폴더) 관리 창을 연다 |
 
 삭제는 늘 공용 알림으로 먼저 묻는다. 제목은 `Delete difficulty?`/`Delete song?`, 설명(선택 언어)은 휴지통으로 가며 거기서 되살릴 수 있다는
-문장이고, 상세 상자에 곡(과 `[난이도]`) 이름과 지울 경로를 Songs 기준으로 적는다(폴더는 끝에 `/`). 왼쪽 끝의 `Delete`를 눌러야만 지우고,
+문장이고, 상세 상자에 곡(과 `[난이도]`) 이름과 지울 경로를 Songs 기준으로 적는다(폴더는 끝에 `/`, osu! 가져오기로 만든 곡은 음원 해시 64자리 폴더). 왼쪽 끝의 `Delete`를 눌러야만 지우고,
 `Cancel`·Enter·Esc는 아무것도 바꾸지 않는다. 다른 알림이 그 위에 뜨면 묻던 삭제는 버린다.
 
 - 난이도(`GameFlow/SongDeletion`의 `PlanDifficultyDeletion`): 그 YMP와, 같은 곡의 다른 차트가 쓰지 않는 YME. 그 차트 세트 폴더에

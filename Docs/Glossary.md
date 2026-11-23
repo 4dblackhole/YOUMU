@@ -18,7 +18,7 @@
 
 | 용어 | 뜻 |
 | --- | --- |
-| 곡 폴더 | `Songs/<곡 폴더>`. YMM 하나와 그 곡의 YMP·YME·음원·배경 그림을 담음 |
+| 곡 폴더 | `Songs/<곡 폴더>`. YMM 하나와 그 곡의 YMP·YME·음원·배경 그림을 담음. osu! 가져오기가 만든 곡 폴더의 이름은 음원 SHA-256 64자리([음원 식별](Design/AudioIdentity.md)) |
 | YMM | 곡 정보(제목·아티스트·음원 파일 등)([Ymm](Formats/Ymm.md)) |
 | YMP | 패턴(난이도 하나). 메타데이터·HP·노트([Ymp](Formats/Ymp.md)) |
 | YME | 효과. 스크롤·보간·히트사운드·볼륨·싱코페이션·Highlight([Yme](Formats/Yme.md)) |
