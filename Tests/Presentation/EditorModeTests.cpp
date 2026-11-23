@@ -75,6 +75,11 @@ namespace
             Size screen;
         };
         std::vector<BackgroundCall> backgrounds;
+        std::vector<Rect> contained;
+        void ContainedImage(Rect r, const std::filesystem::path &, Color) override
+        {
+            contained.push_back(r);
+        }
         void ChartBackground(Rect r, const std::filesystem::path &, Point offset, Size screen) override
         {
             backgrounds.push_back({r, offset, screen});
@@ -1546,7 +1551,8 @@ namespace
 {
     bool Near(float a, float b)
     {
-        return std::abs(a - b) < .0001F;
+        // Relative to the value: coordinates of a few hundred units carry float rounding near 1e-5.
+        return std::abs(a - b) < .0001F * std::max(1.0F, std::abs(b));
     }
     bool NearAll(std::initializer_list<float> actual, std::initializer_list<float> expected)
     {
@@ -1567,6 +1573,12 @@ namespace
         const auto shifted = ChartBackgroundCrop(screen, whole, {2000, 500}, {100, 0});
         Check(Near(shifted.x, wide.x - 100 / 2880.0F), "A positive x offset moves the image right, showing more of its left.");
         // A window onto the centre 400 rows keeps the same horizontal crop and the image ratio.
+        const auto inside = ContainedImageBounds({0, 100, 1280, 500}, {2400, 800});
+        Check(NearAll({inside.x, inside.y, inside.width, inside.height}, {0, 100 + (500 - 1280 / 3.0F) / 2, 1280, 1280 / 3.0F}),
+              "A wide image must fit the area's width and centre vertically.");
+        const auto upright = ContainedImageBounds({0, 100, 1280, 500}, {800, 1600});
+        Check(NearAll({upright.x, upright.y, upright.width, upright.height}, {(1280 - 250) / 2.0F, 100, 250, 500}),
+              "A tall image must fit the area's height and centre horizontally.");
         const auto band = ChartBackgroundCrop(screen, {-640, -200, 1280, 400}, {1920, 1080});
         Check(Near(band.width * 1920 / (band.height * 1080), 1280 / 400.0F) && Near(band.y, (360 - 200) / 720.0F),
               "A partial view must show the play screen's centre without stretching the image.");
@@ -1584,16 +1596,13 @@ namespace
         state.SetPreview();
         state.Mode().DrawChart(preview, state, texts);
         const auto score = preview.areas.score;
-        Check(preview.backgrounds.size() == 1 && std::ranges::none_of(preview.images, [](const auto &image) {
-                  return image == "Chart BG.png";
-              }), "Preview must draw the BG once as the play screen, never stretched.");
-        const auto &drawn = preview.backgrounds.front();
-        Check(NearAll({drawn.rect.width, drawn.rect.height, drawn.offset.x, drawn.offset.y},
-                      {score.width, score.height, 30, -20}),
-              "Preview must cover its area with the chart's BG offset.");
-        Check(NearAll({drawn.screen.width, drawn.screen.height},
-                      {score.width, std::max(ChartBackgroundReferenceHeight, score.height)}),
-              "Preview must treat its area as the centre of a 720-high play screen.");
+        Check(preview.contained.size() == 1 && preview.backgrounds.empty(),
+              "Preview must draw the whole BG once inside its area.");
+        Check(std::ranges::none_of(preview.images, [](const auto &image) { return image == "Chart BG.png"; }),
+              "Preview must not stretch the BG over its area.");
+        const auto &drawn = preview.contained.front();
+        Check(NearAll({drawn.x, drawn.y, drawn.width, drawn.height}, {score.x, score.y, score.width, score.height}),
+              "Preview must fit the BG inside the whole score area.");
         RecordingCanvas metadata;
         metadata.areas.background = "Chart BG.png";
         state.Mode().DrawMetadata(metadata, state, texts);

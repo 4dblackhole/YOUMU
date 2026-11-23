@@ -84,6 +84,7 @@ class EditorView final : public IEditorModeCanvas
     // IEditorModeCanvas
     EditorModeAreas Areas() const noexcept override;
     void Image(PhantomCore::Rect, const std::filesystem::path &, PhantomCore::Color) override;
+    void ContainedImage(PhantomCore::Rect r, const std::filesystem::path &image, PhantomCore::Color tint) override;
     void ChartBackground(PhantomCore::Rect r, const std::filesystem::path &image, PhantomCore::Point offset,
                          PhantomCore::Size screen) override;
     float PixelScale() const noexcept override;
