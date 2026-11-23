@@ -1,6 +1,7 @@
 #include "EditorView.h"
 #include "App/AssetPaths.h"
 #include "Catalog/SongLayout.h"
+#include "Presentation/BackgroundLayout.h"
 #include "Presentation/UiFonts.h"
 #include "Tabs/EditorAudioTab.h"
 #include "Tabs/EditorComposeTab.h"
@@ -162,6 +163,25 @@ void EditorView::Image(Rect r, const std::filesystem::path &path, Color tint)
     if (packet.image.value == 0)
         throw std::runtime_error("Editor skin image could not be loaded.");
     packet.color = tint;
+    visual->AddPacket(std::move(packet));
+}
+
+void EditorView::ChartBackground(Rect r, const std::filesystem::path &image, Point offset, Size screen)
+{
+    // r shows the centre of the play screen at one scale; the texture is cropped instead of stretched.
+    const float scale = screen.width > 0 ? r.width / screen.width : 1;
+    const Size shown{r.width / scale, r.height / scale};
+    DrawPacket packet{};
+    packet.type = DrawPacketType::Image;
+    packet.bounds = ToNode(r);
+    packet.image = visuals.RegisterImage(image);
+    if (packet.image.value == 0)
+        throw std::runtime_error("The chart background image could not be loaded.");
+    const auto crop = ChartBackgroundCrop(screen, {-shown.width / 2, -shown.height / 2, shown.width, shown.height},
+                                          visuals.GetImageSize(packet.image), offset);
+    packet.uvOffset = {crop.x, crop.y};
+    packet.uvScale = {crop.width, crop.height};
+    packet.color = {1, 1, 1, 1};
     visual->AddPacket(std::move(packet));
 }
 

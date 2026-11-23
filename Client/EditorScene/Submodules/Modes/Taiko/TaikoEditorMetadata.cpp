@@ -1,6 +1,7 @@
 #include "../../EditorSupport.h"
 #include "TaikoEditorMode.h"
 #include "Parsing/ChartParser.h"
+#include "Presentation/BackgroundLayout.h"
 #include <algorithm>
 #include <format>
 #include <sstream>
@@ -175,7 +176,12 @@ void TaikoEditorMode::DrawMetadata(IEditorModeCanvas &canvas, IEditorContext &st
         canvas.Text({thumbnail.x + 34, thumbnail.y + 28, 80, 16}, L"NO IMAGE", 11, ui_colors::theme::Caption);
     }
     else
-        canvas.Image(thumbnail, preview, White);
+    {
+        // A 1280x720 play screen at a tenth of its size, with the offset as typed below.
+        canvas.ChartBackground(thumbnail, preview,
+                               {static_cast<float>(p.backgroundOffsetX), static_cast<float>(p.backgroundOffsetY)},
+                               {ChartBackgroundReferenceHeight * 16 / 9, ChartBackgroundReferenceHeight});
+    }
     const float bgLeft = x1 + 140, bgWidth = w1 - 140;
     field({bgLeft, y, bgWidth, 52}, std::wstring(catalog.Get("Editor.backgroundFile")), Utf8(p.backgroundFile.wstring()),
           [](auto &d, const auto &value) { d.backgroundFile = std::filesystem::path(Wide(value)); });

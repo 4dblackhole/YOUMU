@@ -8,9 +8,11 @@
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorNoteInspector.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorTool.h"
 #include "Parsing/ChartParser.h"
+#include "Presentation/BackgroundLayout.h"
 #include "ScopedTestFolder.h"
 #include "Taiko/TaikoMode.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <filesystem>
@@ -64,6 +66,19 @@ namespace
         std::vector<bool> selectedButtons;
         float deviceScale{1};
         float PixelScale() const noexcept override { return deviceScale; }
+        EditorModeAreas areas;
+        EditorModeAreas Areas() const noexcept override { return areas; }
+        struct BackgroundCall
+        {
+            Rect rect;
+            Point offset;
+            Size screen;
+        };
+        std::vector<BackgroundCall> backgrounds;
+        void ChartBackground(Rect r, const std::filesystem::path &, Point offset, Size screen) override
+        {
+            backgrounds.push_back({r, offset, screen});
+        }
         std::vector<std::function<void()>> actions;
         std::vector<std::filesystem::path> images;
         std::vector<Rect> imageRectangles;
@@ -1527,10 +1542,76 @@ Dip: 1-3*u*(1-u)
     }
 } // namespace
 
+namespace
+{
+    bool Near(float a, float b)
+    {
+        return std::abs(a - b) < .0001F;
+    }
+    bool NearAll(std::initializer_list<float> actual, std::initializer_list<float> expected)
+    {
+        return std::ranges::equal(actual, expected, Near);
+    }
+
+    // The crop keeps the image ratio, covers the visible part and follows the authored offset.
+    void TestChartBackgroundCrop()
+    {
+        const Size screen{1280, 720};
+        const Rect whole{-640, -360, 1280, 720};
+        const auto wide = ChartBackgroundCrop(screen, whole, {2000, 500});
+        Check(NearAll({wide.x, wide.width, wide.y, wide.height}, {(1440 - 640) / 2880.0F, 1280 / 2880.0F, 0, 1}),
+              "A wide BG must keep the full height and crop the sides like the play screen.");
+        const auto tall = ChartBackgroundCrop(screen, whole, {500, 2000});
+        Check(NearAll({tall.x, tall.width, tall.y, tall.height}, {0, 1, (2560 - 360) / 5120.0F, 720 / 5120.0F}),
+              "A tall BG must keep the full width and crop the top and bottom like the play screen.");
+        const auto shifted = ChartBackgroundCrop(screen, whole, {2000, 500}, {100, 0});
+        Check(Near(shifted.x, wide.x - 100 / 2880.0F), "A positive x offset moves the image right, showing more of its left.");
+        // A window onto the centre 400 rows keeps the same horizontal crop and the image ratio.
+        const auto band = ChartBackgroundCrop(screen, {-640, -200, 1280, 400}, {1920, 1080});
+        Check(Near(band.width * 1920 / (band.height * 1080), 1280 / 400.0F) && Near(band.y, (360 - 200) / 720.0F),
+              "A partial view must show the play screen's centre without stretching the image.");
+    }
+
+    // Preview and the Metadata thumbnail both ask for the play screen's BG with the chart's offset.
+    void TestChartBackgroundPreviews(TextCatalog &texts)
+    {
+        PatternDocument pattern;
+        pattern.backgroundOffsetX = 30;
+        pattern.backgroundOffsetY = -20;
+        EditorWorkspace state(CreateEditorMode("Taiko"), std::make_unique<ChartEditor>(pattern));
+        RecordingCanvas preview;
+        preview.areas.background = "Chart BG.png";
+        state.SetPreview();
+        state.Mode().DrawChart(preview, state, texts);
+        const auto score = preview.areas.score;
+        Check(preview.backgrounds.size() == 1 && std::ranges::none_of(preview.images, [](const auto &image) {
+                  return image == "Chart BG.png";
+              }), "Preview must draw the BG once as the play screen, never stretched.");
+        const auto &drawn = preview.backgrounds.front();
+        Check(NearAll({drawn.rect.width, drawn.rect.height, drawn.offset.x, drawn.offset.y},
+                      {score.width, score.height, 30, -20}),
+              "Preview must cover its area with the chart's BG offset.");
+        Check(NearAll({drawn.screen.width, drawn.screen.height},
+                      {score.width, std::max(ChartBackgroundReferenceHeight, score.height)}),
+              "Preview must treat its area as the centre of a 720-high play screen.");
+        RecordingCanvas metadata;
+        metadata.areas.background = "Chart BG.png";
+        state.Mode().DrawMetadata(metadata, state, texts);
+        Check(metadata.backgrounds.size() == 1, "The Metadata thumbnail must draw the BG once.");
+        const auto &thumbnail = metadata.backgrounds.front();
+        Check(NearAll({thumbnail.rect.width, thumbnail.rect.height}, {128, 72}),
+              "The Metadata thumbnail must draw the BG once in its 128x72 box.");
+        Check(NearAll({thumbnail.screen.width, thumbnail.screen.height, thumbnail.offset.x}, {1280, 720, 30}),
+              "The Metadata thumbnail must show a 1280x720 play screen with the chart's BG offset.");
+    }
+} // namespace
+
 void TestEditorModes(ScreenVisual2DManager &visuals, const EngineServices &services,
                      TextCatalog &texts,
                      const std::function<const std::vector<DrawPacket> &()> &packets)
 {
+    TestChartBackgroundCrop();
+    TestChartBackgroundPreviews(texts);
     TestInitialSelectionAndRealtimeGrid();
     TestVorbisAudioView(visuals, services, texts, packets);
     {
