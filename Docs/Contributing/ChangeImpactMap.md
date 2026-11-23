@@ -50,11 +50,11 @@
 | Result·통계·그래프·판정 비율 원·Retry | `Modes/Mode/Results`, `Taiko/Results`, `Client/GameScene/ResultScene`(TaikoResultView 공통 틀, Panels 배너·왼쪽 열, Hero 원·점수·모드·옵션 타일, GraphView/Graphs Timing·HP, Ring 조각 계산, Layout 좌표) | PlayResultTests, ResultPresentationTests |
 | 리디자인 색·글꼴 | `Presentation/UiColors.h`의 theme, `Presentation/UiFonts.h`, `YOUMU.Assets/Assets/Fonts` | ResultPresentationTests, 화면 캡처 |
 | 에디터 조립·모드/문서 교체 | EditorScene, EditorWorkspace, Modes/IEditorMode/IEditorContext/IEditorAudioSource, `Chart/Editing/IEditorDocument` | RunEditorPresentationTests의 EditorModeTests |
-| 에디터 화면 배치·Compose 채널·편집 패널 | EditorLayout/EditorTimeAxis, EditorView/ShellView/ComposeView/ChannelView/PanelView, EditorCurvesDialog(`Chart/Automation/InterpolationExpression`의 위치 오류), EditorTextFields, Taiko Score/Preview/Metadata | EditorModeTests, EditorAudioViewTests |
+| 에디터 화면 배치·Compose 채널·편집 패널 | EditorLayout/EditorTimeAxis, EditorView/ShellView, `Tabs/`의 IEditorTab·EditorTabBase·EditorComposeTab/Channels/Panels·EditorMetadataTab, EditorCurvesDialog(`Chart/Automation/InterpolationExpression`의 위치 오류), EditorTextFields, Taiko Score/Preview/Metadata | EditorModeTests, EditorAudioViewTests |
 | 에디터 확인·실패 대화상자 | EditorAlerts(`Presentation/UiAlert`), EditorInput의 Back/Esc | EditorAudioViewTests의 미저장 대화상자 |
 | 에디터 메뉴·공통 이동·선택·붙여넣기 | EditorMenuBar/Input/View/Alerts, EditorSelection/Clipboard, TaikoEditorSelection | EditorMenuTests, EditorModeTests, ChartEditorTests |
 | 노트/타이밍/효과 편집·Undo/Redo·저장 | TaikoEditorNoteInspector/Score/Metadata, EditorForms/PanelView, ChartEditor/History | ChartEditorTests, ChartReviewRegressionTests, EditorModeTests |
-| 파형·FFT·탐색·배속·offset | EditorAnalysisController, EditorSpectrumCache, EditorAudioView/Selection/Controls, EditorPlayback/Metronome, `YOUMU.Editor/Audio` | EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests, EditorMetronomeTests |
+| 파형·FFT·탐색·배속·offset | EditorAnalysisController, EditorSpectrumCache, `Tabs/`의 EditorAudioTab/Selection/Controls, EditorPlayback/Metronome, `YOUMU.Editor/Audio` | EditorAudioAnalysisTests, EditorAudioAnalysisIntegrationTests, EditorAudioViewTests, EditorMetronomeTests |
 | YMM/YMP/YME 문법·효과·타이밍 | `Chart/Parsing/Submodules`, Model, MusicalTimeline, EffectValidation, InterpolationExpression/ScrollAutomation | ChartParserTests, YmeEffectsTests, 저장 왕복·캐시 무효화 |
 | 엔진 API·GPU/폰트·장치 수명 | 독립 PhantomCore 저장소의 [EngineOverview](../../Dependencies/PhantomCore/Docs/EngineOverview.md) | 엔진 AGENTS/SDK 회귀 |
 

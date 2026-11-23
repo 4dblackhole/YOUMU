@@ -1,4 +1,5 @@
-#include "EditorView.h"
+#include "../EditorTime.h"
+#include "EditorAudioTab.h"
 #include "Presentation/UiFonts.h"
 #include <algorithm>
 #include <iomanip>
@@ -180,7 +181,71 @@ namespace
     }
 } // namespace
 
-void EditorView::PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t first, std::int64_t last,
+void EditorAudioTab::Initialize(Visual2DNode &editorNode)
+{
+    node = &editorNode;
+    InitializeAudioSelection();
+}
+
+void EditorAudioTab::Shutdown() noexcept
+{
+    state_.Analysis().StopSpectrum();
+    for (auto &tiles : audioTiles_)
+    {
+        for (auto &entry : tiles)
+            ReleaseSpectrumImage(entry.second);
+        tiles.clear();
+    }
+    audioRoots_.fill(nullptr);
+    audioOverlays_.fill(nullptr);
+    audioColumnsKey_.reset();
+    audioSelectionNodes_.fill(nullptr);
+    audioSelectionAnchor_.reset();
+    node = nullptr;
+}
+
+void EditorAudioTab::Resize()
+{
+    LayoutAudioTracks();
+    for (std::size_t index = 0; index < audioSelectionNodes_.size(); ++index)
+        if (audioSelectionNodes_[index])
+            PlaceNode(*audioSelectionNodes_[index], audioTracks_[index]);
+}
+
+void EditorAudioTab::Show(bool current)
+{
+    if (!current)
+        state_.Analysis().StopSpectrum();
+    for (auto *root : audioRoots_)
+        if (root)
+            root->SetVisible(current);
+}
+
+void EditorAudioTab::BuildFailed() noexcept
+{
+    for (auto *root : audioRoots_)
+        if (root)
+            root->SetVisible(false);
+    for (auto *track : audioSelectionNodes_)
+        track->SetVisible(false);
+    audioSelectionAnchor_.reset();
+}
+
+void EditorAudioTab::SyncInput(bool usable)
+{
+    for (auto *track : audioSelectionNodes_)
+        track->SetVisible(usable);
+}
+
+void EditorAudioTab::Wheel(int direction, std::optional<Point> point, bool control)
+{
+    static_cast<void>(point);
+    static_cast<void>(control);
+    state_.Seek(StepEditorTimeline(state_.Document().Timeline(), state_.TimeMilliseconds(), state_.Score().division,
+                                   direction).count() / 1000.0);
+}
+
+void EditorAudioTab::PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t first, std::int64_t last,
                                    bool invalidate)
 {
     if (!audioRoots_[track])
@@ -214,20 +279,20 @@ void EditorView::PrepareAudioTrack(std::size_t track, Rect rect, std::int64_t fi
     }
 }
 
-void EditorView::ReleaseSpectrumImage(AudioTile &tile) noexcept
+void EditorAudioTab::ReleaseSpectrumImage(AudioTile &tile) noexcept
 {
     visuals.ReleaseImage(tile.image);
     tile.image = {};
 }
 
-bool EditorView::CanRetrySpectrumImage(const AudioTile &tile) const noexcept
+bool EditorAudioTab::CanRetrySpectrumImage(const AudioTile &tile) const noexcept
 {
     if (tile.image || !tile.levels)
         return false;
     return !spectrumImagesUnsupported_ && !spectrumImagesFull_;
 }
 
-void EditorView::ShowSpectrumTile(AudioTile &tile, std::shared_ptr<const SpectrumTile> levels, const Rect rect,
+void EditorAudioTab::ShowSpectrumTile(AudioTile &tile, std::shared_ptr<const SpectrumTile> levels, const Rect rect,
                                   const std::size_t visibleColumns)
 {
     // One texture per tile replaces thousands of rectangles; rectangles stay the fallback.
@@ -266,7 +331,7 @@ void EditorView::ShowSpectrumTile(AudioTile &tile, std::shared_ptr<const Spectru
     geometry.AddPacket(std::move(packet));
 }
 
-void EditorView::UpdateWaveformColumns(double begin, std::size_t columns)
+void EditorAudioTab::UpdateWaveformColumns(double begin, std::size_t columns)
 {
     const auto &sounds = state_.Analysis().Data().sounds;
     const auto music = sounds.find("Music");
@@ -275,7 +340,7 @@ void EditorView::UpdateWaveformColumns(double begin, std::size_t columns)
                         : std::vector<WaveformPeak>(columns);
 }
 
-void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximumHz, double longestSound)
+void EditorAudioTab::UpdateAudioTiles(double begin, double minimumHz, double maximumHz, double longestSound)
 {
     const auto &musicTrack = audioTracks_[1];
     const auto columns = static_cast<std::size_t>(std::clamp(std::ceil(musicTrack.width * PixelScale()), 128.0F, 4096.0F));
@@ -346,7 +411,7 @@ void EditorView::UpdateAudioTiles(double begin, double minimumHz, double maximum
     audioColumnsDocumentRevision_ = state_.Document().Revision();
 }
 
-void EditorView::LayoutAudioTracks()
+void EditorAudioTab::LayoutAudioTracks()
 {
     // Waveform, music and expected hits share the width; heights follow 1.2 : 1 : .8.
     const float left = 24, trackWidth = std::max(1.0F, frame_.width - 48);
@@ -357,7 +422,7 @@ void EditorView::LayoutAudioTracks()
     audioTracks_[2] = {left, audioTracks_[1].y + unit + 8, trackWidth, unit * .8F};
 }
 
-void EditorView::DrawAudioSpectrum(std::size_t track, const double minimumHz, const double maximumHz)
+void EditorAudioTab::DrawAudioSpectrum(std::size_t track, const double minimumHz, const double maximumHz)
 {
     const auto rect = audioTracks_[track];
     Box(rect, {0, 0, 0, 1});
@@ -385,7 +450,7 @@ void EditorView::DrawAudioSpectrum(std::size_t track, const double minimumHz, co
     }
 }
 
-void EditorView::DrawAudioWaveform(const std::vector<WaveformPeak> &columns)
+void EditorAudioTab::DrawAudioWaveform(const std::vector<WaveformPeak> &columns)
 {
     const auto waveform = audioTracks_[0];
     Box(waveform, {.035F, .045F, .05F, 1});
@@ -402,7 +467,7 @@ void EditorView::DrawAudioWaveform(const std::vector<WaveformPeak> &columns)
     }
 }
 
-void EditorView::DrawAudioTimeRuler(const double begin)
+void EditorAudioTab::DrawAudioTimeRuler(const double begin)
 {
     // One time ruler and cursor align all three tracks to the editor time.
     const auto waveform = audioTracks_[0];
@@ -429,7 +494,7 @@ void EditorView::DrawAudioTimeRuler(const double begin)
     }
 }
 
-void EditorView::DrawAudio()
+void EditorAudioTab::Build()
 {
     const auto &text = Texts();
     try

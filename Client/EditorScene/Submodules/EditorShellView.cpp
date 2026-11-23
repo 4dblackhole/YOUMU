@@ -22,7 +22,6 @@ namespace
              << std::setw(3) << absolute % 1000;
         return text.str();
     }
-    constexpr std::array<std::string_view, 3> TabKeys{"Editor.tabs.0", "Editor.tabs.1", "Editor.tabs.2"};
 } // namespace
 
 void EditorView::DrawTabs()
@@ -30,13 +29,13 @@ void EditorView::DrawTabs()
     Box({0, layout::TabsTop, frame_.width, layout::TabsHeight}, {1, 1, 1, .55F});
     Box({0, layout::BodyTop - 1, frame_.width, 1}, theme::RuleStrong);
     float x = layout::TabsLeft;
-    for (std::size_t i = 0; i < TabKeys.size(); ++i)
+    for (std::size_t i = 0; i < tabs_.size(); ++i)
     {
         const auto tab = static_cast<EditorTab>(i);
         const bool on = state_.Tab() == tab;
         // A new difficulty has only Metadata until it is created.
         const bool locked = state_.Creating() && tab != EditorTab::Metadata;
-        std::wstring caption(texts_.Get(TabKeys[i]));
+        std::wstring caption(texts_.Get(tabs_[i]->CaptionKey()));
         const float tabWidth = EstimateTextWidth(caption, 15) + 2;
         const Rect r{x, layout::TabsTop + 4, tabWidth, 40};
         auto color = on ? theme::BrandText : theme::Caption;
@@ -172,11 +171,10 @@ void EditorView::DrawTimeline(Rect rect)
 
 void EditorView::SyncInputControls()
 {
-    const bool compose = state_.Tab() == EditorTab::Compose && !buildFailed_;
-    const bool showDivision = compose && !state_.Score().preview;
-    const bool showAudio = state_.Tab() == EditorTab::Audio && !buildFailed_;
-    for (auto *track : audioSelectionNodes_)
-        track->SetVisible(showAudio);
+    const auto current = static_cast<std::size_t>(state_.Tab());
+    for (std::size_t index = 0; index < tabs_.size(); ++index)
+        tabs_[index]->SyncInput(index == current && !buildFailed_);
+    const bool showDivision = divisionRect_.has_value() && !buildFailed_;
     if (divisionSliderNode_->IsVisible() != showDivision)
     {
         if (!showDivision)
@@ -185,7 +183,7 @@ void EditorView::SyncInputControls()
         sliderInput_.InvalidateHitTest();
     }
     if (showDivision)
-        PlaceNode(*divisionSliderNode_, divisionRect_);
+        PlaceNode(*divisionSliderNode_, *divisionRect_);
     timelineSliderNode_->SetVisible(true);
     SyncDivisionSlider();
     SyncTimelineSlider();

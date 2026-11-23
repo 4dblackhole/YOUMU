@@ -1,4 +1,4 @@
-#include "EditorView.h"
+#include "EditorAudioTab.h"
 #include <algorithm>
 #include <format>
 
@@ -6,7 +6,7 @@ using namespace PhantomCore;
 using namespace editor_ui;
 namespace theme = ui_colors::theme;
 
-void EditorView::DrawAudioTools()
+void EditorAudioTab::DrawAudioTools()
 {
     // Metronome, visible range and pattern offset share one row above the tracks.
     const float top = editor_layout::BodyTop + 10, middle = top + 20;
@@ -48,7 +48,7 @@ void EditorView::DrawAudioTools()
     offsetStep(plusX, "Editor.offsetIncrease", 1);
 }
 
-void EditorView::DrawAudioAlignment(double begin)
+void EditorAudioTab::DrawAudioAlignment(double begin)
 {
     const auto waveform = audioTracks_[0];
     const auto hits = audioTracks_[2];

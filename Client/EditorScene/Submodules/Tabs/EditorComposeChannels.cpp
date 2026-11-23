@@ -1,6 +1,6 @@
 #include "Automation/InterpolationExpression.h"
-#include "EditorTimeAxis.h"
-#include "EditorView.h"
+#include "../EditorTimeAxis.h"
+#include "EditorComposeTab.h"
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -78,7 +78,7 @@ namespace
     };
 } // namespace
 
-void EditorView::Chip(float x, float middle, std::wstring text, Color background, bool selected, float h)
+void EditorComposeTab::Chip(float x, float middle, std::wstring text, Color background, bool selected, float h)
 {
     const float size = h < 18 ? 11.0F : 12.0F;
     const float w = EstimateTextWidth(text, size) * .92F + 12;
@@ -88,7 +88,7 @@ void EditorView::Chip(float x, float middle, std::wstring text, Color background
     Label({x + 9, middle - h * .5F, w, h}, std::move(text), {size, White, TextAlignment::Leading, 800, true});
 }
 
-void EditorView::DrawChannels()
+void EditorComposeTab::DrawChannels()
 {
     const auto &document = state_.Document();
     const auto &timeline = document.Timeline();
@@ -313,7 +313,7 @@ void EditorView::DrawChannels()
     }
 }
 
-void EditorView::DrawCutsAndRange()
+void EditorComposeTab::DrawCutsAndRange()
 {
     const auto &document = state_.Document();
     const auto &timeline = document.Timeline();
@@ -368,7 +368,7 @@ void EditorView::DrawCutsAndRange()
          theme::BrandDeep, false);
 }
 
-double EditorView::AutomationValueAt(EffectCommandType type, std::string_view target, double fallback) const
+double EditorComposeTab::AutomationValueAt(EffectCommandType type, std::string_view target, double fallback) const
 {
     const auto track = BuildTrack(state_.Document(), type, target, target.empty());
     return ValueAt(track, Microseconds(state_.TimeMilliseconds()), fallback);

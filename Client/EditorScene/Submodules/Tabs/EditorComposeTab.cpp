@@ -1,6 +1,6 @@
 #include "App/AssetPaths.h"
-#include "EditorTimeAxis.h"
-#include "EditorView.h"
+#include "../EditorTimeAxis.h"
+#include "EditorComposeTab.h"
 #include <algorithm>
 #include <format>
 #include <sstream>
@@ -37,7 +37,7 @@ namespace
     }
 } // namespace
 
-void EditorView::DrawCompose()
+void EditorComposeTab::Build()
 {
     const bool realtime = state_.Score().realtime && !state_.Score().preview;
     if (realtime)
@@ -46,7 +46,7 @@ void EditorView::DrawCompose()
         DrawRuler();
         DrawChannels();
     }
-    state_.Mode().DrawChart(*this, state_, texts_);
+    state_.Mode().DrawChart(view_, state_, texts_);
     if (realtime)
     {
         DrawCutsAndRange();
@@ -60,10 +60,10 @@ void EditorView::DrawCompose()
               std::wstring(Texts().finishLongNote), {13, theme::Brand, TextAlignment::Leading, 700});
     DrawPanel();
     DrawToolRow();
-    state_.Mode().DrawToolMenu(*this, state_, texts_);
+    state_.Mode().DrawToolMenu(view_, state_, texts_);
 }
 
-void EditorView::DrawToolRow()
+void EditorComposeTab::DrawToolRow()
 {
     Box({0, layout::BodyTop, frame_.width, layout::ToolRowHeight}, theme::Surface);
     Box({0, layout::BodyTop, frame_.width, layout::ToolRowHeight}, {1, 1, 1, .5F});
@@ -86,13 +86,13 @@ void EditorView::DrawToolRow()
     // Preview is read-only: no note tools or beat grid.
     if (score.preview)
         return;
-    state_.Mode().DrawTools(*this, state_, texts_);
+    state_.Mode().DrawTools(view_, state_, texts_);
     DrawBeatControl();
     if (!score.realtime)
         DrawLineBreakToggle();
 }
 
-void EditorView::DrawLineBreakToggle()
+void EditorComposeTab::DrawLineBreakToggle()
 {
     // --- starts a new score row at the cursor's measure; lit while that measure already starts one.
     const float middle = layout::BodyTop + layout::ToolRowHeight * .5F;
@@ -101,13 +101,13 @@ void EditorView::DrawLineBreakToggle()
            state_.HasSystemBreakAtCursor());
 }
 
-void EditorView::DrawBeatControl()
+void EditorComposeTab::DrawBeatControl()
 {
     const float middle = layout::BodyTop + layout::ToolRowHeight * .5F;
     float x = layout::BeatLeft;
     Label({x, middle - 10, 30, 20}, std::wstring(Texts().beatDivider), {13, theme::InkSoft, TextAlignment::Leading, 700});
     x += 38;
-    divisionRect_ = {x - 8, middle - 9, layout::BeatSliderWidth + 16, 18};
+    view_.PlaceDivisionSlider({x - 8, middle - 9, layout::BeatSliderWidth + 16, 18});
     const float value = (std::min(state_.Score().division, 16) - 1) / 15.0F;
     Box({x, middle - 2, layout::BeatSliderWidth, 4}, ui_colors::Rgb(0x0F2A47, .14F));
     Box({x, middle - 2, layout::BeatSliderWidth * value, 4}, theme::Brand);
@@ -127,7 +127,7 @@ void EditorView::DrawBeatControl()
                true, false);
 }
 
-std::wstring EditorView::HeadValue(Channel channel) const
+std::wstring EditorComposeTab::HeadValue(Channel channel) const
 {
     const auto &document = state_.Document();
     const auto &timeline = document.Timeline();
@@ -203,7 +203,7 @@ std::wstring EditorView::HeadValue(Channel channel) const
     }
 }
 
-void EditorView::DrawChannelHead(Channel channel, std::wstring_view icon, std::wstring name, std::wstring value)
+void EditorComposeTab::DrawChannelHead(Channel channel, std::wstring_view icon, std::wstring name, std::wstring value)
 {
     const float top = layout::ChannelTop(channel), h = layout::ChannelHeight(channel);
     const bool open = state_.Panel() == channel;
@@ -220,7 +220,7 @@ void EditorView::DrawChannelHead(Channel channel, std::wstring_view icon, std::w
     Box({0, top + h - 1, layout::HeadWidth, 1}, theme::Rule);
 }
 
-void EditorView::DrawHeads()
+void EditorComposeTab::DrawHeads()
 {
     const float bottom = layout::FooterTop;
     Box({0, layout::TrackTop, layout::HeadWidth, bottom - layout::TrackTop}, {1, 1, 1, .62F});
@@ -265,7 +265,7 @@ void EditorView::DrawHeads()
     DrawZoneHeads();
 }
 
-void EditorView::DrawZoneHeads()
+void EditorComposeTab::DrawZoneHeads()
 {
     // Zones carries three rows in its head: Syncopation, Highlight and bar lines with their current state.
     constexpr float top = layout::ChannelTop(Channel::Zones), h = layout::ChannelHeight(Channel::Zones);
@@ -289,7 +289,7 @@ void EditorView::DrawZoneHeads()
     }
 }
 
-void EditorView::StepSpacing(int direction)
+void EditorComposeTab::StepSpacing(int direction)
 {
     const auto &levels = EditorScoreState::SpacingLevels;
     const double current = state_.Score().realtimeZoom;
@@ -307,7 +307,7 @@ void EditorView::StepSpacing(int direction)
     state_.SetRealtimeZoom(*next);
 }
 
-void EditorView::DrawRuler()
+void EditorComposeTab::DrawRuler()
 {
     const float right = ContentRight();
     const Rect ruler{layout::HeadWidth, layout::TrackTop, right - layout::HeadWidth, layout::RulerHeight};
@@ -359,19 +359,12 @@ void EditorView::DrawRuler()
         }
     }
     Control(ruler, [this, axis] {
-        if (lastPointer_)
-            state_.Seek(axis.TimeAt(lastPointer_->x).count() / 1000.0);
+        if (const auto &pointer = view_.LastPointer())
+            state_.Seek(axis.TimeAt(pointer->x).count() / 1000.0);
     });
 }
 
-Rect EditorView::PanelBody() const noexcept
-{
-    const float left = frame_.width - layout::InspectorWidth;
-    return {left + 20, layout::TrackTop + 48 + 12, layout::InspectorWidth - 40,
-            layout::FooterTop - layout::TrackTop - 48 - 12 - 16};
-}
-
-void EditorView::DrawPanelHeader(std::wstring title)
+void EditorComposeTab::DrawPanelHeader(std::wstring title)
 {
     const float left = frame_.width - layout::InspectorWidth;
     const float h = layout::FooterTop - layout::TrackTop;
@@ -385,7 +378,7 @@ void EditorView::DrawPanelHeader(std::wstring title)
     Control(close, [this] { state_.ClosePanel(); });
 }
 
-void EditorView::DrawPanel()
+void EditorComposeTab::DrawPanel()
 {
     if (!state_.Panel())
         return;
@@ -394,11 +387,57 @@ void EditorView::DrawPanel()
     DrawPanelHeader(std::wstring(texts_.Get(info == Channels.end() ? "Editor.channelNotes" : info->caption)));
     const auto body = PanelBody();
     if (panel == Channel::Notes)
-        state_.Mode().DrawNotePanel(*this, state_, texts_);
+        state_.Mode().DrawNotePanel(view_, state_, texts_);
     else if (panel == Channel::Music)
         DrawMusicPanel(body);
     else if (panel == Channel::Timing)
         DrawTimingPanel(body);
     else
         DrawEffectPanel(body, panel);
+}
+
+void EditorComposeTab::UpdateKeys(const InputState &input)
+{
+    state_.Mode().HandleToolKeys(state_, input);
+}
+
+void EditorComposeTab::Wheel(int direction, std::optional<Point> point, bool control)
+{
+    // Over the open panel the wheel scrolls its list; elsewhere Ctrl changes the realtime spacing.
+    const bool overPanel = point && state_.Panel() && point->x >= frame_.width - layout::InspectorWidth;
+    if (overPanel)
+        state_.listOffset = static_cast<std::size_t>(
+            std::max<std::int64_t>(0, static_cast<std::int64_t>(state_.listOffset) + direction));
+    else if (control && state_.Score().realtime)
+        StepSpacing(-direction);
+    else
+        state_.Mode().ScrollScore(state_, direction);
+}
+
+bool EditorComposeTab::UpdatePointer(const InputState &input, Point point)
+{
+    if (state_.Mode().UpdateScoreSelection(state_, point, !input.IsMouseButtonDown(MouseButton::Left)))
+        return true;
+    if (input.WasMouseButtonPressed(MouseButton::Right))
+    {
+        if (state_.Mode().OpenToolMenu(point))
+            state_.RequestRebuild();
+        else
+            state_.Mode().EditScore(state_, point, true);
+    }
+    return false;
+}
+
+void EditorComposeTab::Press(const InputState &input, Point point, bool doubleClick)
+{
+    // Alt+click picks notes one by one, like Ctrl+click in Explorer; it neither edits nor starts a range.
+    if (input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU))
+    {
+        state_.Mode().ToggleScoreNote(state_, point);
+        return;
+    }
+    if (!state_.Mode().BeginScoreSelection(state_, point))
+        state_.Mode().EditScore(state_, point, false);
+    if (doubleClick)
+        state_.Mode().ActivateScore(state_, point);
 }

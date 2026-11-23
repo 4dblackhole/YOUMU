@@ -72,17 +72,17 @@
     <ClInclude Include="EditorScene\Submodules\EditorAnalysisController.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorSpectrumCache.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorSpectrumCache.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
-    <ClCompile Include="EditorScene\Submodules\EditorAudioView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
-    <ClCompile Include="EditorScene\Submodules\EditorAudioSelection.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorAudioTab.cpp"><Filter>EditorScene\Submodules\Tabs</Filter></ClCompile>
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorAudioSelection.cpp"><Filter>EditorScene\Submodules\Tabs</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorShellView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
-    <ClCompile Include="EditorScene\Submodules\EditorPanelView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorComposePanels.cpp"><Filter>EditorScene\Submodules\Tabs</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorTimeAxis.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClInclude Include="EditorScene\Submodules\EditorLayout.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorInput.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorMenuBar.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorMenuBar.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
-    <ClCompile Include="EditorScene\Submodules\EditorComposeView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
-    <ClCompile Include="EditorScene\Submodules\EditorChannelView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorComposeTab.cpp"><Filter>EditorScene\Submodules\Tabs</Filter></ClCompile>
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorComposeChannels.cpp"><Filter>EditorScene\Submodules\Tabs</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorAlerts.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorCurvesDialog.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorTextFields.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
@@ -90,6 +90,12 @@
     <ClInclude Include="EditorScene\Submodules\EditorSupport.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorTextDialog.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
     <ClCompile Include="EditorScene\Submodules\EditorView.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
+    <ClInclude Include="EditorScene\Submodules\Tabs\IEditorTab.h"><Filter>EditorScene\Submodules\Tabs</Filter></ClInclude>
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorTabBase.h"><Filter>EditorScene\Submodules\Tabs</Filter></ClInclude>
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorComposeTab.h"><Filter>EditorScene\Submodules\Tabs</Filter></ClInclude>
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorAudioTab.h"><Filter>EditorScene\Submodules\Tabs</Filter></ClInclude>
+    <ClInclude Include="EditorScene\Submodules\Tabs\EditorMetadataTab.h"><Filter>EditorScene\Submodules\Tabs</Filter></ClInclude>
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorMetadataTab.cpp"><Filter>EditorScene\Submodules\Tabs</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorView.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClInclude Include="EditorScene\Submodules\EditorVisual.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorWorkspace.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
@@ -243,6 +249,7 @@
     <ClCompile Include="Texts\TextCatalog.cpp"><Filter>Texts</Filter></ClCompile>
     <ClInclude Include="Texts\TextCatalog.h"><Filter>Texts</Filter></ClInclude>
     <Filter Include="EditorScene\Submodules\Modes" />
+    <Filter Include="EditorScene\Submodules\Tabs" />
     <Filter Include="EditorScene\Submodules\Modes\Taiko" />
     <Filter Include="Texts\EditorScene\Taiko" />
   </ItemGroup>
@@ -300,7 +307,7 @@
   <ItemGroup>
     <ClInclude Include="EditorScene\Submodules\EditorMetronome.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorMetronome.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
-    <ClCompile Include="EditorScene\Submodules\EditorAudioControls.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
+    <ClCompile Include="EditorScene\Submodules\Tabs\EditorAudioControls.cpp"><Filter>EditorScene\Submodules\Tabs</Filter></ClCompile>
     <ClInclude Include="EditorScene\Submodules\EditorPatternCreation.h"><Filter>EditorScene\Submodules</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorPatternCreation.cpp"><Filter>EditorScene\Submodules</Filter></ClCompile>
   </ItemGroup>

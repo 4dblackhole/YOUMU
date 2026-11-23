@@ -4,12 +4,14 @@
 #include <array>
 #include <variant>
 
+// Tab bar order; EditorView keeps one IEditorTab per value.
 enum class EditorTab
 {
     Compose,
     Audio,
     Metadata
 };
+inline constexpr std::size_t EditorTabCount = 3;
 
 // The right panel edits one Compose channel; the channel decides which
 // document list Copy, Paste and Delete act on.
