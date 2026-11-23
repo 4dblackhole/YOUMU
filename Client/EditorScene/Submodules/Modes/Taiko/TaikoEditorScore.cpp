@@ -1,7 +1,6 @@
 #include "../../EditorSupport.h"
 #include "../../EditorTimeAxis.h"
 #include "App/AssetPaths.h"
-#include "Presentation/BackgroundLayout.h"
 #include "Presentation/ModePresentation.h"
 #include "Taiko/Submodules/TaikoChartNotes.h"
 #include "Taiko/Submodules/TaikoNoteOptions.h"
@@ -329,14 +328,9 @@ void TaikoEditorMode::DrawPreview(IEditorModeCanvas &canvas, IEditorContext &sta
     const auto area = areas_.score;
     constexpr float k = editor_layout::LaneScale, laneHeight = editor_layout::LaneHeight;
     canvas.Box(area, ui_colors::Rgb(0xBCD3F7));
+    // The whole BG at its own ratio inside the area (user decision); the play offset does not apply here.
     if (!areas_.background.empty())
-    {
-        // The play screen is 720 high around the same centre, so the gear and the BG keep their play ratio.
-        const auto &pattern = document.Pattern();
-        canvas.ChartBackground(area, areas_.background,
-                               {static_cast<float>(pattern.backgroundOffsetX), static_cast<float>(pattern.backgroundOffsetY)},
-                               {area.width, std::max(ChartBackgroundReferenceHeight, area.height)});
-    }
+        canvas.ContainedImage(area, areas_.background, White);
     canvas.Box(area, ui_colors::Rgb(0xF0F8FF, .32F));
     const float gearTop = std::round(area.y + area.height * .5F - 160);
     const float panelTop = gearTop + 4, panelLeft = area.x + 28;

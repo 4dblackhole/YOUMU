@@ -166,6 +166,14 @@ void EditorView::Image(Rect r, const std::filesystem::path &path, Color tint)
     visual->AddPacket(std::move(packet));
 }
 
+void EditorView::ContainedImage(Rect r, const std::filesystem::path &image, Color tint)
+{
+    const auto handle = visuals.RegisterImage(image);
+    if (handle.value == 0)
+        throw std::runtime_error("The chart background image could not be loaded.");
+    Image(ContainedImageBounds(r, visuals.GetImageSize(handle)), image, tint);
+}
+
 void EditorView::ChartBackground(Rect r, const std::filesystem::path &image, Point offset, Size screen)
 {
     // r shows the centre of the play screen at one scale; the texture is cropped instead of stretched.

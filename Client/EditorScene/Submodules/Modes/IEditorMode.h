@@ -43,6 +43,12 @@ class IEditorModeCanvas
     virtual void Text(PhantomCore::Rect, std::wstring, float size = 20,
                       PhantomCore::Color color = {.17F, .34F, .47F, 1}) = 0;
     virtual void Image(PhantomCore::Rect, const std::filesystem::path &, PhantomCore::Color) = 0;
+    // The whole image, kept to its ratio and centred inside r (Presentation/BackgroundLayout.h).
+    // A canvas without image sizes stretches it over r.
+    virtual void ContainedImage(PhantomCore::Rect r, const std::filesystem::path &image, PhantomCore::Color tint)
+    {
+        Image(r, image, tint);
+    }
     // The chart BG as the play screen shows it (Presentation/BackgroundLayout.h): `screen` is the play
     // viewport in play units (720 high) and r shows its centre at r.width / screen.width scale, so the
     // image keeps its ratio and the authored offset. A canvas without image sizes stretches it over r.

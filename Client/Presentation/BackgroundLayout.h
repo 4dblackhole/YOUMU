@@ -17,6 +17,17 @@ inline PhantomCore::Rect ChartBackgroundBounds(PhantomCore::Size viewport, Phant
     return {-width / 2 + offset.x, -height / 2 + offset.y, width, height};
 }
 
+// The largest rectangle with the image's ratio inside `area`, centred, so the whole image shows (contain).
+// Without an image size it is the area itself.
+inline PhantomCore::Rect ContainedImageBounds(PhantomCore::Rect area, PhantomCore::Size image)
+{
+    if (image.width <= 0 || image.height <= 0)
+        return area;
+    const float scale = std::min(area.width / image.width, area.height / image.height);
+    const float width = image.width * scale, height = image.height * scale;
+    return {area.x + (area.width - width) / 2, area.y + (area.height - height) / 2, width, height};
+}
+
 // The part of the chart BG that `visible` shows of a play screen, as texture coordinates: x and y are the
 // top-left corner (v grows downwards) and width/height the extent. `screen` is the play viewport and
 // `visible` a centre-origin rectangle inside it (+Y up), both in play units (720 high).
