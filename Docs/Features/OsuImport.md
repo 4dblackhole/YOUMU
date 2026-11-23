@@ -49,6 +49,8 @@ git clone https://github.com/4dblackhole/OsuTaikoConverter.git ../OsuTaikoConver
   변환된 JudgeLevel의 실제 판정 범위도 Client 규칙으로 계산됩니다.
 - 사용자가 난이도 목록에서 고른 것만 `OsuSongPlacement`가 곡 폴더 이름을 정하고, 같은 음원은 다시 쓰고, 음원·배경을 복사하고,
   Songs를 잠근 채 게시하며 실패하면 되돌립니다. 끝나면 카탈로그를 갱신합니다.
+  새 곡 폴더의 이름은 음원 SHA-256 64자리이므로, 제목·아티스트가 같고 속도만 다른 mp3도 서로 다른 곡으로 가져옵니다
+  ([음원 식별](../Design/AudioIdentity.md#가져오기)).
 - 변환된 YMP는 `HP: 9.00`을 가지며 판정·점수·롱노트 동작은 [Client 판정 규칙](Gameplay/Rules.md)을 따릅니다.
   커스텀 샘플·영상·스토리보드는 가져오지 않고 기본 스킨 히트사운드를 씁니다.
 
