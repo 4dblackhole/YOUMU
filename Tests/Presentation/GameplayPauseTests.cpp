@@ -102,7 +102,14 @@ namespace
               "Resume must cap at three seconds.");
         for (int i = 0; i < 20; ++i)
             static_cast<void>(menu.HandleKey(VK_LEFT));
-        Check(menu.HandleKey(VK_RETURN).leadIn.count() == 500'000, "Resume must retain the half-second minimum.");
+        Check(menu.HandleKey(VK_RETURN).leadIn.count() == 0, "Resume can be set down to zero seconds.");
+        // The choice belongs to the menu: hiding and showing it again keeps 0 seconds selected.
+        menu.Hide();
+        menu.Show(1280, 720, true, 12);
+        Check(menu.HandleKey(VK_RETURN).leadIn.count() == 0,
+              "A zero-second Resume stays selected when the menu reopens.");
+        static_cast<void>(menu.HandleKey(VK_RIGHT));
+        Check(menu.HandleKey(VK_RETURN).leadIn.count() == 500'000, "Resume steps up from zero by half a second.");
         static_cast<void>(menu.HandleKey(VK_DOWN));
         for (int i = 0; i < 20; ++i)
             static_cast<void>(menu.HandleKey(VK_LEFT));
@@ -986,6 +993,7 @@ namespace
                           controller_->Time() == from - RhythmDuration{3'000'000},
                       "The three-second Resume must move the same clock.");
                 WaitForGameplay(*controller_, ctx);
+                CheckZeroResume(ctx);
                 controller_->OpenPauseMenu(ctx);
                 Check(controller_->RewindFromPause(ctx, 4) && controller_->Time() == RhythmTime{4'000'000} &&
                           session_->FinalizedNoteCount() == 0,
@@ -1740,6 +1748,28 @@ namespace
             failed.Shutdown();
         }
 
+        // A zero-second Resume continues from the paused time. ESC while it prepares reopens the menu at the
+        // same time (as OpenPauseMenu does here), so repeating Resume never moves the clock.
+        void CheckZeroResume(const UpdateContext &ctx)
+        {
+            controller_->OpenPauseMenu(ctx);
+            const auto paused = controller_->Time();
+            const auto finalized = session_->FinalizedNoteCount();
+            for (int repeat = 0; repeat < 3; ++repeat)
+            {
+                Check(controller_->ResumeFromPause(ctx, RhythmDuration{}) && controller_->Time() == paused,
+                      "A zero-second Resume continues from the paused time.");
+                controller_->OpenPauseMenu(ctx);
+                Check(controller_->PauseMenuOpen() && controller_->Time() == paused,
+                      "ESC while a zero-second Resume prepares keeps the paused time.");
+            }
+            Check(controller_->ResumeFromPause(ctx, RhythmDuration{}), "The last zero-second Resume is accepted.");
+            WaitForGameplay(*controller_, ctx);
+            Check(session_->FinalizedNoteCount() == finalized &&
+                      musicStarts.back().startPositionMicroseconds == static_cast<std::uint64_t>(paused.count()),
+                  "A zero-second Resume keeps the judged notes and starts music at the paused time.");
+            CheckClockAlignment(ctx, paused);
+        }
         void CheckClockAlignment(const UpdateContext &ctx, RhythmTime target)
         {
             const auto before = ctx.audio.CaptureClockSnapshot();

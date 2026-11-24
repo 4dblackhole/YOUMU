@@ -119,7 +119,7 @@ void GameplayPauseMenu::AdjustValue(std::size_t index, int direction)
 {
     if (index == 0)
         choice_.leadIn = RhythmDuration{
-            std::clamp(choice_.leadIn.count() + direction * 500'000, 500'000LL, 3'000'000LL)};
+            std::clamp(choice_.leadIn.count() + direction * 500'000, 0LL, 3'000'000LL)};
     if (index == 1)
     {
         if (direction < 0 && choice_.measures > 1)
