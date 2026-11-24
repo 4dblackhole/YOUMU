@@ -227,7 +227,7 @@ namespace tests
     {
         for (const auto type :
              {TaikoNoteType::Roll, TaikoNoteType::BigRoll, TaikoNoteType::Balloon, TaikoNoteType::DengDeng,
-              TaikoNoteType::TickRoll, TaikoNoteType::BigTickRoll, TaikoNoteType::Buzz})
+              TaikoNoteType::TickRoll, TaikoNoteType::BigTickRoll})
         {
             auto loaded =
                 TaikoMode{}.CreateSession(MakeLongPattern(type, {"HitCount=4", "TickDivision=8", "Action=Don"}));
@@ -239,7 +239,7 @@ namespace tests
             static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
             static_cast<void>(session.Update(RhythmTime{1'000'000}));
             Require(gauge.State().percent > 0 && gauge.State().percent <= 100,
-                    "Partial count/tick/Buzz recovery survives completion without non-timing MISS drain.");
+                    "Partial count/tick recovery survives completion without non-timing MISS drain.");
             session.RewindJudgements({});
             Require(Near(gauge.State().percent, 0), "Rewind before a long head restores zero HP.");
             session.SetHpGauges({});
@@ -252,6 +252,19 @@ namespace tests
         const auto head = gauge.State().percent;
         session.RetireRemaining(RhythmTime{100'000});
         Require(Near(gauge.State().percent, head), "Retirement preserves a settled Buzz head.");
+
+        // GAME-05: a Buzz whose head was taken but whose ticks were all missed decreases its body share like a MISS.
+        auto missedBody = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::Buzz, {"TickDivision=8", "Action=Don"}));
+        Require(missedBody.Succeeded(), "HP Buzz fixture must load.");
+        auto &bodySession = *missedBody.session;
+        auto bodyGauge = GaugeFor(bodySession);
+        Bind(bodySession, bodyGauge);
+        static_cast<void>(bodySession.ProcessInput('C', InputEdge::Pressed, {}));
+        static_cast<void>(bodySession.ProcessInput('C', InputEdge::Released, RhythmTime{1}));
+        const auto settledHead = bodyGauge.State().percent;
+        static_cast<void>(bodySession.Update(RhythmTime{1'000'000}));
+        Require(settledHead > 0 && bodyGauge.State().percent < settledHead,
+                "A Buzz that took no body tick drains its body share at completion.");
     }
 
     void TestHpDeactivationAndHistory()
