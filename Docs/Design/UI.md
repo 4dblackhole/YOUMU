@@ -37,7 +37,8 @@
 - 글꼴은 Nunito(글자)·Barlow Semi Condensed(숫자)·Noto Sans KR(한글·일본어)이며 SIL OFL 1.1 라이선스와 함께 내장합니다.
 - 입력 칸: 숫자 칸(Play options, 곡 필터 범위, 기록 필터, 편집기 숫자 칸)은 칸 글자도, 그 위에 놓이는 Windows 입력 상자도
   Barlow Semi Condensed Medium입니다. 입력 상자는 칸 글자와 같은 크기(숫자 15, 글자 14)라서 덮였을 때와 숨었을 때 같아 보입니다.
-  글자 칸(검색어, 시드, 태그 등)은 칸 글자가 Nunito(한글이면 Noto Sans KR), 입력 상자가 Segoe UI입니다.
+  Play options의 칸은 시드(uint64)까지 모두 숫자 칸입니다. 글자 칸(검색어, 태그 등)은 칸 글자가 Nunito(한글이면 Noto Sans KR),
+  입력 상자가 Segoe UI입니다.
 
 ### 공용 부품
 
