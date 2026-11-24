@@ -8,6 +8,7 @@
 #include "Submodules/GameplayLoadingSettings.h"
 #include "Submodules/GameplayOffsetNotice.h"
 #include "Submodules/GameplayScreenFade.h"
+#include "Submodules/LoadingStartWait.h"
 #include <memory>
 
 class GameplaySessionController;
@@ -53,7 +54,7 @@ class RhythmTestScene final : public PhantomCore::GameScene
     void SaveLocalOffset() noexcept;
     // The loading screen's play settings: shown until the attempt starts, they hold the start
     // while in use and apply brightness and local offset changes.
-    void UpdateLoadingSettings(const PhantomCore::InputState &input);
+    void UpdateLoadingSettings(const PhantomCore::UpdateContext &context);
     void ApplyBackgroundBrightness(int percent);
     void SaveBackgroundBrightness() noexcept;
     // Follows volume changes saved while playing (Alt+wheel); the attempt started with the launch request's.
@@ -79,6 +80,8 @@ class RhythmTestScene final : public PhantomCore::GameScene
     GameplayScreenFade screenFade_;
     GameplayOffsetNotice offsetNotice_;
     GameplayLoadingSettings loadingSettings_;
+    LoadingStartWait loadingWait_;
+    bool attemptWasStarted_{}; // A Retry or restart brings the loading screen back.
     OptionSettings *options_{};
     std::uint64_t shownOffsetRevision_{};
     bool presentationReady_{};

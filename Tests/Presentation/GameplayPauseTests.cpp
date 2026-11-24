@@ -2,6 +2,7 @@
 #include "YOUMUAssets.h"
 #include "GameFlow/GameplaySessionController.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplayLoadingSettings.h"
+#include "GameScene/RhythmTestScene/Submodules/LoadingStartWait.h"
 #include "GameScene/RhythmTestScene/Submodules/GameplayPauseMenu.h"
 #include "GameScene/RhythmTestScene/RhythmTestScene.h"
 #include "Taiko/Results/TaikoPlayResult.h"
@@ -29,6 +30,8 @@ struct InputStateTestAccess
     static void Release(InputState &input, std::uint16_t key, std::int64_t ticks) { input.SetKey(key, false, ticks); }
     static void Pointer(InputState &input, float x, float y) { input.SetMousePosition(static_cast<std::int32_t>(x), static_cast<std::int32_t>(y), true); }
     static void Button(InputState &input, bool down) { input.SetMouseButton(MouseButton::Left, down, 1); }
+    static void Move(InputState &input, std::int32_t x, std::int32_t y) { input.AddMouseDelta(x, y, 1); }
+    static void Wheel(InputState &input, float delta) { input.AddMouseWheel(delta, 1); }
 };
 } // namespace PhantomCore
 
@@ -635,6 +638,11 @@ namespace
             }
             Check(ctx.totalSeconds < ColdStartTimeoutSeconds, "Cold-start gameplay did not become visible.");
             InputStateTestAccess::Begin(input_);
+            // Enter on the loading screen starts as soon as the attempt is ready, without the idle wait.
+            if (!entered_)
+                InputStateTestAccess::Press(input_, VK_RETURN,
+                                            ctx.audio.CaptureClockSnapshot().performanceCounterTicks);
+            entered_ = true;
             const auto before = sampleStarts;
             if (shown_ && !sent_)
             {
@@ -697,7 +705,7 @@ namespace
         }
         bool &verified_;
         bool accelerated_{};
-        bool shown_{}, sent_{}, intro_{}, introImage_{};
+        bool shown_{}, sent_{}, intro_{}, introImage_{}, entered_{};
         std::optional<float> barStart_;
         bool barSwept_{};
         std::chrono::steady_clock::time_point coldBegin_{}, coldEnd_{};
@@ -815,6 +823,7 @@ namespace
                 CheckLocalOffsetKeys(ctx);
                 CheckLoadingSettings();
                 CheckHeldStart(ctx);
+                CheckLoadingWait();
                 CheckSharedLifecycle(ctx);
                 CheckCompletionEscape(ctx);
                 CheckTransientVoices(ctx);
@@ -1330,6 +1339,75 @@ namespace
             settings.Hide();
             Check(!frame(PlateLeft + 20, PlateTop + 20, true).holdStart, "A hidden plate never holds the start.");
             settings.Shutdown();
+        }
+
+        // The loading screen's start rule: 3 seconds without activity, at once after Enter, never while the pointer
+        // rests on the plate or the window is not active; after a Retry only the plate holds.
+        void CheckLoadingWait()
+        {
+            InputState input;
+            LoadingStartWait wait;
+            const auto idle = [&](double seconds, LoadingStartWait::Frame frame = {})
+            {
+                InputStateTestAccess::Begin(input);
+                frame.deltaSeconds = seconds;
+                return wait.Update(input, frame);
+            };
+            Check(idle(1.0) && idle(1.0) && idle(0.9), "The start waits until 3 idle seconds have passed.");
+            Check(!idle(0.1), "After 3 idle seconds the start goes ahead.");
+
+            wait.Begin(true);
+            Check(idle(2.5), "A new loading screen counts again.");
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Move(input, 3, -2);
+            Check(wait.Update(input, {0.1}), "Moving the mouse holds the start.");
+            Check(idle(2.9) && !idle(0.1), "After the mouse stops, 3 seconds are counted again.");
+
+            wait.Begin(true);
+            for (int i = 0; i < 20; ++i)
+                Check(idle(0.5, {0, true, true}), "The pointer resting on the plate holds the start indefinitely.");
+            Check(idle(2.9) && !idle(0.1), "The pointer leaving the plate and stopping counts 3 seconds.");
+
+            wait.Begin(true);
+            Check(idle(2.9), "Idle time before a key press counts.");
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Press(input, VK_OEM_PLUS, 1);
+            Check(wait.Update(input, {0.05}), "A key press (an offset change) counts as activity.");
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Release(input, VK_OEM_PLUS, 1);
+            Check(wait.Update(input, {0.05}), "Letting a key go is not activity, but the count restarted.");
+            Check(idle(2.9) && !idle(0.1), "After the key, 3 seconds are counted again.");
+            wait.Begin(true);
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Wheel(input, 120);
+            Check(wait.Update(input, {2.0}) && idle(2.9) && !idle(0.1), "The wheel counts as activity too.");
+
+            wait.Begin(true);
+            Check(idle(1.0, {0, true, true}), "The plate holds the start.");
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Press(input, VK_RETURN, 1);
+            Check(!wait.Update(input, {0.01, true, true}), "Enter starts at once, even over the plate.");
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Release(input, VK_RETURN, 1);
+            InputStateTestAccess::Move(input, 5, 5);
+            Check(!wait.Update(input, {0.01, false, true}), "After Enter nothing holds the start again.");
+
+            wait.Begin(true);
+            Check(idle(5.0, {0, false, false}), "An inactive game window holds the start.");
+            Check(idle(2.9) && !idle(0.1), "Back in the game window, 3 seconds are counted again.");
+            wait.Begin(true);
+            Check(idle(2.0) && (wait.Interrupt(), idle(2.9)) && !idle(0.1),
+                  "The pause menu interrupts the count; after it 3 seconds are counted again.");
+
+            wait.Begin(true);
+            Check(!idle(4.0), "A load that already took 3 idle seconds starts as soon as it is ready.");
+
+            wait.Begin(false);
+            Check(!idle(0.01), "After a Retry the idle wait does not apply.");
+            Check(idle(0.5, {0, true, true}), "After a Retry the plate still holds the start.");
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Move(input, 1, 1);
+            Check(!wait.Update(input, {0.01}), "After a Retry moving the mouse does not hold the start.");
         }
 
         // While the start is held the prepared attempt waits; releasing it starts at once.
