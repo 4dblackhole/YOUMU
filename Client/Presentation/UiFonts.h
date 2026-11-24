@@ -15,6 +15,46 @@ namespace ui_fonts
     {
         return {PhantomCore::TextFontSource::File, ResolveBuiltInAsset(file).wstring()};
     }
+    // The shipped faces. Views ask for a face on every Update, and resolving one checks the file on disk, so each
+    // face is resolved the first time it is asked for and kept: the built-in pack does not change during a run.
+    namespace faces
+    {
+        [[nodiscard]] inline const PhantomCore::TextFont &Latin()
+        {
+            static const PhantomCore::TextFont font = BuiltIn(L"assets\\fonts\\Nunito.ttf");
+            return font;
+        }
+        [[nodiscard]] inline const PhantomCore::TextFont &Cjk()
+        {
+            static const PhantomCore::TextFont font = BuiltIn(L"assets\\fonts\\NotoSansKR.ttf");
+            return font;
+        }
+        [[nodiscard]] inline const PhantomCore::TextFont &NumberExtraBoldItalic()
+        {
+            static const PhantomCore::TextFont font = BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-ExtraBoldItalic.ttf");
+            return font;
+        }
+        [[nodiscard]] inline const PhantomCore::TextFont &NumberBoldItalic()
+        {
+            static const PhantomCore::TextFont font = BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-BoldItalic.ttf");
+            return font;
+        }
+        [[nodiscard]] inline const PhantomCore::TextFont &NumberExtraBold()
+        {
+            static const PhantomCore::TextFont font = BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-ExtraBold.ttf");
+            return font;
+        }
+        [[nodiscard]] inline const PhantomCore::TextFont &NumberBold()
+        {
+            static const PhantomCore::TextFont font = BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-Bold.ttf");
+            return font;
+        }
+        [[nodiscard]] inline const PhantomCore::TextFont &NumberMedium()
+        {
+            static const PhantomCore::TextFont font = BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-Medium.ttf");
+            return font;
+        }
+    } // namespace faces
     // Nunito has no CJK glyphs. Choose one face per string so a mixed title
     // never switches typefaces in the middle of a word.
     [[nodiscard]] inline bool NeedsCjkFace(std::wstring_view text) noexcept
@@ -23,7 +63,7 @@ namespace ui_fonts
     }
     [[nodiscard]] inline PhantomCore::TextFont Text(std::wstring_view text = {})
     {
-        return BuiltIn(NeedsCjkFace(text) ? L"assets\\fonts\\NotoSansKR.ttf" : L"assets\\fonts\\Nunito.ttf");
+        return NeedsCjkFace(text) ? faces::Cjk() : faces::Latin();
     }
     struct NumberFace
     {
@@ -35,12 +75,12 @@ namespace ui_fonts
     [[nodiscard]] inline NumberFace Number(std::uint16_t weight, bool italic = true)
     {
         if (italic)
-            return weight >= 800 ? NumberFace{BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-ExtraBoldItalic.ttf"), 800}
-                                 : NumberFace{BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-BoldItalic.ttf"), 700};
+            return weight >= 800 ? NumberFace{faces::NumberExtraBoldItalic(), 800}
+                                 : NumberFace{faces::NumberBoldItalic(), 700};
         if (weight >= 800)
-            return {BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-ExtraBold.ttf"), 800};
+            return {faces::NumberExtraBold(), 800};
         if (weight >= 700)
-            return {BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-Bold.ttf"), 700};
-        return {BuiltIn(L"assets\\fonts\\BarlowSemiCondensed-Medium.ttf"), 500};
+            return {faces::NumberBold(), 700};
+        return {faces::NumberMedium(), 500};
     }
 } // namespace ui_fonts
