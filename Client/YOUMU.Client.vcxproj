@@ -313,6 +313,8 @@
     <ClInclude Include="Presentation\PerformanceBand.h" />
     <ClInclude Include="Presentation\SceneWheel.h" />
     <ClInclude Include="Presentation\VolumeOverlay.h" />
+    <ClCompile Include="Presentation\NativeInputFonts.cpp" />
+    <ClInclude Include="Presentation\NativeInputFonts.h" />
     <ClCompile Include="Presentation\UiModal.cpp" />
     <ClInclude Include="Presentation\UiModal.h" />
     <ClInclude Include="Presentation\ModePresentation.h" />

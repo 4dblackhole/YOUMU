@@ -201,7 +201,7 @@ void RecordFilterPanel::UpdateInputs()
     {
         if (!inputs_[i])
             continue;
-        PlaceTextInput(*inputs_[i], *fields_[i], *canvas_, height_, modal_.Scale());
+        PlaceTextInput(*inputs_[i], *fields_[i], *canvas_, height_, modal_.Scale(), true);
         inputs_[i]->SetVisible(IsVisible());
     }
 }
@@ -245,7 +245,7 @@ void RecordFilterPanel::RefreshValues()
 {
     for (std::size_t i = 0; i < inputs_.size(); ++i)
     {
-        SetText(*fields_[i], inputs_[i] ? std::wstring_view{} : std::wstring_view{draft_.values[i]});
+        SetFieldText(*fields_[i], inputs_[i] ? std::wstring_view{} : std::wstring_view{draft_.values[i]}, true);
         if (inputs_[i])
             inputs_[i]->SetText(draft_.values[i]);
     }

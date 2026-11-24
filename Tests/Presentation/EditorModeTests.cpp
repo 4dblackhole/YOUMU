@@ -2,6 +2,7 @@
 #include "Editing/ChartEditor.h"
 #include "EditorScene/Submodules/EditorPatternCreation.h"
 #include "EditorScene/Submodules/EditorFindReplace.h"
+#include "EditorScene/Submodules/EditorTextFields.h"
 #include "EditorScene/Submodules/EditorView.h"
 #include "EditorScene/Submodules/Modes/EditorModeFactory.h"
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorMode.h"
@@ -9,6 +10,7 @@
 #include "EditorScene/Submodules/Modes/Taiko/TaikoEditorTool.h"
 #include "Parsing/ChartParser.h"
 #include "Presentation/BackgroundLayout.h"
+#include "Presentation/NativeInputFonts.h"
 #include "ScopedTestFolder.h"
 #include "Taiko/TaikoMode.h"
 #include "Texts/EditorScene/Taiko/TaikoEditorTexts.h"
@@ -27,6 +29,66 @@
 #include <Windows.h>
 
 using namespace PhantomCore;
+
+namespace
+{
+    // Records the face each native input is given.
+    class FontRecordingInput final : public ITextInput
+    {
+      public:
+        std::wstring family;
+        std::uint32_t size{};
+        void SetText(std::wstring_view) override {}
+        void SetPlaceholder(std::wstring_view) override {}
+        void SetBounds(TextInputBounds) override {}
+        void SetFont(std::wstring_view value, std::uint32_t pixels) override
+        {
+            family = value;
+            size = pixels;
+        }
+        void SetColors(std::uint32_t, std::uint32_t) override {}
+        void SetVisible(bool) noexcept override {}
+        void Focus(bool) noexcept override {}
+        void Blur() noexcept override {}
+        bool HasFocus() const noexcept override { return false; }
+        bool TakeText(std::wstring &) override { return false; }
+        bool TakeSubmit() noexcept override { return false; }
+        bool TakeCancel() noexcept override { return false; }
+    };
+    class FontRecordingWindow final : public IWindowControl
+    {
+      public:
+        std::vector<FontRecordingInput *> inputs;
+        WindowResolution ClientSize() const noexcept override { return {1280, 720}; }
+        std::vector<WindowResolution> DisplayResolutions() const override { return {}; }
+        bool SetClientSize(WindowResolution, std::string &) override { return false; }
+        std::unique_ptr<ITextInput> CreateTextInput() override
+        {
+            auto input = std::make_unique<FontRecordingInput>();
+            inputs.push_back(input.get());
+            return input;
+        }
+    };
+} // namespace
+
+void TestEditorTextFieldFonts()
+{
+    FontRecordingWindow window;
+    EditorTextFields fields;
+    fields.Initialize(&window);
+    fields.Begin();
+    fields.Declare("Base BPM", {0, 0, 120, 24}, 15, L"120", [](const std::string &) {}, true);
+    fields.Declare("Title", {0, 40, 240, 24}, 15, L"Song", [](const std::string &) {}, false);
+    fields.End();
+    if (window.inputs.size() != 2)
+        throw std::runtime_error("Each declared editor field gets one native input.");
+    if (window.inputs[0]->family != native_input_fonts::Number() || window.inputs[0]->size != 15)
+        throw std::runtime_error("An editor number input uses the registered Barlow face at its size.");
+    if (window.inputs[1]->family != native_input_fonts::Text)
+        throw std::runtime_error("An editor text input stays Segoe UI.");
+    fields.Shutdown();
+    std::cout << "Editor number inputs use the number face.\n";
+}
 
 namespace
 {

@@ -1,5 +1,6 @@
 #include "EditorTextFields.h"
 #include "EditorSupport.h"
+#include "Presentation/NativeInputFonts.h"
 #include "Presentation/UiColors.h"
 
 using namespace PhantomCore;
@@ -28,7 +29,7 @@ void EditorTextFields::Declare(const std::string &key, TextInputBounds screen, s
     field.commit = std::move(commit);
     field.typing = std::move(typing);
     field.input->SetBounds(screen);
-    field.input->SetFont(number ? L"Barlow Semi Condensed" : L"Segoe UI", fontPixels);
+    field.input->SetFont(number ? native_input_fonts::Number() : native_input_fonts::Text, fontPixels);
     // The document's value replaces the editor's text unless the user is typing in it.
     if (field.shown != text && !field.input->HasFocus())
     {

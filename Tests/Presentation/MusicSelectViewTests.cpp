@@ -15,6 +15,7 @@
 #include "Presentation/ScoreText.h"
 #include "Presentation/MarqueeTextComponent.h"
 #include "Presentation/PerformanceBand.h"
+#include "Presentation/UiFonts.h"
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -1031,6 +1032,14 @@ namespace
             };
             Check(knob(0) > 10 && knob(4) < 10 && !Find(canvas->Root(), "SongFilter.Switch.4")->IsEnabled(),
                   "A row with a value shows its switch on; an empty row's switch is off and inert.");
+            const auto fieldFont = [&](std::size_t field) {
+                const auto *node = Find(canvas->Root(), "SongFilter.Field." + std::to_string(field));
+                if (!node) throw std::runtime_error("Song filter field missing.");
+                return node->GetComponent<TextVisualComponent>()->Font().value;
+            };
+            Check(fieldFont(0) == ui_fonts::faces::NumberMedium().value && fieldFont(1) == ui_fonts::faces::NumberMedium().value,
+                  "Song filter range fields show their numbers in the number face.");
+            Check(fieldFont(SongFilterRangeCount * 2) == ui_fonts::faces::Latin().value, "The tag field keeps the text face.");
             Click(*canvas, *Find(canvas->Root(), "SongFilter.Switch.0"));
             static_cast<void>(view.Update(input, 0));
             Click(*canvas, *Find(canvas->Root(), "SongFilter.Apply"));
@@ -1723,6 +1732,12 @@ namespace
         Click(*canvas,*Find(canvas->Root(),"RecordQuery"));static_cast<void>(view.Update(input,0));
         auto *filter = Find(canvas->Root(),"RecordFilter.Overlay");
         if (!filter) throw std::runtime_error("Record filter overlay missing.");
+        for (std::size_t field = 0; field < 2; ++field)
+        {
+            const auto *node = Find(canvas->Root(), "RecordFilter.Field." + std::to_string(field));
+            Check(node && node->GetComponent<TextVisualComponent>()->Font().value == ui_fonts::faces::NumberMedium().value,
+                  "Record filter fields show their numbers in the number face.");
+        }
         Check(filter && filter->IsVisible() && rows()==6,"Record filtering opens separately and leaves records in their assigned area.");
         Click(*canvas,*Find(canvas->Root(),"RecordFilter.Choice.1.1"));static_cast<void>(view.Update(input,0));
         Check(filter->IsVisible() && rows()==6,"Choosing Random On remains a draft until Apply.");
