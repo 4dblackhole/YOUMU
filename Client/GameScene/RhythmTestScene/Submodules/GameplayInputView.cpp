@@ -69,16 +69,15 @@ void GameplayInputView::Update(
             continue;
         const auto &keys = bindings[index].keys;
         const auto auxiliary = std::span(keys).subspan(1);
-        // An unassigned primary (0) never lights or flashes; auxiliary keys still show the weak light.
+        // An unassigned primary (0) never lights or flashes; auxiliary keys still light the key the same way.
         const PhysicalKey primary = keys.front();
         const bool primaryPressed = primary != 0 && input.IsKeyDown(primary);
         const bool secondaryPressed =
             std::ranges::any_of(auxiliary, [&input](auto key) { return key != 0 && input.IsKeyDown(key); });
-        // Only the first assigned key flashes; the other assigned keys show the key light alone.
+        // Every assigned key lights the key identically; only the first assigned key adds the cross-shaped flash.
+        const bool anyPressed = primaryPressed || secondaryPressed;
         const bool primaryPressedThisFrame = primary != 0 && input.WasKeyPressed(primary);
-        const Color &faceColor =
-            primaryPressed ? InputKeyPressedColors[index]
-                           : (secondaryPressed ? InputKeyWeakColors[index] : InputKeyBaseColors[index]);
+        const Color &faceColor = anyPressed ? InputKeyPressedColors[index] : InputKeyBaseColors[index];
         if (keyIndicators_[index] != nullptr)
         {
             RequireComponent<SpriteVisualComponent>(*keyIndicators_[index]).SetTint(faceColor);
@@ -86,8 +85,8 @@ void GameplayInputView::Update(
         if (keyGlows_[index] != nullptr)
         {
             auto &glow = RequireComponent<SpriteVisualComponent>(*keyGlows_[index]);
-            glow.SetTint(primaryPressed ? InputKeyStrongGlowColors[index] : InputKeyWeakGlowColors[index]);
-            keyGlows_[index]->SetVisible(primaryPressed || secondaryPressed);
+            glow.SetTint(InputKeyGlowColors[index]);
+            keyGlows_[index]->SetVisible(anyPressed);
         }
         if (keyPressFlashes_[index] != nullptr)
         {

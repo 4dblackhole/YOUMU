@@ -38,13 +38,7 @@ constexpr std::array<PhantomCore::Color, 4> InputKeyPressedColors{{
     {InputKeyWeakColors[3].red * InputKeyPressedGain, InputKeyWeakColors[3].green * InputKeyPressedGain,
      InputKeyWeakColors[3].blue * InputKeyPressedGain, 1.0F},
 }};
-constexpr std::array<PhantomCore::Color, 4> InputKeyWeakGlowColors{{
-    {KatBlue.red, KatBlue.green, KatBlue.blue, 0.45F},
-    {DonRed.red, DonRed.green, DonRed.blue, 0.45F},
-    {DonRed.red, DonRed.green, DonRed.blue, 0.45F},
-    {KatBlue.red, KatBlue.green, KatBlue.blue, 0.45F},
-}};
-constexpr std::array<PhantomCore::Color, 4> InputKeyStrongGlowColors{{
+constexpr std::array<PhantomCore::Color, 4> InputKeyGlowColors{{
     {0.02F, 0.52F, 1.0F, 1.0F},
     {1.0F, 0.06F, 0.12F, 1.0F},
     {1.0F, 0.06F, 0.12F, 1.0F},
