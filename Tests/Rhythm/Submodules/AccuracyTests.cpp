@@ -78,8 +78,10 @@ namespace tests
             const auto *taiko = dynamic_cast<const TaikoPlayResult *>(result.get());
             if (!taiko)
                 throw std::runtime_error("Tick POOR result must be a Taiko result.");
-            Require(taiko->poorCount == 3 && taiko->missedTicks == 3 && taiko->acceptedTicks == 6,
-                    "Tick POOR counts must not invent additional head timing samples.");
+            Require(taiko->poorCount == 0 && taiko->missedTicks == 3 && taiko->acceptedTicks == 6,
+                    "A wrong colour held over a tick only leaves it unprocessed: no POOR (user decision).");
+            Require(taiko->okCount == 1 && taiko->summary.maximumCombo == 1,
+                    "A clean Buzz head with some ticks is an OK that keeps the combo.");
             Require(taiko->timingErrors.size() == 1,
                     "Tick POOR counts must not invent additional head timing samples.");
 
@@ -91,6 +93,97 @@ namespace tests
             static_cast<void>(headPoor.session->Update(RhythmTime{1'125'000}, held));
             Require(headPoor.session->AccuracyRate() == 0.5,
                     "A POOR head scores zero while successful body ticks keep their half weight.");
+        }
+    }
+
+    // BAD recovery (user decision): a BAD, an early BAD or a POOR settles the note as a BAD with zero accuracy and
+    // no combo; the GOOD..MAX that answers an early BAD or a POOR is marked as a recovery and counts as a BAD.
+    void TestBadRecovery()
+    {
+        constexpr std::size_t Bad = 4, Miss = 5;
+        const auto bad = [](const PlayStatistics &statistics) { return statistics.judgements[Bad]; };
+        {
+            PatternDocument pattern;
+            pattern.mode = "Taiko";
+            pattern.baseBpm = 120.0;
+            for (std::int64_t i = 0; i < 4; ++i)
+                pattern.notes.push_back({.position = {0, {i, 4}}, .keyType = 1, .sourceOrder = static_cast<std::size_t>(i)});
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "BAD recovery fixture must load.");
+            auto &session = *loaded.session;
+            const auto early = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000});
+            Require(HasEvent(early, NoteEventType::InputRejected) && early.finalizedAccuracies.empty() &&
+                        bad(session.Statistics()) == 0,
+                    "An early BAD keeps the note and counts nothing until it settles.");
+            const auto recovered = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
+            const auto hit = std::ranges::find(recovered.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            Require(hit != recovered.events.end() && hit->recovery && hit->judgement.grade == JudgementGrade::Max,
+                    "The MAX that answers an early BAD is a recovery and keeps its own grade for the word.");
+            Require(recovered.finalizedAccuracies.size() == 1 && recovered.finalizedAccuracies.front().Score().Units() == 0 &&
+                        recovered.finalizedAccuracies.front().rejectedTiming,
+                    "A BAD recovery settles the note at zero accuracy.");
+            Require(bad(session.Statistics()) == 1 && session.Statistics().judgements[0] == 0 &&
+                        session.Statistics().combo == 0,
+                    "A BAD recovery counts as a BAD and adds no combo.");
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{500'000}));
+            Require(session.Statistics().combo == 1, "The next clean note starts a new combo.");
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{930'000}));
+            const auto left = session.Update(RhythmTime{1'200'000});
+            const auto missed = std::ranges::find(left.events, NoteEventType::Missed, &NoteEvent::type);
+            Require(missed != left.events.end() && missed->leftAtEarlyBad,
+                    "A note left at an early BAD settles through a miss marked as left at that BAD.");
+            Require(bad(session.Statistics()) == 2 && session.Statistics().judgements[Miss] == 0 &&
+                        session.Statistics().combo == 0,
+                    "A note left at an early BAD is a BAD, not a MISS, and breaks the combo.");
+            static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{1'500'000}));
+            static_cast<void>(session.Update(RhythmTime{1'700'000}));
+            Require(session.Statistics().poorCount == 1 && session.Statistics().judgements[Miss] == 1 && bad(session.Statistics()) == 2,
+                    "A POOR left without a retry is a MISS.");
+        }
+        {
+            PatternDocument pattern;
+            pattern.mode = "Taiko";
+            pattern.notes.push_back(PatternNote{.keyType = 3});
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Large BAD fixture must load.");
+            auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, {}));
+            Require(session.AccuracyRate() == 0.0 && session.Statistics().combo == 0,
+                    "An early BAD answered on one hand settles the whole large note as a BAD with no combo.");
+            Require(session.Statistics().judgements[0] == 1 && bad(session.Statistics()) == 1,
+                    "Large-note inputs still count one by one.");
+        }
+        {
+            auto pattern = MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"});
+            pattern.notes.back().position.fraction = Rational{9, 16};
+            const std::array held{static_cast<PhysicalKey>('C')};
+            auto badHead = TaikoMode{}.CreateSession(pattern);
+            Require(badHead.Succeeded(), "Buzz BAD fixture must load.");
+            // The head only takes GOOD or better, so its BAD is an early BAD answered by the head press (GAME-05).
+            static_cast<void>(badHead.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(badHead.session->ProcessInput('C', InputEdge::Released, RhythmTime{-60'000}));
+            static_cast<void>(badHead.session->ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(badHead.session->Update(RhythmTime{1'125'000}, held));
+            const auto rate = badHead.session->AccuracyRate();
+            Require(rate && *rate > 0.0 && *rate <= 0.5, "A BAD Buzz head scores zero while its ticks keep their half.");
+            Require(badHead.session->Statistics().okCount == 0 && bad(badHead.session->Statistics()) == 1 &&
+                        badHead.session->Statistics().maximumCombo == 0,
+                    "A BAD Buzz head counts one BAD, no OK, and no combo.");
+
+            auto emptyBody = TaikoMode{}.CreateSession(pattern);
+            Require(emptyBody.Succeeded(), "Buzz empty-body fixture must load.");
+            static_cast<void>(emptyBody.session->ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(emptyBody.session->ProcessInput('C', InputEdge::Released, RhythmTime{1'000}));
+            const auto finished = emptyBody.session->Update(RhythmTime{1'125'000});
+            Require(emptyBody.session->AccuracyRate() == 0.5 && emptyBody.session->Statistics().okCount == 0,
+                    "A clean Buzz head with no tick keeps its head score but is not an OK.");
+            Require(emptyBody.session->Statistics().judgements[Miss] == 1 && emptyBody.session->Statistics().maximumCombo == 0,
+                    "A Buzz that took no tick is a MISS with no combo.");
+            Require(finished.finalizedAccuracies.size() == 1 &&
+                        finished.finalizedAccuracies.front().CompletionGrade() == JudgementGrade::Miss,
+                    "A Buzz that took no tick shows MISS when it ends.");
         }
     }
 

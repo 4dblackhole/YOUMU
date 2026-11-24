@@ -28,12 +28,12 @@ struct PlayRecord
 class PlayRecordStore final
 {
   public:
-    // Schema 2 keeps the score, maximum combo, HP gauge and the mode's result detail. A schema-1
-    // database (accuracy-only records) is set aside on open as `<name>.v1.sqlite3` beside it
-    // (`<name>.v1 (2).sqlite3` and so on when taken) and the store starts empty: the user chose
-    // not to carry scoreless records over. Schema 3 adds the Max strokes column: a schema-2 file is
-    // upgraded in place on open (one transaction) and its records read as the default 2.
-    static constexpr int SchemaVersion = 3;
+    // Schema 4 keeps the score, maximum combo, HP gauge, Max strokes and the mode's result detail of
+    // plays judged by the BAD-recovery rules (GAME-05). A schema 1..3 database holds records of earlier
+    // rules: it is set aside on open as `<name>.v<schema>.sqlite3` beside it (`<name>.v3 (2).sqlite3`
+    // and so on when taken), never read, and the store starts empty (user decision: drop them all).
+    // Per-pattern offsets live in their own file and are not touched.
+    static constexpr int SchemaVersion = 4;
     explicit PlayRecordStore(std::filesystem::path database) : path_(std::move(database))
     {
     }

@@ -8,7 +8,8 @@ struct HpNoteDefinition
 {
     NoteId id{};
     NoteAccuracyTarget target;
-    RhythmDuration perfectWindow{}, greatWindow{};
+    // Half windows of the note's GREAT and GOOD grades: GOOD recovers less the closer it is to BAD.
+    RhythmDuration greatWindow{}, goodWindow{};
 };
 
 class BasicHpGauge final : public IHpGauge
@@ -26,11 +27,13 @@ class BasicHpGauge final : public IHpGauge
         HpNoteDefinition definition;
         std::vector<double> hits;
         std::vector<bool> resolvedTicks;
-        std::size_t accepted{};
-        bool poor{}, headSettled{}, finalized{};
+        std::size_t accepted{}, acceptedTicks{};
+        // The timing target took a BAD, an early BAD or a POOR: it settles as a decrease.
+        bool rejected{}, headSettled{}, finalized{};
     };
     double TimingRate(const NoteStateData &, const JudgementResult &) const noexcept;
     void ConsumeEvent(NoteStateData &, const NoteEvent &, bool keyPressed);
+    [[nodiscard]] static bool BodyMissed(const NoteStateData &) noexcept;
     void Apply(double weightedRate) noexcept;
     std::map<NoteId, NoteStateData> notes_;
     HpLevel level_;

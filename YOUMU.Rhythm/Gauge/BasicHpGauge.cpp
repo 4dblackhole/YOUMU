@@ -2,6 +2,7 @@
 #include "Gauge/HpGaugeKind.h"
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <numeric>
 #include <stdexcept>
 
@@ -28,8 +29,8 @@ void BasicHpGauge::Reset() noexcept
     {
         std::ranges::fill(state.hits, -level_.Value());
         std::fill(state.resolvedTicks.begin(), state.resolvedTicks.end(), false);
-        state.accepted = 0;
-        state.poor = state.headSettled = state.finalized = false;
+        state.accepted = state.acceptedTicks = 0;
+        state.rejected = state.headSettled = state.finalized = false;
     }
 }
 
@@ -45,25 +46,32 @@ HpGaugeState BasicHpGauge::State() const noexcept
 
 double BasicHpGauge::TimingRate(const NoteStateData &state, const JudgementResult &judgement) const noexcept
 {
+    // MAX to GREAT recover fully; GOOD recovers by where it lands, 100% at the GREAT edge down to 0% at BAD.
     switch (judgement.grade)
     {
     case JudgementGrade::Max:
     case JudgementGrade::Perfect:
-        return 1;
     case JudgementGrade::Great:
+        return 1;
+    case JudgementGrade::Good:
     {
-        const auto perfect = static_cast<long double>(state.definition.perfectWindow.count());
         const auto great = static_cast<long double>(state.definition.greatWindow.count());
-        if (great <= perfect)
+        const auto good = static_cast<long double>(state.definition.goodWindow.count());
+        if (good <= great)
             return 0;
         const auto error = std::abs(static_cast<long double>(judgement.signedError.count()));
-        return static_cast<double>(std::clamp((great - error) / (great - perfect), 0.0L, 1.0L));
+        return static_cast<double>(std::clamp((good - error) / (good - great), 0.0L, 1.0L));
     }
-    case JudgementGrade::Good:
-        return 0;
     default:
         return -level_.Value();
     }
+}
+
+// Every body tick passed and none was taken. Retire settles a note before its ticks pass and keeps HP as it was.
+bool BasicHpGauge::BodyMissed(const NoteStateData &state) noexcept
+{
+    const bool tookNoTick = state.definition.target.ticks != 0 && state.acceptedTicks == 0;
+    return tookNoTick && std::ranges::all_of(state.resolvedTicks, std::identity{});
 }
 
 void BasicHpGauge::Apply(double weightedRate) noexcept
@@ -89,10 +97,16 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
     const bool hold = target.kind == NoteAccuracyKind::Hold;
     const double headWeight = target.ticks == 0 ? 1.0 : .5;
     const bool judgesTiming = timing || (hold && !state.headSettled);
+    // A POOR or an early BAD (a rejected press within BAD) waits for the note to settle, then decreases.
     const bool rejectedGoodInput = event.type == NoteEventType::InputRejected &&
                                    IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
-    if (judgesTiming && keyPressed && rejectedGoodInput)
-        state.poor = true;
+    const bool rejectedInput = rejectedGoodInput || IsEarlyBad(event);
+    if (judgesTiming && keyPressed && rejectedInput)
+        state.rejected = true;
+    const bool badHit = event.type == NoteEventType::HitAccepted &&
+                        (event.recovery || event.judgement.grade == JudgementGrade::Bad);
+    if (judgesTiming && badHit)
+        state.rejected = true;
 
     if (event.type == NoteEventType::HitAccepted)
     {
@@ -100,7 +114,7 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
             state.hits[event.hitIndex] = TimingRate(state, event.judgement);
         else if (hold && !state.headSettled)
         {
-            Apply(headWeight * (state.poor ? -level_.Value() : TimingRate(state, event.judgement)));
+            Apply(headWeight * (state.rejected ? -level_.Value() : TimingRate(state, event.judgement)));
             state.headSettled = true;
         }
         else if (target.kind == NoteAccuracyKind::HitCount)
@@ -115,7 +129,10 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
     {
         state.resolvedTicks[event.tickIndex] = true;
         if (event.type == NoteEventType::TickAccepted)
+        {
+            ++state.acceptedTicks;
             Apply((hold ? .5 : 1.0) / static_cast<double>(target.ticks));
+        }
     }
     if (event.type != NoteEventType::Completed && event.type != NoteEventType::Missed)
         return;
@@ -123,7 +140,7 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
     // Timing pairs and count rolls settle once at logical completion. Ticks
     // already settled above retain their original order, including saturation.
     if (timing)
-        Apply(state.poor           ? -level_.Value()
+        Apply(state.rejected       ? -level_.Value()
               : state.hits.empty() ? 0
                                    : std::accumulate(state.hits.begin(), state.hits.end(), 0.0) /
                                          static_cast<double>(state.hits.size()));
@@ -131,5 +148,7 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
         Apply(std::min(1.0, static_cast<double>(state.accepted) / static_cast<double>(target.hits)));
     else if (hold && !state.headSettled)
         Apply(-level_.Value() * headWeight);
+    else if (hold && BodyMissed(state))
+        Apply(-level_.Value() * (1.0 - headWeight)); // A Buzz body that took no tick decreases like a MISS.
     state.finalized = true;
 }

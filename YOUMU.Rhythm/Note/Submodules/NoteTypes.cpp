@@ -55,6 +55,9 @@ JudgementGrade NoteAccuracy::CompletionGrade() const noexcept
 {
     if (!HasProgress())
         return JudgementGrade::Miss;
+    // A note with body ticks that took none of them is a MISS, even when a Buzz head landed (user decision).
+    if (target.ticks != 0 && acceptedTicks == 0)
+        return JudgementGrade::Miss;
     const double rate = ScoreRate();
     // Max, Perfect and Great start at their own boundary score; anything below is Good.
     const auto bands = AccuracyRange::DefaultLevel50Bands();

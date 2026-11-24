@@ -52,11 +52,13 @@ namespace tests
                 "A late BAD adds its signed error to the live timing sum.");
         hit('C', 2'500'000);
         hit('D', 3'000'000);
-        Require(session.Statistics().combo == 0 && session.Statistics().poorCount == 1,
-                "A real POOR immediately breaks combo; key releases never add POOR.");
+        Require(session.Statistics().combo == 1 && session.Statistics().poorCount == 1,
+                "A POOR counts at once but its note's combo waits for the note to finish; releases never add POOR.");
         hit('C', 3'000'000);
-        Require(session.Statistics().combo == 1 && session.Statistics().maximumCombo == 3,
-                "A later accepted completion starts a new combo and preserves the maximum.");
+        Require(session.Statistics().combo == 0 && session.Statistics().maximumCombo == 3,
+                "The MAX that answers a POOR is a BAD recovery: it breaks the combo and keeps the maximum.");
+        Require(session.Statistics().judgements[0] == 4 && session.Statistics().judgements[4] == 2,
+                "A BAD recovery counts as a BAD, not as its own grade.");
         session.RewindJudgements(RhythmTime{2'000'000});
         statistics = session.Statistics();
         Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.poorCount == 0,
@@ -103,8 +105,22 @@ namespace tests
         batch.events = {hit, completed, poor};
         batch.finalizedAccuracies = {accuracy};
         collector.Consume(batch, true);
+        Require(collector.Statistics().combo == 1 && collector.Statistics().poorCount == 1,
+                "A POOR counts at once but leaves the combo of the note completed before it in the same batch.");
+        // GAME-05: the combo settles when the POOR note finishes; left alone it is a MISS.
+        NoteEvent missed = poor;
+        missed.type = NoteEventType::Missed;
+        missed.stateAfter = NoteState::Missed;
+        NoteAccuracy missedAccuracy;
+        missedAccuracy.noteId = 2;
+        missedAccuracy.finalized = true;
+        missedAccuracy.hitScoreRates = {0};
+        NoteProcessResult settle;
+        settle.events = {missed};
+        settle.finalizedAccuracies = {missedAccuracy};
+        collector.Consume(settle, false);
         Require(collector.Statistics().combo == 0 && collector.Statistics().maximumCombo == 1,
-                "A later rejection must break the combo after an earlier completion in the same batch.");
+                "The POOR note breaks the combo when it settles and the maximum stays.");
         collector.ResetJudgements();
         Require(collector.Statistics().combo == 0 && collector.Statistics().maximumCombo == 0 &&
                     collector.Statistics().poorCount == 0, "Reset removes all HUD statistics.");
@@ -172,8 +188,10 @@ namespace tests
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
         Require(taiko->summary.accuracy.Units() == expectedSum / 4,
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
-        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 2 && taiko->judgements[5] == 0,
+        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 1 && taiko->judgements[5] == 0,
                 "Count graded inputs once; releases and blanks are never POOR.");
+        Require(taiko->judgements[static_cast<std::size_t>(JudgementGrade::Bad)] == 1,
+                "The GREAT that answers the first note's POOR is a BAD recovery and counts as a BAD (GAME-05).");
         Require(taiko->poorCount == 1 && taiko->okCount == 1,
                 "A roll that took one of its three hits is an OK, not a MISS.");
         Require(taiko->timingErrors.size() == 3 && taiko->meanErrorMilliseconds &&
@@ -183,7 +201,7 @@ namespace tests
                 "Population variance must exclude automatic misses and free roll hits.");
         Require(taiko->groups[0].total == 2 && taiko->groups[1].total == 1 && taiko->groups[2].total == 1,
                 "A POOR normal note scores zero; groups retain partial roll accuracy and note weights.");
-        Require(taiko->groups[2].succeeded == std::optional<std::size_t>{1} && taiko->groups[0].succeeded.has_value(),
+        Require(taiko->groups[2].succeeded == 1u,
                 "The roll that took a hit counts toward its group's combo-counted notes.");
         Require(taiko->notes[0].accuracy.Units() == 0 && taiko->notes[2].accuracy.Units() == 33'333'333 &&
                 taiko->notes[3].accuracy.Units() == 0,
@@ -296,9 +314,11 @@ namespace tests
                     grade(NoteAccuracyKind::Ticks, 0, 100, 0, 89) == JudgementGrade::Good,
                 "Tick ratios use the timing grades' score boundaries: 99% PERFECT, 90% GREAT.");
         Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 10, {1.0}) == JudgementGrade::Max &&
-                    grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {1.0}) == JudgementGrade::Good,
+                    grade(NoteAccuracyKind::Hold, 1, 10, 1, 1, {1.0}) == JudgementGrade::Good,
                 "A Buzz averages its head score and body ticks before choosing the grade.");
-        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {0.0}) == JudgementGrade::Good,
-                "A Buzz whose head was accepted at a zero score is still processed, so it is not a MISS.");
+        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 1, {0.0}) == JudgementGrade::Good,
+                "A Buzz whose head was accepted at a zero score but took a tick is processed, so it is not a MISS.");
+        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {1.0}) == JudgementGrade::Miss,
+                "GAME-05: a Buzz that took no body tick ends as a MISS, even after a MAX head.");
     }
 } // namespace tests

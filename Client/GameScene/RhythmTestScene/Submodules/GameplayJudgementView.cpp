@@ -43,8 +43,12 @@ namespace
     constexpr float TabTop = PanelTop - 82.0F, TabHeight = 30.0F;
     constexpr float AverageNumberLeft = -64.0F, AverageNumberRight = 13.0F, AverageUnitLeft = 15.0F;
     constexpr float AverageUnitDrop = 3.0F;
-    constexpr std::array<std::string_view, 7> ImageNames{"MAX", "PERFECT", "GREAT", "GOOD",
-                                                         "BAD", "MISS",    "POOR"};
+    // Skin keys after "Judgements.": the grades, then the BAD-recovery words (Judgements.Recovery.MAX..GOOD).
+    constexpr std::array<std::string_view, 11> ImageNames{"MAX",          "PERFECT",          "GREAT",
+                                                          "GOOD",         "BAD",              "MISS",
+                                                          "POOR",         "Recovery.MAX",     "Recovery.PERFECT",
+                                                          "Recovery.GREAT", "Recovery.GOOD"};
+    constexpr std::size_t RecoveryImageIndex = 7;
     // Judgement words sit just above the judgement circle (screen up), clear of the Highlight ring.
     constexpr float WordGapAboveCircle = 6.0F;
     constexpr std::size_t PoorImageIndex = 6;
@@ -84,6 +88,14 @@ namespace
                                    event.type == NoteEventType::TickAccepted;
         const bool hasInput = acceptedInput || event.type == NoteEventType::InputRejected;
         return hasInput && IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Bad);
+    }
+
+    // A BAD recovery of GOOD or better uses its purple-tinted word; every other grade its own word.
+    std::size_t WordIndex(const NoteEvent &event) noexcept
+    {
+        const auto grade = static_cast<std::size_t>(event.judgement.grade);
+        const bool recovered = event.recovery && IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
+        return recovered ? RecoveryImageIndex + grade : grade;
     }
 
     double OutQuint(const double progress) noexcept
@@ -356,12 +368,13 @@ void GameplayJudgementView::Present(const NoteEvent &event)
         return;
     const bool hasTiming = HasInputTiming(event);
     const bool poor = LaneKeyBeam::IsWrongInput(event);
-    const bool miss = event.type == NoteEventType::Missed;
+    // A note missed after an early BAD already showed its BAD; it shows no further word.
+    const bool miss = event.type == NoteEventType::Missed && !event.leftAtEarlyBad;
     if (!hasTiming && !miss && !poor)
         return;
     const std::size_t index = poor   ? PoorImageIndex
                               : miss ? static_cast<std::size_t>(JudgementGrade::Miss)
-                                     : static_cast<std::size_t>(event.judgement.grade);
+                                     : WordIndex(event);
     if (index >= judgementImages_.size())
         return;
     ShowImage(index);

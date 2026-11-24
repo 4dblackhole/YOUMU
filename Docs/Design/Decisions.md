@@ -169,6 +169,7 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 - 후보 선택은 입력 유무/색과 독립적입니다. 입력이 들어오면 이미 선택한 노트가 그 색을 판정합니다.
 - GOOD 후보가 없으면 현재 노트를 전체 판정 범위까지 유지합니다. 범위 끝은 포함하며,
   그 다음 us에 만료합니다. 확정 MISS는 반복하지 않습니다. EARLY BAD는 시도만 보고 포커스를 유지합니다.
+  포커스만 유지할 뿐 그 노트는 BAD로 처리합니다([GAME-05](#game-05-bad-복귀-판정)).
 - 성공 입력 하나는 노트 하나에만 전달합니다. 앞 MISS + 다음 HIT는 배드말림 방지의 정상 조합이며
   두 노트에 성공 입력을 중복 적용하는 동작과 구분합니다.
 - 진행 중 롱노트 몸통/확정 헤드는 고유 테일·틱 규칙을 따릅니다. 후보의 실제 GOOD 프로필과
@@ -218,8 +219,9 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 - Buzz 헤드 POOR는 헤드만 0입니다. 몸통을 모두 성공하면 최종 50%입니다.
 - 키 해제(InputEdge::Released)·판정 범위 밖 입력을 이 패널티로 취급하지 않습니다.
   이 키 해제는 Release 빌드라는 뜻이 아니며 판정 규칙은 Debug/Release 공통입니다.
-- HP 설계에서는 POOR 발생 즉시 감소하지 않고 대상 판정이 확정될 때 MISS에 해당하는
-  감소를 반영합니다.
+- HP 설계에서는 POOR 발생 즉시 감소하지 않고 대상 판정이 확정될 때 감소를 반영합니다.
+- POOR 뒤 다시 쳐 GOOD~MAX가 나면 [BAD 복귀](#game-05-bad-복귀-판정)입니다(BAD 1, 정확도 0, HP 감소, 콤보 0).
+  POOR 뒤 놓치면 MISS입니다. POOR는 그 순간 콤보를 바꾸지 않고 노트가 끝날 때 0이 됩니다.
 
 상세: [Rules](../Features/Gameplay/Rules.md), [HP 설계](../Formats/Ymp.md#hp-게이지).
 검증: [TestPoorSingleNoteAccuracy·TestPoorLargeNoteAccuracy·TestBuzzTickColorFocus](../../Tests/Rhythm/Submodules/AccuracyTests.cpp).
@@ -229,7 +231,11 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 근거: 사용자 확정. 구현: 정확도/틱·HP 구현.
 
 - 정상 처리한 헤드는 확정됩니다. 이후 입력은 몸통 틱을 대상으로 하며 헤드의 판정·POOR·
-  정확도를 다시 바꾸지 않습니다. 반대 색을 유지하는 각 틱은 TickRejected/POOR 하나로 확정합니다.
+  정확도를 다시 바꾸지 않습니다. 반대 색을 유지하는 각 틱은 TickRejected로 확정하며 처리하지 못한 틱일 뿐입니다
+  (사용자 결정: POOR 글자·개수·즉시 콤보 초기화 없음).
+- 헤드가 BAD·POOR(복귀 포함)이면 헤드 점수만 0이고 BAD 1·HP 감소·콤보 0입니다. 헤드는 GOOD 이상이지만 몸통 틱을
+  하나도 처리하지 못하면 헤드 점수는 남기고 MISS·HP 감소·콤보 0입니다(사용자 결정). 콤보는 Buzz 하나당 1이며 Buzz 처리가
+  끝났을 때 계산합니다.
 - 헤드 MAX, 몸통 9틱 중 1~3 성공·4~6 실패·7~9 성공이면
   정확도와 설계상 HP 회복률은 모두 `0.5*1 + 0.5*(6/9) = 83.333333…%`입니다.
 - 잘못된 색을 놓고 올바른 색을 유지하면 이후 틱은 다시 성공할 수 있습니다.
@@ -244,6 +250,25 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 [BuzzReplayTests](../../Tests/Rhythm/Submodules/BuzzReplayTests.cpp),
 [InputOrderingTests](../../Tests/Rhythm/Submodules/InputOrderingTests.cpp),
 [PlayPauseTests](../../Tests/Rhythm/Submodules/PlayPauseTests.cpp).
+
+## GAME-05 BAD 복귀 판정
+
+근거: 사용자 확정(TODOLIST "early BAD 처리된 노트를 다시 입력해서 GOOD 이상의 판정이 나왔을 경우에도 콤보가 끊겨야 함",
+이어진 질문 답). 구현: 판정·정확도·HP·콤보·판정 글자 구현.
+
+- early BAD는 배드말림을 막으려고 포커스를 유지할 뿐 기본적으로 BAD 처리입니다. 일반적인 BAD 처리는 BAD 1, 정확도 0
+  (사실상 MISS 취급), HP 감소, 콤보 초기화입니다. 늦은 BAD도 같습니다.
+- 콤보는 노트 처리가 완전히 끝났을 때 계산합니다. early BAD·POOR는 그 순간 콤보를 바꾸지 않습니다.
+- early BAD 뒤 같은 노트를 다시 쳐 GOOD~MAX(BAD 복귀): 등급 글자의 아래가 보라로 물든 판정 글자, BAD 1(그 등급으로 세지 않음),
+  정확도 0, HP 감소, 콤보 0. early BAD 상태로 놓치면 추가 글자 없이 BAD 1로 확정합니다(MISS 아님).
+- POOR 입력은 POOR 1, HP 변화 없음. POOR 뒤 놓치면 MISS, POOR 뒤 다시 쳐 GOOD~MAX면 BAD 복귀와 같습니다.
+- 큰·보라 노트는 한 입력이라도 BAD(늦은 BAD·복귀)면 노트 전체를 BAD로 처리합니다. 판정 개수는 입력별로 셉니다.
+- Buzz는 [GAME-04](#game-04-buzz와-틱)를 따릅니다. 결과·기록에 BAD 복귀 횟수를 따로 두지 않습니다.
+- 이 규칙이 바뀌기 전에 저장한 기록의 정확도·콤보·HP는 예전 규칙의 값입니다. 기록을 다시 계산하지 않습니다.
+
+상세: [Rules](../Features/Gameplay/Rules.md#bad-복귀-판정), [Presentation](../Features/Gameplay/Presentation.md#판정-인디케이터와-판정-글자).
+검증: [TestBadRecovery](../../Tests/Rhythm/Submodules/AccuracyTests.cpp), [PlayResultTests](../../Tests/Rhythm/Submodules/PlayResultTests.cpp),
+[HpGaugeTests](../../Tests/Rhythm/Submodules/HpGaugeTests.cpp), [GameplayJudgementTests](../../Tests/Presentation/GameplayJudgementTests.cpp).
 
 ## PERF-01 밀집 틱의 표시와 소리
 
@@ -544,13 +569,14 @@ SceneStateTests(↑ 이동), SkinTests(스킨 그림 교체와 복귀)와 화면
 - 기록에 SCORE·최대 콤보와 결과 상세를 저장해(스키마 2) 기록을 눌러 결과 화면을 다시 볼 수 있게 합니다(사용자 결정 2026-11-21:
   "앞으로 상세도 저장"). 기록 화면은 Back과 Retry를 둡니다(사용자 결정). 점수가 없는 스키마 1 기록은 이어받지 않습니다(사용자 결정: 옛 기록 전부 버림).
   옛 DB 파일은 지우지 않고 `plays.v1.sqlite3`로 이름만 바꿔 남기며, 예전 `%LOCALAPPDATA%` 위치의 기록은 더 읽지 않습니다.
-- 스키마 3은 Max strokes를 기록에 더하고, 스키마 2 기록은 같은 파일에서 그대로 이어받아 2로 읽습니다(지휘 결정 2026-11-22:
-  기록 보존이 기본, 버리려면 사용자 결정 필요). 기록 필터에 Max strokes(Any/1~4, 기본 Any = 다른 필터처럼 전체)를 두어
+- 스키마 3은 Max strokes를 기록에 더했습니다. 스키마 4는 [GAME-05](#game-05-bad-복귀-판정) 규칙으로 판정한 기록만 담습니다:
+  예전 규칙으로 만든 스키마 1~3 기록은 이어받지 않고(사용자 결정 "예전규칙기록 전부 삭제") 파일을 `plays.v<스키마>.sqlite3`로
+  이름만 바꿔 옆에 둡니다. 실제로 지울지는 사용자에게 따로 묻습니다. 기록 필터에 Max strokes(Any/1~4, 기본 Any = 다른 필터처럼 전체)를 두어
   개수별로 나눠 봅니다(사용자 결정 2026-11-22: "개수별로 나누거나 필터로 특정 스트로크 수만 보이도록").
 - 롱노트 계열(롤·풍선·뎅뎅·틱롤·Buzz)은 타격·틱을 하나라도 처리하면 결과에 OK로 세고 콤보를 잇습니다. 하나도 처리하지 못했을 때만
   MISS입니다(사용자 결정 2026-11-21, 이전에는 전부 처리해야 OK). 정확도·점수·HP는 바꾸지 않습니다. 화면에는 처리 비율을 일반 판정의
   점수 경계(100% MAX, 99% PERFECT, 90% GREAT, 그 밖 GOOD)에 놓은 판정 글자를 띄웁니다.
-- 기록 DB의 손상/미지원 버전(스키마 1 제외)은 오류로 알리고 보존합니다. 원본에서 재생성하는 목록 캐시와
+- 기록 DB의 손상/미지원 버전(옆으로 빼는 스키마 1~3 제외)은 오류로 알리고 보존합니다. 원본에서 재생성하는 목록 캐시와
   달리 삭제/재생성하지 않습니다. 원본 음원·곡·스킨·설정도 사용자 데이터로 보존합니다.
 - 입력/제어 로그와 현재 가지의 최종 통계를 구분합니다. 취소된 입력도 로그에 남지만
   제어 마커를 무시한 전체 재판정으로 결과 통계를 재구성하지 않습니다.
@@ -568,14 +594,16 @@ SceneStateTests(↑ 이동), SkinTests(스킨 그림 교체와 복귀)와 화면
   다른 게이지의 규칙·등급 순서는 아직 정해지지 않았습니다.
 - N은 총 유효 논리 노트 수, 기본 증가량 g = 120%p/N입니다. 각 구성 요소 가중치 합은
   논리 노트당 1이며, timing MISS/BAD 감소는 g × 체력 레벨 × 해당 가중치입니다.
-- MAX/PERFECT의 회복률은 1, GOOD은 0입니다. GREAT는 PERFECT/GREAT 바깥 경계 사이에서
-  1→0으로 보간합니다. 이는 GAME-02의 정확도 점수와 다른 회복 함수입니다.
+- MAX~GREAT의 회복률은 1입니다. GOOD은 GREAT 바깥 경계(1)에서 GOOD 바깥 경계, 즉 BAD 경계(0) 사이 위치로
+  보간합니다(사용자 결정, 예전 GREAT 1→0·GOOD 0을 대체). 이는 GAME-02의 정확도 점수와 다른 회복 함수입니다.
+  BAD·POOR·MISS는 정해진 양을 감소합니다([GAME-05](#game-05-bad-복귀-판정)).
 - 등급 없는 성공 입력/틱은 자기 가중치의 100%를 회복합니다. 미처리 비타이밍 연타/틱은
   회복하지 않으며 별도 감소도 없습니다. 큰/롤 노트는 완료 후, 틱은 결과 확정 때 반영합니다.
 - Buzz 회복량은 g × (0.5×헤드 회복률 + 0.5×몸통 성공률)입니다.
-  GREAT 중간 헤드 회복률 0.5와 틱 40%이면 g×0.45입니다.
-- POOR는 발생 즉시 HP를 바꾸지 않습니다. 일반/큰/보라 노트는 최종 MISS 상당 감소,
-  Buzz 헤드는 헤드 가중치만 감소, 몸통 POOR 틱은 해당 틱의 회복만 없습니다.
+  GOOD 중간 헤드 회복률 0.5와 틱 40%이면 g×0.45입니다.
+  몸통 틱이 모두 지나가도록 하나도 처리하지 못한 Buzz는 끝날 때 몸통 가중치만큼 감소합니다(Retire는 HP를 바꾸지 않음).
+- POOR·early BAD는 발생 즉시 HP를 바꾸지 않습니다. 일반/큰/보라 노트는 최종 BAD(MISS와 같은 양) 감소,
+  Buzz 헤드는 헤드 가중치만 감소, 반대 색으로 처리하지 못한 몸통 틱은 해당 틱의 회복만 없습니다.
 - 나쁜 판정 5%는 밸런스 참고값입니다. 별도 실패/합격 조건으로 추가하지 않습니다.
 
 상세: [YMP HP 설계](../Formats/Ymp.md#hp-게이지).

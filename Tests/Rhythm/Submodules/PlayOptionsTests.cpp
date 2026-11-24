@@ -7,7 +7,6 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
-#include <sstream>
 #include <string>
 #include <winsqlite/winsqlite3.h>
 #pragma comment(lib, "winsqlite3.lib")
@@ -335,26 +334,26 @@ namespace tests
                 "Saving into a schema-1 database keeps only the new record.");
     }
 
-    void TestRecordSchemaTwoUpgrade()
+    void TestRecordOldRulesSetAside()
     {
-        TemporaryDirectory directory("youmu-record-schema2");
+        TemporaryDirectory directory("youmu-record-rules");
         const auto database = directory.Path() / "plays.sqlite3";
         const auto pattern = directory.Path() / "pattern.ymp";
         std::ofstream(pattern) << "fixture";
-        const auto run = [&](const std::string &sql)
+        const auto run = [&](const std::filesystem::path &file, const std::string &sql)
         {
             sqlite3 *raw{};
-            Require(sqlite3_open16(database.c_str(), &raw) == SQLITE_OK, "Schema-2 fixture opens.");
+            Require(sqlite3_open16(file.c_str(), &raw) == SQLITE_OK, "Old-schema fixture opens.");
             const int status = sqlite3_exec(raw, sql.c_str(), nullptr, nullptr, nullptr);
             sqlite3_close_v2(raw);
-            Require(status == SQLITE_OK, "Schema-2 fixture is written.");
+            Require(status == SQLITE_OK, "Old-schema fixture is written.");
         };
-        const auto scalar = [&](const char *sql)
+        const auto scalar = [&](const std::filesystem::path &file, const char *sql)
         {
             sqlite3 *raw{};
             sqlite3_stmt *statement{};
             std::int64_t value = -1;
-            const bool opened = sqlite3_open16(database.c_str(), &raw) == SQLITE_OK;
+            const bool opened = sqlite3_open16(file.c_str(), &raw) == SQLITE_OK;
             if (opened && sqlite3_prepare_v2(raw, sql, -1, &statement, nullptr) == SQLITE_OK)
             {
                 if (sqlite3_step(statement) == SQLITE_ROW)
@@ -368,10 +367,11 @@ namespace tests
         auto key = std::filesystem::weakly_canonical(pattern).lexically_normal().generic_string();
         for (auto &ch : key)
             ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-        // A schema-2 database as #103 left it, with one record; `extra` adds columns to break the upgrade.
-        const auto writeSchemaTwo = [&](const std::string &extra)
+        // A database as schema 2 (#103) or 3 (#122) left it, with one record judged by the earlier rules.
+        const auto writeOld = [&](int schema)
         {
-            run("CREATE TABLE Plays (Id INTEGER PRIMARY KEY, PlayedAt INTEGER NOT NULL, Pattern TEXT NOT NULL, Mode TEXT "
+            run(database,
+                "CREATE TABLE Plays (Id INTEGER PRIMARY KEY, PlayedAt INTEGER NOT NULL, Pattern TEXT NOT NULL, Mode TEXT "
                 "NOT NULL, Accuracy INTEGER NOT NULL, TotalNotes INTEGER NOT NULL, ProcessedNotes INTEGER NOT NULL, "
                 "Completed INTEGER NOT NULL, Cleared INTEGER NOT NULL, PauseMenuUsed INTEGER NOT NULL, JudgeLevel REAL "
                 "NOT NULL, ScrollSpeed REAL NOT NULL, ScrollUnit INTEGER NOT NULL, IgnoreScrollEffects INTEGER NOT NULL, "
@@ -379,8 +379,7 @@ namespace tests
                 "RandomProbability REAL NOT NULL, Accelerate REAL NOT NULL, PreserveMusicPitch INTEGER NOT NULL, "
                 "PreserveHitSoundPitch INTEGER NOT NULL, JudgeOverride INTEGER NOT NULL, GlobalOffset INTEGER NOT NULL, "
                 "Score INTEGER NOT NULL, MaximumCombo INTEGER NOT NULL, HpGauge INTEGER NOT NULL, Detail TEXT NOT NULL" +
-                extra + ");"
-                "CREATE INDEX PatternHistory ON Plays(Pattern, Mode, Id DESC);"
+                std::string(schema == 3 ? ", MaxStrokes INTEGER NOT NULL DEFAULT 2" : "") + ");"
                 "INSERT INTO Plays (PlayedAt, Pattern, Mode, Accuracy, TotalNotes, ProcessedNotes, Completed, Cleared, "
                 "PauseMenuUsed, JudgeLevel, ScrollSpeed, ScrollUnit, IgnoreScrollEffects, Metronome, Mirror, Random, "
                 "RandomSeed, RandomProbability, Accelerate, PreserveMusicPitch, PreserveHitSoundPitch, JudgeOverride, "
@@ -388,24 +387,38 @@ namespace tests
                 key +
                 "', 'Taiko', 98000000, 10, 10, 1, 1, 0, 70, 1, 0, 0, 0, 0, 0, '0', 100, 1, 0, 1, 0, 0, 980000, 10, 0, "
                 "'');"
-                "PRAGMA user_version=2");
+                "PRAGMA user_version=" +
+                std::to_string(schema));
         };
-        writeSchemaTwo("");
-        const auto old = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10);
-        Require(old.size() == 1 && old[0].options.maxStrokes == 2 && old[0].score == 980000,
-                "A schema-2 record survives the upgrade and reads as the default two strokes.");
-        Require(scalar("PRAGMA user_version") == 3, "Opening a schema-2 database upgrades it to schema 3 in place.");
-        Require(!std::filesystem::exists(directory.Path() / "plays.v2.sqlite3"), "The upgrade sets nothing aside.");
-        PlayRecord record = old[0];
-        record.options.maxStrokes = 4;
-        PlayRecordStore(database).Save(record);
-        const auto both = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10);
-        Require(both.size() == 2 && both[0].options.maxStrokes == 4 && both[1].options.maxStrokes == 2,
-                "A new record keeps its stroke count beside the old one.");
-
-        // A failed upgrade (here the column already exists) leaves schema 2 and its records as they were.
+        // User decision: records made by the rules before BAD recovery are all dropped. The file is only renamed.
+        for (const int schema : {2, 3})
+        {
+            std::filesystem::remove(database);
+            writeOld(schema);
+            Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).empty(),
+                    "A schema-2 or schema-3 database starts the records over.");
+            const auto aside = directory.Path() / ("plays.v" + std::to_string(schema) + ".sqlite3");
+            Require(scalar(aside, "PRAGMA user_version") == schema && scalar(aside, "SELECT COUNT(*) FROM Plays") == 1,
+                    "The old file is kept beside the new one under its own version, records and all.");
+            Require(scalar(database, "PRAGMA user_version") == PlayRecordStore::SchemaVersion,
+                    "The new database starts at the current schema.");
+        }
+        // A name already taken moves the next old file to the first free name; the earlier one stays.
         std::filesystem::remove(database);
-        writeSchemaTwo(", MaxStrokes INTEGER");
+        writeOld(3);
+        PlayRecord record;
+        record.patternPath = pattern;
+        record.mode = "Taiko";
+        PlayRecordStore(database).Save(record);
+        Require(scalar(directory.Path() / "plays.v3 (2).sqlite3", "PRAGMA user_version") == 3 &&
+                    scalar(directory.Path() / "plays.v3.sqlite3", "SELECT COUNT(*) FROM Plays") == 1,
+                "A second schema-3 file takes plays.v3 (2).sqlite3 and plays.v3.sqlite3 stays.");
+        Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).size() == 1,
+                "Saving into a set-aside database keeps only the new record.");
+        // A newer schema than this build knows is reported and left alone.
+        std::filesystem::remove(database);
+        run(database, "CREATE TABLE Plays (Id INTEGER PRIMARY KEY); PRAGMA user_version=" +
+                          std::to_string(PlayRecordStore::SchemaVersion + 1));
         bool failed{};
         try
         {
@@ -415,8 +428,8 @@ namespace tests
         {
             failed = true;
         }
-        Require(failed && scalar("PRAGMA user_version") == 2 && scalar("SELECT COUNT(*) FROM Plays") == 1,
-                "A failed upgrade reports the error and rolls back to schema 2 with the records kept.");
+        Require(failed && scalar(database, "PRAGMA user_version") == PlayRecordStore::SchemaVersion + 1,
+                "A newer database reports the error and stays as it was.");
     }
 
     void TestRecordResultDetail()
@@ -495,7 +508,7 @@ namespace tests
         Require(taiko->groups[0].accuracy.Units() == 97'260'000 && taiko->groups[2].processed == 8,
                 "Group accuracies survive the record.");
         Require(taiko->groups[1].total == 0, "An empty group stays empty.");
-        Require(taiko->groups[0].succeeded == std::optional<std::size_t>{291} && taiko->groups[2].succeeded == 8u,
+        Require(taiko->groups[0].succeeded == 291u && taiko->groups[2].succeeded == 8u,
                 "Combo-counted notes per group survive the record.");
         Require(taiko->timingErrors.size() == 2 && taiko->timingErrors[0].error == RhythmDuration{-4'321},
                 "Timing samples survive the record.");
@@ -526,31 +539,10 @@ namespace tests
         Require(rejects("") && rejects(record.detail.substr(0, record.detail.size() / 2)),
                 "A missing or cut detail is rejected.");
         Require(rejects(record.detail + "1") && rejects("taiko-result 3\n"), "A padded or newer detail is rejected.");
-        // A version 1 detail (no combo-counted notes) still opens; reading it never rewrites the stored detail.
+        // Version 1 details lived only in record databases before schema 4, which are set aside unread.
         auto first = record.detail;
         first.replace(first.find("taiko-result 2"), 14, "taiko-result 1");
-        const auto groupsBegin = first.find("\ngroups") + 1, groupsEnd = first.find('\n', groupsBegin);
-        std::istringstream groupWords(first.substr(groupsBegin, groupsEnd - groupsBegin));
-        std::string word, groupsLine;
-        groupWords >> groupsLine;
-        for (int index = 0; groupWords >> word; ++index)
-            if (index % 4 != 3)
-                groupsLine += ' ' + word;
-        first.replace(groupsBegin, groupsEnd - groupsBegin, groupsLine);
-        auto old = record;
-        old.detail = first;
-        PlayRecordStore(database).Save(old);
-        const auto olds = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10);
-        Require(olds.size() == 2, "The version 1 record is stored beside the new one.");
-        const auto oldId = olds[0].id == loaded.id ? olds[1].id : olds[0].id;
-        auto opened = olds[0].id == loaded.id ? olds[1] : olds[0];
-        opened.detail = PlayRecordStore(database).LoadDetail(oldId);
-        const auto oldResult = opened.LoadResult();
-        const auto *oldTaiko = dynamic_cast<const TaikoPlayResult *>(oldResult.get());
-        Require(oldTaiko != nullptr && !oldTaiko->groups[0].succeeded && oldTaiko->groups[0].processed == 300,
-                "A version 1 detail loads its groups without combo-counted notes.");
-        Require(PlayRecordStore(database).LoadDetail(oldId) == first,
-                "Opening a version 1 record leaves its stored detail as it was.");
+        Require(rejects(first), "A version 1 detail is no longer read.");
         Require(rejects(badGrade), "An out-of-range value is rejected.");
     }
 

@@ -30,9 +30,12 @@ class RuleBasedNote final : public INote
     [[nodiscard]] NoteProcessResult Update(const NoteUpdateContext &update) override;
     [[nodiscard]] NoteProcessResult MarkMissed(RhythmTime time) override;
     void Reset() noexcept override;
+    void RecordEarlyBad() noexcept override;
 
   private:
     [[nodiscard]] NoteRuleContext Context() const noexcept;
+    [[nodiscard]] bool JudgesTiming() const noexcept;
+    void MarkTimingOutcome(NoteProcessResult &result, bool judgedTiming, bool retrying);
     void AppendAudioCues(NoteProcessResult &result) const;
     void AccumulateAccuracy(NoteProcessResult &result);
 
@@ -43,4 +46,8 @@ class RuleBasedNote final : public INote
     std::shared_ptr<const INoteSoundPolicy> soundPolicy_;
     NoteAccuracy accuracy_;
     bool poorOnTimingTarget_{};
+    // A late BAD or an early BAD on the timing target: the note settles as a BAD (accuracy zero).
+    bool badOnTimingTarget_{};
+    // The last rejection waiting for a retry of the same hit: an early BAD or a POOR.
+    bool retryAfterEarlyBad_{}, retryAfterPoor_{};
 };

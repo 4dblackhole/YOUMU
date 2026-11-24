@@ -16,8 +16,8 @@ namespace tests
             for (const auto &lane : session.Gear().Lanes())
                 for (const auto &note : lane->Notes())
                     notes.push_back({note->Id(), note->Accuracy().target,
-                                     note->Profile().HalfWindow(JudgementGrade::Perfect),
-                                     note->Profile().HalfWindow(JudgementGrade::Great)});
+                                     note->Profile().HalfWindow(JudgementGrade::Great),
+                                     note->Profile().HalfWindow(JudgementGrade::Good)});
             return BasicHpGauge(session.HealthLevel(), notes);
         }
         void Bind(PlaySession &session, IHpGauge &gauge)
@@ -44,7 +44,7 @@ namespace tests
         {
             std::vector<HpNoteDefinition> result;
             for (std::size_t i = 0; i < count; ++i)
-                result.push_back({static_cast<NoteId>(i + 1), target, RhythmDuration{9'500}, RhythmDuration{23'500}});
+                result.push_back({static_cast<NoteId>(i + 1), target, RhythmDuration{23'500}, RhythmDuration{54'500}});
             return result;
         }
     } // namespace
@@ -89,24 +89,43 @@ namespace tests
             Require(Near(boundary.State().percent, 60) && boundary.State().passed,
                     "Exact 60% must pass after fractional recovery accumulation.");
         }
-        for (const auto error : {-16'500, 16'500})
+        // GOOD recovers by where it lands between the GREAT edge (23.5ms, 100%) and BAD (54.5ms, 0%), symmetrically.
+        for (const auto error : {-39'000, 39'000})
         {
             BasicHpGauge gauge(9, Definitions({NoteAccuracyKind::TimingHits, 1, 0}));
-            Feed(gauge, {Event(1, NoteEventType::HitAccepted, JudgementGrade::Great, error),
+            Feed(gauge, {Event(1, NoteEventType::HitAccepted, JudgementGrade::Good, error),
                          Event(1, NoteEventType::Completed)});
             Require(Near(gauge.State().percent, 30),
-                    "GREAT uses actual boundaries, symmetrically, independent of scoreRate.");
+                    "GOOD halfway between GREAT and BAD recovers half, independent of scoreRate.");
         }
-        for (const auto [grade, expected] :
-             std::array<std::pair<JudgementGrade, double>, 4>{{{JudgementGrade::Max, 60},
-                                                               {JudgementGrade::Perfect, 60},
-                                                               {JudgementGrade::Good, 0},
-                                                               {JudgementGrade::Bad, 0}}})
+        struct Case
+        {
+            JudgementGrade grade;
+            std::int64_t error;
+            double expected;
+        };
+        for (const auto [grade, error, expected] : std::array<Case, 6>{{{JudgementGrade::Max, 0, 60},
+                                                                        {JudgementGrade::Perfect, 9'000, 60},
+                                                                        {JudgementGrade::Great, 23'000, 60},
+                                                                        {JudgementGrade::Good, 24'000, 59.0322580645},
+                                                                        {JudgementGrade::Good, -54'500, 0},
+                                                                        {JudgementGrade::Bad, 70'000, 0}}})
         {
             BasicHpGauge gauge(9, Definitions({NoteAccuracyKind::TimingHits, 1, 0}));
-            Feed(gauge, {Event(1, NoteEventType::HitAccepted, grade), Event(1, NoteEventType::Completed)});
+            Feed(gauge, {Event(1, NoteEventType::HitAccepted, grade, error), Event(1, NoteEventType::Completed)});
             Require(Near(gauge.State().percent, expected),
-                    "MAX/PERFECT/GOOD/BAD recovery must follow the HP contract.");
+                    "MAX..GREAT recover fully, GOOD by position, BAD drains (user decision).");
+        }
+        {
+            // An early BAD, then the recovering MAX: the note settles as a BAD drain.
+            BasicHpGauge gauge(1, Definitions({NoteAccuracyKind::TimingHits, 1, 0}, 4));
+            Feed(gauge, {Event(1, NoteEventType::HitAccepted), Event(1, NoteEventType::Completed)});
+            auto recovery = Event(2, NoteEventType::HitAccepted);
+            recovery.recovery = true;
+            Feed(gauge, {Event(2, NoteEventType::InputRejected, JudgementGrade::Bad, -70'000)});
+            Require(Near(gauge.State().percent, 30), "An early BAD waits for its note to settle.");
+            Feed(gauge, {recovery, Event(2, NoteEventType::Completed)});
+            Require(Near(gauge.State().percent, 0), "A BAD recovery drains like a BAD.");
         }
         BasicHpGauge gauge(1.25, Definitions({NoteAccuracyKind::TimingHits, 1, 0}, 4));
         for (NoteId id : {1U, 2U, 3U})
@@ -125,7 +144,7 @@ namespace tests
         Feed(pair, {Event(1, NoteEventType::HitAccepted)});
         Require(Near(pair.State().percent, 0), "A big note waits until completion.");
         Feed(pair,
-             {Event(1, NoteEventType::HitAccepted, JudgementGrade::Good, 0, 1), Event(1, NoteEventType::Completed)});
+             {Event(1, NoteEventType::HitAccepted, JudgementGrade::Good, 54'500, 1), Event(1, NoteEventType::Completed)});
         Require(Near(pair.State().percent, 30), "Each timing hit has half the logical weight.");
         Feed(pair, {Event(2, NoteEventType::InputRejected, JudgementGrade::Perfect)});
         Require(Near(pair.State().percent, 30), "POOR cannot decrease HP before final settlement.");
@@ -159,12 +178,18 @@ namespace tests
         Feed(hold, {Event(1, NoteEventType::InputRejected, JudgementGrade::Max), Event(1, NoteEventType::TickAccepted),
                     Event(1, NoteEventType::TickRejected, JudgementGrade::Miss, 0, 0, 1),
                     Event(1, NoteEventType::Completed)});
-        Require(Near(hold.State().percent, 30), "Buzz body POOR must preserve the settled head and other ticks.");
+        Require(Near(hold.State().percent, 45),
+                "A GREAT head recovers fully; a wrong colour over a tick only leaves that tick unprocessed.");
         Feed(hold,
              {Event(2, NoteEventType::InputRejected), Event(2, NoteEventType::HitAccepted),
               Event(2, NoteEventType::TickAccepted),
               Event(2, NoteEventType::TickAccepted, JudgementGrade::Max, 0, 0, 1), Event(2, NoteEventType::Completed)});
-        Require(Near(hold.State().percent, 30), "Buzz head POOR drains only head weight, retaining body recovery.");
+        Require(Near(hold.State().percent, 45), "Buzz head POOR drains only head weight, retaining body recovery.");
+        BasicHpGauge emptyBody(1, Definitions({NoteAccuracyKind::Hold, 1, 2}));
+        Feed(emptyBody, {Event(1, NoteEventType::HitAccepted), Event(1, NoteEventType::TickMissed, JudgementGrade::Miss),
+                         Event(1, NoteEventType::TickMissed, JudgementGrade::Miss, 0, 0, 1),
+                         Event(1, NoteEventType::Completed)});
+        Require(Near(emptyBody.State().percent, 0), "A Buzz that took no tick drains its body weight like a MISS.");
         BasicHpGauge headOnly(1, Definitions({NoteAccuracyKind::Hold, 1, 0}));
         Feed(headOnly, {Event(1, NoteEventType::HitAccepted), Event(1, NoteEventType::Completed)});
         Require(Near(headOnly.State().percent, 60), "A tickless Buzz assigns all weight to its head.");
@@ -202,7 +227,7 @@ namespace tests
     {
         for (const auto type :
              {TaikoNoteType::Roll, TaikoNoteType::BigRoll, TaikoNoteType::Balloon, TaikoNoteType::DengDeng,
-              TaikoNoteType::TickRoll, TaikoNoteType::BigTickRoll, TaikoNoteType::Buzz})
+              TaikoNoteType::TickRoll, TaikoNoteType::BigTickRoll})
         {
             auto loaded =
                 TaikoMode{}.CreateSession(MakeLongPattern(type, {"HitCount=4", "TickDivision=8", "Action=Don"}));
@@ -214,7 +239,7 @@ namespace tests
             static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
             static_cast<void>(session.Update(RhythmTime{1'000'000}));
             Require(gauge.State().percent > 0 && gauge.State().percent <= 100,
-                    "Partial count/tick/Buzz recovery survives completion without non-timing MISS drain.");
+                    "Partial count/tick recovery survives completion without non-timing MISS drain.");
             session.RewindJudgements({});
             Require(Near(gauge.State().percent, 0), "Rewind before a long head restores zero HP.");
             session.SetHpGauges({});
@@ -227,6 +252,19 @@ namespace tests
         const auto head = gauge.State().percent;
         session.RetireRemaining(RhythmTime{100'000});
         Require(Near(gauge.State().percent, head), "Retirement preserves a settled Buzz head.");
+
+        // GAME-05: a Buzz whose head was taken but whose ticks were all missed decreases its body share like a MISS.
+        auto missedBody = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::Buzz, {"TickDivision=8", "Action=Don"}));
+        Require(missedBody.Succeeded(), "HP Buzz fixture must load.");
+        auto &bodySession = *missedBody.session;
+        auto bodyGauge = GaugeFor(bodySession);
+        Bind(bodySession, bodyGauge);
+        static_cast<void>(bodySession.ProcessInput('C', InputEdge::Pressed, {}));
+        static_cast<void>(bodySession.ProcessInput('C', InputEdge::Released, RhythmTime{1}));
+        const auto settledHead = bodyGauge.State().percent;
+        static_cast<void>(bodySession.Update(RhythmTime{1'000'000}));
+        Require(settledHead > 0 && bodyGauge.State().percent < settledHead,
+                "A Buzz that took no body tick drains its body share at completion.");
     }
 
     void TestHpDeactivationAndHistory()

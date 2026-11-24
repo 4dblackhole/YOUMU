@@ -22,7 +22,7 @@ namespace tests
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
     void TestOldRecordSchemaSetAside();
-    void TestRecordSchemaTwoUpgrade();
+    void TestRecordOldRulesSetAside();
     void TestRecordResultDetail();
     void TestRecordOptionText();
     void TestLocalOffsetStore();
@@ -71,6 +71,7 @@ namespace tests
     void TestMeasureLineScrollEffects();
     void TestBalloonDengDengAndBuzzRules();
     void TestTimingAccuracyAndSessionAggregation();
+    void TestBadRecovery();
     void TestPoorSingleNoteAccuracy();
     void TestPoorLargeNoteAccuracy();
     void TestBuzzTickColorFocus();
