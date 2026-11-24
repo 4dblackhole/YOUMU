@@ -403,6 +403,9 @@ void SongPreviewController::StopPreviewSlot(PreviewSlot &slot) noexcept
     {
         try
         {
+            // Nobody will hear this preview: its decode stops now instead of finishing the whole song, so
+            // quick song changes do not pile up decodes. It then fails and polling releases it.
+            static_cast<void>(slot.clip->CancelLoading());
             std::string error;
             const auto state = slot.clip->LoadState(error);
             if (state == AudioClipLoadState::Loading || state == AudioClipLoadState::Playing)
