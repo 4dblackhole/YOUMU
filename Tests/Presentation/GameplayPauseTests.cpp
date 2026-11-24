@@ -656,8 +656,9 @@ namespace
             if (sent_)
             {
                 // A machine too slow to update twice within the cold-sample delay proves nothing either way.
-                Check(coldEnd_ - coldBegin_ < std::chrono::milliseconds{50} || barSwept_,
-                      "The loading bar must keep sweeping while cold samples are still being prepared.");
+                Check(coldEnd_ - coldBegin_ < std::chrono::milliseconds{50} || barPartial_,
+                      "While cold samples load, the loading bar shows the chart and images ready but not the sounds.");
+                Check(barWidth_ == 420.0F, "With every file ready the loading bar is full.");
                 Check(intro_, "The loading introduction is visible before gameplay.");
                 Check(introImage_, "The loading introduction displays the selected background.");
                 Check(sampleStarts == before + 2, "The first visible-frame Don and Kat must both request a sample.");
@@ -685,29 +686,31 @@ namespace
             scene_.reset(); playback_.StopAll(); visuals_.Shutdown(); rendering_.reset();
         }
       private:
-        // The scene cannot be ready while the cold samples load, so movement seen before
-        // samplesReadyAt belongs to the preparation wait, not to the final scheduling frames.
+        // The bar fills by the share of files ready (the chart, the images, the sounds) and never shrinks.
+        // The scene cannot be ready while the cold samples load, so a bar seen before samplesReadyAt
+        // must be partly filled: the chart is read, the sounds are not ready.
         void ObserveLoadingBar()
         {
             const auto now = std::chrono::steady_clock::now();
             const auto *loading = visuals_.FindCanvas(1);
             const auto *piece = loading ? Find(loading->Root(), "Loading.BarPiece") : nullptr;
-            if (!piece || now >= samplesReadyAt)
+            if (!piece)
                 return;
-            const float x = piece->Position().x;
-            if (!barStart_)
-            {
-                barStart_ = x;
+            const float width = piece->NodeSize().width;
+            Check(width >= barWidth_, "The loading bar never shrinks.");
+            barWidth_ = width;
+            if (now >= samplesReadyAt)
+                return;
+            if (!coldBegin_.time_since_epoch().count())
                 coldBegin_ = now;
-            }
             coldEnd_ = now;
-            barSwept_ = barSwept_ || x != *barStart_;
+            barPartial_ = barPartial_ || (width > 0.0F && width < 420.0F);
         }
         bool &verified_;
         bool accelerated_{};
         bool shown_{}, sent_{}, intro_{}, introImage_{}, entered_{};
-        std::optional<float> barStart_;
-        bool barSwept_{};
+        float barWidth_{};
+        bool barPartial_{};
         std::chrono::steady_clock::time_point coldBegin_{}, coldEnd_{};
         InputState input_;
         ScreenVisual2DManager visuals_;

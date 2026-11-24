@@ -48,6 +48,8 @@ class GameplaySessionController final
     bool PrepareSession();
     bool SessionReady() const noexcept { return sessionInitialized_; }
     PhantomCore::AudioPreparationState PrepareAudioResources(PhantomCore::AudioSystem &audio);
+    // Sound files ready at the last PrepareAudioResources, for the loading bar.
+    [[nodiscard]] FileProgress LoadedAudioFiles() const noexcept { return audio_.LoadedFiles(); }
     void Start(const PhantomCore::EngineServices &services, RhythmTime initialTime);
     void Update(const PhantomCore::UpdateContext &context);
     double PlaybackRate() const noexcept { return playbackRate_; }

@@ -2,6 +2,7 @@
 
 #include "PhantomCore.h"
 
+#include "App/FileProgress.h"
 #include "Audio/SampleRestartGate.h"
 #include "Mode/PlayGameMode.h"
 #include "Time/RhythmTimer.h"
@@ -38,6 +39,8 @@ public:
                                             const std::filesystem::path &path, std::string &errorMessage,
                                             PhantomCore::AudioLoadMode loadMode = PhantomCore::AudioLoadMode::Sample);
     PhantomCore::AudioPreparationState PrepareResources();
+    // Sound files ready at the last PrepareResources; a file shared by several sound ids counts once.
+    [[nodiscard]] FileProgress LoadedFiles() const noexcept { return loadedFiles_; }
     bool ConfigurePlayback(const PlayOptions &options, std::string &error);
     // The player's volume: music scales the Music bus, effects every other bus.
     // Chart volume automation multiplies on top of it.
@@ -99,6 +102,7 @@ private:
     std::map<std::string, std::shared_ptr<PhantomCore::AudioBus>, std::less<>>
         buses_;
     std::map<std::string, RegisteredSound, std::less<>> clips_;
+    FileProgress loadedFiles_;
     std::map<std::string,
         std::map<PhantomCore::AudioEffectType,
             std::unique_ptr<PhantomCore::AudioEffect>>,

@@ -46,6 +46,8 @@ class RhythmTestScene final : public PhantomCore::GameScene
     // The loading screen stays until the attempt's clock first runs, also under a pause menu opened
     // before the start or after a failed preparation; its card hides while that menu is open.
     void PresentLoadingScreen();
+    // Share of the attempt's files ready: the chart, then its sounds and the play screen's images.
+    [[nodiscard]] float LoadingFraction() const;
     void PresentScreenError();
     // Black over everything while a restart darkens the screen (held restart key or a chosen Retry).
     void PresentScreenFade();

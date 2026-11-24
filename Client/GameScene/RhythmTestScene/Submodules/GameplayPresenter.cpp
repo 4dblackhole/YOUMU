@@ -62,12 +62,20 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
                                 L"Judgements.Recovery.GOOD"})
             preparingImages_.push_back(InGameSkinAssetPath(file));
     }
+    // The engine decodes one request at a time, so one image per request lets the loading bar count them.
     std::string error;
-    const bool ready = services.visual2DRendering.PrepareImages(preparingImages_, error);
-    if (!error.empty())
-        throw std::runtime_error(error);
-    if (!ready || backgroundPath_.empty())
-        return ready;
+    while (preparedImages_ < preparingImages_.size())
+    {
+        const std::span next{&preparingImages_[preparedImages_], 1};
+        const bool ready = services.visual2DRendering.PrepareImages(next, error);
+        if (!error.empty())
+            throw std::runtime_error(error);
+        if (!ready)
+            return false;
+        ++preparedImages_;
+    }
+    if (backgroundPath_.empty() || backgroundPrepared_)
+        return true;
     const std::array background{backgroundPath_};
     const bool backgroundReady = services.visual2DRendering.PrepareImages(background, error);
     if (!error.empty())
@@ -76,6 +84,7 @@ bool GameplayPresenter::PrepareAssets(const EngineServices &services)
         backgroundPath_.clear();
         return true;
     }
+    backgroundPrepared_ = backgroundReady;
     return backgroundReady;
 }
 
