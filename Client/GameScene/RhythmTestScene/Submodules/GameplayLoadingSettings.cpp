@@ -206,15 +206,10 @@ GameplayLoadingSettings::Interaction GameplayLoadingSettings::Update(const Input
         track.height += RowHeight;
         if (pressed && track.Contains(*pointer))
             dragging_ = true;
-        std::int32_t step = 5;
-        if (input.IsKeyDown(VK_MENU))
-            step = 1;
-        else if (input.IsKeyDown(VK_SHIFT))
-            step = 20;
         if (pressed && minus_->BoundsInCanvas().Contains(*pointer))
-            result.offsetStepMs = -step;
+            result.offsetDirection = -1;
         if (pressed && plus_->BoundsInCanvas().Contains(*pointer))
-            result.offsetStepMs = step;
+            result.offsetDirection = 1;
     }
     if (dragging_)
     {

@@ -1255,12 +1255,17 @@ namespace
                   "Plus adds 5 ms.");
             Check(controller.Time() < before + RhythmDuration{200'000},
                   "The chart clock keeps running (moved back by the change, not restarted).");
-            press({VK_MENU, VK_OEM_MINUS});
-            Check(controller.LocalOffsetMs() == 14, "Alt with minus removes 1 ms.");
-            press({VK_SHIFT, VK_ADD});
-            Check(controller.LocalOffsetMs() == 34, "Shift with the numeric-pad plus adds 20 ms.");
+            // Raw Input reports the modifier of each side (VK_LMENU, VK_RSHIFT), never VK_MENU or VK_SHIFT.
+            press({VK_LMENU, VK_OEM_MINUS});
+            Check(controller.LocalOffsetMs() == 14, "Left Alt with minus removes 1 ms.");
+            press({VK_RSHIFT, VK_ADD});
+            Check(controller.LocalOffsetMs() == 34, "Right Shift with the numeric-pad plus adds 20 ms.");
+            press({VK_RMENU, VK_ADD});
+            Check(controller.LocalOffsetMs() == 35, "Right Alt with the numeric-pad plus adds 1 ms.");
+            press({VK_LSHIFT, VK_OEM_MINUS});
+            Check(controller.LocalOffsetMs() == 15, "Left Shift with minus removes 20 ms.");
             press({VK_SUBTRACT});
-            Check(controller.LocalOffsetMs() == 29 && controller.LocalOffsetRevision() == 4,
+            Check(controller.LocalOffsetMs() == 10 && controller.LocalOffsetRevision() == 6,
                   "The numeric-pad minus removes 5 ms and each change advances the revision.");
             Check(controller.CurrentState() == PlayState::Gameplay, "Offset keys never pause or restart the attempt.");
             controller.Shutdown();
@@ -1307,10 +1312,10 @@ namespace
             Check(!frame(400, 300, false).holdStart, "Elsewhere the start is not held.");
             const float rowTwo = PlateTop + 80 + 18;
             const auto plus = frame(1280 - 40 - 20 - 16, rowTwo, true);
-            Check(plus.offsetStepMs == 5 && plus.holdStart, "The plus button adds 5 ms.");
+            Check(plus.offsetDirection == 1 && plus.holdStart, "The plus button adds a step.");
             static_cast<void>(frame(1280 - 40 - 20 - 16, rowTwo, false));
             const auto minus = frame(PlateLeft + 106 + 16, rowTwo, true);
-            Check(minus.offsetStepMs == -5, "The minus button removes 5 ms.");
+            Check(minus.offsetDirection == -1, "The minus button removes a step.");
             static_cast<void>(frame(PlateLeft + 106 + 16, rowTwo, false));
             const float trackLeft = PlateLeft + 106, trackWidth = 304 - 20 - 46 - 6 - 106, rowOne = PlateTop + 42 + 18;
             const auto start = frame(trackLeft + trackWidth * .25F, rowOne, true);
@@ -1348,6 +1353,34 @@ namespace
             }
             Check(controller.CurrentState() == PlayState::Loading && !controller.AttemptStarted(),
                   "A held start keeps the attempt on the loading screen.");
+            // The -/+ keys work on the loading screen with the same steps: 5 ms, Alt 1 ms, Shift 20 ms.
+            const auto press = [&](std::initializer_list<std::uint16_t> keys)
+            {
+                const auto ticks = ctx.audio.CaptureClockSnapshot().performanceCounterTicks;
+                InputStateTestAccess::Begin(input);
+                for (const auto key : keys)
+                    InputStateTestAccess::Press(input, key, ticks);
+                controller.Update({0.005, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}});
+                InputStateTestAccess::Begin(input);
+                for (const auto key : keys)
+                    InputStateTestAccess::Release(input, key, ticks);
+                controller.Update({0.005, ctx.totalSeconds, ctx.updateIndex, input, ctx.audio, {}});
+            };
+            press({VK_OEM_PLUS});
+            press({VK_RMENU, VK_OEM_PLUS});
+            Check(controller.LocalOffsetMs() == 6, "On the loading screen plus adds 5 ms, and 1 ms with Alt.");
+            press({VK_LSHIFT, VK_SUBTRACT});
+            Check(controller.LocalOffsetMs() == -14 && controller.CurrentState() == PlayState::Loading,
+                  "On the loading screen Shift with minus removes 20 ms, and the screen stays.");
+            // The loading plate's buttons take the step from the same rule.
+            InputStateTestAccess::Begin(input);
+            Check(GameplaySessionController::LocalOffsetStepMs(input) == 5, "A button press without a modifier is 5 ms.");
+            InputStateTestAccess::Press(input, VK_LMENU, 0);
+            Check(GameplaySessionController::LocalOffsetStepMs(input) == 1, "A button press with Alt is 1 ms.");
+            InputStateTestAccess::Release(input, VK_LMENU, 0);
+            InputStateTestAccess::Press(input, VK_RSHIFT, 0);
+            Check(GameplaySessionController::LocalOffsetStepMs(input) == 20, "A button press with Shift is 20 ms.");
+            InputStateTestAccess::Release(input, VK_RSHIFT, 0);
             controller.SetStartHeld(false);
             WaitForGameplay(controller, ctx);
             Check(controller.CurrentState() == PlayState::Gameplay, "Releasing the hold starts the attempt.");

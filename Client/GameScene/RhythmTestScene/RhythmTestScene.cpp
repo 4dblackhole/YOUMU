@@ -274,8 +274,10 @@ void RhythmTestScene::UpdateLoadingSettings(const InputState &input)
         ApplyBackgroundBrightness(*interaction.brightness);
     if (interaction.brightnessCommitted)
         SaveBackgroundBrightness();
-    if (interaction.offsetStepMs != 0)
-        static_cast<void>(controller_->AdjustLocalOffset(interaction.offsetStepMs));
+    // The buttons take the same step as the -/+ keys: 5 ms, Alt 1 ms, Shift 20 ms.
+    if (interaction.offsetDirection != 0)
+        static_cast<void>(controller_->AdjustLocalOffset(interaction.offsetDirection *
+                                                         GameplaySessionController::LocalOffsetStepMs(input)));
     loadingSettings_.SetValues(launch_.backgroundBrightness, controller_->LocalOffsetMs());
 }
 void RhythmTestScene::ApplyBackgroundBrightness(const int percent)

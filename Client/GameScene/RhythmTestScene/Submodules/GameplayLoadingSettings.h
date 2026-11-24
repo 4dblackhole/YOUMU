@@ -20,7 +20,7 @@ class GameplayLoadingSettings final
         bool holdStart{};                      // Pointer over the plate or dragging the slider.
         std::optional<int> brightness;         // Changed while dragging (percent).
         bool brightnessCommitted{};            // The drag ended: save the shown brightness.
-        std::int32_t offsetStepMs{};           // A -/+ button press: 5 ms, Alt 1 ms, Shift 20 ms.
+        std::int32_t offsetDirection{};        // A -/+ button press: -1 or 1; the scene applies the step.
     };
 
     GameplayLoadingSettings(PhantomCore::ScreenVisual2DManager &visuals, TextCatalog &texts)

@@ -77,6 +77,15 @@ void GameplaySessionController::ProcessControlKeys(const UpdateContext &context)
         ResetTimeline();
 }
 
+std::int32_t GameplaySessionController::LocalOffsetStepMs(const InputState &input) noexcept
+{
+    if (input.IsKeyDown(VK_LMENU) || input.IsKeyDown(VK_RMENU))
+        return 1;
+    if (input.IsKeyDown(VK_LSHIFT) || input.IsKeyDown(VK_RSHIFT))
+        return 20;
+    return 5;
+}
+
 void GameplaySessionController::ProcessLocalOffsetKeys(const InputState &input)
 {
     for (const auto &event : input.Events())
@@ -90,11 +99,7 @@ void GameplaySessionController::ProcessLocalOffsetKeys(const InputState &input)
         // A key bound to the mode plays notes instead.
         if (session_->InputMapping().contains(event.code))
             continue;
-        std::int32_t step = 5;
-        if (input.IsKeyDown(VK_MENU))
-            step = 1;
-        else if (input.IsKeyDown(VK_SHIFT))
-            step = 20;
+        const auto step = LocalOffsetStepMs(input);
         static_cast<void>(AdjustLocalOffset(plus ? step : -step));
     }
 }
