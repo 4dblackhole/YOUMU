@@ -132,6 +132,9 @@ class GameplaySessionController final
     [[nodiscard]] bool CanAdjustLocalOffset() const noexcept;
     // Adds milliseconds, clamped to LocalOffsetStore::Limit; false when not allowed or unchanged.
     bool AdjustLocalOffset(std::int32_t milliseconds);
+    // The local offset step of one -/+ press: 5 ms, 1 ms with Alt, 20 ms with Shift, on either side. Raw Input
+    // reports VK_LMENU/VK_RMENU and VK_LSHIFT/VK_RSHIFT, never VK_MENU or VK_SHIFT.
+    [[nodiscard]] static std::int32_t LocalOffsetStepMs(const PhantomCore::InputState &input) noexcept;
     // While held (the pointer rests on the loading screen's play settings), a prepared attempt
     // waits before scheduling its start; the music stays prepared.
     void SetStartHeld(bool held) noexcept { startHeld_ = held; }
