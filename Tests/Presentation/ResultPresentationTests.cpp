@@ -641,9 +641,19 @@ namespace
             const auto *text = node ? node->GetComponent<TextVisualComponent>() : nullptr;
             return text ? std::wstring(text->Text()) : std::wstring{};
         };
-        Check(HasText(*canvas, texts.Get("Result.maximumCombo")) && textOf("Result.Score") == L"12,345,678" &&
-                  textOf("Result.MaximumCombo") == std::to_wstring(taiko->summary.maximumCombo),
+        Check(HasText(*canvas, texts.Get("Result.maximumCombo")) && textOf("Result.Score") == L"12,345,678",
               "The result must display the carried score inside the ring and the maximum combo beside accuracy.");
+        Check(textOf("Result.MaximumCombo") == std::to_wstring(taiko->summary.maximumCombo) + L"/" +
+                                                   std::to_wstring(taiko->summary.totalNotes),
+              "The maximum combo reads as reached out of the notes that can add to it.");
+        // Note Statistics: combo-counted notes out of each group, then ticks taken out of all ticks.
+        Check(taiko->groups[0].succeeded == std::optional<std::size_t>{3} && textOf("Result.NoteStatistics.0") == L"3/3",
+              "Three GREAT normal notes read 3/3 under Notes.");
+        Check(textOf("Result.NoteStatistics.1") == L"0/0" && textOf("Result.NoteStatistics.3") == L"0/0",
+              "Empty groups and ticks read 0/0.");
+        Check(HasText(*canvas, texts.Get("Result.groupTitle")) && HasText(*canvas, texts.Get("Result.groups.1")) &&
+                  !HasText(*canvas, L"97.26%"),
+              "The group panel is Note Statistics with counts, not accuracies.");
         for(const auto key:{"scrollSpeed","mirror","random","accelerate","judgeLevel","ignoreScrollEffects"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
         Check(FindNode(canvas->Root(),"Result.Option.metronome")==nullptr,"The metronome does not change the play and has no tile.");

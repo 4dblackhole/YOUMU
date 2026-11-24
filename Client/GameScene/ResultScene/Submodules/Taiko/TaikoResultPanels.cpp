@@ -7,6 +7,9 @@
 #include <climits>
 #include <cmath>
 #include <numbers>
+#include <optional>
+#include <string>
+#include <utility>
 
 using namespace PhantomCore;
 
@@ -149,24 +152,28 @@ void TaikoResultView::BuildJudgements(Visual2DNode &root)
                     {22, 800, Ink, TextAlignment::Trailing});
         Fill(root, {x, y + rowHeight - 1, columnWidth, 1}, ui_colors::theme::Rule);
     }
-    const auto &text = Result(texts_);
-    Label(root, {Margin, 482, 150, 21}, std::wstring(text.ticks), {13, 400, InkSoft});
-    NumberLabel(root, {ColumnRight - 200, 482, 200, 21}, Format(text.tickFormat, result_.acceptedTicks, result_.missedTicks),
-                {17, 800, Ink, TextAlignment::Trailing});
 }
 void TaikoResultView::BuildGroups(Visual2DNode &root)
 {
+    // Note Statistics: notes that added to the combo out of each group's notes, then ticks taken out of all ticks.
+    // A record stored before the combo-counted notes were kept shows a dash in their place.
     const auto &text = Result(texts_);
-    Label(root, {Margin, 513, LeftWidth, 20}, std::wstring(text.groupTitle), {14, 900, Ink});
-    constexpr float top = 541, rowHeight = 28;
+    Label(root, {Margin, 486, LeftWidth, 20}, std::wstring(text.groupTitle), {14, 900, Ink});
+    constexpr float top = 512, rowHeight = 28;
+    const auto ratio = [&](std::optional<std::size_t> part, std::size_t whole) {
+        return part ? Format(text.ratioFormat, *part, whole) : Format(text.ratioFormat, L"—", whole);
+    };
+    std::array<std::pair<std::wstring_view, std::wstring>, 4> rows{};
     for (std::size_t i = 0; i < result_.groups.size(); ++i)
+        rows[i] = {text.groups[i], ratio(result_.groups[i].succeeded, result_.groups[i].total)};
+    rows[3] = {text.ticks, ratio(result_.acceptedTicks, result_.acceptedTicks + result_.missedTicks)};
+    for (std::size_t i = 0; i < rows.size(); ++i)
     {
         const float y = top + static_cast<float>(i) * rowHeight;
-        Label(root, {Margin, y, 220, rowHeight - 4}, std::wstring(text.groups[i]), {13, 400, InkSoft});
-        const auto &group = result_.groups[i];
-        NumberLabel(root, {ColumnRight - 160, y, 160, rowHeight - 4},
-                    group.total ? AccuracyText(group.accuracy) : std::wstring(texts_.Get("Result.emptyPercent")),
-                    {17, 800, Ink, TextAlignment::Trailing});
+        Label(root, {Margin, y, 220, rowHeight - 4}, std::wstring(rows[i].first), {13, 400, InkSoft});
+        auto &value = NumberLabel(root, {ColumnRight - 160, y, 160, rowHeight - 4}, rows[i].second,
+                                  {17, 800, Ink, TextAlignment::Trailing});
+        value.SetName("Result.NoteStatistics." + std::to_string(i));
         Fill(root, {Margin, y + rowHeight - 4, LeftWidth, 1}, ui_colors::theme::Rule);
     }
     const auto &summary = result_.summary;
@@ -185,12 +192,14 @@ void TaikoResultView::BuildSummary(Visual2DNode &root)
           {13, 700, Caption, TextAlignment::Trailing});
     const auto accuracy = AccuracyText(result_.summary.accuracy);
     const auto number = accuracy.substr(0, accuracy.size() - 1);
-    const float numberWidth = EstimateNumberWidth(number, 56);
-    auto &accuracyLabel = NumberLabel(root, {Margin, 258, 250, 70}, number, {56, 800, Ink});
+    const float numberWidth = EstimateNumberWidth(number, AccuracySize);
+    auto &accuracyLabel = NumberLabel(root, {Margin, 258, 250, 56}, number, {AccuracySize, 800, Ink});
     accuracyLabel.SetName("Result.Accuracy");
-    NumberLabel(root, {Margin + numberWidth + 4, 283, 32, 31}, L"%", {26, 700, InkSoft}, false);
-    auto &combo = NumberLabel(root, {ColumnRight - 160, 276, 160, 40}, std::to_wstring(result_.summary.maximumCombo),
-                              {32, 800, Ink, TextAlignment::Trailing});
+    NumberLabel(root, {Margin + numberWidth + 4, 278, 32, 26}, L"%", {22, 700, InkSoft}, false);
+    // The maximum combo out of the notes that can add to it (one per logical note), right under its caption.
+    auto &combo = NumberLabel(root, {ColumnRight - 200, 258, 200, 40},
+                              Format(text.ratioFormat, result_.summary.maximumCombo, result_.summary.totalNotes),
+                              {28, 800, Ink, TextAlignment::Trailing});
     combo.SetName("Result.MaximumCombo");
     Fill(root, {Margin, 337, LeftWidth, 1}, ui_colors::theme::RuleStrong);
     BuildJudgements(root);

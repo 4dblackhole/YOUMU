@@ -12,7 +12,7 @@ ResultTextSet Result(const TextCatalog &texts)
             texts.Get("Result.end"),
             texts.Get("Result.judgements"),
             texts.Get("Result.ticks"),
-            texts.Get("Result.tickFormat"),
+            texts.Get("Result.ratioFormat"),
             texts.Get("Result.groupTitle"),
             texts.Get("Result.rank"),
             texts.Get("Result.score"),

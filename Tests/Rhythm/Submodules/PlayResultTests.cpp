@@ -183,6 +183,8 @@ namespace tests
                 "Population variance must exclude automatic misses and free roll hits.");
         Require(taiko->groups[0].total == 2 && taiko->groups[1].total == 1 && taiko->groups[2].total == 1,
                 "A POOR normal note scores zero; groups retain partial roll accuracy and note weights.");
+        Require(taiko->groups[2].succeeded == std::optional<std::size_t>{1} && taiko->groups[0].succeeded.has_value(),
+                "The roll that took a hit counts toward its group's combo-counted notes.");
         Require(taiko->notes[0].accuracy.Units() == 0 && taiko->notes[2].accuracy.Units() == 33'333'333 &&
                 taiko->notes[3].accuracy.Units() == 0,
                 "A POOR normal note scores zero; groups retain partial roll accuracy and note weights.");
