@@ -91,6 +91,11 @@ EXE TargetName도 같은 속성에서 계산하며 Windows 파일명에 사용�
 관리합니다. 현재 세 언어는 Windows의 `Segoe UI`와 시스템 글꼴 fallback을 사용합니다. 시스템
 글꼴은 `TextFontSource::System`, 배포 글꼴 파일은 `TextFontSource::File`로
 지정할 수 있습니다. 파일 글꼴을 배포할 때는 글꼴 파일 옆에 라이선스를 함께 둡니다.
+
+엔진의 입력 상자(Windows EDIT)는 게임 렌더러가 아니라 GDI가 그리므로 설치된 글꼴과 이 프로세스가 등록한 글꼴만 씁니다.
+그래서 숫자 칸 입력 상자의 Barlow Semi Condensed Medium은 `Presentation/NativeInputFonts`가 내장 파일(`ui_fonts`가 한 번
+찾아 둔 경로)을 처음 쓸 때 이 프로세스에만 등록하고(`FR_PRIVATE`, 시스템 설치 없음) 종료 때 지웁니다. 등록하지 못하면 이름으로
+요청한 채 Windows의 대체 글꼴로 보이고 게임은 계속합니다. 글자 칸 입력 상자는 Segoe UI입니다.
 리절트는 Penpot 지정 글꼴인 내장 Noto Sans KR을 별도로 사용합니다.
 경로는 `Client/App/AssetPaths.h`의 `NotoSansKR()`, 굵기·크기는 TaikoResultView의 Label/Button 호출에서
 정하며 두 언어에 같은 글꼴을 적용합니다. 파일·라이선스는 [BuiltInAssets](Assets.md)에 있습니다.
