@@ -105,8 +105,22 @@ namespace tests
         batch.events = {hit, completed, poor};
         batch.finalizedAccuracies = {accuracy};
         collector.Consume(batch, true);
+        Require(collector.Statistics().combo == 1 && collector.Statistics().poorCount == 1,
+                "A POOR counts at once but leaves the combo of the note completed before it in the same batch.");
+        // GAME-05: the combo settles when the POOR note finishes; left alone it is a MISS.
+        NoteEvent missed = poor;
+        missed.type = NoteEventType::Missed;
+        missed.stateAfter = NoteState::Missed;
+        NoteAccuracy missedAccuracy;
+        missedAccuracy.noteId = 2;
+        missedAccuracy.finalized = true;
+        missedAccuracy.hitScoreRates = {0};
+        NoteProcessResult settle;
+        settle.events = {missed};
+        settle.finalizedAccuracies = {missedAccuracy};
+        collector.Consume(settle, false);
         Require(collector.Statistics().combo == 0 && collector.Statistics().maximumCombo == 1,
-                "A later rejection must break the combo after an earlier completion in the same batch.");
+                "The POOR note breaks the combo when it settles and the maximum stays.");
         collector.ResetJudgements();
         Require(collector.Statistics().combo == 0 && collector.Statistics().maximumCombo == 0 &&
                     collector.Statistics().poorCount == 0, "Reset removes all HUD statistics.");
@@ -174,8 +188,10 @@ namespace tests
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
         Require(taiko->summary.accuracy.Units() == expectedSum / 4,
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
-        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 2 && taiko->judgements[5] == 0,
+        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 1 && taiko->judgements[5] == 0,
                 "Count graded inputs once; releases and blanks are never POOR.");
+        Require(taiko->judgements[static_cast<std::size_t>(JudgementGrade::Bad)] == 1,
+                "The GREAT that answers the first note's POOR is a BAD recovery and counts as a BAD (GAME-05).");
         Require(taiko->poorCount == 1 && taiko->okCount == 1,
                 "A roll that took one of its three hits is an OK, not a MISS.");
         Require(taiko->timingErrors.size() == 3 && taiko->meanErrorMilliseconds &&
@@ -298,9 +314,11 @@ namespace tests
                     grade(NoteAccuracyKind::Ticks, 0, 100, 0, 89) == JudgementGrade::Good,
                 "Tick ratios use the timing grades' score boundaries: 99% PERFECT, 90% GREAT.");
         Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 10, {1.0}) == JudgementGrade::Max &&
-                    grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {1.0}) == JudgementGrade::Good,
+                    grade(NoteAccuracyKind::Hold, 1, 10, 1, 1, {1.0}) == JudgementGrade::Good,
                 "A Buzz averages its head score and body ticks before choosing the grade.");
-        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {0.0}) == JudgementGrade::Good,
-                "A Buzz whose head was accepted at a zero score is still processed, so it is not a MISS.");
+        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 1, {0.0}) == JudgementGrade::Good,
+                "A Buzz whose head was accepted at a zero score but took a tick is processed, so it is not a MISS.");
+        Require(grade(NoteAccuracyKind::Hold, 1, 10, 1, 0, {1.0}) == JudgementGrade::Miss,
+                "GAME-05: a Buzz that took no body tick ends as a MISS, even after a MAX head.");
     }
 } // namespace tests

@@ -147,10 +147,11 @@ namespace tests
             auto loaded = TaikoMode{}.CreateSession(pattern);
             Require(loaded.Succeeded(), "Large BAD fixture must load.");
             auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
             static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
-            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, RhythmTime{70'000}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, {}));
             Require(session.AccuracyRate() == 0.0 && session.Statistics().combo == 0,
-                    "One BAD input settles the whole large note as a BAD with no combo.");
+                    "An early BAD answered on one hand settles the whole large note as a BAD with no combo.");
             Require(session.Statistics().judgements[0] == 1 && bad(session.Statistics()) == 1,
                     "Large-note inputs still count one by one.");
         }
@@ -158,14 +159,17 @@ namespace tests
             auto pattern = MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"});
             pattern.notes.back().position.fraction = Rational{9, 16};
             const std::array held{static_cast<PhysicalKey>('C')};
-            auto lateHead = TaikoMode{}.CreateSession(pattern);
-            Require(lateHead.Succeeded(), "Buzz BAD fixture must load.");
-            static_cast<void>(lateHead.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{70'000}));
-            static_cast<void>(lateHead.session->Update(RhythmTime{1'125'000}, held));
-            const auto rate = lateHead.session->AccuracyRate();
+            auto badHead = TaikoMode{}.CreateSession(pattern);
+            Require(badHead.Succeeded(), "Buzz BAD fixture must load.");
+            // The head only takes GOOD or better, so its BAD is an early BAD answered by the head press (GAME-05).
+            static_cast<void>(badHead.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(badHead.session->ProcessInput('C', InputEdge::Released, RhythmTime{-60'000}));
+            static_cast<void>(badHead.session->ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(badHead.session->Update(RhythmTime{1'125'000}, held));
+            const auto rate = badHead.session->AccuracyRate();
             Require(rate && *rate > 0.0 && *rate <= 0.5, "A BAD Buzz head scores zero while its ticks keep their half.");
-            Require(lateHead.session->Statistics().okCount == 0 && bad(lateHead.session->Statistics()) == 1 &&
-                        lateHead.session->Statistics().maximumCombo == 0,
+            Require(badHead.session->Statistics().okCount == 0 && bad(badHead.session->Statistics()) == 1 &&
+                        badHead.session->Statistics().maximumCombo == 0,
                     "A BAD Buzz head counts one BAD, no OK, and no combo.");
 
             auto emptyBody = TaikoMode{}.CreateSession(pattern);
