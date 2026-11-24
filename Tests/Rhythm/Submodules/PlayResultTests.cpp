@@ -52,11 +52,13 @@ namespace tests
                 "A late BAD adds its signed error to the live timing sum.");
         hit('C', 2'500'000);
         hit('D', 3'000'000);
-        Require(session.Statistics().combo == 0 && session.Statistics().poorCount == 1,
-                "A real POOR immediately breaks combo; key releases never add POOR.");
+        Require(session.Statistics().combo == 1 && session.Statistics().poorCount == 1,
+                "A POOR counts at once but its note's combo waits for the note to finish; releases never add POOR.");
         hit('C', 3'000'000);
-        Require(session.Statistics().combo == 1 && session.Statistics().maximumCombo == 3,
-                "A later accepted completion starts a new combo and preserves the maximum.");
+        Require(session.Statistics().combo == 0 && session.Statistics().maximumCombo == 3,
+                "The MAX that answers a POOR is a BAD recovery: it breaks the combo and keeps the maximum.");
+        Require(session.Statistics().judgements[0] == 4 && session.Statistics().judgements[4] == 2,
+                "A BAD recovery counts as a BAD, not as its own grade.");
         session.RewindJudgements(RhythmTime{2'000'000});
         statistics = session.Statistics();
         Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.poorCount == 0,

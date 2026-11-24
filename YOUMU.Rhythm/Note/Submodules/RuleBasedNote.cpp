@@ -112,13 +112,16 @@ NoteProcessResult RuleBasedNote::ProcessInput(const RhythmInputEvent &input)
 {
     NoteProcessResult result;
     const JudgementResult judgement = Preview(input);
+    const bool judgesTiming = JudgesTiming();
+    const bool retrying = retryAfterEarlyBad_ || retryAfterPoor_;
     rule_->ProcessInput(Context(), input, judgement, result);
-    const bool judgesTiming = accuracy_.target.kind == NoteAccuracyKind::TimingHits ||
-                              (accuracy_.target.kind == NoteAccuracyKind::Hold && accuracy_.acceptedHits == 0);
     if (judgesTiming && input.edge == InputEdge::Pressed && std::ranges::any_of(result.events, IsRejectedGoodInput))
     {
         poorOnTimingTarget_ = true;
+        retryAfterPoor_ = true;
+        retryAfterEarlyBad_ = false;
     }
+    MarkTimingOutcome(result, judgesTiming, retrying);
     for (NoteEvent &event : result.events)
     {
         if (event.type == NoteEventType::HitAccepted ||
@@ -150,6 +153,43 @@ NoteProcessResult RuleBasedNote::MarkMissed(const RhythmTime time)
     return result;
 }
 
+bool RuleBasedNote::JudgesTiming() const noexcept
+{
+    // Timing notes judge every hit; a Buzz judges only its head.
+    return accuracy_.target.kind == NoteAccuracyKind::TimingHits ||
+           (accuracy_.target.kind == NoteAccuracyKind::Hold && accuracy_.acceptedHits == 0);
+}
+
+void RuleBasedNote::MarkTimingOutcome(NoteProcessResult &result, const bool judgedTiming, const bool retrying)
+{
+    if (!judgedTiming)
+        return;
+    for (NoteEvent &event : result.events)
+    {
+        const bool head = event.type == NoteEventType::HitAccepted || event.type == NoteEventType::HoldStarted;
+        if (!head)
+            continue;
+        // The hit that answers an early BAD or a POOR is a BAD recovery; a late BAD is a BAD by itself.
+        event.recovery = retrying;
+        if (retrying || event.judgement.grade == JudgementGrade::Bad)
+            badOnTimingTarget_ = true;
+    }
+    const bool answered = std::ranges::any_of(result.events, [](const NoteEvent &event) {
+        return event.type == NoteEventType::HitAccepted;
+    });
+    if (answered)
+        retryAfterEarlyBad_ = retryAfterPoor_ = false;
+}
+
+void RuleBasedNote::RecordEarlyBad() noexcept
+{
+    if (!JudgesTiming())
+        return;
+    badOnTimingTarget_ = true;
+    retryAfterEarlyBad_ = true;
+    retryAfterPoor_ = false;
+}
+
 void RuleBasedNote::Reset() noexcept
 {
     rule_->Reset();
@@ -157,7 +197,9 @@ void RuleBasedNote::Reset() noexcept
     accuracy_.acceptedHits = 0;
     accuracy_.acceptedTicks = 0;
     accuracy_.finalized = false;
-    poorOnTimingTarget_ = false;
+    accuracy_.rejectedTiming = false;
+    poorOnTimingTarget_ = badOnTimingTarget_ = false;
+    retryAfterEarlyBad_ = retryAfterPoor_ = false;
 }
 
 void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
@@ -166,13 +208,14 @@ void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
     {
         return;
     }
-    for (const NoteEvent &event : result.events)
+    for (NoteEvent &event : result.events)
     {
+        const bool rejected = poorOnTimingTarget_ || badOnTimingTarget_;
         if (event.type == NoteEventType::HitAccepted)
         {
             if (event.hitIndex < accuracy_.hitScoreRates.size())
             {
-                accuracy_.hitScoreRates[event.hitIndex] = poorOnTimingTarget_ ? 0.0 : event.judgement.scoreRate;
+                accuracy_.hitScoreRates[event.hitIndex] = rejected ? 0.0 : event.judgement.scoreRate;
             }
             ++accuracy_.acceptedHits;
         }
@@ -189,8 +232,11 @@ void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
         }
         else if (event.type == NoteEventType::Completed || event.type == NoteEventType::Missed)
         {
-            if (poorOnTimingTarget_)
+            // A BAD, early BAD or POOR settles the timing target (every hit, or only a Buzz head) at zero.
+            if (rejected)
                 std::ranges::fill(accuracy_.hitScoreRates, 0.0);
+            accuracy_.rejectedTiming = rejected;
+            event.leftAtEarlyBad = event.type == NoteEventType::Missed && retryAfterEarlyBad_;
             accuracy_.finalized = true;
             result.finalizedAccuracies.push_back(accuracy_);
             break;

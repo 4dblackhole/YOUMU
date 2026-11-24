@@ -99,6 +99,7 @@ NoteProcessResult Lane::ProcessInput(const RhythmInputEvent& input,
             *current,
             currentJudgement,
             input.time));
+        current->RecordEarlyBad();
         return result;
     }
 

@@ -80,7 +80,8 @@ class GameplayJudgementView final
     // lines that are still fading out. No per-hit node or image is created.
     std::array<HitLine, 64> hitLines_{};
     std::uint64_t nextLineOrder_{};
-    std::array<PhantomCore::Visual2DNode *, 7> judgementImages_{};
+    // MAX..POOR, then the BAD-recovery words for MAX..GOOD.
+    std::array<PhantomCore::Visual2DNode *, 11> judgementImages_{};
     PhantomCore::Visual2DNode *activeJudgement_{};
     double judgementElapsedSeconds_{FeedbackSeconds};
 };

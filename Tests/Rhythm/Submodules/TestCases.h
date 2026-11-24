@@ -71,6 +71,7 @@ namespace tests
     void TestMeasureLineScrollEffects();
     void TestBalloonDengDengAndBuzzRules();
     void TestTimingAccuracyAndSessionAggregation();
+    void TestBadRecovery();
     void TestPoorSingleNoteAccuracy();
     void TestPoorLargeNoteAccuracy();
     void TestBuzzTickColorFocus();

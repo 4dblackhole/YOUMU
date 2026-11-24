@@ -128,7 +128,9 @@ namespace
     }
     void CheckOverlay(Visual2DNode &root, const std::string_view word)
     {
-        constexpr std::array names{"MAX", "PERFECT", "GREAT", "GOOD", "BAD", "MISS", "POOR"};
+        constexpr std::array names{"MAX",          "PERFECT",          "GREAT",          "GOOD",         "BAD", "MISS",
+                                   "POOR",         "Recovery.MAX",     "Recovery.PERFECT", "Recovery.GREAT",
+                                   "Recovery.GOOD"};
         for (const auto name : names)
             Check(Node(root, "Lane.Judgement." + std::string(name)).IsVisible() == (word == name),
                   "Exactly the expected judgement image must be visible.");
@@ -275,16 +277,34 @@ namespace
         view.Present(Event(NoteEventType::TickAccepted, JudgementGrade::Unjudged));
         CheckOverlay(root, "");
         view.Present(Event(NoteEventType::TickRejected, JudgementGrade::Unjudged));
-        CheckOverlay(root, "POOR");
-        Check(VisibleHitLines(root) == 0, "A wrong-color tick must show POOR without a head timing line.");
+        CheckOverlay(root, "");
+        Check(VisibleHitLines(root) == 0, "A wrong colour over a tick only leaves it unprocessed: no POOR word or line.");
         NoteProcessResult rejectedTick;
         rejectedTick.events.push_back(Event(NoteEventType::TickRejected, JudgementGrade::Unjudged));
         const auto rejectedColor = LaneKeyBeam::InputColor(rejectedTick);
-        Check(rejectedColor.red > .9F && rejectedColor.green < .3F,
-              "A wrong-color tick triggered by a press must use the POOR beam color.");
+        Check(rejectedColor.red > .9F && rejectedColor.green > .9F && rejectedColor.blue > .9F,
+              "A wrong colour over a tick keeps the plain white beam, not the POOR colour.");
         view.Present(Event(NoteEventType::Missed, JudgementGrade::Miss, RhythmDuration{500'000}));
         CheckOverlay(root, "MISS");
         Check(VisibleHitLines(root) == 0, "Automatic MISS must not invent an input hit line.");
+        // BAD recovery: the GOOD..MAX that answers an early BAD or a POOR shows the purple-tinted word.
+        for (const auto [grade, word] : std::array<std::pair<JudgementGrade, const char *>, 4>{
+                 {{JudgementGrade::Max, "Recovery.MAX"},
+                  {JudgementGrade::Perfect, "Recovery.PERFECT"},
+                  {JudgementGrade::Great, "Recovery.GREAT"},
+                  {JudgementGrade::Good, "Recovery.GOOD"}}})
+        {
+            auto recovered = Event(NoteEventType::HitAccepted, grade);
+            recovered.recovery = true;
+            view.Present(recovered);
+            CheckOverlay(root, word);
+        }
+        view.Present(Event(NoteEventType::InputRejected, JudgementGrade::Bad, RhythmDuration{-70'000}));
+        CheckOverlay(root, "BAD");
+        auto leftAtBad = Event(NoteEventType::Missed, JudgementGrade::Miss, RhythmDuration{500'000});
+        leftAtBad.leftAtEarlyBad = true;
+        view.Present(leftAtBad);
+        CheckOverlay(root, "BAD");
 
         const auto count = NodeCount(root);
         const auto loads = renderer.loads;

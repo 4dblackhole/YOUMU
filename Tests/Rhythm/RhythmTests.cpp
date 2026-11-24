@@ -102,6 +102,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestMeasureLineScrollEffects", TestMeasureLineScrollEffects},
         {"TestBalloonDengDengAndBuzzRules", TestBalloonDengDengAndBuzzRules},
         {"TestTimingAccuracyAndSessionAggregation", TestTimingAccuracyAndSessionAggregation},
+        {"TestBadRecovery", TestBadRecovery},
         {"TestPoorSingleNoteAccuracy", TestPoorSingleNoteAccuracy},
         {"TestPoorLargeNoteAccuracy", TestPoorLargeNoteAccuracy},
         {"TestBuzzTickColorFocus", TestBuzzTickColorFocus},

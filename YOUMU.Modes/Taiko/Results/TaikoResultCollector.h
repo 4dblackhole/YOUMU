@@ -29,6 +29,8 @@ class TaikoResultCollector final : public IPlayResultCollector
     std::unique_ptr<TaikoPlayResult> result_;
     std::unordered_map<NoteId, std::size_t> noteIndices_;
     std::vector<bool> comboEligible_;
+    // Notes missed while left at an early BAD settle as a BAD.
+    std::vector<bool> settlesAsBad_;
     std::size_t combo_{};
     RhythmDuration timingErrorSum_{}; // Running sum of result_->timingErrors.
 };

@@ -24,4 +24,6 @@ class INote
     [[nodiscard]] virtual NoteProcessResult Update(const NoteUpdateContext &update) = 0;
     [[nodiscard]] virtual NoteProcessResult MarkMissed(RhythmTime time) = 0;
     virtual void Reset() noexcept = 0;
+    // The lane reports an early BAD on this note's timing target; the note stays in focus and settles as a BAD.
+    virtual void RecordEarlyBad() noexcept {}
 };

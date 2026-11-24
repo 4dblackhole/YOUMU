@@ -60,7 +60,21 @@ struct NoteEvent
     std::size_t hitIndex{};
     std::size_t tickIndex{};
     std::optional<NoteAction> inputAction;
+    // BAD recovery: an accepted hit (or Buzz head) that came after an early BAD or a POOR on the same
+    // timing target. It shows its own grade but settles as a BAD.
+    bool recovery{};
+    // A miss of a note last left at an early BAD: it settles as a BAD, not a MISS, with no new word shown.
+    bool leftAtEarlyBad{};
 };
+
+// The lane's early BAD: a press within BAD before the note, reported while the note keeps its focus.
+// A note rule only rejects later presses, so a rejected BAD with a negative error is always this one.
+[[nodiscard]] inline bool IsEarlyBad(const NoteEvent &event) noexcept
+{
+    if (event.type != NoteEventType::InputRejected || event.judgement.grade != JudgementGrade::Bad)
+        return false;
+    return event.judgement.signedError < RhythmDuration::zero();
+}
 
 struct AudioCueRequest
 {
@@ -98,6 +112,8 @@ struct NoteAccuracy
     std::size_t acceptedHits{};
     std::size_t acceptedTicks{};
     bool finalized{};
+    // The timing target (all hits, or a Buzz head) took a BAD, an early BAD or a POOR; its hit scores are zero.
+    bool rejectedTiming{};
 
     [[nodiscard]] AccuracyScore Score() const noexcept;
     [[nodiscard]] double ScoreRate() const noexcept { return Score().Rate(); }

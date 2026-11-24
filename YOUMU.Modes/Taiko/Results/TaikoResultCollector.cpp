@@ -9,6 +9,18 @@ namespace
 {
     return type == TaikoNoteType::TickRoll || type == TaikoNoteType::BigTickRoll || type == TaikoNoteType::Buzz;
 }
+// A long note whose timing head settled as a BAD (late BAD, early BAD or POOR), or that has body ticks and took
+// none of them, breaks the combo. Only a Buzz has both a timing head and body ticks; rolls have neither.
+[[nodiscard]] bool LongNoteFailed(const NoteAccuracy &accuracy) noexcept
+{
+    if (accuracy.rejectedTiming)
+        return true;
+    return accuracy.target.ticks != 0 && accuracy.acceptedTicks == 0;
+}
+[[nodiscard]] bool HeadAlreadyCountedBad(const NoteAccuracy &accuracy, bool retired) noexcept
+{
+    return !retired && accuracy.rejectedTiming && accuracy.acceptedHits != 0;
+}
 } // namespace
 
 TaikoResultGroup ResultGroup(TaikoNoteType type) noexcept
@@ -28,6 +40,7 @@ TaikoResultCollector::TaikoResultCollector(PlayResultSummary summary, std::size_
     result_->summary.inputs.reserve(reserveNotes);
     noteIndices_.reserve(reserveNotes);
     comboEligible_.reserve(reserveNotes);
+    settlesAsBad_.reserve(reserveNotes);
 }
 void TaikoResultCollector::RegisterNote(NoteId id, TaikoNoteType type, RhythmTime time)
 {
@@ -35,6 +48,7 @@ void TaikoResultCollector::RegisterNote(NoteId id, TaikoNoteType type, RhythmTim
         throw std::logic_error("Result note IDs must be unique.");
     result_->notes.push_back({id, type, time});
     comboEligible_.push_back(true);
+    settlesAsBad_.push_back(false);
 }
 void TaikoResultCollector::RecordInput(const RhythmInputEvent &input)
 {
@@ -66,14 +80,15 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     const auto grade = static_cast<std::size_t>(event.judgement.grade);
     if (event.type == NoteEventType::Completed || event.type == NoteEventType::Missed)
         result_->notes[found->second].finalState = event.stateAfter;
+    if (event.type == NoteEventType::Missed && event.leftAtEarlyBad)
+        settlesAsBad_[found->second] = true;
     if (event.type == NoteEventType::HitAccepted && grade < 5)
     {
-        if (event.judgement.grade == JudgementGrade::Bad)
-        {
-            combo_ = 0;
+        // A BAD recovery shows its own grade but counts as a BAD; the combo settles when the note finishes.
+        const bool bad = event.recovery || event.judgement.grade == JudgementGrade::Bad;
+        if (bad)
             comboEligible_[found->second] = false;
-        }
-        ++result_->judgements[grade];
+        ++result_->judgements[bad ? static_cast<std::size_t>(JudgementGrade::Bad) : grade];
         result_->timingErrors.push_back({event.noteId, event.hitIndex, event.eventTime, event.judgement.signedError,
                                          event.judgement.grade,
                                          AccuracyScore::FromRate(event.judgement.scoreRate)});
@@ -82,19 +97,16 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     else if (keyPressed && event.type == NoteEventType::InputRejected &&
              IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good))
     {
+        // A POOR counts now; the note's combo settles when it finishes (user decision).
         ++result_->poorCount;
-        combo_ = 0;
+        comboEligible_[found->second] = false;
     }
+    else if (keyPressed && IsEarlyBad(event))
+        comboEligible_[found->second] = false; // An early BAD counts once the note settles.
     else if (event.type == NoteEventType::TickAccepted && CountsAcceptedTicks(result_->notes[found->second].type))
         ++result_->acceptedTicks;
-    else if (event.type == NoteEventType::TickMissed)
-        ++result_->missedTicks;
-    else if (event.type == NoteEventType::TickRejected)
-    {
-        ++result_->missedTicks;
-        ++result_->poorCount;
-        combo_ = 0;
-    }
+    else if (event.type == NoteEventType::TickMissed || event.type == NoteEventType::TickRejected)
+        ++result_->missedTicks; // A wrong colour held over a tick only leaves that tick unprocessed.
     // HoldStarted and Completed carry head judgements too; ignoring them
     // here prevents a single Buzz press from producing duplicate samples.
 }
@@ -121,7 +133,8 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
     const bool longNote = ResultGroup(note.type) == TaikoResultGroup::Roll;
     // A long note that took any hit or tick counts as OK and keeps the combo; only one left
     // completely unprocessed is a MISS (user decision). Retire still turns it into a MISS.
-    const bool longNoteProgressed = !retired && accuracy.HasProgress();
+    // A Buzz also needs a clean head and at least one body tick (user decision).
+    const bool longNoteProgressed = !retired && accuracy.HasProgress() && !LongNoteFailed(accuracy);
     const bool shortNoteHit = note.finalState == NoteState::Completed && comboEligible_[found->second];
     const bool success = longNote ? longNoteProgressed : shortNoteHit;
     note.comboCounted = success;
@@ -134,6 +147,10 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
         combo_ = 0;
     if (longNote && success)
         ++result_->okCount;
+    else if (note.finalState == NoteState::Missed && settlesAsBad_[found->second])
+        ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Bad)];
+    else if (longNote && HeadAlreadyCountedBad(accuracy, retired))
+        return; // A Buzz head BAD or recovery already counted as its BAD.
     else if (note.finalState == NoteState::Missed || longNote)
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Miss)];
 }
@@ -193,6 +210,7 @@ void TaikoResultCollector::ResetJudgements() noexcept
     result_->okCount = result_->poorCount = result_->acceptedTicks = result_->missedTicks = 0;
     combo_ = result_->summary.maximumCombo = 0;
     std::fill(comboEligible_.begin(), comboEligible_.end(), true);
+    std::fill(settlesAsBad_.begin(), settlesAsBad_.end(), false);
 }
 PlayStatistics TaikoResultCollector::Statistics() const noexcept
 {

@@ -169,8 +169,8 @@ bool RhythmTestScene::PreparePresentation()
     for (const auto &lane : session.Gear().Lanes())
         for (const auto &note : lane->Notes())
             hpNotes.push_back({note->Id(), note->Accuracy().target,
-                note->Profile().HalfWindow(JudgementGrade::Perfect),
-                note->Profile().HalfWindow(JudgementGrade::Great)});
+                note->Profile().HalfWindow(JudgementGrade::Great),
+                note->Profile().HalfWindow(JudgementGrade::Good)});
     hpGauges_.push_back(CreateHpGauge(launch_.playOptions.hpGauge, session.HealthLevel(), hpNotes));
     std::vector<IHpGauge *> borrowedGauges;
     for (const auto &gauge : hpGauges_) borrowedGauges.push_back(gauge.get());
