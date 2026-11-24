@@ -3,6 +3,8 @@
 #include "Records/RecordOptionText.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "TestSupport.h"
+#include <algorithm>
+#include <array>
 #include <cctype>
 #include <fstream>
 #include <iterator>
@@ -284,7 +286,7 @@ namespace tests
                 "Invalid queries never mutate stored records.");
     }
 
-    void TestOldRecordSchemaSetAside()
+    void TestOldRecordSchemaDeleted()
     {
         TemporaryDirectory directory("youmu-record-schema");
         const auto database = directory.Path() / "Result" / "plays.sqlite3";
@@ -318,23 +320,20 @@ namespace tests
         const auto pattern = directory.Path() / "pattern.ymp";
         Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).empty(),
                 "Opening a schema-1 database starts the records over.");
-        const auto setAside = database.parent_path() / "plays.v1.sqlite3";
-        Require(schemaOf(setAside) == 1 && schemaOf(database) == PlayRecordStore::SchemaVersion,
-                "The old database is kept beside the new one as plays.v1.sqlite3.");
+        const auto files = std::ranges::distance(std::filesystem::directory_iterator(database.parent_path()));
+        Require(files == 1 && schemaOf(database) == PlayRecordStore::SchemaVersion,
+                "The old database is deleted and only the new one is left in its folder.");
         PlayRecord record;
         record.patternPath = pattern;
         record.mode = "Taiko";
-        PlayRecordStore(database).Save(record);
         std::filesystem::remove(database);
         writeSchemaOne();
         PlayRecordStore(database).Save(record);
-        Require(schemaOf(database.parent_path() / "plays.v1 (2).sqlite3") == 1 && schemaOf(setAside) == 1,
-                "A second old database takes the next free name and the first stays.");
         Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).size() == 1,
                 "Saving into a schema-1 database keeps only the new record.");
     }
 
-    void TestRecordOldRulesSetAside()
+    void TestRecordOldRulesDeleted()
     {
         TemporaryDirectory directory("youmu-record-rules");
         const auto database = directory.Path() / "plays.sqlite3";
@@ -390,33 +389,43 @@ namespace tests
                 "PRAGMA user_version=" +
                 std::to_string(schema));
         };
-        // User decision: records made by the rules before BAD recovery are all dropped. The file is only renamed.
+        const auto exists = [&](const char *name) { return std::filesystem::exists(directory.Path() / name); };
+        // User decision: records made by the rules before BAD recovery are all dropped and their files deleted.
         for (const int schema : {2, 3})
         {
             std::filesystem::remove(database);
             writeOld(schema);
             Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).empty(),
                     "A schema-2 or schema-3 database starts the records over.");
-            const auto aside = directory.Path() / ("plays.v" + std::to_string(schema) + ".sqlite3");
-            Require(scalar(aside, "PRAGMA user_version") == schema && scalar(aside, "SELECT COUNT(*) FROM Plays") == 1,
-                    "The old file is kept beside the new one under its own version, records and all.");
+            Require(!exists("plays.v2.sqlite3") && !exists("plays.v3.sqlite3"),
+                    "The old file is deleted, not kept beside the new one.");
             Require(scalar(database, "PRAGMA user_version") == PlayRecordStore::SchemaVersion,
                     "The new database starts at the current schema.");
         }
-        // A name already taken moves the next old file to the first free name; the earlier one stays.
-        std::filesystem::remove(database);
-        writeOld(3);
+        // Files earlier builds set aside are deleted on open; names of any other form stay.
+        constexpr std::array setAside{"plays.v3.sqlite3", "plays.v3 (2).sqlite3", "plays.v1.sqlite3-journal",
+                                      "plays.v2 (12).sqlite3-wal", "plays.v3.sqlite3-shm"};
+        constexpr std::array unrelated{"plays.backup.sqlite3", "plays.v3.sqlite3.bak", "plays.v.sqlite3",
+                                       "plays.v3 (x).sqlite3", "plays.v3 ().sqlite3", "other.v3.sqlite3",
+                                       "plays.v3.sqlite3-old", "plays.v3 (2)sqlite3"};
+        const auto writeFiles = [&](const auto &names)
+        {
+            for (const auto *name : names)
+                std::ofstream(directory.Path() / name) << "fixture";
+        };
+        writeFiles(setAside);
+        writeFiles(unrelated);
         PlayRecord record;
         record.patternPath = pattern;
         record.mode = "Taiko";
         PlayRecordStore(database).Save(record);
-        Require(scalar(directory.Path() / "plays.v3 (2).sqlite3", "PRAGMA user_version") == 3 &&
-                    scalar(directory.Path() / "plays.v3.sqlite3", "SELECT COUNT(*) FROM Plays") == 1,
-                "A second schema-3 file takes plays.v3 (2).sqlite3 and plays.v3.sqlite3 stays.");
+        Require(std::ranges::none_of(setAside, exists), "Every set-aside database file is deleted.");
+        Require(std::ranges::all_of(unrelated, exists), "Files of any other name are left alone.");
         Require(PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10).size() == 1,
-                "Saving into a set-aside database keeps only the new record.");
-        // A newer schema than this build knows is reported and left alone.
+                "The current database keeps its record.");
+        // A newer schema than this build knows is reported and left alone, with the files beside it.
         std::filesystem::remove(database);
+        writeFiles(setAside);
         run(database, "CREATE TABLE Plays (Id INTEGER PRIMARY KEY); PRAGMA user_version=" +
                           std::to_string(PlayRecordStore::SchemaVersion + 1));
         bool failed{};
@@ -430,6 +439,7 @@ namespace tests
         }
         Require(failed && scalar(database, "PRAGMA user_version") == PlayRecordStore::SchemaVersion + 1,
                 "A newer database reports the error and stays as it was.");
+        Require(std::ranges::all_of(setAside, exists), "A newer database leaves the files beside it too.");
     }
 
     void TestRecordResultDetail()

@@ -21,8 +21,8 @@ namespace tests
     void TestAcceleratedClockAndWindows();
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
-    void TestOldRecordSchemaSetAside();
-    void TestRecordOldRulesSetAside();
+    void TestOldRecordSchemaDeleted();
+    void TestRecordOldRulesDeleted();
     void TestRecordResultDetail();
     void TestRecordOptionText();
     void TestLocalOffsetStore();
