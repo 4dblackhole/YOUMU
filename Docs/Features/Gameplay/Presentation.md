@@ -92,7 +92,7 @@ Transform 한 곳에서 지정합니다. Lane 아래의 노트·판정원·키�
 │  │  ├─ Lane.JudgementCircle         판정원
 │  │  │  ├─ Lane.JudgementCircle.Highlight 같은 판정원 그림의 옅은 금빛 덧그림
 │  │  │  ├─ Lane.JudgementCircle.HighlightRing 바깥 금빛 고리
-│  │  │  └─ Lane.Judgement.{등급}      MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR 판정 글자(판정원 바로 위)
+│  │  │  └─ Lane.Judgement.{등급}      MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR와 Recovery.MAX~GOOD 판정 글자(판정원 바로 위)
 │  │  ├─ Lane.MeasureLine *           마디선
 │  │  └─ Lane.Notes                   노트 사이의 앞뒤 순서를 격리하는 레이어
 │  │     └─ Lane.Note.{id} *          노트별 표시 루트
@@ -306,11 +306,11 @@ BAD·MISS·OK·POOR)이며 이름 앞에 판정 색 점을 둡니다. 화면 가
 종료 시점의 이 점수를 리절트 화면에 전달합니다.
 
 콤보·최대 콤보·MAX/PERFECT/GREAT/GOOD/BAD/MISS/OK/POOR 누적은 세션의 결과 수집기가
-소유하며 UI는 `PlaySession::Statistics()`의 값만 읽습니다. 일반·큰·보라 노트는 GOOD 이상
-완료 시 논리 노트당 1, 롤 계열은 OK(타격·틱을 하나라도 처리한 완료) 시 1을 더합니다. 큰 노트의 첫 입력과
-롱노트의 개별 타격/틱은 별도 콤보가 아닙니다. BAD·MISS·POOR는 콤보를 0으로 만듭니다.
-BAD를 받은 일반·큰·보라 노트의 완료는 콤보를 더하지 않습니다. POOR 뒤 유효 완료는
-새 콤보를 시작할 수 있으며 정확도의 기존 POOR 패널티는 유지합니다.
+소유하며 UI는 `PlaySession::Statistics()`의 값만 읽습니다. 콤보는 노트 처리가 완전히 끝났을 때 계산합니다(사용자 결정).
+일반·큰·보라 노트는 BAD·early BAD·POOR·[BAD 복귀](Rules.md#bad-복귀-판정) 없이 GOOD 이상으로 완료하면 논리 노트당 1,
+롤 계열은 OK(타격·틱을 하나라도 처리한 완료) 시 1을 더합니다. Buzz는 헤드가 깨끗하고 몸통 틱을 하나 이상 처리해야 OK입니다.
+큰 노트의 첫 입력과 롱노트의 개별 타격/틱은 별도 콤보가 아닙니다. 그 밖의 완료·MISS는 콤보를 0으로 만듭니다.
+POOR나 early BAD는 그 순간 콤보를 바꾸지 않고, 그 노트가 끝날 때 0이 됩니다.
 
 누적 판정의 정의는 [리절트 집계](Results.md#점수와-판정-개수)와 같습니다. Retry/Reset은
 현재·최대 콤보와 판정 횟수를 초기화하고, Rewind/뒤로 탐색은 남은 판정 이력으로 다시
@@ -392,13 +392,17 @@ MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR는 판정 글자만 담은 투명 PNG 7종�
 Taiko Lane의 -90° 회전을 되돌려 글자를 똑바로 표시합니다.
 최근 판정 하나를 200ms 선형 페이드로 표시합니다. POOR 조건은 적색 키빔과 동일한
 Good 이내 InputRejected이며 BAD는 기존 조기/늦은 Bad 입력을 표시합니다.
+[BAD 복귀](Rules.md#bad-복귀-판정)의 GOOD~MAX 타격은 같은 글자의 아래가 보라로 물든 `Judgements.Recovery.<등급>`
+글자(4종)를 보이고, early BAD 상태로 놓친 노트는 MISS 글자를 새로 띄우지 않습니다(이미 BAD를 보였음).
+Buzz 몸통에서 반대 색을 눌러 처리하지 못한 틱은 POOR 글자·적색 키빔을 보이지 않습니다.
 한 입력에서 이전 노트의 MISS와 다음 노트의 성공이 함께 오면 실제 입력 응답을 우선합니다.
 reset/되감기/종료 시 타격 막대와 판정 글자를 숨깁니다.
 
 롤·큰 롤·틱롤·큰 틱롤·풍선·뎅뎅·버즈는 끝날 때 **처리 비율에 맞는 판정 글자**를 같은 200ms 수명으로 표시합니다(사용자 지시).
 처리 비율은 그 노트의 정확도(`NoteAccuracy::ScoreRate`: 친 횟수/목표, 성공 틱/전체, Buzz는 헤드 점수 1/2 + 몸통 1/2)이고,
 글자는 일반 타이밍 판정의 점수 경계를 그대로 씁니다: 100% MAX, 99% 이상 PERFECT, 90% 이상 GREAT, 그 밖은 GOOD.
-타격·틱을 하나도 처리하지 못했을 때만 MISS입니다(`NoteAccuracy::CompletionGrade`). 노트 종류별 분기는 없고
+타격·틱을 하나도 처리하지 못했을 때와, 헤드는 쳤지만 몸통 틱을 하나도 처리하지 못한 Buzz가 MISS입니다
+(`NoteAccuracy::CompletionGrade`). 노트 종류별 분기는 없고
 표시 쪽은 확정된 노트 정확도만 읽습니다. 점수/노트 상태/오디오 규칙은 바꾸지 않습니다.
 예전의 OK 글자 그림은 쓰지 않아 지웠습니다. 결과 화면의 OK 수는 [Results](Results.md)를 따릅니다.
 다른 노트의 실제 입력 판정이 동시에 있으면 기존 입력 우선순위를 유지합니다.
@@ -410,7 +414,7 @@ reset/되감기/종료 시 타격 막대와 판정 글자를 숨깁니다.
 Reset은 처리 개수를 0으로 되돌립니다.
 
 
-7종 PNG는 내장 기본 스킨 팩에 포함됩니다. 선택 스킨 INI의 `Judgements.*` 매핑이 우선하고
+11종 PNG(7종과 복귀용 4종)는 내장 기본 스킨 팩에 포함됩니다. 선택 스킨 INI의 `Judgements.*` 매핑이 우선하고
 누락된 판정 이미지만 내장본으로 대체합니다. 그림 크기·색·교체 규칙은
 [판정 글자 그림](../Assets.md#판정-글자-그림)에 있습니다.
 

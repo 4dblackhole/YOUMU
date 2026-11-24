@@ -187,7 +187,7 @@ UTF-8 BOM과 CRLF/LF를 허용합니다. `;`/`#`로 시작하는 전체 줄만 �
 | 섹션 | 이미지 항목 |
 | --- | --- |
 | `Logo` | `Background`(화면 전체 하늘), `Sky.Feather`, `Menu.Button`, `Menu.ButtonSelected`, `SelectionCursor`, 음악 플레이어의 `Player.ArtFrame`·`Player.PlayButton`·`Player.SeekTrack`·`Player.SeekFill`·`Player.SeekKnob` |
-| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`POOR`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
+| `InGame` | 노트·오버레이·롱노트·틱·특수 노트, 레인·판정원·키/불빛, `Judgements.MAX`~`POOR`, `Judgements.Recovery.MAX`~`GOOD`, `Progress.Background/Track/Fill/Marker`, `Hud.HpGauge.Frame/FillLow/FillClear/ClearMarker/Lock`, `Hud.ScorePanel/JudgeCountsPanel/TimingPanel`, `PauseBackdrop`, `Pause.Row[.Selected]`, `Pause.Stepper[.Selected]`, `Pause.PrepTrack/PrepFill` |
 | `MusicSelect` | `Background`, `Panels.Sheet/SheetEdge`, `Detail.Jacket/JacketEmpty/DifficultyBlock/LevelBadge`, `Records.Selector`, `Records.Row`, `Records.Band`, `Category.Selected/Hovered`, `SearchField`, `SortSelector`, `SongCard/SongCardFocused`, `Difficulty/DifficultySelected`, `AddDifficulty`, `BottomBar`, `Back`, `ModeSelector`, `PlayOptions`, `OptionSelect`, `Go`, `GoError` |
 | `Result` | `Background.Sky`, `Panels.Left/Right`, `Banner`, `BottomBar`, `ModeBadge`, `Mode.Taiko`, `Rank.Ring`, `Rank.Y/X/SS/S/AA/A/B/C/D/E/F`, `Options.Tile`, `Options.Accelerate/Mirror/Random/JudgeLevel/ScrollSpeed/IgnoreScrollEffects/MaxStrokes`, `BackButton/RetryButton/ReplayButton` |
 | `Loading` | `Card`(가로 띠), `BarTrack`, `BarFill` |
@@ -282,6 +282,11 @@ Sprite의 알파 합성으로 덮습니다. 행(799×78)·값 선택기(258×54,
 | BAD.png | 보라 |
 | MISS.png | 회색 |
 | POOR.png | 빨강 |
+| Recovery.MAX.png ~ Recovery.GOOD.png | 같은 등급 글자의 면 아래쪽(높이의 35%부터)이 보라(#B24AFF)로 물듦, 테두리는 그대로 |
+
+`Recovery.*`는 [BAD 복귀 판정](Gameplay/Rules.md#bad-복귀-판정)의 GOOD~MAX 글자입니다(스킨 키 `Judgements.Recovery.MAX`~`GOOD`).
+`YOUMU.Assets/Scripts/MakeRecoveryJudgements.ps1`이 같은 폴더의 MAX~GOOD PNG에서 다시 만듭니다(`-Preview`는 확대 비교 그림).
+사용자 스킨에 이 키가 없으면 다른 요소처럼 내장 INI의 경로와 PNG를 씁니다.
 
 교체 시 정확한 대문자 문구, 짙은 남색 글자 윤곽과 투명 알파를 유지하고 글자 둘레에 여백을 두지 않습니다.
 런타임은 1080p 기준 크기(픽셀 ÷ 1.5)로 그리고 글자 아래 끝을 판정원 위 끝보다 6 위에 둡니다.

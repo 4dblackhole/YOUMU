@@ -50,12 +50,13 @@ Taiko는 일반(Don/Kat), 큰(BigDon/BigKat/Purple), 롤 계열로 노트를 나
 Ticks의 `처리한 틱/전체 틱`을 보여 줍니다(사용자 결정: 퍼센트 대신 처리/전체, 처리는 GOOD 이상).
 그룹 정확도는 결과 데이터와 기록에 남지만 화면에는 보이지 않습니다.
 
-- MAX/PERFECT/GREAT/GOOD/BAD: 실제 `HitAccepted`의 타이밍 판정 개수입니다.
+- MAX/PERFECT/GREAT/GOOD/BAD: 실제 `HitAccepted`의 타이밍 판정 개수입니다. [BAD 복귀](Rules.md#bad-복귀-판정) 타격은 자기 등급이
+  아니라 BAD로 세고, early BAD 상태로 놓친 노트도 MISS가 아니라 BAD로 셉니다.
   큰/보라 노트의 두 입력은 각각 셉니다. Buzz의 `HoldStarted`는 중복 집계하지 않습니다.
 - OK: 롤 계열 중 타격·틱을 하나라도 처리하고 끝난 노트입니다(사용자 결정: 조금이라도 처리하면 OK, 콤보 유지). 정확도는 처리 비율 그대로입니다.
 - MISS: 실패로 확정된 논리 노트입니다. 롤 계열은 타격·틱을 하나도 처리하지 못했거나 Retire로 끝난 경우입니다.
-- POOR: Good 이내에서 거부된 **Pressed** 입력과 잘못된 색을 유지해 거부된 Buzz 몸통 틱입니다.
-  몸통의 각 `TickRejected`는 POOR 1개와 미처리 틱 1개로 집계하며 헤드 오차 표본을 만들지 않습니다.
+- POOR: Good 이내에서 거부된 **Pressed** 입력입니다. 잘못된 색을 유지해 처리하지 못한 Buzz 몸통 틱은 POOR가 아니라 미처리 틱입니다(사용자 결정).
+  몸통의 각 `TickRejected`는 미처리 틱 1개로만 집계하며 헤드 오차 표본을 만들지 않습니다.
   빈 입력과 키 해제(`InputEdge::Released`)는 포함하지 않습니다.
 - 유지/틱롤의 성공·실패 틱은 별도 집계합니다. 자유 연타 입력은 타이밍 판정으로 세지 않습니다.
 
