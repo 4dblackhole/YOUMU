@@ -30,11 +30,12 @@ void GameplaySessionController::PauseAt(std::int64_t ticks, bool menuShown)
 }
 bool GameplaySessionController::ResumeFromPause(const UpdateContext &context, RhythmDuration leadIn)
 {
-    if (leadIn < RhythmDuration{500'000} || leadIn > RhythmDuration{3'000'000})
-        throw std::invalid_argument("Resume lead-in must be between 0.5 and 3 seconds.");
+    if (leadIn < RhythmDuration{} || leadIn > RhythmDuration{3'000'000})
+        throw std::invalid_argument("Resume lead-in must be between 0 and 3 seconds.");
     if (!pauseMenuOpen_ || !CanContinue())
         return false;
-    // Preserve note rules, judgement history and score. Only the transport moves.
+    // Preserve note rules, judgement history and score. Only the transport moves; a zero lead-in
+    // continues from the paused time.
     return ContinueAt(context, time_ - leadIn, PlayControlType::Resume);
 }
 bool GameplaySessionController::ContinueAt(const UpdateContext &context, RhythmTime target,
