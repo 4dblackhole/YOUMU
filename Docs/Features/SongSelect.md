@@ -49,6 +49,7 @@ View와 조립하고 View의 전환 의도를 처리합니다([미리듣기와 �
   결과 화면을 다시 연다. 이 결과는 다시 저장하지 않으므로 기록 저장 줄이 없고, Back은 곡 선택으로 돌아가며
   Retry는 선택한 패턴을 그 기록의 플레이 옵션(Random 시드 포함)으로 플레이한다. 상세를 읽지 못하면 공용 경고 대화상자
   (`Record not opened`)가 원인을 보여 주고 기록은 그대로 둔다.
+  기록 줄을 우클릭하면 메뉴 없이 바로 그 기록을 지울지 묻는다([기록 삭제](#기록-삭제)).
   기록 줄에 포인터를 올려 두면 줄에 없는 정보를 툴팁으로 보여 준다. 툴팁은 줄의 오른쪽에 큰 글자(15px, 폭 최대 380)로 뜬다
   (사용자 결정 2026-11-22). 플레이 모드는 하단의 게임 모드와 같으므로 넣지 않는다(사용자 결정). 첫 줄은 그 플레이의
   JudgeLevel(`Judge 70.00`)·최대 콤보(`Combo 321`), 그 아래 개별 판정 수 8개를 두 개씩 네 줄(MAX·PERFECT / GREAT·GOOD / BAD·OK /
@@ -257,10 +258,27 @@ SceneStateTests와 RunMusicSelectViewTests는 같은 패턴 AND, 실제 인덱�
   휴지통에 넣을 수 없는 항목(네트워크 드라이브 등)은 Windows가 영구 삭제 전에 한 번 더 묻는다. 실패하면 `Not deleted` 알림이
   원인을 보여 준다. 기록 DB·컬렉션·곡별 오프셋은 그대로 둔다(해시·경로가 없는 항목은 표시되지 않을 뿐).
 
-`SongContextMenu`는 메뉴 판과 항목, `SongSelectMenu.cpp`는 우클릭 판정(`SongListView::ContextTargetAt`)·항목 실행·삭제 확인을,
+### 기록 삭제
+
+기록 줄을 우클릭하면 메뉴 없이 바로 그 기록을 지울지 공용 알림으로 묻는다(사용자 요청 2026-11-24). 곡 삭제와 같은 규칙이다.
+
+- 제목은 `Delete record?`이고, 설명(선택 언어)은 기록 DB에서 지우며 기록에는 휴지통이 없어 되돌릴 수 없다는 문장이다.
+- 상세 상자에는 곡과 `[난이도]` 이름, 랭크·SCORE·정확도, 상태(`Cleared` 등)와 기본과 다른 옵션, 플레이 시각
+  (`2026.11.24 04:31 UTC`, 툴팁과 같은 형식)을 적는다.
+- 왼쪽 끝의 `Delete`만 지우고, `Cancel`·Enter·Esc는 아무것도 바꾸지 않는다. 다른 알림이 그 위에 뜨면 묻던 삭제는 버린다.
+- 확인하면 기록 칸의 worker가 `PlayRecordStore::Delete`(그 `Id` 한 줄)를 먼저 실행하고, 같은 작업에서 지금 쪽을 다시 읽는다.
+  그래서 지운 기록이 잠깐 다시 보이는 일이 없고 화면 스레드는 기다리지 않는다. 걸려 있는 기록 필터는 그대로다.
+- 마지막 쪽의 마지막 줄을 지워 쪽이 비면 그 앞 쪽을 보인다. 기록 칸이 보여 주는 개인 기록은 이 목록뿐이므로 다른 표시는 따로 갱신하지 않는다.
+- 지우지 못하면(쓰기 금지된 DB 등) 기록은 그대로 두고 `Record not deleted` 알림이 원인을 보여 준다.
+- 결과 화면이 열려 있는 동안에는 곡 선택이 입력을 받지 않으므로 그 사이에 지울 수 없다. 이미 열어 둔 기록의 결과 화면은
+  결과를 복사해 갖고 있어, 나중에 그 기록을 지워도 바뀌지 않는다.
+
+`SongContextMenu`는 메뉴 판과 항목, `SongSelectMenu.cpp`는 우클릭 판정(`SongListView::ContextTargetAt`, 기록 줄은
+`SongRecordView::RecordAt`)·항목 실행·삭제 확인을,
 `MusicSelectScene`은 Edit·휴지통·탐색기 실행을 소유한다. 회귀: TestSongDeletionPlan(공유 YME, 빈 차트 세트, Songs 밖·Songs 자체 거부, 대소문자),
 RunMusicSelectViewTests의 TestSongContextMenu(난이도 줄·곡 카드 메뉴 항목, Esc, Open folder·New difficulty 명령, 삭제 확인의 Enter 취소와
-Delete 확인, 넘기는 경로). 실제 휴지통 이동과 탐색기 열기는 사용자 파일을 건드리므로 자동 검사하지 않는다.
+Delete 확인, 넘기는 경로), TestRecordDeletion(우클릭 확인 창과 상세, Enter·Esc·Cancel 유지, Delete 뒤 다시 읽기, 마지막 쪽의 마지막 줄,
+필터 유지, 쓰기 금지 DB의 실패 알림), 로직 테스트 TestRecordFilters(`Delete`가 그 한 줄만 지움, 없는 기록·없는 DB). 실제 휴지통 이동과 탐색기 열기는 사용자 파일을 건드리므로 자동 검사하지 않는다.
 
 ## 컬렉션(즐겨찾기 폴더)
 
