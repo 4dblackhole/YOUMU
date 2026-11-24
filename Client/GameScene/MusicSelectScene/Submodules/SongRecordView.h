@@ -37,6 +37,17 @@ public:
     [[nodiscard]] SongRecordAction ProcessAction(const PhantomCore::Action& action);
     // The record whose row was clicked (OpenRecord), once.
     [[nodiscard]] std::optional<PlayRecord> TakeOpenedRecord() noexcept { return std::exchange(openedRecord_, std::nullopt); }
+    // The record whose row the pointer is on; a right-click there asks to delete it.
+    [[nodiscard]] std::optional<PlayRecord> RecordAt(PhantomCore::NodeId hovered) const;
+    // What the delete confirmation shows of a record: rank, score, accuracy, status, options and play time.
+    [[nodiscard]] std::wstring DescribeRecord(const PlayRecord &record) const;
+    // Deletes record `id` on the record worker, then reads the page again; a page left empty steps back one.
+    void DeleteRecord(std::int64_t id);
+    // Why the last delete failed, once; the record stays.
+    [[nodiscard]] std::optional<std::string> TakeDeleteError() noexcept
+    {
+        return std::exchange(deleteError_, std::nullopt);
+    }
     void Shutdown() noexcept;
 
 private:
@@ -47,6 +58,12 @@ private:
     {
         PlayRecord record;
         std::vector<std::pair<std::string_view, std::size_t>> judgements;
+    };
+    // One worker run: a pending delete first, then the page read again.
+    struct Page
+    {
+        std::vector<LoadedRecord> rows;
+        std::string deleteError;
     };
     void Show(const std::vector<LoadedRecord>& records);
     // The afterimage icon and the stroke count left of the date; returns where the details line ends.
@@ -61,7 +78,9 @@ private:
     std::filesystem::path database_;
     RecordFilterPanel filterPanel_;
     RecordFilter filter_;
-    std::future<std::vector<LoadedRecord>> job_;
+    std::future<Page> job_;
+    std::optional<std::int64_t> pendingDelete_;
+    std::optional<std::string> deleteError_;
     UiTooltip *tooltip_{};
     std::filesystem::path pattern_;
     std::string mode_, query_;

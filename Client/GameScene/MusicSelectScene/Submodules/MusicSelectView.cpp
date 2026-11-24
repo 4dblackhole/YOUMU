@@ -228,6 +228,7 @@ void MusicSelectView::ShowAlert(AlertContent content)
     // Native text boxes would float above the alert, so their panels close without applying. A delete
     // waiting for its answer is dropped: only the confirmation that asked about it may approve it.
     pendingDeletion_.reset();
+    pendingRecordDeletion_.reset();
     songMenu_.Close();
     filterPanel_.Close();
     favoritesPanel_.Close();

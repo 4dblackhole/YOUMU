@@ -1,6 +1,7 @@
 #include "Records/RecordFilter.h"
 #include "Records/PlayRecordStore.h"
 #include "TestSupport.h"
+#include <algorithm>
 #include <limits>
 
 namespace tests
@@ -101,5 +102,18 @@ namespace tests
         try { static_cast<void>(ParseRecordFilter(strokes)); }
         catch (const std::invalid_argument &) { rejected = true; }
         Require(rejected, "A stroke count outside 1-4 is rejected.");
+
+        // Deleting one record removes that row only; a second delete finds nothing, and a missing database
+        // is left missing.
+        const auto before = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 20);
+        Require(before.size() == 9 && PlayRecordStore(database).Delete(before[3].id),
+                "A stored record can be deleted.");
+        const auto after = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 20);
+        const bool gone = std::ranges::none_of(after, [&](const PlayRecord &r) { return r.id == before[3].id; });
+        Require(after.size() == 8 && gone && after[3].id == before[4].id, "Only the deleted record is gone.");
+        Require(!PlayRecordStore(database).Delete(before[3].id), "Deleting a record that is gone finds nothing.");
+        const auto missing = directory.Path() / "missing.sqlite3";
+        Require(!PlayRecordStore(missing).Delete(1) && !std::filesystem::exists(missing),
+                "Deleting from a missing database creates nothing.");
     }
 }

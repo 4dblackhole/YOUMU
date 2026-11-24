@@ -11,6 +11,8 @@
 #include "Mode/PlayGameModeFactory.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "Presentation/AccuracyText.h"
+#include "Presentation/RankName.h"
+#include "Presentation/ScoreText.h"
 #include "Presentation/MarqueeTextComponent.h"
 #include "Presentation/PerformanceBand.h"
 #include <chrono>
@@ -1718,6 +1720,198 @@ namespace
         static_cast<void>(view.Update(keys,.2));
         Check(!panel->IsVisible(), "Ctrl+O closes global settings.");
     }
+    // A right-click on a record row asks at once whether to delete that record (user request). Only Delete
+    // deletes it, from the record database; the page is read again, a page left empty steps back, a filter stays,
+    // and a failed delete keeps the record and says so.
+    void TestRecordDeletion()
+    {
+        namespace fs = std::filesystem;
+        const auto directory = fs::temp_directory_path() /
+            ("YOUMU-record-delete-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        fs::create_directories(directory);
+        const auto database = directory / "plays.sqlite3", patternPath = directory / "fixture.ymp";
+        struct Cleanup
+        {
+            fs::path path, database;
+            ~Cleanup()
+            {
+                std::error_code e;
+                fs::permissions(database, fs::perms::owner_all, e);
+                fs::remove_all(path, e);
+            }
+        } cleanup{directory, database};
+        std::ofstream(patternPath) << "Mode: Taiko";
+        PlayRecord record;
+        record.patternPath = patternPath;
+        record.mode = "Taiko";
+        record.completed = record.cleared = true;
+        record.totalNotes = record.processedNotes = 1;
+        for (int i = 0; i < 8; ++i)
+        {
+            record.options.random = i % 2 == 0;
+            record.playedAtMilliseconds = 1'795'000'000'000 + i * 60'000;
+            record.accuracy = AccuracyScore::FromRate(.90 + i * .001);
+            record.score = static_cast<std::uint32_t>(90'000'000 + i * 1'000);
+            PlayRecordStore(database).Save(record);
+        }
+        const auto stored = [&] { return PlayRecordStore(database).Query(patternPath, "Taiko", "", 0, 20); };
+        Renderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts("Client/Texts/Languages");
+        OptionSettings options(directory / "Option.ini");
+        SongSelectionState selection;
+        SongCatalogEntry song;
+        song.music.names.push_back("Delete fixture");
+        SongCatalogPattern pattern;
+        pattern.patternPath = patternPath;
+        pattern.pattern.mode = "Taiko";
+        pattern.pattern.name = "Recorded";
+        song.patterns.push_back(pattern);
+        selection.catalog_.songs.push_back(std::move(song));
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, selection, SongSelectPurpose::Gameplay, texts,
+                                                                 options, database);
+        auto &view = *viewOwner;
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        auto *canvas = visuals.FindCanvas(1);
+        Check(canvas != nullptr, "Record deletion owns its selection canvas.");
+        InputState input;
+        const auto rows = [&]() -> std::vector<Visual2DNode *> {
+            std::vector<Visual2DNode *> shown;
+            for (const auto &row : Need(Find(canvas->Root(), "RecordRows"), "The record rows exist.").Children())
+                shown.push_back(row.get());
+            return shown;
+        };
+        const auto textOf = [](Visual2DNode &node, const char *name)
+        {
+            const auto *child = Find(node, name);
+            return child ? std::wstring(child->GetComponent<TextVisualComponent>()->Text()) : std::wstring{};
+        };
+        const auto waitFor = [&](const auto &done, const char *message)
+        {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+            do
+            {
+                static_cast<void>(view.Update(input, 0));
+                if (done())
+                    return;
+                std::this_thread::sleep_for(std::chrono::milliseconds{1});
+            } while (std::chrono::steady_clock::now() < deadline);
+            throw std::runtime_error(message);
+        };
+        const auto topScore = [&](std::uint32_t score)
+        {
+            return [&, score]
+            {
+                const auto shown = rows();
+                return !shown.empty() && textOf(*shown.front(), "Score") == ScoreText(score);
+            };
+        };
+        const auto rightClick = [&](const Visual2DNode &node)
+        {
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Mouse(input, Centre(node), 0);
+            InputStateTestAccess::RightButton(input, true);
+            static_cast<void>(view.Update(input, 0));
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::RightButton(input, false);
+            static_cast<void>(view.Update(input, 0));
+        };
+        const auto press = [&](std::uint16_t key)
+        {
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Key(input, key, true);
+            static_cast<void>(view.Update(input, 0));
+            InputStateTestAccess::Begin(input);
+            InputStateTestAccess::Key(input, key, false);
+            static_cast<void>(view.Update(input, 0));
+        };
+        const auto alert = [&]() -> Visual2DNode & { return Need(Find(canvas->Root(), "Alert"), "The alert exists."); };
+        const auto answer = [&](const char *button)
+        {
+            Click(*canvas, Need(Find(canvas->Root(), button), "The confirmation has its buttons."));
+            static_cast<void>(view.Update(input, 0));
+        };
+        waitFor([&] { return rows().size() == 6; }, "The first record page did not show.");
+
+        // Newest first: the top row is the eighth play. The confirmation names the chart and the play.
+        rightClick(*rows().front());
+        Check(alert().IsVisible() && textOf(canvas->Root(), "Alert.Title") == L"Delete record?",
+              "A right-click on a record row asks at once whether to delete that record.");
+        Check(textOf(canvas->Root(), "Alert.Message").find(L"cannot be undone") != std::wstring::npos,
+              "The confirmation says a deleted record cannot come back.");
+        {
+            const auto newest = stored().front();
+            auto *box = Find(canvas->Root(), "Alert.Detail");
+            const auto detail = box ? textOf(*box, "Text") : std::wstring{};
+            const auto line = std::wstring(RankName(newest.accuracy)) + L" · " + ScoreText(newest.score) + L" · " +
+                              AccuracyText(newest.accuracy);
+            const bool named = detail.starts_with(L"Delete fixture [Recorded]\n" + line + L"\nCleared\n");
+            Check(named && detail.ends_with(L" UTC"),
+                  "The confirmation lists the chart, the rank, score and accuracy, the status and the play time.");
+        }
+        // Enter, Esc and Cancel leave the record.
+        static_cast<void>(view.Update(input, 0));
+        press(VK_RETURN);
+        Check(!alert().IsVisible() && stored().size() == 8, "Enter keeps the record.");
+        rightClick(*rows().front());
+        static_cast<void>(view.Update(input, 0));
+        press(VK_ESCAPE);
+        Check(!alert().IsVisible() && stored().size() == 8, "Esc keeps the record.");
+        rightClick(*rows().front());
+        static_cast<void>(view.Update(input, 0));
+        answer("Alert.Button1");
+        Check(!alert().IsVisible() && stored().size() == 8, "Cancel keeps the record.");
+        // Delete removes it, and the page is read again at once.
+        rightClick(*rows().front());
+        static_cast<void>(view.Update(input, 0));
+        answer("Alert.Button0");
+        waitFor(topScore(90'006'000), "The page did not show the record after the deleted one.");
+        Check(stored().size() == 7 && rows().size() == 6, "Delete removes that one record and the page is read again.");
+
+        // The last row of the last page: the page before it is shown.
+        Click(*canvas, Need(Find(canvas->Root(), "RecordNext"), "Seven records have a second page."));
+        static_cast<void>(view.Update(input, 0));
+        waitFor([&] { return rows().size() == 1; }, "The second record page did not show.");
+        rightClick(*rows().front());
+        static_cast<void>(view.Update(input, 0));
+        answer("Alert.Button0");
+        waitFor([&] { return rows().size() == 6 && textOf(canvas->Root(), "RecordPage") == L"1"; },
+                "Deleting the last row of the last page did not step back a page.");
+        Check(stored().size() == 6 && !Need(Find(canvas->Root(), "RecordNext"), "Next exists.").IsVisible(),
+              "With six records left there is one page.");
+
+        // A filter stays on: the deleted record goes and the rest of the filtered page stays.
+        Click(*canvas, Need(Find(canvas->Root(), "RecordQuery"), "The query button exists."));
+        static_cast<void>(view.Update(input, 0));
+        Click(*canvas, Need(Find(canvas->Root(), "RecordFilter.Choice.1.1"), "Random On exists."));
+        static_cast<void>(view.Update(input, 0));
+        Click(*canvas, Need(Find(canvas->Root(), "RecordFilter.Apply"), "Apply exists."));
+        static_cast<void>(view.Update(input, 0));
+        waitFor([&] { return rows().size() == 3; }, "The Random filter did not show its three plays.");
+        rightClick(*rows().front());
+        static_cast<void>(view.Update(input, 0));
+        answer("Alert.Button0");
+        waitFor([&] { return rows().size() == 2; }, "The filtered page did not drop the deleted record.");
+        bool filtered = stored().size() == 5;
+        for (auto *row : rows())
+            filtered = filtered && textOf(*row, "Options") == L"RD";
+        Check(filtered, "After a delete the filter still limits the page.");
+
+        // A database that cannot be written keeps the record and says so.
+        fs::permissions(database, fs::perms::owner_read | fs::perms::group_read | fs::perms::others_read);
+        rightClick(*rows().front());
+        static_cast<void>(view.Update(input, 0));
+        answer("Alert.Button0");
+        waitFor([&] { return alert().IsVisible() && textOf(canvas->Root(), "Alert.Title") == L"Record not deleted"; },
+                "A failed delete was not reported.");
+        Check(stored().size() == 5, "A failed delete keeps the record.");
+        fs::permissions(database, fs::perms::owner_all);
+        view.Shutdown();
+    }
     // While the shared alert is open, Enter and Esc answer it and never reach song select.
     // The notation option switches every shown song and chart text and the name order at once.
     void TestNotationOption()
@@ -1876,6 +2070,7 @@ int main()
         TestFavoriteFolders();
         TestHpInformation();
         TestRecordHistoryView();
+        TestRecordDeletion();
         TestAlertHoldsKeys();
         TestNotationOption();
         TestOsuImportPanel();

@@ -17,6 +17,13 @@ bool MusicSelectView::ProcessSongMenu(const InputState &input)
     const bool canOpen = rightPressed && !options_.IsVisible() && !selection_.catalogLoading_;
     if (canOpen)
     {
+        // A record row has no menu: the right-click asks at once whether to delete that record (user request).
+        if (const auto record = records_.RecordAt(inputRouter_.HoveredNode()))
+        {
+            AskToDeleteRecord(*record);
+            static_cast<void>(canvas_->TakeActions());
+            return true;
+        }
         if (const auto target = songList_.ContextTargetAt(inputRouter_.HoveredNode()))
         {
             OpenSongMenu(*target);
@@ -133,9 +140,30 @@ void MusicSelectView::AskToDelete(const SongCatalogEntry &song, const std::optio
     }
 }
 
+void MusicSelectView::AskToDeleteRecord(const PlayRecord &record)
+{
+    const auto text = [this](const char *key) { return std::wstring(texts_.Get(key)); };
+    // The detail names the chart, then what tells this play apart from the others.
+    std::wstring chart;
+    const auto *song = FocusedSong();
+    if (song != nullptr && selection_.selectedPatternIndex_ < song->patterns.size())
+        chart = SongTitle(*song, selection_.notation_) + L" [" +
+                PatternName(song->patterns[selection_.selectedPatternIndex_], selection_.notation_) + L"]\n";
+    ShowAlert({AlertKind::Warning, text("Records.deleteTitle"), text("Records.deleteMessage"),
+               chart + records_.DescribeRecord(record),
+               {{text("SongMenu.delete"), false, true, false}, {text("SongMenu.cancel"), true, false, true}}});
+    pendingRecordDeletion_ = record.id;
+}
+
 void MusicSelectView::AnswerDeletion(const std::optional<std::size_t> chosen)
 {
-    if (!chosen || !pendingDeletion_)
+    if (!chosen)
+        return;
+    // Only Delete deletes; Cancel, Enter and Esc leave the record.
+    if (*chosen == DeleteButton && pendingRecordDeletion_)
+        records_.DeleteRecord(*pendingRecordDeletion_);
+    pendingRecordDeletion_.reset();
+    if (!pendingDeletion_)
         return;
     if (*chosen == DeleteButton)
     {

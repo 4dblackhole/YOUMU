@@ -45,6 +45,9 @@ class PlayRecordStore final
                                   std::string_view condition, std::size_t offset, std::size_t limit) const;
     // The saved result detail of record `id`; empty when the record keeps none or is gone.
     [[nodiscard]] std::string LoadDetail(std::int64_t id) const;
+    // Removes record `id` for good (there is no recycle bin); false when it was already gone. Throws on a
+    // database error, leaving the record where it was.
+    bool Delete(std::int64_t id) const;
 
   private:
     std::filesystem::path path_;
