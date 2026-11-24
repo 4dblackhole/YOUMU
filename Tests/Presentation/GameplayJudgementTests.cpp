@@ -1145,10 +1145,13 @@ namespace
               "Updates/resizes reuse every number node and image independently of note pooling.");
         const auto accuracy = Node(root, "Hud.Accuracy").BoundsInCanvas();
         const auto panel = Node(root, "Hud.ScorePanel").BoundsInCanvas();
-        Check(Near(panel.y + panel.height, 360 - 24) && accuracy.x >= panel.x && Near(accuracy.width, 133),
-              "Accuracy keeps a fixed 100.00% width in the top-right panel, left of the score.");
-        Check(accuracy.x + accuracy.width <= Node(root, "Hud.Score").BoundsInCanvas().x,
-              "Accuracy keeps a fixed 100.00% width in the top-right panel, left of the score.");
+        const auto score = Node(root, "Hud.Score").BoundsInCanvas();
+        const bool panelAtTopRight = Near(panel.y + panel.height, 360 - 24) && Near(panel.x + panel.width, 960);
+        const bool accuracyInPanel = accuracy.x >= panel.x && accuracy.y >= panel.y;
+        Check(panelAtTopRight && accuracyInPanel && accuracy.width > 100,
+              "Accuracy keeps a fixed 100.00% width inside the top-right panel (osu! layout).");
+        Check(Near(accuracy.x + accuracy.width, score.x + score.width) && accuracy.y + accuracy.height <= score.y,
+              "Accuracy is right-aligned on the line right below the score.");
         presenter.Shutdown();
     }
     void TestHpGauge()

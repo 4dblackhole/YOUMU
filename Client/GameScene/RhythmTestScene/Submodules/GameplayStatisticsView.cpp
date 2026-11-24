@@ -11,10 +11,11 @@ using namespace PhantomCore;
 namespace
 {
     constexpr float HalfHeight = 360;
-    // Top-right panel: 24 from the top, 56 tall. Accuracy takes a fixed 133 so
-    // the nine-digit score beside it never moves it.
-    constexpr float ScoreTop = 24, ScoreHeight = 56, ScoreWidth = 300;
-    constexpr float AccuracyLeft = 30, AccuracyWidth = 133, ScoreGap = 14, ScoreRight = 31;
+    // Top-right panel (osu! layout): 24 from the top. The score is the first line and the accuracy
+    // the smaller line right below it, both right-aligned to the same inset.
+    constexpr float ScoreTop = 24, ScoreHeight = 80, ScoreWidth = 300;
+    constexpr float TextLeft = 30, ScoreRight = 31;
+    constexpr float ScoreLineTop = 8, ScoreLineHeight = 40, AccuracyLineHeight = 26;
     // Bottom-right panel: two rows of four judgement cells.
     constexpr float CountsTop = 592, CountsHeight = 76, CountsWidth = 496, CountsInset = 30;
     constexpr float CellHeight = 28, CellRowStep = 32, CellTop = 8;
@@ -63,7 +64,7 @@ void GameplayStatisticsView::Initialize(ScreenVisual2DManager &visuals, Visual2D
                         TextAlignment::Center);
     scorePanel_ = &CreateSprite(root, {}, visuals.RegisterImage(InGame(L"Hud.ScorePanel")), "Hud.ScorePanel");
     scorePanel_->SetZIndex(4);
-    score_.node = &Number(*scorePanel_, "Hud.Score", 20, InkSoft, TextAlignment::Trailing);
+    score_.node = &Number(*scorePanel_, "Hud.Score", 30, Ink, TextAlignment::Trailing);
     countsPanel_ = &CreateSprite(root, {}, visuals.RegisterImage(InGame(L"Hud.JudgeCountsPanel")), "Hud.JudgeCountsPanel");
     countsPanel_->SetZIndex(4);
     const std::array<std::wstring_view, 8> names{
@@ -94,10 +95,11 @@ void GameplayStatisticsView::SetLayout(float width, Size inputPanel)
     const float scoreWidth = std::min(ScoreWidth, std::max(width, 1.0F));
     const Rect scorePanel{width * 0.5F - scoreWidth, HalfHeight - ScoreTop - ScoreHeight, scoreWidth, ScoreHeight};
     scorePanel_->SetBounds(scorePanel);
-    const float accuracyWidth = std::min(AccuracyWidth, scoreWidth - AccuracyLeft);
-    accuracyBounds_ = {scorePanel.x + AccuracyLeft, scorePanel.y + 10, accuracyWidth, 36};
-    const float scoreLeft = AccuracyLeft + accuracyWidth + ScoreGap;
-    score_.node->SetBounds({scoreLeft, 14, std::max(scoreWidth - scoreLeft - ScoreRight, 1.0F), 28});
+    const float lineWidth = std::max(scoreWidth - TextLeft - ScoreRight, 1.0F);
+    // Panel-local y grows upward: the score line is the upper one.
+    const float accuracyY = ScoreHeight - ScoreLineTop - ScoreLineHeight - AccuracyLineHeight;
+    score_.node->SetBounds({TextLeft, ScoreHeight - ScoreLineTop - ScoreLineHeight, lineWidth, ScoreLineHeight});
+    accuracyBounds_ = {scorePanel.x + TextLeft, scorePanel.y + accuracyY, lineWidth, AccuracyLineHeight};
 
     const float countsWidth = std::min(CountsWidth, std::max(width, 1.0F));
     countsPanel_->SetBounds({width * 0.5F - countsWidth, HalfHeight - CountsTop - CountsHeight, countsWidth, CountsHeight});
