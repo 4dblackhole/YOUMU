@@ -7,7 +7,6 @@
 #include <climits>
 #include <cmath>
 #include <numbers>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -156,13 +155,10 @@ void TaikoResultView::BuildJudgements(Visual2DNode &root)
 void TaikoResultView::BuildGroups(Visual2DNode &root)
 {
     // Note Statistics: notes that added to the combo out of each group's notes, then ticks taken out of all ticks.
-    // A record stored before the combo-counted notes were kept shows a dash in their place.
     const auto &text = Result(texts_);
     Label(root, {Margin, 486, LeftWidth, 20}, std::wstring(text.groupTitle), {14, 900, Ink});
     constexpr float top = 512, rowHeight = 28;
-    const auto ratio = [&](std::optional<std::size_t> part, std::size_t whole) {
-        return part ? Format(text.ratioFormat, *part, whole) : Format(text.ratioFormat, L"—", whole);
-    };
+    const auto ratio = [&](std::size_t part, std::size_t whole) { return Format(text.ratioFormat, part, whole); };
     std::array<std::pair<std::wstring_view, std::wstring>, 4> rows{};
     for (std::size_t i = 0; i < result_.groups.size(); ++i)
         rows[i] = {text.groups[i], ratio(result_.groups[i].succeeded, result_.groups[i].total)};

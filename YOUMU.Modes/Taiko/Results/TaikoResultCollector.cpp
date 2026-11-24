@@ -237,7 +237,7 @@ void TaikoResultCollector::Summarize()
         auto &group = result_->groups[index];
         ++group.total;
         if (note.comboCounted)
-            ++*group.succeeded;
+            ++group.succeeded;
         if (note.processed)
         {
             ++summary.processedNotes;

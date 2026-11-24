@@ -54,7 +54,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestTaikoPlayOptions", TestTaikoPlayOptions},
         {"TestPersistentRecordConditions", TestPersistentRecordConditions},
         {"TestOldRecordSchemaSetAside", TestOldRecordSchemaSetAside},
-        {"TestRecordSchemaTwoUpgrade", TestRecordSchemaTwoUpgrade},
+        {"TestRecordOldRulesSetAside", TestRecordOldRulesSetAside},
         {"TestRecordResultDetail", TestRecordResultDetail},
         {"TestRecordOptionText", TestRecordOptionText},
         {"TestLocalOffsetStore", TestLocalOffsetStore},

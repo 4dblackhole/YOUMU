@@ -22,7 +22,7 @@ namespace tests
     void TestTaikoPlayOptions();
     void TestPersistentRecordConditions();
     void TestOldRecordSchemaSetAside();
-    void TestRecordSchemaTwoUpgrade();
+    void TestRecordOldRulesSetAside();
     void TestRecordResultDetail();
     void TestRecordOptionText();
     void TestLocalOffsetStore();

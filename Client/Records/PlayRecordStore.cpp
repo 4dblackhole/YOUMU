@@ -50,9 +50,9 @@ namespace
         Check(db, sqlite3_step(version.get()));
         return sqlite3_column_int(version.get(), 0);
     }
-    // Moves a schema-1 database (and a journal beside it) to the first free
-    // `<stem>.v1[ (n)]<extension>` name in its folder; nothing is deleted.
-    void SetAsideOldDatabase(const std::filesystem::path &path)
+    // Moves an older-schema database (and a journal beside it) to the first free
+    // `<stem>.v<schema>[ (n)]<extension>` name in its folder; nothing is deleted.
+    void SetAsideOldDatabase(const std::filesystem::path &path, int schema)
     {
         const auto folder = path.parent_path();
         const auto stem = path.stem().wstring(), extension = path.extension().wstring();
@@ -60,7 +60,7 @@ namespace
         journal += L"-journal";
         for (int copy = 1; copy < 1000; ++copy)
         {
-            const auto suffix = copy == 1 ? std::wstring(L".v1") : std::format(L".v1 ({})", copy);
+            const auto suffix = copy == 1 ? std::format(L".v{}", schema) : std::format(L".v{} ({})", schema, copy);
             const auto target = folder / (stem + suffix + extension);
             auto targetJournal = target;
             targetJournal += L"-journal";
@@ -80,41 +80,21 @@ namespace
         }
         throw std::runtime_error("Could not name the old record database. Existing records were preserved.");
     }
-    // Schema 2 -> 3 adds the stroke count. Records from before it read as the default 2. One
-    // transaction: on failure the file stays schema 2 and the error reaches the caller.
-    void UpgradeToSchemaThree(sqlite3 *db)
+    // Schemas 1..3 hold records judged by earlier rules; the user dropped them all (schema 1: no score,
+    // schema 2/3: before BAD recovery). The file is set aside under its own version and a fresh one starts.
+    [[nodiscard]] bool IsOldSchema(int schema) noexcept
     {
-        Execute(db, "BEGIN IMMEDIATE");
-        try
-        {
-            // Another process may have upgraded the file between reading the version and the lock.
-            if (SchemaOf(db) == 2)
-            {
-                Execute(db, "ALTER TABLE Plays ADD COLUMN MaxStrokes INTEGER NOT NULL DEFAULT 2");
-                Execute(db, "PRAGMA user_version=3");
-            }
-            Execute(db, "COMMIT");
-        }
-        catch (...)
-        {
-            static_cast<void>(sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr));
-            throw;
-        }
+        return schema > 0 && schema < PlayRecordStore::SchemaVersion;
     }
     Database Open(const std::filesystem::path &path)
     {
         auto db = Connect(path);
         int schema = SchemaOf(db.get());
-        if (schema == 1)
+        if (IsOldSchema(schema))
         {
             db.reset();
-            SetAsideOldDatabase(path);
+            SetAsideOldDatabase(path, schema);
             db = Connect(path);
-            schema = SchemaOf(db.get());
-        }
-        if (schema == 2)
-        {
-            UpgradeToSchemaThree(db.get());
             schema = SchemaOf(db.get());
         }
         if (schema != 0 && schema != PlayRecordStore::SchemaVersion)
@@ -134,7 +114,7 @@ namespace
                     "NOT NULL, MaximumCombo INTEGER NOT NULL, HpGauge INTEGER NOT NULL, Detail TEXT NOT NULL, "
                     "MaxStrokes INTEGER NOT NULL DEFAULT 2)");
             Execute(db.get(), "CREATE INDEX IF NOT EXISTS PatternHistory ON Plays(Pattern, Mode, Id DESC)");
-            Execute(db.get(), "PRAGMA user_version=3");
+            Execute(db.get(), std::format("PRAGMA user_version={}", PlayRecordStore::SchemaVersion).c_str());
             Execute(db.get(), "COMMIT");
         }
         return db;

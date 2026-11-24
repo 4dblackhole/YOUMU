@@ -647,7 +647,7 @@ namespace
                                                    std::to_wstring(taiko->summary.totalNotes),
               "The maximum combo reads as reached out of the notes that can add to it.");
         // Note Statistics: combo-counted notes out of each group, then ticks taken out of all ticks.
-        Check(taiko->groups[0].succeeded == std::optional<std::size_t>{3} && textOf("Result.NoteStatistics.0") == L"3/3",
+        Check(taiko->groups[0].succeeded == 3u && textOf("Result.NoteStatistics.0") == L"3/3",
               "Three GREAT normal notes read 3/3 under Notes.");
         Check(textOf("Result.NoteStatistics.1") == L"0/0" && textOf("Result.NoteStatistics.3") == L"0/0",
               "Empty groups and ticks read 0/0.");

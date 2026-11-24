@@ -30,8 +30,8 @@ struct TaikoGroupResult
     std::size_t total{};
     std::size_t processed{};
     AccuracyScore accuracy;
-    // Notes that added to the combo; empty for a stored result written before it was kept.
-    std::optional<std::size_t> succeeded;
+    // Notes that added to the combo: GOOD or better for hit notes, OK for long notes.
+    std::size_t succeeded{};
 };
 struct TimingErrorSample
 {
