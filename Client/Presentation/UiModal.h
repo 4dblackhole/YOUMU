@@ -78,8 +78,11 @@ namespace ui_modal
     // Rough caption width for button sizing (Nunito, Latin).
     [[nodiscard]] float EstimateWidth(std::wstring_view text, float size) noexcept;
 
-    // A text box: its own text shows the value when no native edit covers it.
+    // A text box: its own text shows the value when no native edit covers it. A number field draws Barlow Semi
+    // Condensed (the game's number face), a text field Nunito or Noto Sans KR by its text.
     [[nodiscard]] PhantomCore::Visual2DNode &CreateField(PhantomCore::Visual2DNode &parent, std::string name, bool number);
+    // A field's own text; a number field keeps its number face whatever the text is.
+    void SetFieldText(PhantomCore::Visual2DNode &field, std::wstring_view text, bool number);
     void PlaceField(PhantomCore::Visual2DNode &field, PhantomCore::Rect topLeftBounds, float parentHeight);
     void StyleField(PhantomCore::Visual2DNode &field, bool focused, bool enabled);
 
@@ -98,7 +101,9 @@ namespace ui_modal
                                                         PhantomCore::ScreenVisual2DManager *visuals,
                                                         const wchar_t *key, PhantomCore::Color tint);
 
-    // Puts a native edit over a field (canvas bounds include the modal scale) with a matching font size.
+    // Puts a native edit over a field (canvas bounds include the modal scale) with the field's own face and size,
+    // so the value looks the same whether the edit covers the field or is hidden (number: the registered Barlow
+    // face, see NativeInputFonts.h).
     void PlaceTextInput(PhantomCore::ITextInput &input, const PhantomCore::Visual2DNode &field,
-                        const PhantomCore::Visual2DCanvas &canvas, std::uint32_t windowHeight, float scale);
+                        const PhantomCore::Visual2DCanvas &canvas, std::uint32_t windowHeight, float scale, bool number);
 } // namespace ui_modal

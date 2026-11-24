@@ -1,5 +1,6 @@
 #include "Presentation/UiModal.h"
 #include "App/AssetPaths.h"
+#include "Presentation/NativeInputFonts.h"
 #include "Presentation/UiFonts.h"
 #include <algorithm>
 #include <cmath>
@@ -20,6 +21,8 @@ namespace
     constexpr auto PressedFill = ui_colors::Rgb(0xE6EEFC), Danger = ui_colors::theme::Danger;
     constexpr auto FieldFill = ui_colors::Rgb(0xFFFFFF, .74F), FieldDisabled = ui_colors::Rgb(0xFFFFFF, .4F);
     constexpr auto SwitchOff = ui_colors::Rgb(0x7F97B0);
+    // Field text sizes; a native edit over a field uses the same size.
+    constexpr float FieldTextSize = 14, FieldNumberSize = 15;
     // 16:9 is the reference; a narrower canvas scales the modal like the song select board.
     constexpr float ReferenceWidth = 1280;
 
@@ -112,15 +115,25 @@ namespace ui_modal
             auto face = ui_fonts::Number(500, false);
             text.SetFont(std::move(face.font));
             text.SetFontWeight(face.weight);
-            text.SetFontSize(15);
+            text.SetFontSize(FieldNumberSize);
             text.SetTextColor(Ink);
             text.SetHorizontalAlignment(TextAlignment::Leading);
         }
         else
-            StyleText(text, 14, 400, Ink);
+            StyleText(text, FieldTextSize, 400, Ink);
         static_cast<void>(Fill(field, "Line", FieldLine));
         StyleField(field, false, true);
         return field;
+    }
+
+    void SetFieldText(Visual2DNode &field, const std::wstring_view text, const bool number)
+    {
+        if (!number)
+        {
+            SetText(field, text);
+            return;
+        }
+        Require<TextVisualComponent>(field).SetText(std::wstring(text));
     }
 
     void PlaceField(Visual2DNode &field, const Rect topLeftBounds, const float parentHeight)
@@ -210,14 +223,15 @@ namespace ui_modal
     }
 
     void PlaceTextInput(ITextInput &input, const Visual2DNode &field, const Visual2DCanvas &canvas,
-                        const std::uint32_t windowHeight, const float scale)
+                        const std::uint32_t windowHeight, const float scale, const bool number)
     {
         const auto logical = canvas.LogicalSize();
         if (windowHeight == 0 || logical.height <= 0)
             return;
         const float pixels = static_cast<float>(windowHeight) / logical.height;
         const auto bounds = field.BoundsInCanvas();
-        const auto font = static_cast<std::uint32_t>(std::max(1.0F, std::round(14 * pixels * scale)));
+        const float size = number ? FieldNumberSize : FieldTextSize;
+        const auto font = static_cast<std::uint32_t>(std::max(1.0F, std::round(size * pixels * scale)));
         const float editHeight = std::min(static_cast<float>(font) + 4, bounds.height * pixels);
         const float inset = 12 * scale;
         input.SetBounds({static_cast<std::int32_t>(std::round((bounds.x + inset + logical.width / 2) * pixels)),
@@ -225,7 +239,7 @@ namespace ui_modal
                              std::round((logical.height / 2 - bounds.y - bounds.height / 2) * pixels - editHeight / 2)),
                          static_cast<std::uint32_t>(std::max(1.0F, std::round((bounds.width - inset * 2) * pixels))),
                          static_cast<std::uint32_t>(std::max(1.0F, std::round(editHeight)))});
-        input.SetFont(L"Segoe UI", font);
+        input.SetFont(number ? native_input_fonts::Number() : native_input_fonts::Text, font);
     }
 } // namespace ui_modal
 

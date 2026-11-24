@@ -2,6 +2,8 @@
 #include "Presentation/PlayOptionsPanel.h"
 #include "GameScene/MusicSelectScene/Submodules/MusicSelectView.h"
 #include "Presentation/UiDropdown.h"
+#include "Presentation/NativeInputFonts.h"
+#include "Presentation/UiFonts.h"
 #include <Windows.h>
 #include <cmath>
 #include <iostream>
@@ -30,12 +32,13 @@ namespace
     class Edit final : public ITextInput
     {
       public:
-        std::wstring text; TextInputBounds bounds{}; bool visible{}, focused{}, dirty{}, cancel{}, submit{};
+        std::wstring text, family; TextInputBounds bounds{}; std::uint32_t size{};
+        bool visible{}, focused{}, dirty{}, cancel{}, submit{};
         void UserText(std::wstring value) { text = std::move(value); dirty = true; }
         void SetText(std::wstring_view value) override { text = value; dirty = false; }
         void SetPlaceholder(std::wstring_view) override {}
         void SetBounds(TextInputBounds value) override { bounds = value; }
-        void SetFont(std::wstring_view, std::uint32_t) override {}
+        void SetFont(std::wstring_view value, std::uint32_t pixels) override { family = value; size = pixels; }
         void SetColors(std::uint32_t, std::uint32_t) override {}
         void SetVisible(bool value) noexcept override { visible = value; if (!value) focused = false; }
         void Focus(bool) noexcept override { focused = visible; }
@@ -98,6 +101,31 @@ namespace
         Check(window.edits[2]->visible && window.edits[3]->visible && window.edits[4]->visible,
               "Judge and Random reveal their own editors.");
         Check(Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas().height <= 720, "All expanded content fits 1280x720.");
+        // Number inputs draw the game's number face at the field's own size; the seed is text (scroll speed,
+        // accelerate, JudgeLevel, seed, probability). The field text keeps the same face when no input covers it.
+        for (std::size_t i = 0; i < window.edits.size(); ++i)
+        {
+            const bool seed = i == 3;
+            Check(window.edits[i]->family == (seed ? native_input_fonts::Text : native_input_fonts::Number()),
+                  "Number inputs use the registered Barlow face; the seed input stays Segoe UI.");
+            Check(window.edits[i]->size == (seed ? 14U : 15U), "An input uses its field's text size (number 15, text 14).");
+        }
+        {
+            auto bareOwner = std::make_unique<Visual2DCanvas>(Size{1280, 720}, CanvasScaleMode::Fixed);
+            PlayOptionsPanel bare; bare.Initialize(*bareOwner, texts, nullptr); bare.SetViewport(720);
+            PlayOptions shown;
+            shown.random = true;
+            shown.judgeLevel = JudgeLevel(75);
+            bare.Open(shown);
+            const auto font = [&](std::string_view field) {
+                return Find(bareOwner->Root(), field).GetComponent<TextVisualComponent>()->Font().value;
+            };
+            for (const auto *field : {"PlayOptions.scrollSpeed.Field", "PlayOptions.accelerate.Field",
+                                      "PlayOptions.judgeLevel.Field", "PlayOptions.probability.Field"})
+                Check(font(field) == ui_fonts::faces::NumberMedium().value, "A number field keeps the number face with its value.");
+            Check(font("PlayOptions.seed.Field") == ui_fonts::faces::Latin().value, "The seed field keeps the text face.");
+            bare.Shutdown();
+        }
         for (std::size_t i = 0; i < window.edits.size(); ++i)
             window.edits[i]->UserText(std::array{L"240", L"1.5", L"60.00", L"18446744073709551615", L"35"}[i]);
         Check(!panel.TakeApplied(), "Editing never publishes before the panel closes.");

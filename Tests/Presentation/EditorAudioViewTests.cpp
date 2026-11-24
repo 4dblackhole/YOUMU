@@ -395,6 +395,7 @@ int main(int argc, char** argv)
         std::string assetError;
         Check(InitializeBuiltInAssets(assetError), assetError.c_str());
         TestEditorMenu();
+        TestEditorTextFieldFonts();
         TestEditorPlayback();
         TestEditorMetronome();
         TestSpectrumCache();

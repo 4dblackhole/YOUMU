@@ -79,7 +79,7 @@ void SongFilterPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IWi
     }
     for (std::size_t i = 0; i < fields_.size(); ++i)
     {
-        fields_[i] = &CreateField(body, "SongFilter.Field." + std::to_string(i), i < SongFilterRangeCount * 2);
+        fields_[i] = &CreateField(body, "SongFilter.Field." + std::to_string(i), IsNumberField(i));
         if (!window)
             continue;
         inputs_[i] = window->CreateTextInput();
@@ -188,7 +188,7 @@ void SongFilterPanel::UpdateInputs()
     {
         if (!inputs_[i])
             continue;
-        PlaceTextInput(*inputs_[i], *fields_[i], *canvas_, height_, modal_.Scale());
+        PlaceTextInput(*inputs_[i], *fields_[i], *canvas_, height_, modal_.Scale(), IsNumberField(i));
         inputs_[i]->SetVisible(visible && RowAvailable(i / 2));
     }
 }
@@ -224,7 +224,8 @@ void SongFilterPanel::RefreshValues()
     {
         const auto &value = i + 1 == fields_.size() ? draft_.tag : draft_.values[i];
         const bool available = RowAvailable(i / 2);
-        SetText(*fields_[i], inputs_[i] ? std::wstring_view{} : (available ? std::wstring_view{value} : L"—"));
+        SetFieldText(*fields_[i], inputs_[i] ? std::wstring_view{} : (available ? std::wstring_view{value} : L"—"),
+                     IsNumberField(i));
         if (inputs_[i])
             inputs_[i]->SetText(value);
     }

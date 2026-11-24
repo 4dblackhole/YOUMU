@@ -24,6 +24,8 @@ class SongFilterPanel final
 
   private:
     static constexpr std::size_t FieldCount = SongFilterRangeCount * 2 + 1; // Range pairs, then the tag.
+    // The range pairs hold numbers; the tag is text.
+    [[nodiscard]] static constexpr bool IsNumberField(std::size_t field) noexcept { return field < SongFilterRangeCount * 2; }
     void Layout();
     void RefreshValues();
     void RefreshRows();
