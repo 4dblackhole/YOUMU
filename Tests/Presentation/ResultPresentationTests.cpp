@@ -651,7 +651,8 @@ namespace
               "Three GREAT normal notes read 3/3 under Notes.");
         Check(textOf("Result.NoteStatistics.1") == L"0/0" && textOf("Result.NoteStatistics.3") == L"0/0",
               "Empty groups and ticks read 0/0.");
-        Check(HasText(*canvas, L"Note Statistics") && HasText(*canvas, L"Big Notes") && !HasText(*canvas, L"97.26%"),
+        Check(HasText(*canvas, texts.Get("Result.groupTitle")) && HasText(*canvas, texts.Get("Result.groups.1")) &&
+                  !HasText(*canvas, L"97.26%"),
               "The group panel is Note Statistics with counts, not accuracies.");
         for(const auto key:{"scrollSpeed","mirror","random","accelerate","judgeLevel","ignoreScrollEffects"})
             Check(FindNode(canvas->Root(),std::string("Result.Option.")+key)!=nullptr,"Applied play option renders a result icon.");
