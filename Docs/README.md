@@ -44,7 +44,7 @@
 
 | 작업 | 문서 |
 | --- | --- |
-| 판단 순서·설계 결정 찾아보기·설계 변경 규칙 | [Design/Principles](Design/Principles.md) |
+| 판단 순서·코드 구조 원칙·설계 결정 찾아보기·설계 변경 규칙 | [Design/Principles](Design/Principles.md) |
 | 결정별 근거·조건·예외·구현 상태·재현 사례 | [Design/Decisions](Design/Decisions.md) |
 | 확정 UI 리디자인·공용 부품·스킨 부품·남은 미구현 | [Design/UI](Design/UI.md) |
 | Penpot 페이지·보드·자산 제작 | [Design/References](Design/References.md) |
