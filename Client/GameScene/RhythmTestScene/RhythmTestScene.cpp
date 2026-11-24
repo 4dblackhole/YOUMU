@@ -164,7 +164,11 @@ bool RhythmTestScene::PreparePresentation()
     // Start both preparations before polling either. The playable screen must
     // never appear while cold hit samples are still being decoded.
     const auto audio = controller_->PrepareAudioResources(services_->audio);
-    const bool images = view_->PrepareAssets(*services_);
+    // The engine prepares one image request at a time and hands a failure to whichever caller polls next, so the
+    // play screen's images start only after the loading BG has settled: each side then gets its own errors (a
+    // broken chart BG only warns, a broken skin image stops the scene). The BG is first in line anyway.
+    const bool backgroundSettled = loadingBackgroundReady_ || launch_.backgroundPath.empty();
+    const bool images = backgroundSettled && view_->PrepareAssets(*services_);
     if (!images || audio == AudioPreparationState::Loading)
         return false;
     view_->Initialize(*services_, controller_->Session());

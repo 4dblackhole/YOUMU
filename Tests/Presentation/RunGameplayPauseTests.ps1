@@ -22,3 +22,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Cold-start input test failed.' }
 
 & "./bin/x64/$Configuration/GameplayPauseTests.exe" --cold-start-options
 if ($LASTEXITCODE -ne 0) { throw 'Accelerated cold-start pitch test failed.' }
+
+& "./bin/x64/$Configuration/GameplayPauseTests.exe" --broken-skin-image
+if ($LASTEXITCODE -ne 0) { throw 'Broken skin image loading test failed.' }
+
+& "./bin/x64/$Configuration/GameplayPauseTests.exe" --broken-chart-background
+if ($LASTEXITCODE -ne 0) { throw 'Broken chart background loading test failed.' }
