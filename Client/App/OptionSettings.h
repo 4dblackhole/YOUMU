@@ -16,6 +16,23 @@
 // FMOD mixer buffer lengths offered in the options, in samples (four buffers each).
 inline constexpr std::array<std::uint32_t, 4> DspBufferLengths{128, 256, 512, 1024};
 
+// The pause menu starts from these until it saves a choice; GameplayPauseChoice uses the same defaults.
+inline constexpr int DefaultPauseResumeLeadInMs = 500;
+inline constexpr int MaxPauseResumeLeadInMs = 3000;
+inline constexpr int PauseResumeLeadInStepMs = 500;
+inline constexpr int DefaultPauseRewindMeasures = 4;
+inline constexpr int MaxPauseRewindMeasures = 65535;
+[[nodiscard]] constexpr bool IsValidPauseResumeLeadInMs(const int milliseconds) noexcept
+{
+    if (milliseconds < 0 || milliseconds > MaxPauseResumeLeadInMs)
+        return false;
+    return milliseconds % PauseResumeLeadInStepMs == 0;
+}
+[[nodiscard]] constexpr bool IsValidPauseRewindMeasures(const int measures) noexcept
+{
+    return measures >= 1 && measures <= MaxPauseRewindMeasures;
+}
+
 struct OptionValues
 {
     Language language{Language::Korean};
@@ -44,6 +61,10 @@ struct OptionValues
     std::int32_t globalOffsetMs{};
     std::filesystem::path songsPath; // Empty selects the development/deployment default.
     std::uint16_t restartKey{DefaultRestartKey}; // [Controls] RestartKey; a missing entry keeps the default.
+    // [Pause] The pause menu's last Resume lead-in (0..3000 ms in 500 ms steps) and Rewind measure count.
+    // A missing or out-of-range entry reads as the default without failing the rest of the file.
+    int pauseResumeLeadInMs{DefaultPauseResumeLeadInMs};
+    int pauseRewindMeasures{DefaultPauseRewindMeasures};
     std::map<std::string, std::map<std::string, std::vector<std::uint16_t>>> modeKeys;
 };
 

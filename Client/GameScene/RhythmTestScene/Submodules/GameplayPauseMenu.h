@@ -21,6 +21,11 @@ class GameplayPauseMenu final
         Shutdown();
     }
     void Show(std::uint32_t width, std::uint32_t height, bool canResume, std::size_t measureCount);
+    // Starts the Resume and Rewind values from a saved choice; the action is ignored.
+    void SetChoice(const GameplayPauseChoice &choice) noexcept;
+    [[nodiscard]] const GameplayPauseChoice &Choice() const noexcept { return choice_; }
+    // True once a value was changed in the menu, so an untouched saved choice is not rewritten.
+    [[nodiscard]] bool ChoiceChanged() const noexcept { return choiceChanged_; }
     // The attempt's resources failed to load: Resume and Rewind stay off without the preparing band,
     // keep showing their values, and Retry is selected because it reloads.
     void SetPreparationFailed(bool failed);
@@ -55,6 +60,6 @@ class GameplayPauseMenu final
     GameplayPauseChoice choice_;
     std::uint32_t width_{}, height_{};
     std::uint64_t textRevision_{};
-    bool visible_{}, canResume_{}, failed_{};
+    bool visible_{}, canResume_{}, failed_{}, choiceChanged_{};
     std::chrono::steady_clock::time_point shownAt_{};
 };

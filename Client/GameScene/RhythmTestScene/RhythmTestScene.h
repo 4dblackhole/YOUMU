@@ -59,6 +59,8 @@ class RhythmTestScene final : public PhantomCore::GameScene
     void UpdateLoadingSettings(const PhantomCore::UpdateContext &context);
     void ApplyBackgroundBrightness(int percent);
     void SaveBackgroundBrightness() noexcept;
+    // Writes a Resume/Rewind value changed in the pause menu when the play screen ends, never during play.
+    void SavePauseChoice() noexcept;
     // Follows volume changes saved while playing (Alt+wheel); the attempt started with the launch request's.
     void FollowSavedVolumes();
     std::unique_ptr<IPlayResult> &pendingResult_;

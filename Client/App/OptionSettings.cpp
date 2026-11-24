@@ -141,6 +141,17 @@ namespace
         return number;
     }
 
+    // A missing, malformed or out-of-range pause entry keeps its default instead of failing the file.
+    template <class Valid> void ReadPauseValue(int &target, const std::string_view value, Valid valid)
+    {
+        int number{};
+        const auto parsed = std::from_chars(value.data(), value.data() + value.size(), number);
+        if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size())
+            return;
+        if (valid(number))
+            target = number;
+    }
+
     bool IsIdentifierCharacter(char c)
     {
         const bool lower = c >= 'a' && c <= 'z';
@@ -216,6 +227,10 @@ namespace
             throw std::runtime_error("Key beam opacity must be a whole percentage within 0..100.");
         if (!AudioVolumes::IsValidPercent(values.backgroundBrightness))
             throw std::runtime_error("Background brightness must be a whole percentage within 0..100.");
+        if (!IsValidPauseResumeLeadInMs(values.pauseResumeLeadInMs))
+            throw std::runtime_error("The Resume lead-in must be 0..3000 ms in 500 ms steps.");
+        if (!IsValidPauseRewindMeasures(values.pauseRewindMeasures))
+            throw std::runtime_error("The Rewind measure count must be 1..65535.");
         static_cast<void>(OutputName(values.audioOutput));
         static_cast<void>(RenderRateName(values.renderRate));
         static_cast<void>(WindowModeName(values.windowMode));
@@ -297,6 +312,13 @@ namespace
         {
             if (key == "RestartKey")
                 values.restartKey = ReadInteger<std::uint16_t>(value);
+        }
+        else if (section == "Pause")
+        {
+            if (key == "ResumeLeadInMs")
+                ReadPauseValue(values.pauseResumeLeadInMs, value, IsValidPauseResumeLeadInMs);
+            else if (key == "RewindMeasures")
+                ReadPauseValue(values.pauseRewindMeasures, value, IsValidPauseRewindMeasures);
         }
         else if (section.starts_with("Keys."))
         {
@@ -434,7 +456,9 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nDriverName=" << values.driverName << "\r\nMasterVolume=" << values.volumes.master
              << "\r\nMusicVolume=" << values.volumes.music << "\r\nEffectsVolume=" << values.volumes.effects
              << "\r\nDspBufferLength=" << values.dspBufferLength
-             << "\r\n\r\n[Controls]\r\nRestartKey=" << values.restartKey << "\r\n";
+             << "\r\n\r\n[Controls]\r\nRestartKey=" << values.restartKey
+             << "\r\n\r\n[Pause]\r\nResumeLeadInMs=" << values.pauseResumeLeadInMs
+             << "\r\nRewindMeasures=" << values.pauseRewindMeasures << "\r\n";
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             file << "\r\n[Keys." << mode << "]\r\n";
