@@ -101,14 +101,12 @@ namespace
         Check(window.edits[2]->visible && window.edits[3]->visible && window.edits[4]->visible,
               "Judge and Random reveal their own editors.");
         Check(Find(canvas.Root(), "PlayOptions.Panel").BoundsInCanvas().height <= 720, "All expanded content fits 1280x720.");
-        // Number inputs draw the game's number face at the field's own size; the seed is text (scroll speed,
-        // accelerate, JudgeLevel, seed, probability). The field text keeps the same face when no input covers it.
-        for (std::size_t i = 0; i < window.edits.size(); ++i)
+        // Every input (scroll speed, accelerate, JudgeLevel, seed, probability) holds a number and draws the
+        // game's number face at the field's own size. The field text keeps the same face when no input covers it.
+        for (const auto *edit : window.edits)
         {
-            const bool seed = i == 3;
-            Check(window.edits[i]->family == (seed ? native_input_fonts::Text : native_input_fonts::Number()),
-                  "Number inputs use the registered Barlow face; the seed input stays Segoe UI.");
-            Check(window.edits[i]->size == (seed ? 14U : 15U), "An input uses its field's text size (number 15, text 14).");
+            Check(edit->family == native_input_fonts::Number(), "Play option inputs use the registered Barlow face.");
+            Check(edit->size == 15U, "A play option input uses its field's number size (15).");
         }
         {
             auto bareOwner = std::make_unique<Visual2DCanvas>(Size{1280, 720}, CanvasScaleMode::Fixed);
@@ -121,9 +119,8 @@ namespace
                 return Find(bareOwner->Root(), field).GetComponent<TextVisualComponent>()->Font().value;
             };
             for (const auto *field : {"PlayOptions.scrollSpeed.Field", "PlayOptions.accelerate.Field",
-                                      "PlayOptions.judgeLevel.Field", "PlayOptions.probability.Field"})
+                                      "PlayOptions.judgeLevel.Field", "PlayOptions.seed.Field", "PlayOptions.probability.Field"})
                 Check(font(field) == ui_fonts::faces::NumberMedium().value, "A number field keeps the number face with its value.");
-            Check(font("PlayOptions.seed.Field") == ui_fonts::faces::Latin().value, "The seed field keeps the text face.");
             bare.Shutdown();
         }
         for (std::size_t i = 0; i < window.edits.size(); ++i)
