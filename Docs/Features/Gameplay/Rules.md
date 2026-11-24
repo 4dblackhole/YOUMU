@@ -146,7 +146,7 @@ Completed/Missed에서 `NoteProcessResult::finalizedAccuracies`로 한 번만 �
 | TickRoll/BigTickRoll | `성공 틱 / 전체 틱`; 시작점도 틱, Good 이내면 1, 나머지는 0 |
 | Buzz | `시작 정확도 × 0.5 + 시작점 이후 유지 틱 비율 × 0.5` |
 
-Don/Kat 및 BigDon/BigKat/Purple에서 Good 이내의 잘못된 Press가 POOR로 거부되거나, 타격이 BAD(늦은 BAD,
+Don/Kat 및 BigDon/BigKat/Purple에서 Good 이내의 잘못된 Press 또는 BAD 범위(노트 앞·뒤) 안의 다른 색 Press가 POOR로 거부되거나, 타격이 BAD(늦은 BAD,
 early BAD, [BAD 복귀](#bad-복귀-판정))이면 노트는 BAD로 처리됩니다: 논리 노트 전체의 최종 정확도는 0이고
 콤보를 더하지 않습니다. 큰 노트에서 한 타격만 BAD·POOR여도 노트 전체가 0입니다(사용자 결정). 판정 개수는 지금처럼
 타격마다 셉니다. 키 해제(`InputEdge::Released`)와 판정 범위 밖의 입력은 이 처리를 만들지 않습니다. Reset/되감기는
@@ -180,6 +180,11 @@ early BAD는 누르는 입력만입니다. 앞 노트를 친 키를 떼는 시�
 `RecordEarlyBad`를 부르지 않습니다. 떼는 입력의 early BAD 이벤트(`InputRejected`)는 예전처럼 남지만, 결과 수집기·HP·판정 글자·키빔은
 누르는 입력(`keyPressed`)이 아닌 이벤트를 읽지 않으므로 아무것도 바뀌지 않습니다. 큰 노트의 두 키, 주 키와 보조 키를 번갈아 쓰는 경우,
 다른 색 키를 떼는 경우도 같습니다.
+다른 색 키를 누른 입력은 BAD 범위 안이면 앞(early BAD 구간)이든 뒤(늦은 BAD 구간)든 POOR입니다(사용자 결정: "다른색 키를 쳤으면
+POOR입니다 early BAD가 아닙니다", 두 구간 모두 POOR). `RuleBasedNote::IsWrongPress`가 같은 키를 노트 시각에 눌렀어도 규칙이
+받지 않을지(색, 보라 노트의 타격 순서)를 보고, 그 거부 이벤트에 `wrongPress`를 붙입니다. Lane은 이 입력을 early BAD로 처리하지 않고
+노트에 넘깁니다. `IsPoor`(Good 이내 거부 또는 `wrongPress`)가 POOR의 유일한 판정이며 `IsEarlyBad`는 `wrongPress`를 제외합니다.
+BAD 범위 밖의 다른 색 입력은 지금처럼 판정하지 않습니다. 맞는 색의 늦은 BAD는 그대로 BAD 타격입니다.
 결과 수집기·HP 게이지·판정 글자는 이 표시만 읽습니다. 타이밍 오차 표본은 복귀 입력의 실제 시각을 그대로 씁니다.
 
 TickRoll/BigTickRoll과 Buzz는 헤드를 기준으로 한 박자 틱 격자에서 테일까지 포함합니다.
