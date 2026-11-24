@@ -13,6 +13,8 @@ namespace taiko_result_ui::layout
     inline constexpr float ReferenceWidth = 1280, Height = 720, MaximumWidth = 2560;
     inline constexpr float Margin = 32, ColumnGap = 24, LeftWidth = 340;
     inline constexpr float BannerHeight = 72, BottomBarHeight = 64, BodyTop = 96;
+    // Accuracy figure on the summary line (user: the old 56 was too large).
+    inline constexpr float AccuracySize = 44;
 
     constexpr PhantomCore::Color ResultColor(unsigned rgb, float alpha = 1)
     {

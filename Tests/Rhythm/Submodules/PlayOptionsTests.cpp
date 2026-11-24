@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <winsqlite/winsqlite3.h>
 #pragma comment(lib, "winsqlite3.lib")
@@ -449,8 +450,8 @@ namespace tests
         result.poorCount = 1;
         result.acceptedTicks = 64;
         result.missedTicks = 3;
-        result.groups[0] = {300, 300, AccuracyScore::FromUnits(97'260'000)};
-        result.groups[2] = {10, 8, AccuracyScore::FromUnits(100'000'000)};
+        result.groups[0] = {300, 300, AccuracyScore::FromUnits(97'260'000), 291};
+        result.groups[2] = {10, 8, AccuracyScore::FromUnits(100'000'000), 8};
         result.timingErrors = {{7, 0, RhythmTime{1'002'000}, RhythmDuration{-4'321}, JudgementGrade::Perfect,
                                 AccuracyScore::FromUnits(99'000'000)},
                                {std::numeric_limits<NoteId>::max(), 2, RhythmTime{2'000'000}, RhythmDuration{58'000},
@@ -494,6 +495,8 @@ namespace tests
         Require(taiko->groups[0].accuracy.Units() == 97'260'000 && taiko->groups[2].processed == 8,
                 "Group accuracies survive the record.");
         Require(taiko->groups[1].total == 0, "An empty group stays empty.");
+        Require(taiko->groups[0].succeeded == std::optional<std::size_t>{291} && taiko->groups[2].succeeded == 8u,
+                "Combo-counted notes per group survive the record.");
         Require(taiko->timingErrors.size() == 2 && taiko->timingErrors[0].error == RhythmDuration{-4'321},
                 "Timing samples survive the record.");
         Require(taiko->timingErrors[1].noteId == std::numeric_limits<NoteId>::max() &&
@@ -522,7 +525,32 @@ namespace tests
         badGrade.replace(badGrade.find(" 4 0\n"), 5, " 9 0\n");
         Require(rejects("") && rejects(record.detail.substr(0, record.detail.size() / 2)),
                 "A missing or cut detail is rejected.");
-        Require(rejects(record.detail + "1") && rejects("taiko-result 2\n"), "A padded or newer detail is rejected.");
+        Require(rejects(record.detail + "1") && rejects("taiko-result 3\n"), "A padded or newer detail is rejected.");
+        // A version 1 detail (no combo-counted notes) still opens; reading it never rewrites the stored detail.
+        auto first = record.detail;
+        first.replace(first.find("taiko-result 2"), 14, "taiko-result 1");
+        const auto groupsBegin = first.find("\ngroups") + 1, groupsEnd = first.find('\n', groupsBegin);
+        std::istringstream groupWords(first.substr(groupsBegin, groupsEnd - groupsBegin));
+        std::string word, groupsLine;
+        groupWords >> groupsLine;
+        for (int index = 0; groupWords >> word; ++index)
+            if (index % 4 != 3)
+                groupsLine += ' ' + word;
+        first.replace(groupsBegin, groupsEnd - groupsBegin, groupsLine);
+        auto old = record;
+        old.detail = first;
+        PlayRecordStore(database).Save(old);
+        const auto olds = PlayRecordStore(database).Query(pattern, "Taiko", "", 0, 10);
+        Require(olds.size() == 2, "The version 1 record is stored beside the new one.");
+        const auto oldId = olds[0].id == loaded.id ? olds[1].id : olds[0].id;
+        auto opened = olds[0].id == loaded.id ? olds[1] : olds[0];
+        opened.detail = PlayRecordStore(database).LoadDetail(oldId);
+        const auto oldResult = opened.LoadResult();
+        const auto *oldTaiko = dynamic_cast<const TaikoPlayResult *>(oldResult.get());
+        Require(oldTaiko != nullptr && !oldTaiko->groups[0].succeeded && oldTaiko->groups[0].processed == 300,
+                "A version 1 detail loads its groups without combo-counted notes.");
+        Require(PlayRecordStore(database).LoadDetail(oldId) == first,
+                "Opening a version 1 record leaves its stored detail as it was.");
         Require(rejects(badGrade), "An out-of-range value is rejected.");
     }
 

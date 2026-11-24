@@ -22,12 +22,16 @@ struct TaikoNoteResult
     NoteAccuracyTarget target;
     std::size_t acceptedHits{};
     std::size_t acceptedTicks{};
+    // The note added to the combo: GOOD or better for hit notes, OK for long notes.
+    bool comboCounted{};
 };
 struct TaikoGroupResult
 {
     std::size_t total{};
     std::size_t processed{};
     AccuracyScore accuracy;
+    // Notes that added to the combo; empty for a stored result written before it was kept.
+    std::optional<std::size_t> succeeded;
 };
 struct TimingErrorSample
 {

@@ -8,7 +8,8 @@
 namespace
 {
     constexpr std::string_view Header = "taiko-result";
-    constexpr std::uint64_t Version = 1;
+    // Version 2 adds each group's combo-counted notes; version 1 details still load without them.
+    constexpr std::uint64_t Version = 2, FirstVersion = 1;
     // Bounds every stored list so a damaged count fails instead of asking for huge memory.
     constexpr std::uint64_t MaximumItems = 50'000'000;
 
@@ -174,7 +175,7 @@ std::string SaveTaikoResultDetail(const TaikoPlayResult &result)
     w.Word("ticks").Count(result.acceptedTicks).Count(result.missedTicks).EndLine();
     w.Word("groups");
     for (const auto &group : result.groups)
-        w.Count(group.total).Count(group.processed).Count(group.accuracy.Units());
+        w.Count(group.total).Count(group.processed).Count(group.accuracy.Units()).Count(group.succeeded.value_or(0));
     w.EndLine();
     w.Word("timing").Optional(result.meanErrorMilliseconds).Optional(result.varianceMillisecondsSquared);
     w.Optional(result.standardDeviationMilliseconds).EndLine();
@@ -213,7 +214,8 @@ std::unique_ptr<TaikoPlayResult> LoadTaikoResultDetail(PlayResultSummary summary
 {
     Reader r(detail);
     r.Expect(Header);
-    if (r.Count(std::numeric_limits<std::uint64_t>::max()) != Version)
+    const auto version = r.Count(std::numeric_limits<std::uint64_t>::max());
+    if (version < FirstVersion || version > Version)
         throw std::runtime_error("Unknown result detail version.");
     auto result = std::make_unique<TaikoPlayResult>();
     auto &s = result->summary;
@@ -237,6 +239,8 @@ std::unique_ptr<TaikoPlayResult> LoadTaikoResultDetail(PlayResultSummary summary
         group.total = r.Size();
         group.processed = r.Size();
         group.accuracy = r.Accuracy();
+        if (version >= 2)
+            group.succeeded = r.Size();
     }
     r.Expect("timing");
     result->meanErrorMilliseconds = r.Optional();

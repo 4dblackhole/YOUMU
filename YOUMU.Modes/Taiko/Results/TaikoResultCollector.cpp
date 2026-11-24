@@ -124,6 +124,7 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
     const bool longNoteProgressed = !retired && accuracy.HasProgress();
     const bool shortNoteHit = note.finalState == NoteState::Completed && comboEligible_[found->second];
     const bool success = longNote ? longNoteProgressed : shortNoteHit;
+    note.comboCounted = success;
     if (success)
     {
         ++combo_;
@@ -184,6 +185,7 @@ void TaikoResultCollector::ResetJudgements() noexcept
         note.accuracy = {};
         note.target = {};
         note.acceptedHits = note.acceptedTicks = 0;
+        note.comboCounted = false;
     }
     result_->timingErrors.clear();
     timingErrorSum_ = {};
@@ -209,11 +211,15 @@ void TaikoResultCollector::Summarize()
     summary.totalNotes = result_->notes.size();
     std::uint64_t totalSum{};
     std::array<std::uint64_t, 3> groupSums{};
+    for (auto &group : result_->groups)
+        group.succeeded = 0;
     for (const auto &note : result_->notes)
     {
         const auto index = static_cast<std::size_t>(ResultGroup(note.type));
         auto &group = result_->groups[index];
         ++group.total;
+        if (note.comboCounted)
+            ++*group.succeeded;
         if (note.processed)
         {
             ++summary.processedNotes;
