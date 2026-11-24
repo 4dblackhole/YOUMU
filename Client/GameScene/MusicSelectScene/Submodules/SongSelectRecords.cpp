@@ -1,4 +1,5 @@
 #include "MusicSelectView.h"
+#include "SongSelectionText.h"
 
 using namespace PhantomCore;
 
@@ -28,4 +29,10 @@ void MusicSelectView::UpdateRecords()
             selected = &song.patterns[selection_.selectedPatternIndex_];
     }
     records_.Update(selected);
+    if (auto error = records_.TakeDeleteError())
+    {
+        const auto text = [this](const char *key) { return std::wstring(texts_.Get(key)); };
+        ShowAlert({AlertKind::Error, text("Records.deleteFailedTitle"), text("Records.deleteFailedMessage"),
+                   song_select::DecodeDisplayText(*error), {{text("Alert.ok"), true}}});
+    }
 }

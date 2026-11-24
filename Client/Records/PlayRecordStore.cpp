@@ -334,6 +334,17 @@ std::vector<PlayRecord> PlayRecordStore::Query(const std::filesystem::path &patt
     Check(db.get(), status);
     return records;
 }
+bool PlayRecordStore::Delete(const std::int64_t id) const
+{
+    if (!std::filesystem::exists(path_))
+        return false;
+    auto db = Open(path_);
+    auto s = Prepare(db.get(), "DELETE FROM Plays WHERE Id=?");
+    Check(db.get(), sqlite3_bind_int64(s.get(), 1, id));
+    Check(db.get(), sqlite3_step(s.get()));
+    return sqlite3_changes(db.get()) > 0;
+}
+
 std::string PlayRecordStore::LoadDetail(std::int64_t id) const
 {
     if (!std::filesystem::exists(path_))

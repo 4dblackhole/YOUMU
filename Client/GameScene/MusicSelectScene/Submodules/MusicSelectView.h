@@ -48,7 +48,7 @@ class MusicSelectView final
     void SetVisible(bool visible)
     {
         visible_ = visible;
-        if (!visible) { filterPanel_.Close(); favoritesPanel_.Close(); osuImportPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); songMenu_.Close(); pendingDeletion_.reset(); if (canvas_) CollapseDropdowns(*canvas_); }
+        if (!visible) { filterPanel_.Close(); favoritesPanel_.Close(); osuImportPanel_.Close(); records_.CloseFilter(); playOptionsPanel_.Dismiss(); tooltip_.Hide(); alert_.Hide(); songMenu_.Close(); pendingDeletion_.reset(); pendingRecordDeletion_.reset(); if (canvas_) CollapseDropdowns(*canvas_); }
         else records_.Invalidate();
         static_cast<void>(canvasHandle_.SetVisible(visible));
         UpdateSearchInputVisibility();
@@ -117,6 +117,8 @@ class MusicSelectView final
     void OpenSongMenu(const SongListView::ContextTarget &target);
     void RunSongMenuItem(SongMenuItem item);
     void AskToDelete(const SongCatalogEntry &song, std::optional<std::size_t> pattern);
+    // A right-click on a record row asks at once whether to delete that record (SongSelectMenu.cpp).
+    void AskToDeleteRecord(const PlayRecord &record);
     void AnswerDeletion(std::optional<std::size_t> chosen);
     [[nodiscard]] const SongCatalogEntry *FocusedSong() const noexcept;
     [[nodiscard]] bool IsSelectionModalVisible() const noexcept
@@ -158,6 +160,8 @@ class MusicSelectView final
     SongContextMenu songMenu_;
     // The delete the shown confirmation asks about, and the one the user confirmed.
     std::optional<SongDeletion> pendingDeletion_, approvedDeletion_;
+    // The record the shown confirmation asks about.
+    std::optional<std::int64_t> pendingRecordDeletion_;
     std::optional<std::filesystem::path> folderToOpen_;
     SongBackgroundPreview artwork_;
     SongListView songList_;

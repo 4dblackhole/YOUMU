@@ -263,9 +263,11 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
     {
         try
         {
-            auto rows = job_.get();
-            if (jobRevision_ == revision_)
-                Show(rows);
+            auto page = job_.get();
+            if (!page.deleteError.empty())
+                deleteError_ = std::move(page.deleteError);
+            if (jobRevision_ == revision_ && !pattern.empty())
+                Show(page.rows);
         }
         catch (const std::exception &error)
         {
@@ -280,14 +282,31 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
     if (!job_.valid() && jobRevision_ != revision_)
     {
         jobRevision_ = revision_;
-        if (pattern.empty())
+        const auto deleteId = std::exchange(pendingDelete_, std::nullopt);
+        if (pattern.empty() && !deleteId)
             return;
         const auto database = database_;
         job_ = std::async(std::launch::async,
-                                [database, pattern, mode, condition = query_, offset = offset_]
+                                [database, pattern, mode, condition = query_, offset = offset_, deleteId]
                                 {
                                     const PlayRecordStore store(database.empty() ? PlayRecordDatabasePath() : database);
-                                    std::vector<LoadedRecord> rows;
+                                    Page page;
+                                    // The delete runs before the page is read again, on this worker, so the page
+                                    // never shows it. A failure keeps the record and is reported.
+                                    if (deleteId)
+                                    {
+                                        try
+                                        {
+                                            static_cast<void>(store.Delete(*deleteId));
+                                        }
+                                        catch (const std::exception &error)
+                                        {
+                                            page.deleteError = error.what();
+                                        }
+                                    }
+                                    if (pattern.empty())
+                                        return page;
+                                    auto &rows = page.rows;
                                     for (auto &record : store.Query(pattern, mode, condition, offset, PageSize + 1))
                                         rows.push_back({std::move(record), {}});
                                     // The shown rows' details give their tooltips' judgement counts.
@@ -306,7 +325,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
                                         // Opening the record reads the detail again; the list stays light.
                                         std::string{}.swap(record.detail);
                                     }
-                                    return rows;
+                                    return page;
                                 });
     }
 }
@@ -329,8 +348,41 @@ void SongRecordView::SetMessage(std::wstring message)
     text.SetText(std::move(message));
 }
 
+std::optional<PlayRecord> SongRecordView::RecordAt(const NodeId hovered) const
+{
+    if (hovered == 0)
+        return std::nullopt;
+    const auto shown = std::ranges::find(shownRecords_, hovered, &std::pair<NodeId, PlayRecord>::first);
+    if (shown == shownRecords_.end())
+        return std::nullopt;
+    return shown->second;
+}
+
+std::wstring SongRecordView::DescribeRecord(const PlayRecord &record) const
+{
+    std::wstring text = std::wstring(RankName(record.accuracy)) + L" · " + ScoreText(record.score) + L" · " +
+                        AccuracyText(record.accuracy) + L"\n" + std::wstring(texts_.Get(StatusKey(record))) +
+                        OptionTokens(record);
+    const auto played =
+        std::chrono::sys_time<std::chrono::milliseconds>{std::chrono::milliseconds{record.playedAtMilliseconds}};
+    return text + std::format(L"\n{:%Y.%m.%d %H:%M} UTC", std::chrono::floor<std::chrono::minutes>(played));
+}
+
+void SongRecordView::DeleteRecord(const std::int64_t id)
+{
+    pendingDelete_ = id;
+    ++revision_;
+}
+
 void SongRecordView::Show(const std::vector<LoadedRecord> &records)
 {
+    // The last row of a later page was deleted: the page before it is the one to show.
+    if (records.empty() && offset_ > 0)
+    {
+        offset_ = offset_ >= PageSize ? offset_ - PageSize : 0;
+        ++revision_;
+        return;
+    }
     ShowMessage(records.empty());
     SetMessage(std::wstring(texts_.Get("MusicSelect.noRecord")));
     next_ = records.size() > PageSize;
