@@ -17,6 +17,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <initializer_list>
+#include <optional>
 #include <thread>
 
 using namespace PhantomCore;
@@ -656,8 +657,9 @@ namespace
             if (sent_)
             {
                 // A machine too slow to update twice within the cold-sample delay proves nothing either way.
-                Check(coldEnd_ - coldBegin_ < std::chrono::milliseconds{50} || barSwept_,
-                      "The loading bar must keep sweeping while cold samples are still being prepared.");
+                Check(coldEnd_ - coldBegin_ < std::chrono::milliseconds{50} || barPartial_,
+                      "While cold samples load, the loading bar shows the chart and images ready but not the sounds.");
+                Check(barWidth_ == 420.0F, "With every file ready the loading bar is full.");
                 Check(intro_, "The loading introduction is visible before gameplay.");
                 Check(introImage_, "The loading introduction displays the selected background.");
                 Check(sampleStarts == before + 2, "The first visible-frame Don and Kat must both request a sample.");
@@ -685,30 +687,205 @@ namespace
             scene_.reset(); playback_.StopAll(); visuals_.Shutdown(); rendering_.reset();
         }
       private:
-        // The scene cannot be ready while the cold samples load, so movement seen before
-        // samplesReadyAt belongs to the preparation wait, not to the final scheduling frames.
+        // The bar fills by the share of files ready (the chart, the images, the sounds) and never shrinks.
+        // The scene cannot be ready while the cold samples load, so a bar seen before samplesReadyAt
+        // must be partly filled: the chart is read, the sounds are not ready.
         void ObserveLoadingBar()
         {
             const auto now = std::chrono::steady_clock::now();
             const auto *loading = visuals_.FindCanvas(1);
             const auto *piece = loading ? Find(loading->Root(), "Loading.BarPiece") : nullptr;
-            if (!piece || now >= samplesReadyAt)
+            if (!piece)
                 return;
-            const float x = piece->Position().x;
-            if (!barStart_)
-            {
-                barStart_ = x;
+            const float width = piece->NodeSize().width;
+            Check(width >= barWidth_, "The loading bar never shrinks.");
+            barWidth_ = width;
+            if (now >= samplesReadyAt)
+                return;
+            if (!coldBegin_.time_since_epoch().count())
                 coldBegin_ = now;
-            }
             coldEnd_ = now;
-            barSwept_ = barSwept_ || x != *barStart_;
+            barPartial_ = barPartial_ || (width > 0.0F && width < 420.0F);
         }
         bool &verified_;
         bool accelerated_{};
         bool shown_{}, sent_{}, intro_{}, introImage_{}, entered_{};
-        std::optional<float> barStart_;
-        bool barSwept_{};
+        float barWidth_{};
+        bool barPartial_{};
         std::chrono::steady_clock::time_point coldBegin_{}, coldEnd_{};
+        InputState input_;
+        ScreenVisual2DManager visuals_;
+        AudioPlaybackManager playback_;
+        SceneManager scenes_;
+        TextCatalog texts_;
+        std::unique_ptr<IPlayResult> result_;
+        std::unique_ptr<Rendering> rendering_;
+        std::unique_ptr<RhythmTestScene> scene_;
+    };
+    // A broken image during the real scene's loading, through the engine's one shared preparation slot (the
+    // loading BG and the play screen take turns on it, and an error goes to whoever polls next):
+    // - a broken skin image stops the scene with that image's error, before any play screen;
+    // - a broken chart BG only warns: the play screen opens and the error line names the BG.
+    class BrokenImageClient final : public IGameClient
+    {
+        // Swaps the first play screen image for the broken file, so the real decoder fails on it.
+        class Rendering final : public Visual2DRenderSystem
+        {
+          public:
+            Rendering(Visual2DRenderSystem &inner, std::filesystem::path loadingBackground, std::filesystem::path broken,
+                      bool skin)
+                : inner_(inner), loadingBackground_(std::move(loadingBackground)), broken_(std::move(broken)), skin_(skin) {}
+            ImageHandle LoadImageFile(const std::filesystem::path &path) override { return inner_.LoadImageFile(path); }
+            bool PrepareImages(std::span<const std::filesystem::path> paths, std::string &error) override
+            {
+                if (skin_ && !target_ && paths.front() != loadingBackground_)
+                    target_ = paths.front();
+                std::vector<std::filesystem::path> asked(paths.begin(), paths.end());
+                std::ranges::replace(asked, target_.value_or(std::filesystem::path{}), broken_);
+                return inner_.PrepareImages(asked, error);
+            }
+            Size GetImageSize(ImageHandle image) const noexcept override { return inner_.GetImageSize(image); }
+            void SubmitScreen(const Visual2DCanvas &canvas, const RenderContext &ctx, Point origin, std::uint32_t z) override
+            { inner_.SubmitScreen(canvas, ctx, origin, z); }
+            void SubmitPlane(const Visual2DCanvas &canvas, const RenderContext &ctx, const Float4x4 &world,
+                             Size size, const Float4x4 &view) override
+            { inner_.SubmitPlane(canvas, ctx, world, size, view); }
+            RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t w, std::uint32_t h) override
+            { return inner_.CreateCanvasRenderTarget(w, h); }
+            void RenderToTexture(const Visual2DCanvas &canvas, const RenderTargetTextureHandle &target,
+                                 const RenderContext &ctx) override { inner_.RenderToTexture(canvas, target, ctx); }
+
+          private:
+            Visual2DRenderSystem &inner_;
+            std::filesystem::path loadingBackground_, broken_;
+            bool skin_{};
+            std::optional<std::filesystem::path> target_;
+        };
+
+      public:
+        BrokenImageClient(bool &verified, bool skin) : verified_(verified), skin_(skin)
+        {
+            broken_ = std::filesystem::temp_directory_path() /
+                      ("YOUMU-broken-image-" + std::to_string(GetCurrentProcessId()) + ".png");
+            std::ofstream(broken_, std::ios::binary) << "not an image";
+        }
+        ~BrokenImageClient() override
+        {
+            std::error_code ignored;
+            std::filesystem::remove(broken_, ignored);
+        }
+        EngineConfig GetEngineConfig() const override
+        {
+            EngineConfig c;
+            c.showWindow = false;
+            c.audio.preferredBackend = AudioOutputBackend::NoSound;
+            c.audioClipBackendFactory = CreateClip;
+            return c;
+        }
+        void Initialize(const EngineServices &services) override
+        {
+            GameplayLaunchRequest request{"probe.ymp", {}, "probe-music.mp3", "Taiko"};
+            // With a broken skin image the chart BG is a good, not yet prepared image, so the loading BG still
+            // polls the shared slot while the play screen's images start.
+            request.backgroundPath = skin_ ? ResolveDefaultSkinAsset(L"Result/Background/Sky.png") : broken_;
+            rendering_ = std::make_unique<Rendering>(services.visual2DRendering, request.backgroundPath, broken_, skin_);
+            visuals_.Initialize(*rendering_, {1280, 720});
+            auto loaded = TaikoMode{}.CreateSession(Pattern());
+            Check(loaded.Succeeded(), "Broken image fixture must load.");
+            auto store = std::make_shared<GameplayLaunchStore>();
+            store->SetValidated(request, std::move(loaded.session));
+            scene_ = std::make_unique<RhythmTestScene>(store, playback_, visuals_, false, texts_, result_);
+            const EngineServices wrapped{services.meshRendering, services.textRendering, *rendering_, services.audio,
+                                         services.windowWidth, services.windowHeight};
+            scene_->Initialize(wrapped);
+            scene_->BeginScene();
+        }
+        bool Update(const UpdateContext &ctx) override
+        {
+            try
+            {
+                return Settle(ctx);
+            }
+            catch (const std::exception &error)
+            {
+                std::fprintf(stderr, "Broken %s: %s\n", skin_ ? "skin image" : "chart BG", error.what());
+                throw;
+            }
+        }
+        bool Settle(const UpdateContext &ctx)
+        {
+            Check(ctx.totalSeconds < 15, "The broken image did not settle the loading screen.");
+            InputStateTestAccess::Begin(input_);
+            if (!entered_)
+                InputStateTestAccess::Press(input_, VK_RETURN, ctx.audio.CaptureClockSnapshot().performanceCounterTicks);
+            entered_ = true;
+            try
+            {
+                scene_->Update({ctx.deltaSeconds, ctx.totalSeconds, ctx.updateIndex, input_, ctx.audio, ctx.performance},
+                               scenes_);
+            }
+            catch (const std::runtime_error &error)
+            {
+                Check(skin_, "A broken chart BG must not stop the play screen.");
+                Check(std::string_view{error.what()}.size() > 0 && !ErrorLocation(),
+                      "A broken skin image stops the scene with its error, before any play screen.");
+                const auto *loading = visuals_.FindCanvas(1);
+                const auto *background = loading ? Find(loading->Root(), "Loading.Background") : nullptr;
+                const auto *sprite = background ? background->GetComponent<SpriteVisualComponent>() : nullptr;
+                Check(sprite && sprite->Style().normalImage.value,
+                      "The loading BG keeps its image: the skin image's error never reaches it.");
+                verified_ = true;
+                return false;
+            }
+            playback_.Update();
+            visuals_.Update(ctx.deltaSeconds);
+            if (const auto location = ErrorLocation())
+            {
+                Check(!skin_, "A broken skin image must stop the scene.");
+                Check(*location == broken_.wstring(), "The error line names the broken chart BG.");
+                verified_ = true;
+                return false;
+            }
+            return true;
+        }
+        void Render(const RenderContext &ctx) override
+        {
+            try
+            {
+                scene_->Render(ctx);
+                visuals_.Render(ctx);
+            }
+            catch (const std::exception &error)
+            {
+                std::fprintf(stderr, "Broken %s render: %s\n", skin_ ? "skin image" : "chart BG", error.what());
+                throw;
+            }
+        }
+        void OnResize(std::uint32_t width, std::uint32_t height) override
+        { visuals_.OnResize(width, height); if (scene_) scene_->OnResize(width, height); }
+        void Shutdown() noexcept override
+        {
+            if (scene_) scene_->Shutdown();
+            scene_.reset(); playback_.StopAll(); visuals_.Shutdown(); rendering_.reset();
+        }
+
+      private:
+        // The error line's location once one was presented (the line's own Canvas is created on first use).
+        [[nodiscard]] std::optional<std::wstring> ErrorLocation() const
+        {
+            for (ScreenCanvasId id = 1; id <= 64; ++id)
+            {
+                const auto *canvas = visuals_.FindCanvas(id);
+                const auto *location = canvas ? Find(canvas->Root(), "Hud.Error.Location") : nullptr;
+                const auto text = location ? location->GetComponent<TextVisualComponent>()->Text() : std::wstring_view{};
+                if (!text.empty())
+                    return std::wstring(text);
+            }
+            return std::nullopt;
+        }
+        bool &verified_;
+        bool skin_{}, entered_{};
+        std::filesystem::path broken_;
         InputState input_;
         ScreenVisual2DManager visuals_;
         AudioPlaybackManager playback_;
@@ -1808,6 +1985,17 @@ int main(int argc, char **argv)
             Check(Run(std::make_unique<ColdStartClient>(verified, std::string_view{argv[1]} == "--cold-start-options")) == 0 && verified,
                   "Cold-start presentation must deliver the very first visible-frame Don and Kat inputs.");
             std::puts("Cold-start first-frame Don/Kat input and presentation readiness passed.");
+            return 0;
+        }
+        // One engine Run per process: a finished Run leaves its quit message on this thread.
+        const bool brokenSkin = argc > 1 && std::string_view{argv[1]} == "--broken-skin-image";
+        if (brokenSkin || (argc > 1 && std::string_view{argv[1]} == "--broken-chart-background"))
+        {
+            bool verified{};
+            Check(Run(std::make_unique<BrokenImageClient>(verified, brokenSkin)) == 0 && verified,
+                  "A broken image must settle the loading screen as before.");
+            std::puts(brokenSkin ? "A broken skin image stops the scene and the loading BG keeps its image."
+                                 : "A broken chart BG only warns on the error line.");
             return 0;
         }
         TestMenu();

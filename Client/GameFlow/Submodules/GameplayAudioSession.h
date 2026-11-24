@@ -27,6 +27,8 @@ class GameplayAudioSession final
 
     // Unthrottled readiness check before the Scene starts.
     [[nodiscard]] PhantomCore::AudioPreparationState PollResourcesNow();
+    // Sound files ready at the last poll, for the loading bar.
+    [[nodiscard]] FileProgress LoadedFiles() const noexcept { return router_.LoadedFiles(); }
     // Throttled per-frame readiness check. Ready and Failed are latched until
     // RestartResourcePolling.
     [[nodiscard]] PhantomCore::AudioPreparationState PollResources(double totalSeconds);

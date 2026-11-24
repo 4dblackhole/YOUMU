@@ -1,4 +1,5 @@
 #pragma once
+#include "App/FileProgress.h"
 #include "GameFlow/GameplayFeedback.h"
 #include "GameplayJudgementView.h"
 #include "GameplayProgressView.h"
@@ -27,7 +28,14 @@ class GameplayPresenter final
     }
     void Initialize(const PhantomCore::EngineServices &services,
                     const PlaySession &session);
+    // Prepares the play screen's images one at a time (the loading bar counts them), then the chart's BG.
     bool PrepareAssets(const PhantomCore::EngineServices &services);
+    // Images ready so far, the chart's BG included; nothing is known before the first PrepareAssets.
+    [[nodiscard]] FileProgress PreparedImages() const noexcept
+    {
+        return {preparedImages_ + (backgroundPrepared_ ? 1U : 0U),
+                preparingImages_.size() + (backgroundPath_.empty() ? 0U : 1U)};
+    }
     // Percent from the launch request, shared by every mode's lane key beam.
     void ConfigureKeyBeamOpacity(const int percent) noexcept
     {
@@ -97,6 +105,8 @@ class GameplayPresenter final
     GameplayNoteView noteView_;
     GameplayHighlightView highlightView_;
     std::vector<std::filesystem::path> preparingImages_;
+    std::size_t preparedImages_{};
+    bool backgroundPrepared_{};
     GameplayInputView inputView_;
     PhantomCore::Visual2DNode *background_{};
     PhantomCore::Visual2DNode *scrollGearRoot_{};

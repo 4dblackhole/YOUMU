@@ -79,6 +79,7 @@ void GameplayAudioRouter::Shutdown() noexcept
             }
         }
     clips_.clear();
+    loadedFiles_ = {};
     buses_.clear();
     audioSystem_ = nullptr;
     lastError_.clear();
@@ -168,17 +169,26 @@ bool GameplayAudioRouter::ConfigurePlayback(const PlayOptions &options, std::str
 AudioPreparationState GameplayAudioRouter::PrepareResources()
 {
     auto ready = AudioPreparationState::Ready;
-    for (const auto &[id, sound] : clips_)
+    loadedFiles_ = {};
+    for (auto sound = clips_.begin(); sound != clips_.end(); ++sound)
     {
+        const auto &[id, registered] = *sound;
+        // Sound ids that share one file share its clip; the loading bar counts the file once.
+        const auto sameClip = [&](const auto &entry) { return entry.second.clip == registered.clip; };
+        if (std::any_of(clips_.begin(), sound, sameClip))
+            continue;
+        ++loadedFiles_.total;
         std::string error;
-        const auto state = sound.clip->LoadState(error);
-        if (state == AudioClipLoadState::Loading)
-            ready = AudioPreparationState::Loading;
-        else if (state == AudioClipLoadState::Failed)
+        const auto state = registered.clip->LoadState(error);
+        if (state == AudioClipLoadState::Failed)
         {
             lastError_ = id + ": " + error;
             return AudioPreparationState::Failed;
         }
+        if (state == AudioClipLoadState::Loading)
+            ready = AudioPreparationState::Loading;
+        else
+            ++loadedFiles_.ready;
     }
     return ready;
 }

@@ -36,14 +36,18 @@ namespace
         throw std::invalid_argument("Unknown HP gauge.");
     }
 
-    // Preparation has no measurable fraction, so the piece crosses the bar every 1.4 s.
-    void SweepLoadingBar(Visual2DNode *piece, const double totalSeconds)
+    constexpr float LoadingBarWidth = 420.0F;
+    constexpr float LoadingBarHeight = 6.0F;
+
+    // The sky-blue piece fills the bar from the left by the share of files ready (user decision 2026-11-25);
+    // its gradient is revealed, not stretched.
+    void FillLoadingBar(Visual2DNode *piece, const float fraction)
     {
         if (!piece)
             return;
-        const double cycle = totalSeconds / 1.4;
-        const auto phase = static_cast<float>(cycle - std::floor(cycle));
-        piece->SetPosition({-150.0F + 570.0F * phase, 0.0F});
+        const float shown = std::clamp(fraction, 0.0F, 1.0F);
+        piece->SetSize({LoadingBarWidth * shown, LoadingBarHeight});
+        piece->GetComponent<SpriteVisualComponent>()->SetUvTransform({shown, 1.0F}, {});
     }
 } // namespace
 
@@ -105,11 +109,12 @@ void RhythmTestScene::Initialize(const EngineServices &services)
     };
     style(title, 32, 900, ui_colors::theme::Ink);
     style(pattern, 16, 700, ui_colors::theme::Caption);
-    // Preparation has no measurable fraction, so a piece sweeps the bar while loading.
-    auto &bar = CreateSprite(card, {-210, -48, 420, 6}, loadingImage(L"BarTrack"), "Loading.Bar");
-    bar.SetClipRect({0, 0, 420, 6});
-    loadingBarPiece_ = &CreateSprite(bar, {0, 0, 150, 6}, loadingImage(L"BarFill"), "Loading.BarPiece");
-    loadingBarPiece_->GetComponent<SpriteVisualComponent>()->SetUvTransform({150.0F / 420.0F, 1.0F}, {});
+    // The bar fills with the share of files ready and stays full once they are.
+    auto &bar = CreateSprite(card, {-LoadingBarWidth * .5F, -48, LoadingBarWidth, LoadingBarHeight},
+                             loadingImage(L"BarTrack"), "Loading.Bar");
+    bar.SetClipRect({0, 0, LoadingBarWidth, LoadingBarHeight});
+    loadingBarPiece_ = &CreateSprite(bar, {0, 0, 0, LoadingBarHeight}, loadingImage(L"BarFill"), "Loading.BarPiece");
+    FillLoadingBar(loadingBarPiece_, 0.0F);
     static_cast<void>(PreparePresentation());
 }
 void RhythmTestScene::PrepareLoadingBackground()
@@ -159,7 +164,11 @@ bool RhythmTestScene::PreparePresentation()
     // Start both preparations before polling either. The playable screen must
     // never appear while cold hit samples are still being decoded.
     const auto audio = controller_->PrepareAudioResources(services_->audio);
-    const bool images = view_->PrepareAssets(*services_);
+    // The engine prepares one image request at a time and hands a failure to whichever caller polls next, so the
+    // play screen's images start only after the loading BG has settled: each side then gets its own errors (a
+    // broken chart BG only warns, a broken skin image stops the scene). The BG is first in line anyway.
+    const bool backgroundSettled = loadingBackgroundReady_ || launch_.backgroundPath.empty();
+    const bool images = backgroundSettled && view_->PrepareAssets(*services_);
     if (!images || audio == AudioPreparationState::Loading)
         return false;
     view_->Initialize(*services_, controller_->Session());
@@ -205,10 +214,6 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
 {
     PrepareLoadingBackground();
     FollowSavedVolumes();
-    // Sweep before the preparation branch: the long waits (chart, images, audio conversion)
-    // all end in its early return, and a still bar there reads as a stalled screen.
-    if (controller_->CurrentState() == PlayState::Loading)
-        SweepLoadingBar(loadingBarPiece_, context.totalSeconds);
     if (!presentationReady_ && (context.totalSeconds < nextPreparationPoll_ || !PreparePresentation()))
     {
         if (context.totalSeconds >= nextPreparationPoll_)
@@ -344,6 +349,19 @@ void RhythmTestScene::PresentLoadingScreen()
     static_cast<void>(loadingCanvas_.SetVisible(loading));
     if (loadingCard_)
         loadingCard_->SetVisible(!controller_->PauseMenuOpen());
+    FillLoadingBar(loadingBarPiece_, LoadingFraction());
+}
+float RhythmTestScene::LoadingFraction() const
+{
+    if (presentationReady_)
+        return 1.0F;
+    // The sounds and images to prepare are known once the chart is read, so until then nothing is ready.
+    if (!controller_->SessionReady())
+        return 0.0F;
+    FileProgress files{1, 1};
+    files += view_->PreparedImages();
+    files += controller_->LoadedAudioFiles();
+    return files.Fraction();
 }
 void RhythmTestScene::PresentScreenError()
 {
