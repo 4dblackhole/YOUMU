@@ -176,6 +176,10 @@ Buzz 헤드가 BAD·POOR(복귀 포함)이면 헤드의 정확도만 0으로 확
 
 `RuleBasedNote`가 early BAD(`RecordEarlyBad`, Lane이 알림)·POOR·늦은 BAD를 기억하고, 그 뒤 같은 타이밍 대상에 받은 타격 이벤트에
 `recovery`를, early BAD 상태로 놓친 `Missed`에 `leftAtEarlyBad`를 표시합니다. 완료 정확도의 `rejectedTiming`이 이 처리를 나타냅니다.
+early BAD는 누르는 입력만입니다. 앞 노트를 친 키를 떼는 시각은 다음 노트의 early BAD 구간에 자주 들어가므로, Lane은 떼는 입력에
+`RecordEarlyBad`를 부르지 않습니다. 떼는 입력의 early BAD 이벤트(`InputRejected`)는 예전처럼 남지만, 결과 수집기·HP·판정 글자·키빔은
+누르는 입력(`keyPressed`)이 아닌 이벤트를 읽지 않으므로 아무것도 바뀌지 않습니다. 큰 노트의 두 키, 주 키와 보조 키를 번갈아 쓰는 경우,
+다른 색 키를 떼는 경우도 같습니다.
 결과 수집기·HP 게이지·판정 글자는 이 표시만 읽습니다. 타이밍 오차 표본은 복귀 입력의 실제 시각을 그대로 씁니다.
 
 TickRoll/BigTickRoll과 Buzz는 헤드를 기준으로 한 박자 틱 격자에서 테일까지 포함합니다.

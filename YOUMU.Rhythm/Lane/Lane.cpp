@@ -99,7 +99,12 @@ NoteProcessResult Lane::ProcessInput(const RhythmInputEvent& input,
             *current,
             currentJudgement,
             input.time));
-        current->RecordEarlyBad();
+        // Only a press is an early BAD. Releasing the previous note's key
+        // often lands in this window; its event stays for consumers, which
+        // already ignore it, but it must not turn the next press into a
+        // BAD recovery.
+        if (input.edge == InputEdge::Pressed)
+            current->RecordEarlyBad();
         return result;
     }
 
