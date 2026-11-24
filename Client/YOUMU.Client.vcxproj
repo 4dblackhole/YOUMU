@@ -263,11 +263,13 @@
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayScreenFade.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayOffsetNotice.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayLoadingSettings.cpp" />
+    <ClCompile Include="GameScene\RhythmTestScene\Submodules\LoadingStartWait.cpp" />
     <ClCompile Include="GameScene\RhythmTestScene\Submodules\GameplayPauseLayout.cpp" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayPauseMenu.h" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayScreenFade.h" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayOffsetNotice.h" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayLoadingSettings.h" />
+    <ClInclude Include="GameScene\RhythmTestScene\Submodules\LoadingStartWait.h" />
     <ClInclude Include="GameScene\RhythmTestScene\Submodules\GameplayPauseAction.h" />
     <ClInclude Include="GameFlow\GameplaySessionController.h" />
     <ClInclude Include="GameFlow\PlaySessionLoader.h" />

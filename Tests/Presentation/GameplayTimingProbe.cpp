@@ -373,6 +373,10 @@ namespace
             const auto now = Qpc();
             RecordIteration(now);
             InputStateTestAccess::Begin(input_);
+            // Enter on the loading screen starts as soon as the attempt is ready, without the idle wait.
+            if (!entered_)
+                InputStateTestAccess::Press(input_, VK_RETURN, now);
+            entered_ = true;
             DriveInputs(now);
             DrivePauses(now);
             DriveWindow(now);
@@ -574,6 +578,7 @@ namespace
         const double frequency_{static_cast<double>(QpcFrequency())};
         std::vector<PlannedInput> inputs_;
         std::size_t nextInput_{};
+        bool entered_{};
         std::optional<std::uint16_t> releaseKey_;
         std::int64_t pausedAt_{};
         int pausesDone_{};

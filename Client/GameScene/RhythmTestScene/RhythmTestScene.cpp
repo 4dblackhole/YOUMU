@@ -218,13 +218,13 @@ void RhythmTestScene::Update(const UpdateContext &context, SceneManager &scenes)
         UpdatePauseMenu(context, scenes);
         // A Retry chosen before the play screen exists still fades out first.
         static_cast<void>(controller_->UpdatePendingRetry(context));
-        UpdateLoadingSettings(context.input);
+        UpdateLoadingSettings(context);
         PresentLoadingScreen();
         PresentScreenError();
         PresentScreenFade();
         return;
     }
-    UpdateLoadingSettings(context.input);
+    UpdateLoadingSettings(context);
     controller_->Update(context);
     PresentLocalOffset(context.deltaSeconds);
     PresentLoadingScreen();
@@ -256,20 +256,29 @@ void RhythmTestScene::PresentLocalOffset(const double deltaSeconds)
     }
     offsetNotice_.Update(deltaSeconds);
 }
-void RhythmTestScene::UpdateLoadingSettings(const InputState &input)
+void RhythmTestScene::UpdateLoadingSettings(const UpdateContext &context)
 {
+    const auto &input = context.input;
+    const bool started = controller_->AttemptStarted();
+    if (attemptWasStarted_ && !started)
+        loadingWait_.Begin(false);
+    attemptWasStarted_ = started;
     // Only the loading screen (before the attempt's clock first runs) shows the plate, and not
     // under the pause menu; elsewhere the start is never held.
-    const bool loading = !controller_->AttemptStarted() && !controller_->PauseMenuOpen();
+    const bool loading = !started && !controller_->PauseMenuOpen();
     if (!loading || !services_ || !launch_.IsValid())
     {
+        if (controller_->PauseMenuOpen())
+            loadingWait_.Interrupt();
         loadingSettings_.Hide();
         controller_->SetStartHeld(false);
         return;
     }
     loadingSettings_.Show(services_->windowWidth, services_->windowHeight);
     const auto interaction = loadingSettings_.Update(input);
-    controller_->SetStartHeld(interaction.holdStart);
+    // The game window is active when this thread's window is the active one (another program takes it away).
+    const LoadingStartWait::Frame frame{context.deltaSeconds, GetActiveWindow() != nullptr, interaction.holdStart};
+    controller_->SetStartHeld(loadingWait_.Update(input, frame));
     if (interaction.brightness)
         ApplyBackgroundBrightness(*interaction.brightness);
     if (interaction.brightnessCommitted)
