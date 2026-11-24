@@ -1,13 +1,17 @@
 #include "PlayRecordStore.h"
 #include "RecordCondition.h"
 #include "Mode/PlayGameModeFactory.h"
+#include <algorithm>
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <cwctype>
 #include <format>
 #include <limits>
 #include <memory>
+#include <ranges>
 #include <stdexcept>
+#include <string_view>
 #include <winsqlite/winsqlite3.h>
 #pragma comment(lib, "winsqlite3.lib")
 
@@ -50,38 +54,72 @@ namespace
         Check(db, sqlite3_step(version.get()));
         return sqlite3_column_int(version.get(), 0);
     }
-    // Moves an older-schema database (and a journal beside it) to the first free
-    // `<stem>.v<schema>[ (n)]<extension>` name in its folder; nothing is deleted.
-    void SetAsideOldDatabase(const std::filesystem::path &path, int schema)
+    // A database file and the SQLite files that can sit beside it.
+    constexpr std::array<std::wstring_view, 4> DatabaseFileSuffixes{L"", L"-journal", L"-wal", L"-shm"};
+    bool TakePrefix(std::wstring_view &text, std::wstring_view prefix)
     {
-        const auto folder = path.parent_path();
-        const auto stem = path.stem().wstring(), extension = path.extension().wstring();
-        auto journal = path;
-        journal += L"-journal";
-        for (int copy = 1; copy < 1000; ++copy)
+        if (!text.starts_with(prefix))
+            return false;
+        text.remove_prefix(prefix.size());
+        return true;
+    }
+    bool TakeDigits(std::wstring_view &text)
+    {
+        const auto digits = std::ranges::find_if_not(text, [](wchar_t ch) { return ch >= L'0' && ch <= L'9'; });
+        const auto count = static_cast<std::size_t>(digits - text.begin());
+        text.remove_prefix(count);
+        return count != 0;
+    }
+    // The copy number ` (<digits>)` is optional.
+    bool TakeCopyNumber(std::wstring_view &text)
+    {
+        if (!TakePrefix(text, L" ("))
+            return true;
+        return TakeDigits(text) && TakePrefix(text, L")");
+    }
+    // Earlier builds set old databases aside as `<stem>.v<digits>[ (<digits>)]<extension>` with their
+    // `-journal`/`-wal`/`-shm` files. Only names of exactly this form match.
+    [[nodiscard]] bool IsSetAsideName(std::wstring_view name, std::wstring_view stem, std::wstring_view extension)
+    {
+        const bool numbered = TakePrefix(name, stem) && TakePrefix(name, L".v") && TakeDigits(name);
+        if (!numbered || !TakeCopyNumber(name) || !TakePrefix(name, extension))
+            return false;
+        return std::ranges::find(DatabaseFileSuffixes, name) != DatabaseFileSuffixes.end();
+    }
+    void RemoveFile(const std::filesystem::path &file)
+    {
+        std::error_code error;
+        std::filesystem::remove(file, error);
+        if (error)
+            throw std::runtime_error("Could not delete an old record database. Existing records were preserved.");
+    }
+    // Deletes an older-schema database. The files beside it go first, so a failure on the database itself
+    // leaves it in place and no journal stays behind for the new database.
+    void DeleteOldDatabase(const std::filesystem::path &path)
+    {
+        for (const auto suffix : DatabaseFileSuffixes | std::views::drop(1))
         {
-            const auto suffix = copy == 1 ? std::format(L".v{}", schema) : std::format(L".v{} ({})", schema, copy);
-            const auto target = folder / (stem + suffix + extension);
-            auto targetJournal = target;
-            targetJournal += L"-journal";
-            if (std::filesystem::exists(target) || std::filesystem::exists(targetJournal))
-                continue;
-            // The journal moves first so a journal never stays behind for the new database.
-            const bool hasJournal = std::filesystem::exists(journal);
-            if (hasJournal)
-                std::filesystem::rename(journal, targetJournal);
-            std::error_code error;
-            std::filesystem::rename(path, target, error);
-            if (!error)
-                return;
-            if (hasJournal)
-                std::filesystem::rename(targetJournal, journal, error);
-            throw std::runtime_error("Could not set aside the old record database. Existing records were preserved.");
+            auto beside = path;
+            beside += suffix;
+            RemoveFile(beside);
         }
-        throw std::runtime_error("Could not name the old record database. Existing records were preserved.");
+        RemoveFile(path);
+    }
+    // Deletes the databases earlier builds set aside in the database's folder, and nothing else.
+    void DeleteSetAsideDatabases(const std::filesystem::path &path)
+    {
+        const auto stem = path.stem().wstring(), extension = path.extension().wstring();
+        std::vector<std::filesystem::path> found;
+        for (const auto &entry : std::filesystem::directory_iterator(path.parent_path()))
+        {
+            if (entry.is_regular_file() && IsSetAsideName(entry.path().filename().wstring(), stem, extension))
+                found.push_back(entry.path());
+        }
+        for (const auto &file : found)
+            RemoveFile(file);
     }
     // Schemas 1..3 hold records judged by earlier rules; the user dropped them all (schema 1: no score,
-    // schema 2/3: before BAD recovery). The file is set aside under its own version and a fresh one starts.
+    // schema 2/3: before BAD recovery). The file is deleted and a fresh one starts.
     [[nodiscard]] bool IsOldSchema(int schema) noexcept
     {
         return schema > 0 && schema < PlayRecordStore::SchemaVersion;
@@ -93,12 +131,13 @@ namespace
         if (IsOldSchema(schema))
         {
             db.reset();
-            SetAsideOldDatabase(path, schema);
+            DeleteOldDatabase(path);
             db = Connect(path);
             schema = SchemaOf(db.get());
         }
         if (schema != 0 && schema != PlayRecordStore::SchemaVersion)
             throw std::runtime_error("Unsupported local record database version. Existing records were preserved.");
+        DeleteSetAsideDatabases(path);
         if (schema == 0)
         {
             Execute(db.get(), "BEGIN IMMEDIATE");
