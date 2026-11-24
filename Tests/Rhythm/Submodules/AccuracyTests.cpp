@@ -187,6 +187,89 @@ namespace tests
         }
     }
 
+    // Only a press can be an early BAD (Rules: a key release makes no BAD processing). A release, a second key
+    // on a finished note, alternating primary and secondary keys and a wrong colour's release inside the next
+    // note's early BAD window must leave that note clean.
+    void TestReleaseIsNotEarlyBad()
+    {
+        constexpr std::size_t Max = 0, Bad = 4;
+        const auto cleanHit = [](const NoteProcessResult &result) {
+            const auto hit = std::ranges::find(result.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            return hit != result.events.end() && !hit->recovery && hit->judgement.grade == JudgementGrade::Max;
+        };
+        const auto pattern = [](std::initializer_list<int> keyTypes) {
+            PatternDocument document;
+            document.mode = "Taiko";
+            document.baseBpm = 120.0;
+            std::int64_t i = 0;
+            for (const int keyType : keyTypes)
+            {
+                document.notes.push_back(
+                    {.position = {0, {i, 8}}, .keyType = keyType, .sourceOrder = static_cast<std::size_t>(i)});
+                ++i;
+            }
+            return document;
+        };
+        {
+            // Don notes every 250 ms; each release lands 60..70 ms before the next note (its early BAD window).
+            auto loaded = TaikoMode{}.CreateSession(pattern({1, 1, 1, 1}));
+            Require(loaded.Succeeded(), "Release early BAD fixture must load.");
+            auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            const auto released = session.ProcessInput('C', InputEdge::Released, RhythmTime{180'000});
+            Require(released.finalizedAccuracies.empty() && session.Statistics().judgements[Bad] == 0,
+                    "Releasing a key inside the next note's early BAD window counts nothing.");
+            Require(cleanHit(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000})),
+                    "The note after a release inside its early BAD window takes its own grade, not a BAD recovery.");
+            // A second Don key a few ms after a finished normal note is far outside the next note's window.
+            static_cast<void>(session.ProcessInput('V', InputEdge::Pressed, RhythmTime{255'000}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{430'000}));
+            static_cast<void>(session.ProcessInput('V', InputEdge::Released, RhythmTime{440'000}));
+            Require(cleanHit(session.ProcessInput('V', InputEdge::Pressed, RhythmTime{500'000})),
+                    "Alternating the primary and secondary Don keys keeps the next note clean.");
+            // A wrong colour pressed outside every window and released inside the next note's early BAD window.
+            static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{600'000}));
+            static_cast<void>(session.ProcessInput('V', InputEdge::Released, RhythmTime{670'000}));
+            static_cast<void>(session.ProcessInput('D', InputEdge::Released, RhythmTime{680'000}));
+            Require(cleanHit(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{750'000})),
+                    "A wrong colour's release inside the early BAD window keeps the note clean.");
+            const auto &statistics = session.Statistics();
+            Require(statistics.judgements[Max] == 4 && statistics.judgements[Bad] == 0 && statistics.poorCount == 0,
+                    "Four clean presses count four MAX and no BAD or POOR.");
+            Require(statistics.combo == 4 && session.AccuracyRate() == 1.0,
+                    "Releases never break the combo or the accuracy.");
+        }
+        {
+            // A large Don hit with both hands almost together, both released inside the next note's early window.
+            auto loaded = TaikoMode{}.CreateSession(pattern({3, 1}));
+            Require(loaded.Succeeded(), "Large-note release fixture must load.");
+            auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, RhythmTime{8'000}));
+            static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{180'000}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Released, RhythmTime{185'000}));
+            Require(cleanHit(session.ProcessInput('N', InputEdge::Pressed, RhythmTime{250'000})),
+                    "Releasing both hands of a large note inside the next note's early window keeps it clean.");
+            // The second hand 8 ms late scores a little under 100%; a BAD would settle the large note at zero.
+            const auto rate = session.AccuracyRate();
+            Require(session.Statistics().judgements[Bad] == 0 && session.Statistics().combo == 2,
+                    "A large note and the note after its releases both stay clean.");
+            Require(rate && *rate > 0.99, "A large note and the note after its releases both stay clean.");
+        }
+        {
+            // The user's rule stays: a press inside the early BAD window still makes the next press a BAD recovery.
+            auto loaded = TaikoMode{}.CreateSession(pattern({1, 1}));
+            Require(loaded.Succeeded(), "Press early BAD fixture must load.");
+            auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, RhythmTime{180'000}));
+            const auto answered = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
+            const auto hit = std::ranges::find(answered.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            Require(hit != answered.events.end() && hit->recovery && session.Statistics().judgements[Bad] == 1,
+                    "A press inside the early BAD window is still an early BAD answered by a BAD recovery.");
+        }
+    }
+
     void TestPoorSingleNoteAccuracy()
     {
         auto profile = std::make_shared<AccuracyRange>();

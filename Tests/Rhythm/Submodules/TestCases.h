@@ -72,6 +72,7 @@ namespace tests
     void TestBalloonDengDengAndBuzzRules();
     void TestTimingAccuracyAndSessionAggregation();
     void TestBadRecovery();
+    void TestReleaseIsNotEarlyBad();
     void TestPoorSingleNoteAccuracy();
     void TestPoorLargeNoteAccuracy();
     void TestBuzzTickColorFocus();
