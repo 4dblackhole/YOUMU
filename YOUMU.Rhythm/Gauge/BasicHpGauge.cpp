@@ -2,6 +2,7 @@
 #include "Gauge/HpGaugeKind.h"
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <numeric>
 #include <stdexcept>
 
@@ -64,6 +65,13 @@ double BasicHpGauge::TimingRate(const NoteStateData &state, const JudgementResul
     default:
         return -level_.Value();
     }
+}
+
+// Every body tick passed and none was taken. Retire settles a note before its ticks pass and keeps HP as it was.
+bool BasicHpGauge::BodyMissed(const NoteStateData &state) noexcept
+{
+    const bool tookNoTick = state.definition.target.ticks != 0 && state.acceptedTicks == 0;
+    return tookNoTick && std::ranges::all_of(state.resolvedTicks, std::identity{});
 }
 
 void BasicHpGauge::Apply(double weightedRate) noexcept
@@ -140,7 +148,7 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
         Apply(std::min(1.0, static_cast<double>(state.accepted) / static_cast<double>(target.hits)));
     else if (hold && !state.headSettled)
         Apply(-level_.Value() * headWeight);
-    else if (hold && target.ticks != 0 && state.acceptedTicks == 0)
+    else if (hold && BodyMissed(state))
         Apply(-level_.Value() * (1.0 - headWeight)); // A Buzz body that took no tick decreases like a MISS.
     state.finalized = true;
 }

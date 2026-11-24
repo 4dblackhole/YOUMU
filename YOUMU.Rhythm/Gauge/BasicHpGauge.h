@@ -33,6 +33,7 @@ class BasicHpGauge final : public IHpGauge
     };
     double TimingRate(const NoteStateData &, const JudgementResult &) const noexcept;
     void ConsumeEvent(NoteStateData &, const NoteEvent &, bool keyPressed);
+    [[nodiscard]] static bool BodyMissed(const NoteStateData &) noexcept;
     void Apply(double weightedRate) noexcept;
     std::map<NoteId, NoteStateData> notes_;
     HpLevel level_;
