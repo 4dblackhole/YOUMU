@@ -88,7 +88,8 @@ void PlayOptionsPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts, IW
     {
         const auto name = std::string("PlayOptions.") + FieldKeys[i];
         labels_[i] = &CreateText(body, name + ".Label", 13, 600, Ink);
-        fields_[i] = &CreateField(body, name + ".Field", i != Seed);
+        // Every field holds a number (the seed is a uint64), so all show the number face.
+        fields_[i] = &CreateField(body, name + ".Field", true);
         if (!window)
             continue;
         inputs_[i] = window->CreateTextInput();

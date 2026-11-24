@@ -210,11 +210,10 @@ void PlayOptionsPanel::UpdateInputs()
     for (std::size_t i = 0; i < inputs_.size(); ++i)
     {
         const bool visible = available && fields_[i]->IsVisible();
-        const bool number = i != Seed;
-        SetFieldText(*fields_[i], inputs_[i] && visible ? std::wstring_view{} : std::wstring_view{numbers_[i]}, number);
+        SetFieldText(*fields_[i], inputs_[i] && visible ? std::wstring_view{} : std::wstring_view{numbers_[i]}, true);
         if (!inputs_[i])
             continue;
-        PlaceTextInput(*inputs_[i], *fields_[i], *canvas_, height_, modal_.Scale(), number);
+        PlaceTextInput(*inputs_[i], *fields_[i], *canvas_, height_, modal_.Scale(), true);
         inputs_[i]->SetVisible(visible);
     }
 }
