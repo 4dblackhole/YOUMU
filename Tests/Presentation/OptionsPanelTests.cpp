@@ -1,4 +1,5 @@
 #include "App/OptionSettings.h"
+#include "GameScene/RhythmTestScene/Submodules/GameplayPauseAction.h"
 #include "Mode/PlayGameModeFactory.h"
 #include "Presentation/ModePresentation.h"
 #include "Presentation/OptionsPanel.h"
@@ -267,6 +268,53 @@ namespace
               "Reopening must begin with collapsed fields.");
     }
 
+    // [Pause] keeps the pause menu's last Resume lead-in and Rewind count. A missing or out-of-range entry
+    // reads as the default and leaves the rest of the file as it was.
+    void TestPauseChoiceEntries(const std::filesystem::path &path)
+    {
+        OptionSettings settings(path);
+        std::string error;
+        { std::ofstream file(path); file << "[General]\nLanguage=en\n"; }
+        Check(settings.Load(error) && settings.Values().pauseResumeLeadInMs == DefaultPauseResumeLeadInMs &&
+                  settings.Values().pauseRewindMeasures == DefaultPauseRewindMeasures,
+              "An Option.ini without [Pause] starts the menu at 0.5 seconds and the default measure count.");
+        const GameplayPauseChoice menuDefaults;
+        Check(menuDefaults.leadIn.count() == std::int64_t{DefaultPauseResumeLeadInMs} * 1'000 &&
+                  menuDefaults.measures == static_cast<std::size_t>(DefaultPauseRewindMeasures),
+              "The saved defaults match the pause menu's own defaults.");
+        auto values = settings.Values();
+        values.pauseResumeLeadInMs = 0;
+        values.pauseRewindMeasures = 12;
+        values.globalOffsetMs = -7;
+        Check(settings.Save(values, error), "Pause values must save.");
+        OptionSettings reloaded(path);
+        Check(reloaded.Load(error) && reloaded.Values().pauseResumeLeadInMs == 0 &&
+                  reloaded.Values().pauseRewindMeasures == 12,
+              "A saved zero-second Resume and 12-measure Rewind read back.");
+        Check(reloaded.Values().language == Language::English && reloaded.Values().globalOffsetMs == -7,
+              "Saving the pause values keeps every other option.");
+        for (const std::string entries :
+             {"ResumeLeadInMs=3500\nRewindMeasures=0\n", "ResumeLeadInMs=700\nRewindMeasures=70000\n",
+              "ResumeLeadInMs=-500\nRewindMeasures=-1\n", "ResumeLeadInMs=abc\nRewindMeasures=\n"})
+        {
+            { std::ofstream file(path); file << "[General]\nLanguage=en\nGlobalOffsetMs=-7\n\n[Pause]\n" << entries; }
+            Check(settings.Load(error) && settings.LoadWarning().empty(),
+                  "An out-of-range pause entry must not fail the rest of Option.ini.");
+            Check(settings.Values().pauseResumeLeadInMs == DefaultPauseResumeLeadInMs &&
+                      settings.Values().pauseRewindMeasures == DefaultPauseRewindMeasures,
+                  "An out-of-range pause entry reads as its default.");
+            Check(settings.Values().language == Language::English && settings.Values().globalOffsetMs == -7,
+                  "An out-of-range pause entry keeps the other entries.");
+        }
+        { std::ofstream file(path); file << "[Pause]\nResumeLeadInMs=3000\nRewindMeasures=65535\n"; }
+        Check(settings.Load(error) && settings.Values().pauseResumeLeadInMs == 3000 &&
+                  settings.Values().pauseRewindMeasures == 65535,
+              "The largest pause values read as they are.");
+        values = settings.Values();
+        values.pauseResumeLeadInMs = 250;
+        Check(!settings.Save(values, error), "Saving a Resume lead-in between half-second steps is refused.");
+    }
+
     void TestInvalidOptionFallback(const std::filesystem::path &folder)
     {
         const auto path = folder / L"설정 오류.ini";
@@ -299,6 +347,7 @@ namespace
             Check(!settings.Load(error) && settings.Values().restartKey == DefaultRestartKey,
                   "A restart key on a fixed game control or a play key must be refused.");
         }
+        TestPauseChoiceEntries(path);
         OptionSettings unavailable(folder / "missing-directory" / "Option.ini");
         Check(!unavailable.Load(error) && unavailable.Values().driverIndex == -1 && !unavailable.LoadWarning().empty(),
               "Failure creating a first-run INI must still provide defaults.");

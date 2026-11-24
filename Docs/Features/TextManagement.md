@@ -3,7 +3,8 @@
 게임의 고정 UI 문구는 UTF-8 INI로 관리하며 화면별 문구 계약과 글꼴은 `Client/Texts`가 소유합니다.
 `YOUMUGame`이 하나의 `TextCatalog`를 소유하고 각 View/Presenter에 빌려주므로,
 선택한 설명 언어가 곡 선택·플레이·에디터에도 이어집니다. 항목명·버튼·단위·값 형식은 영어이며,
-설명·도움말·오류 안내만 영어/한국어/일본어로 변경합니다. 최초 설정은 Windows 사용자 UI 언어를
+설명·도움말·오류 안내만 영어/한국어/일본어로 변경합니다. 예외로 일시정지 메뉴의 Resume·Rewind 값 형식은
+사용자 결정으로 선택 언어를 따릅니다([Pause](Gameplay/Pause.md)). 최초 설정은 Windows 사용자 UI 언어를
 따르고 한국어/일본어 이외의 언어와 확인 불가는 영어로 시작합니다. 저장된 언어는 우선합니다.
 
 ```text
@@ -413,6 +414,10 @@ DspBufferLength=256
 
 [Controls]
 RestartKey=192
+
+[Pause]
+ResumeLeadInMs=500
+RewindMeasures=4
 ```
 
 - `Language`: 설명 언어 `ko`, `en`, `ja`. 항목명·버튼은 영어를 사용합니다.
@@ -448,6 +453,9 @@ RestartKey=192
   무관하지만, `unlimited`에서는 루프마다 그리기가 들어가 입력 시각의 오차가 프레임 한 장의 시간까지 늘 수 있습니다.
 - `Controls/RestartKey`: 0.5초 길게 눌러 재시작하는 키의 십진 Virtual-Key. 누락 시 192(백틱).
   설치된 모드의 연주 키나 ESC/Space/F7이면 오류입니다.
+- `Pause/ResumeLeadInMs`, `Pause/RewindMeasures`: 일시정지 메뉴에서 마지막으로 고른 Resume 되감기(0~3000 ms, 500 ms 단위)와
+  Rewind 마디 수(1~65535). 옵션 창에는 칸이 없고 플레이 화면을 나갈 때 저장합니다([Pause](Gameplay/Pause.md)).
+  누락·숫자 아님·범위 밖이면 그 항목만 기본값(500, 4)으로 읽고 파일의 다른 항목은 그대로 씁니다.
 - `Keys.<mode ID>`: binding ID별 십진 Virtual-Key 목록. 첫 값은 기본 키, 이후는 보조 키입니다.
   목록을 저장하지 않은 입력은 모드의 기본값을 사용하며 변경한 행만 기록합니다.
   Taiko의 빈 칸(메인 키 포함)은 0으로 저장하며 기존 두 키 설정은 나머지 칸을 비운 채 읽습니다.

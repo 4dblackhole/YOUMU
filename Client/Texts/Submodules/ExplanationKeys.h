@@ -4,6 +4,7 @@
 
 // Captions, buttons, units and value formats default to English. These keys
 // are explanatory copy; their selected-language translations remain independent.
+// The pause menu's Resume and Rewind values follow the selected language by the user's decision.
 inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "Editor.selectionHelp",
     "Editor.offsetAudioHelp", "Editor.finishLongNote", "Editor.timingHelp", "Editor.metadataHelp",
@@ -14,6 +15,7 @@ inline constexpr auto ExplanationTextKeys = std::to_array<std::string_view>({
     "MusicSelect.patternErrorPrefix", "MusicSelect.unknownChartError",
     "Result.pauseUsed", "Result.rewindUsed", "Result.noHpData", "Result.noTimingData",
     "Gameplay.audioInitializationFailed", "Pause.preparing", "Pause.retryDescription", "Pause.retireDescription",
+    "Pause.resumeValueFormat", "Pause.rewindValueFormat",
     "Options.windowError", "Options.inputError", "Options.noDrivers",
     "Options.saveError", "Options.audioError", "Options.outputFallback", "Options.driverUnavailable", "Options.loadWarning", "Options.bufferRestart",
     "Startup.decodeError",

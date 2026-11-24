@@ -69,6 +69,13 @@ RhythmTestScene::RhythmTestScene(std::shared_ptr<GameplayLaunchStore> request,
     view_->ConfigureBackground(launch_.backgroundPath, launch_.backgroundOffsetX, launch_.backgroundOffsetY);
     view_->ConfigureKeyBeamOpacity(launch_.keyBeamOpacity);
     view_->ConfigureBackgroundBrightness(launch_.backgroundBrightness);
+    if (options_ != nullptr)
+    {
+        GameplayPauseChoice saved;
+        saved.leadIn = RhythmDuration{std::int64_t{options_->Values().pauseResumeLeadInMs} * 1'000};
+        saved.measures = static_cast<std::size_t>(options_->Values().pauseRewindMeasures);
+        pauseMenu_->SetChoice(saved);
+    }
 }
 RhythmTestScene::~RhythmTestScene() = default;
 void RhythmTestScene::Initialize(const EngineServices &services)
@@ -197,6 +204,7 @@ void RhythmTestScene::BeginScene()
 void RhythmTestScene::EndScene() noexcept
 {
     SaveLocalOffset();
+    SavePauseChoice();
     view_->SetVisible(false);
     errorLine_.Hide();
     screenFade_.Present(0.0, 0, 0);
@@ -319,6 +327,27 @@ void RhythmTestScene::SaveBackgroundBrightness() noexcept
     catch (const std::exception &failure)
     {
         OutputDebugStringA((std::string("Background brightness was not saved: ") + failure.what() + "\n").c_str());
+    }
+}
+void RhythmTestScene::SavePauseChoice() noexcept
+{
+    if (options_ == nullptr || !pauseMenu_->ChoiceChanged())
+        return;
+    try
+    {
+        auto values = options_->Values();
+        values.pauseResumeLeadInMs = static_cast<int>(pauseMenu_->Choice().leadIn.count() / 1'000);
+        values.pauseRewindMeasures = static_cast<int>(pauseMenu_->Choice().measures);
+        if (values.pauseResumeLeadInMs == options_->Values().pauseResumeLeadInMs &&
+            values.pauseRewindMeasures == options_->Values().pauseRewindMeasures)
+            return;
+        std::string error;
+        if (!options_->Save(values, error))
+            OutputDebugStringA(("Pause menu values were not saved: " + error + "\n").c_str());
+    }
+    catch (const std::exception &failure)
+    {
+        OutputDebugStringA((std::string("Pause menu values were not saved: ") + failure.what() + "\n").c_str());
     }
 }
 void RhythmTestScene::SaveLocalOffset() noexcept

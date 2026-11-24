@@ -36,6 +36,8 @@ void GameplayPauseMenu::Show(std::uint32_t width, std::uint32_t height, bool can
     }
     width_ = width;
     height_ = height;
+    // A choice saved on a longer chart opens at this chart's largest count.
+    choice_.measures = std::min(choice_.measures, maxMeasures_);
     if (!handle_)
         handle_ = visuals_.CreateOwnedCanvas({{1280, 720}, CanvasScaleMode::FixedHeight, {}, 10});
     if (!handle_)
@@ -47,6 +49,11 @@ void GameplayPauseMenu::Show(std::uint32_t width, std::uint32_t height, bool can
     lastPointer_.reset();
     Build();
     static_cast<void>(handle_.SetVisible(true));
+}
+void GameplayPauseMenu::SetChoice(const GameplayPauseChoice &choice) noexcept
+{
+    choice_.leadIn = choice.leadIn;
+    choice_.measures = choice.measures;
 }
 void GameplayPauseMenu::SetPreparationFailed(const bool failed)
 {
@@ -117,6 +124,7 @@ void GameplayPauseMenu::RefreshRows()
 
 void GameplayPauseMenu::AdjustValue(std::size_t index, int direction)
 {
+    const auto before = choice_;
     if (index == 0)
         choice_.leadIn = RhythmDuration{
             std::clamp(choice_.leadIn.count() + direction * 500'000, 0LL, 3'000'000LL)};
@@ -127,6 +135,8 @@ void GameplayPauseMenu::AdjustValue(std::size_t index, int direction)
         if (direction > 0 && choice_.measures < maxMeasures_)
             ++choice_.measures;
     }
+    if (before.leadIn != choice_.leadIn || before.measures != choice_.measures)
+        choiceChanged_ = true;
 }
 void GameplayPauseMenu::ProcessActions(GameplayPauseChoice &result)
 {

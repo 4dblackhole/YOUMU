@@ -14,8 +14,10 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <string>
 #include <initializer_list>
 #include <optional>
 #include <thread>
@@ -231,6 +233,56 @@ namespace
         Check(menu.HandleKey(VK_RETURN).action == GameplayPauseAction::None, "Hidden menus cannot accept keys.");
         menu.Shutdown();
         Check(visuals.CanvasCount() == 0, "Pause Canvas must be owned and released.");
+    }
+    // The scene starts the menu from the Option.ini choice; only a value changed in the menu is saved again.
+    // Korean shows the values as "n초 앞으로" and "n마디 앞으로"; English and Japanese keep "s back"/"bars back".
+    void TestSavedChoiceAndValueText()
+    {
+        NullRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        TextCatalog texts(std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() /
+                          "Client/Texts/Languages");
+        Check(texts.Diagnostics().empty(), "The shipped language files must parse.");
+        texts.SetLanguage(Language::Korean);
+        GameplayPauseMenu menu(visuals, texts);
+        GameplayPauseChoice saved;
+        saved.leadIn = RhythmDuration{};
+        saved.measures = 30;
+        menu.SetChoice(saved);
+        menu.Show(1280, 720, true, 12);
+        Check(menu.Choice().leadIn.count() == 0 && menu.Choice().measures == 12 && !menu.ChoiceChanged(),
+              "A saved choice opens the menu, with Rewind capped at this chart's measure count.");
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas)
+            throw std::runtime_error("Pause Canvas missing.");
+        const auto valueText = [&](std::string_view row)
+        {
+            const auto *rowNode = Find(canvas->Root(), row);
+            const auto *selector = rowNode ? Find(*rowNode, "Pause.Selector") : nullptr;
+            const auto *value = selector ? Find(*selector, "Pause.Value") : nullptr;
+            if (!value)
+                throw std::runtime_error("Pause value text missing.");
+            return std::wstring(value->GetComponent<TextVisualComponent>()->Text());
+        };
+        Check(valueText("Pause.Row.0") == L"0.0초 앞으로" && valueText("Pause.Row.1") == L"12마디 앞으로",
+              "Korean shows the Resume and Rewind values as n초 앞으로 and n마디 앞으로.");
+        static_cast<void>(menu.HandleKey(VK_RIGHT));
+        Check(menu.ChoiceChanged() && menu.Choice().leadIn.count() == 500'000 &&
+                  valueText("Pause.Row.0") == L"0.5초 앞으로",
+              "Changing a value in the menu marks the choice for saving.");
+        static_cast<void>(menu.HandleKey(VK_LEFT));
+        Check(menu.ChoiceChanged() && menu.Choice().leadIn.count() == 0,
+              "A value changed back stays marked; the scene compares it with Option.ini before writing.");
+        InputState input;
+        for (const auto language : {Language::English, Language::Japanese})
+        {
+            texts.SetLanguage(language);
+            static_cast<void>(menu.Update(input));
+            Check(valueText("Pause.Row.0") == L"0.0 s back" && valueText("Pause.Row.1") == L"12 bars back",
+                  "English and Japanese keep the English value wording.");
+        }
+        menu.Shutdown();
     }
     std::vector<AudioPlaybackSettings> musicStarts, sampleSettings;
     std::vector<double> stretchRequests;
@@ -2029,6 +2081,7 @@ int main(int argc, char **argv)
             return 0;
         }
         TestMenu();
+        TestSavedChoiceAndValueText();
         TestEmptyGameplayEntry();
         TestActualMusicSeek();
         bool verified{};
