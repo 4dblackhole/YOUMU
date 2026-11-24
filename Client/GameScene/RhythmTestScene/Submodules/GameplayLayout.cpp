@@ -62,7 +62,7 @@ void GameplayPresenter::CreatePresentation()
     auto accuracyFace = ui_fonts::Number(800);
     accuracyText.SetFont(std::move(accuracyFace.font));
     accuracyText.SetFontWeight(accuracyFace.weight);
-    accuracyText.SetFontSize(32.0F);
+    accuracyText.SetFontSize(20.0F);
     accuracyText.SetTextColor(ui_colors::theme::Ink);
     accuracyText.SetHorizontalAlignment(TextAlignment::Trailing);
 

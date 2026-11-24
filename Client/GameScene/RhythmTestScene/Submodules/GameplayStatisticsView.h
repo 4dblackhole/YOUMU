@@ -6,8 +6,8 @@
 #include <cstdint>
 #include <optional>
 
-// Live play statistics of the redesign (UI-02): the score beside the accuracy
-// in the top-right panel, the combo inside the key layout and the eight
+// Live play statistics of the redesign (UI-02): the score above the accuracy
+// in the top-right panel (osu! layout), the combo inside the key layout and the eight
 // judgement counts in the bottom-right panel. Every text sits on a translucent
 // white panel so it stays readable over any chart BG. Values are text in the
 // numeric face and are rewritten only when they change.
@@ -17,7 +17,7 @@ class GameplayStatisticsView final
     void Initialize(PhantomCore::ScreenVisual2DManager &visuals, PhantomCore::Visual2DNode &root,
                     PhantomCore::Visual2DNode &inputPanel, TextCatalog &texts);
     void SetLayout(float width, PhantomCore::Size inputPanel);
-    // Canvas bounds reserved for the accuracy text inside the top-right panel.
+    // Canvas bounds reserved for the accuracy text: the line below the score inside the top-right panel.
     // The width fits 100.00% so the panel never changes size during play.
     [[nodiscard]] PhantomCore::Rect AccuracyBounds() const noexcept { return accuracyBounds_; }
     void Update(const PlaySession &session);
