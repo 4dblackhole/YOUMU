@@ -31,6 +31,7 @@ class RuleBasedNote final : public INote
     [[nodiscard]] NoteProcessResult MarkMissed(RhythmTime time) override;
     void Reset() noexcept override;
     void RecordEarlyBad() noexcept override;
+    [[nodiscard]] bool IsWrongPress(const RhythmInputEvent &input) const noexcept override;
 
   private:
     [[nodiscard]] NoteRuleContext Context() const noexcept;

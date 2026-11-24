@@ -65,15 +65,26 @@ struct NoteEvent
     bool recovery{};
     // A miss of a note last left at an early BAD: it settles as a BAD, not a MISS, with no new word shown.
     bool leftAtEarlyBad{};
+    // A rejected press the note would refuse even on time (a wrong colour), within the BAD window before or
+    // after the note: a POOR whatever its timing grade (user decision).
+    bool wrongPress{};
 };
 
+// POOR: a rejected press within GOOD, or a wrong colour's press anywhere within BAD. The note keeps waiting.
+[[nodiscard]] inline bool IsPoor(const NoteEvent &event) noexcept
+{
+    if (event.type != NoteEventType::InputRejected)
+        return false;
+    return event.wrongPress || IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
+}
+
 // The lane's early BAD: a press within BAD before the note, reported while the note keeps its focus.
-// A note rule only rejects later presses, so a rejected BAD with a negative error is always this one.
+// A wrong colour's press in that window is a POOR instead; the rule rejects it with a negative error.
 [[nodiscard]] inline bool IsEarlyBad(const NoteEvent &event) noexcept
 {
     if (event.type != NoteEventType::InputRejected || event.judgement.grade != JudgementGrade::Bad)
         return false;
-    return event.judgement.signedError < RhythmDuration::zero();
+    return !event.wrongPress && event.judgement.signedError < RhythmDuration::zero();
 }
 
 struct AudioCueRequest

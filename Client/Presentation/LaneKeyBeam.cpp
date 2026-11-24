@@ -69,9 +69,8 @@ Color LaneKeyBeam::WrongInputColor() noexcept
 bool LaneKeyBeam::IsWrongInput(const NoteEvent &event) noexcept
 {
     // A wrong colour held over a Buzz tick only leaves the tick unprocessed (user decision), so only a
-    // rejected press within GOOD (POOR) is a wrong input.
-    return event.type == NoteEventType::InputRejected &&
-        IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
+    // POOR (a rejected press within GOOD, or a wrong colour's press within BAD) is a wrong input.
+    return IsPoor(event);
 }
 
 const NoteEvent *LaneKeyBeam::InputResponse(

@@ -152,6 +152,17 @@ namespace tests
              {Event(2, NoteEventType::HitAccepted), Event(2, NoteEventType::HitAccepted, JudgementGrade::Max, 0, 1),
               Event(2, NoteEventType::Completed)});
         Require(Near(pair.State().percent, 0), "POOR overrides the whole timing pair with one MISS penalty.");
+        {
+            // A wrong colour within BAD is a POOR: it waits, then the note settles with the BAD drain.
+            BasicHpGauge wrong(1, Definitions({NoteAccuracyKind::TimingHits, 1, 0}, 4));
+            Feed(wrong, {Event(1, NoteEventType::HitAccepted), Event(1, NoteEventType::Completed)});
+            auto poor = Event(2, NoteEventType::InputRejected, JudgementGrade::Bad, -70'000);
+            poor.wrongPress = true;
+            Feed(wrong, {poor});
+            Require(Near(wrong.State().percent, 30), "A wrong colour within BAD waits for its note to settle.");
+            Feed(wrong, {Event(2, NoteEventType::HitAccepted), Event(2, NoteEventType::Completed)});
+            Require(Near(wrong.State().percent, 0), "A note answered after a wrong colour within BAD drains.");
+        }
 
         BasicHpGauge count(9, Definitions({NoteAccuracyKind::HitCount, 4, 0}));
         Feed(count, {Event(1, NoteEventType::TickAccepted), Event(1, NoteEventType::TickAccepted)});
