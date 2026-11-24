@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cmath>
 #include <map>
+#include <set>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -1270,6 +1271,86 @@ namespace
               "A confirmed song delete recycles the whole song folder.");
         view.Shutdown();
     }
+    // Forgets released images like the D3D12 renderer: a released handle reports no size, and the screen registry
+    // loads its path again.
+    class ReleasingRenderer final : public Visual2DRenderSystem
+    {
+      public:
+        std::map<std::filesystem::path, std::vector<std::uint64_t>> loads;
+        std::vector<std::uint64_t> released;
+        ImageHandle LoadImageFile(const std::filesystem::path &path) override
+        {
+            const auto id = ++id_;
+            live_.insert(id);
+            loads[path].push_back(id);
+            return {id};
+        }
+        Size GetImageSize(ImageHandle image) const noexcept override
+        {
+            return live_.contains(image.value) ? Size{16, 9} : Size{};
+        }
+        void ReleaseImage(ImageHandle image) noexcept override
+        {
+            if (live_.erase(image.value) != 0)
+                released.push_back(image.value);
+        }
+        [[nodiscard]] bool Live(std::uint64_t id) const { return live_.contains(id); }
+        void SubmitScreen(const Visual2DCanvas &, const RenderContext &, Point, std::uint32_t) override {}
+        void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &, Size, const Float4x4 &) override {}
+        RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override { return {}; }
+        void RenderToTexture(const Visual2DCanvas &, const RenderTargetTextureHandle &, const RenderContext &) override {}
+
+      private:
+        std::uint64_t id_{};
+        std::set<std::uint64_t> live_;
+    };
+
+    // Song select keeps the last RecentBackgrounds chart backgrounds and releases older ones, so a long browse
+    // cannot fill the engine's image descriptors (a later screen's skin images then fail to load and the game ends).
+    void TestBackgroundCacheLimit()
+    {
+        ReleasingRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        Visual2DCanvas canvas{{1280, 720}};
+        SongBackgroundPreview preview(visuals);
+        preview.CreateBackground(canvas.Root());
+        auto &frame = CreateSprite(canvas.Root(), {}, {}, "Frame");
+        auto &image = CreateSprite(frame, {}, {}, "Image");
+        preview.BindPreview(frame, image);
+        const Size viewport{1280, 720};
+        constexpr auto limit = SongBackgroundPreview::RecentBackgrounds;
+        const auto path = [](std::size_t index) { return std::filesystem::path(L"bg-" + std::to_wstring(index) + L".jpg"); };
+        const auto loadsOf = [&](std::size_t index) { return renderer.loads[path(index)].size(); };
+        const auto liveBackgrounds = [&] {
+            std::size_t live = 0;
+            for (const auto &[file, ids] : renderer.loads)
+                if (file.filename().wstring().starts_with(L"bg-") && renderer.Live(ids.back()))
+                    ++live;
+            return live;
+        };
+        const auto shown = [&] { return image.GetComponent<SpriteVisualComponent>()->Style().normalImage.value; };
+        for (std::size_t i = 0; i < limit; ++i)
+            preview.SetImage(path(i), viewport);
+        Check(renderer.released.empty() && liveBackgrounds() == limit, "The last RecentBackgrounds backgrounds stay loaded.");
+        preview.SetImage(path(0), viewport);
+        Check(loadsOf(0) == 1 && renderer.released.empty(), "Showing a kept background again does not load it again.");
+        // One more: the oldest kept one (path 1; path 0 was just shown again) is released.
+        preview.SetImage(path(limit), viewport);
+        Check(renderer.released == std::vector{renderer.loads[path(1)].back()}, "The least recently shown background leaves first.");
+        preview.SetImage(path(1), viewport);
+        Check(loadsOf(1) == 2 && renderer.Live(renderer.loads[path(1)].back()) && shown() == renderer.loads[path(1)].back(),
+              "A released background loads again when its song is shown.");
+        for (std::size_t i = 0; i < 1'000; ++i)
+            preview.SetImage(path(10'000 + i), viewport);
+        Check(liveBackgrounds() == limit && shown() == renderer.loads[path(10'999)].back() && renderer.Live(shown()),
+              "A long browse keeps RecentBackgrounds backgrounds, the shown one among them.");
+        // Another view sharing the registry (the editor's song select) released the shown picture: it loads again.
+        visuals.ReleaseImage(ImageHandle{shown()});
+        preview.SetImage(path(10'999), viewport);
+        Check(loadsOf(10'999) == 2 && renderer.Live(shown()), "A picture released elsewhere is registered again.");
+    }
+
     void TestBackgroundPreview(SongSelectPurpose purpose)
     {
         Renderer renderer;
@@ -2076,6 +2157,7 @@ int main()
         TestOsuImportPanel();
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);
+        TestBackgroundCacheLimit();
         TestSongContextMenu(SongSelectPurpose::Gameplay);
         TestSongContextMenu(SongSelectPurpose::Editor);
         TestSongPanelTransparency(SongSelectPurpose::Gameplay);

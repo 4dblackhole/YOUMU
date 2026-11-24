@@ -29,12 +29,15 @@ void SongBackgroundPreview::SetImage(const std::filesystem::path &path, Size vie
                                      double offsetX, double offsetY)
 {
     chartBackgroundOffset_ = {static_cast<float>(offsetX), static_cast<float>(offsetY)};
-    if (previewPath_ == path)
+    // Another view sharing the registry (the editor's song select) may have released this picture.
+    const bool released = previewHandle_ && visuals_.GetImageSize(previewHandle_).width <= 0;
+    if (previewPath_ == path && !released)
     {
         LayoutBackground(viewport);
         return;
     }
     previewPath_ = path;
+    previewHandle_ = {};
     previewImageSize_ = {};
     previewImage_->SetVisible(false);
     RequireComponent<SpriteVisualComponent>(*previewImage_).SetImage({});
@@ -49,6 +52,8 @@ void SongBackgroundPreview::SetImage(const std::filesystem::path &path, Size vie
         const auto size = visuals_.GetImageSize(image);
         if (image.value == 0 || size.width <= 0 || size.height <= 0)
             return;
+        previewHandle_ = image;
+        Remember(previewPath_, image);
         previewImageSize_ = size;
         auto &sprite = RequireComponent<SpriteVisualComponent>(*previewImage_);
         sprite.SetImage(image);
@@ -65,6 +70,18 @@ void SongBackgroundPreview::SetImage(const std::filesystem::path &path, Size vie
     catch (const std::exception &)
     {
         // Missing/corrupt artwork keeps the empty jacket until the selected path changes.
+    }
+}
+
+void SongBackgroundPreview::Remember(const std::filesystem::path &path, const ImageHandle image)
+{
+    std::erase_if(recent_, [&path](const Shown &shown) { return shown.path == path; });
+    recent_.push_back({path, image});
+    // The newest one is on screen and never leaves here.
+    while (recent_.size() > RecentBackgrounds)
+    {
+        visuals_.ReleaseImage(recent_.front().image);
+        recent_.erase(recent_.begin());
     }
 }
 
@@ -107,6 +124,8 @@ void SongBackgroundPreview::LayoutPreview(const Rect bounds)
 void SongBackgroundPreview::Reset() noexcept
 {
     previewPath_.clear();
+    previewHandle_ = {};
+    recent_.clear();
     previewImageSize_ = {};
     chartBackgroundOffset_ = {};
     chartBackground_ = preview_ = previewImage_ = nullptr;

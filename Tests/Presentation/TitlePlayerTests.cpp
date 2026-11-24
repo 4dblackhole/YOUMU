@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <set>
 #include <utility>
 #include <stdexcept>
 
@@ -61,7 +62,13 @@ namespace
     {
       public:
         ImageHandle LoadImageFile(const fs::path &) override { return {++loaded}; }
-        Size GetImageSize(ImageHandle) const noexcept override { return {320, 180}; }
+        // A released image reports no size, as the D3D12 renderer's does.
+        Size GetImageSize(ImageHandle image) const noexcept override
+        {
+            return released.contains(image.value) ? Size{} : Size{320, 180};
+        }
+        void ReleaseImage(ImageHandle image) noexcept override { released.insert(image.value); }
+        std::set<std::uint64_t> released;
         void SubmitScreen(const Visual2DCanvas &, const RenderContext &, Point, std::uint32_t) override {}
         void SubmitPlane(const Visual2DCanvas &, const RenderContext &, const Float4x4 &, Size, const Float4x4 &) override {}
         RenderTargetTextureHandle CreateCanvasRenderTarget(std::uint32_t, std::uint32_t) override { return {}; }
@@ -127,6 +134,9 @@ namespace
             return pressed.player ? pressed : released;
         }
         Visual2DNode &Root() { return visuals_.FindCanvas(1)->Root(); }
+        ScreenVisual2DManager &Visuals() { return visuals_; }
+        [[nodiscard]] std::uint64_t Loaded() const { return renderer_.loaded; }
+        [[nodiscard]] bool Released(std::uint64_t image) const { return renderer_.released.contains(image); }
 
       private:
         Renderer renderer_;
@@ -199,6 +209,22 @@ namespace
         const auto &art = *Find(root, "YOUMU.PlayerArtwork").GetComponent<SpriteVisualComponent>();
         Check(std::abs(art.UvScale().x - 0.5625F) < 0.001F && art.UvScale().y == 1.0F,
               "A wide background is cropped to its centre square.");
+        {
+            // Song select releases backgrounds it no longer keeps: the same song's art registers again.
+            const auto before = title.Loaded();
+            title.Visuals().ReleaseImage(art.Style().normalImage);
+            static_cast<void>(title.Frame(song, [](InputState &) {}));
+            Check(title.Loaded() == before + 1 && art.Style().normalImage.value == before + 1 &&
+                      Find(root, "YOUMU.PlayerArtwork").IsVisible(),
+                  "Released album art is registered again for the same song.");
+            // Another song: the player keeps one album art, so the previous one is released.
+            const auto previous = art.Style().normalImage.value;
+            auto next = song;
+            next.artwork = L"next-background.png";
+            static_cast<void>(title.Frame(next, [](InputState &) {}));
+            Check(title.Released(previous) && art.Style().normalImage.value == title.Loaded(),
+                  "Changing songs releases the previous album art.");
+        }
 
         const auto space = title.Key(song, VK_SPACE);
         Check(Is(space, TitlePlayerAction::TogglePlay) && !space.menu, "Space plays or pauses and no longer runs the menu.");
