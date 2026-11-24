@@ -448,12 +448,20 @@ namespace
             InputStateTestAccess::Key(input, key, true);
             presenter.UpdateInputPresentation(input, 0.0);
         };
+        auto &leftKatFace = firstChild("Input.Key.Face");
         pressOnly('F');
         Check(leftKatGlow.IsVisible(), "Another assigned key must show KeyLight.");
         Check(!leftKatFlash.IsVisible(), "Another assigned key must not show the key press flash.");
+        const auto auxiliaryGlow = Tint(leftKatGlow);
+        const auto auxiliaryFace = Tint(leftKatFace);
         pressOnly('D');
         Check(leftKatGlow.IsVisible(), "The first assigned key must show KeyLight.");
         Check(leftKatFlash.IsVisible(), "The first assigned key must show the key press flash with KeyLight.");
+        const auto primaryGlow = Tint(leftKatGlow);
+        const auto primaryFace = Tint(leftKatFace);
+        Check(SameRgb(auxiliaryGlow, primaryGlow) && auxiliaryGlow.alpha == 1.0F && primaryGlow.alpha == 1.0F,
+              "Primary and auxiliary keys must light the key with the same KeyLight colour and opacity.");
+        Check(SameRgb(auxiliaryFace, primaryFace), "Primary and auxiliary keys must tint the key face the same way.");
         auto &progress = Node(root, "Hud.GameProgress");
         auto &track = Node(root, "Progress.Track");
         auto &fill = Node(root, "Progress.Fill");
