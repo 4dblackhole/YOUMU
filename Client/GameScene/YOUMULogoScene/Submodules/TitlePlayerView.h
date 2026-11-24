@@ -65,6 +65,7 @@ class TitlePlayerView final
     void CreateControls(PhantomCore::Visual2DNode &board);
     void ApplySong();
     void ApplyArtwork(const std::filesystem::path &path);
+    [[nodiscard]] bool ArtworkReleased() const noexcept;
     void LayoutArtworkImage();
     void ApplyProgress();
     [[nodiscard]] float SeekRatioAt(PhantomCore::Point canvasPointer) const;
@@ -74,6 +75,7 @@ class TitlePlayerView final
     std::optional<float> seekDrag_;
     PhantomCore::Size artworkImageSize_{};
     std::filesystem::path artworkPath_;
+    PhantomCore::ImageHandle artworkHandle_;
     std::wstring elapsedText_;
     std::wstring lengthText_;
     float boardHeight_{720.0F};

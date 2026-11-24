@@ -205,7 +205,8 @@ void TitlePlayerView::SetDisplay(const TitlePlayerDisplay &display)
         seekDrag_.reset();
     if (songChanged)
         ApplySong();
-    if (artworkChanged || songChanged)
+    // Song select releases backgrounds it no longer keeps; a released album art registers again.
+    if (artworkChanged || songChanged || ArtworkReleased())
         ApplyArtwork(display_.hasSong ? display_.artwork : std::filesystem::path{});
     if ((playingChanged || songChanged) && playIcon_ != nullptr)
         RequireComponent<SpriteVisualComponent>(*playIcon_).SetImage(display_.playing ? pauseImage_ : playImage_);
@@ -230,11 +231,24 @@ void TitlePlayerView::ApplySong()
     RequireComponent<SpriteVisualComponent>(*playIcon_).SetImage(display_.playing ? pauseImage_ : playImage_);
 }
 
+bool TitlePlayerView::ArtworkReleased() const noexcept
+{
+    return artworkHandle_ && visuals_.GetImageSize(artworkHandle_).width <= 0;
+}
+
 void TitlePlayerView::ApplyArtwork(const std::filesystem::path &path)
 {
-    if (artworkImage_ == nullptr || path == artworkPath_)
+    if (artworkImage_ == nullptr)
         return;
+    const bool released = ArtworkReleased();
+    if (path == artworkPath_ && !released)
+        return;
+    // The player keeps one album art, so stepping through many songs here does not pile up images. Song select
+    // registers the previous one again if it shows that song.
+    if (artworkHandle_ && !released)
+        visuals_.ReleaseImage(artworkHandle_);
     artworkPath_ = path;
+    artworkHandle_ = {};
     artworkImageSize_ = {};
     auto &sprite = RequireComponent<SpriteVisualComponent>(*artworkImage_);
     sprite.SetImage({});
@@ -248,6 +262,7 @@ void TitlePlayerView::ApplyArtwork(const std::filesystem::path &path)
         if (image.value == 0 || size.width <= 0 || size.height <= 0)
             return;
         artworkImageSize_ = size;
+        artworkHandle_ = image;
         sprite.SetImage(image);
         LayoutArtworkImage();
         artworkImage_->SetVisible(true);
