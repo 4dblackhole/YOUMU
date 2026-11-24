@@ -1351,6 +1351,53 @@ namespace
         Check(loadsOf(10'999) == 2 && renderer.Live(shown()), "A picture released elsewhere is registered again.");
     }
 
+    // Coming back to song select shows its background again when another screen released it meanwhile (the
+    // title player moving past the song, or the other song select dropping it from its recent backgrounds).
+    // MusicSelectScene::BeginScene calls RebuildVisibleSongs on every entry, which sets the selected artwork.
+    void TestBackgroundAfterReentry(SongSelectPurpose purpose)
+    {
+        ReleasingRenderer renderer;
+        ScreenVisual2DManager visuals;
+        visuals.Initialize(renderer, {1280, 720});
+        MeshRenderSystem meshes;
+        TextRenderSystem textRendering;
+        AudioSystem audio;
+        TextCatalog texts;
+        texts.SetLanguage(Language::English);
+        OptionSettings options("build/background-reentry-test-unused.ini");
+        SongSelectionState selection;
+        SongCatalogEntry song;
+        song.music.names.push_back("Re-entry test");
+        SongCatalogPattern pattern;
+        pattern.pattern.backgroundFile = "reentry.jpg";
+        pattern.patternPath = options.SongsRoot() / L"Re-entry test/Chart/Set/reentry.ymp";
+        song.patterns.push_back(std::move(pattern));
+        selection.catalog_.songs.push_back(std::move(song));
+        const auto viewOwner = std::make_unique<MusicSelectView>(visuals, selection, purpose, texts, options);
+        auto &view = *viewOwner;
+        view.Initialize({meshes, textRendering, renderer, audio, 1280, 720});
+        view.RebuildVisibleSongs();
+        auto *canvas = visuals.FindCanvas(1);
+        if (!canvas) throw std::runtime_error("Re-entry Canvas missing.");
+        auto *jacket = Find(canvas->Root(), "PreviewImage");
+        auto *page = Find(canvas->Root(), "SongBackground");
+        if (!jacket || !page) throw std::runtime_error("Re-entry background nodes missing.");
+        const auto shown = [](const Visual2DNode &node) {
+            return node.GetComponent<SpriteVisualComponent>()->Style().normalImage.value;
+        };
+        const auto before = shown(*page);
+        Check(before != 0 && renderer.Live(before), "Song select shows the selected chart's background.");
+        Check(shown(*jacket) == before, "The jacket shows the same picture as the page background.");
+        // Another screen releases the shown picture while song select is away; then song select is entered again.
+        visuals.ReleaseImage(ImageHandle{before});
+        view.RebuildVisibleSongs();
+        const auto after = shown(*page);
+        Check(after != before && renderer.Live(after), "Re-entering song select registers its released background again.");
+        Check(shown(*jacket) == after && page->IsVisible(), "The page background and jacket show the new picture.");
+        Check(jacket->IsVisible(), "The page background and jacket show the new picture.");
+        view.Shutdown();
+    }
+
     void TestBackgroundPreview(SongSelectPurpose purpose)
     {
         Renderer renderer;
@@ -2158,6 +2205,8 @@ int main()
         TestBackgroundPreview(SongSelectPurpose::Gameplay);
         TestBackgroundPreview(SongSelectPurpose::Editor);
         TestBackgroundCacheLimit();
+        TestBackgroundAfterReentry(SongSelectPurpose::Gameplay);
+        TestBackgroundAfterReentry(SongSelectPurpose::Editor);
         TestSongContextMenu(SongSelectPurpose::Gameplay);
         TestSongContextMenu(SongSelectPurpose::Editor);
         TestSongPanelTransparency(SongSelectPurpose::Gameplay);
