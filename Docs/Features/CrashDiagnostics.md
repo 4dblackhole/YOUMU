@@ -27,9 +27,11 @@
 [09:21:32.933] windows 10.0.19045, 4 logical processors, 16296 MB memory
 [09:21:32.933] start: scene YOUMU.Lobby, smoke test no, crash test none
 [09:21:32.969] options: audio Automatic buffer 256, language ko, skin Default Skin, songs <game>\Asset\Songs, device removed data off
+[09:21:32.969] graphics switches: validation 0, adapter Default, tearing 1, buffers 2, waitable 0, render rate override 0
 [09:21:33.484] engine: graphics adapter: NVIDIA GeForce GTX 1060 3GB, vendor 10DE device 1C02, 2965 MB dedicated, driver 32.0.15.6094
 [09:21:33.484] engine: swap chain: 1280x720, 2 buffers, tearing allowed
 [09:21:33.484] engine: device removed data: off
+[09:21:33.484] engine: graphics options: validation off, adapter default
 [09:21:33.484] engine: window: 1280x720 Windowed, display 360 Hz, render rate Display
 [09:21:33.970] scene: YOUMU.Lobby
 [09:21:34.116] exit code 0
@@ -41,8 +43,9 @@
 | `windows …` | 시작 | Windows 빌드 번호, 논리 프로세서 수, 메모리 |
 | `start: …` | 시작 | 첫 화면, smoke 실행 여부, 일부러 일으키는 시험 여부 |
 | `options: …` | 시작 | 오디오 출력·버퍼, 언어, 스킨, Songs 폴더, 장치 제거 추가 정보(DRED) |
+| `graphics switches: …` | 시작 | `Option.ini`가 요청한 [그래픽 장치 시험 설정](#그래픽-장치-시험-설정). 이 빌드가 무시하면 `ignored by this build,`가 붙습니다 |
 | `Option.ini was not read: …`, `texts: …` | 시작 | 설정 파일을 읽지 못했거나 언어 파일에 맞지 않는 항목이 있을 때 |
-| `engine: …` | 그래픽 장치를 만든 뒤, 그 뒤로는 값이 바뀔 때 | 그래픽 어댑터·드라이버, 스왑 체인, 창 크기·모드·주사율·렌더 속도 |
+| `engine: …` | 그래픽 장치를 만든 뒤, 그 뒤로는 값이 바뀔 때 | 그래픽 어댑터·드라이버, 스왑 체인, 실제로 쓴 검증·어댑터 요청(`graphics options`), 창 크기·모드·주사율·렌더 속도. 검증을 켠 실행에서는 검증 메시지와 끝의 요약도 이 줄로 옵니다 |
 | `scene: …` | 화면이 바뀔 때 | 지금 화면의 Scene ID |
 | `exit code N` | 끝 | `Run`이 돌려준 종료 코드. 0이 정상입니다 |
 
@@ -139,6 +142,41 @@ cdb -z youmu-20261125-101010-crash.dmp -y <exe와 PDB를 보관한 폴더> -c ".
 `Option.ini`의 `[Diagnostics] DeviceRemovedData=1`로 켭니다. 기본은 `0`이고 옵션 창에는 항목이 없습니다.
 켜면 그래픽 장치가 끊겼을 때 명령 목록마다 GPU가 마지막으로 끝낸 동작이 `graphics device lost` 아래에 한 줄씩 붙습니다.
 모든 그리기에 비용이 조금 붙으므로 그래픽 문제를 쫓을 때만 켭니다. 엔진은 시작할 때만 읽습니다.
+
+## 그래픽 장치 시험 설정
+
+그래픽 장치가 멈추는 원인을 가르는 시험용 스위치입니다. `Option.ini`의 `[Diagnostics]`에 적고, 게임을 켤 때만 읽습니다.
+옵션 창에는 항목이 없습니다. 기본값은 모두 지금까지의 동작이므로, 적지 않으면 아무것도 바뀌지 않습니다.
+엔진이 하는 일과 그 기록 줄의 형식은 엔진의 [그래픽 장치 시험 설정](../../Dependencies/PhantomCore/Docs/EngineDiagnostics.md#그래픽-장치-시험-설정)에 있습니다.
+
+| 키 | 기본 | 값 |
+| --- | --- | --- |
+| `GraphicsValidation` | `0` | `0` 끔, `1` D3D12 디버그 레이어, `2` 디버그 레이어 + GPU 기반 검증(몇 배 느림). PC에 Windows 선택 기능 "Graphics Tools"가 없으면 검사 없이 실행하고 로그에 그렇게 적습니다 |
+| `GraphicsAdapter` | `Default` | `Default`, `WARP`(소프트웨어 래스터라이저, 그래픽 드라이버를 거치지 않음, 느림), 숫자(어댑터 목록의 번호), 그 밖의 글자(이름에 그 글자가 든 첫 어댑터). 찾지 못하면 기본 어댑터를 씁니다 |
+| `AllowTearing` | `1` | `0`이면 찢어짐 허용 없이 표시합니다. 창이 모니터를 혼자 덮는 경우에는 렌더와 Update가 화면 주사율에 묶일 수 있습니다 |
+| `SwapChainBuffers` | `2` | `2` 또는 `3`. 스왑 체인의 back buffer 수 |
+| `WaitableSwapChain` | `0` | `1`이면 표시 대기열을 1프레임으로 줄이고 프레임마다 스왑 체인을 기다립니다 |
+| `RenderRateOverrideHz` | `0` | `0`은 모니터 주사율. `10`~`5000`이면 그 값을 렌더 기준 속도로 씁니다(`[Display] RenderRate`가 `display`면 그 속도, `double`이면 두 배, `unlimited`면 효과 없음). 예: `300`은 초당 300번 그리기 |
+
+- 범위 밖의 값은 `DeviceRemovedData`처럼 `Option.ini` 전체를 읽지 못한 것으로 처리합니다(경고를 남기고 기본 설정으로 실행).
+  잘못 적은 시험이 다른 설정으로 돌아가는 것보다 알아채는 편이 낫기 때문입니다.
+- 로그의 `graphics switches:` 줄이 요청한 값, `engine: swap chain:`·`engine: graphics options:` 줄이 실제로 쓴 값입니다.
+  검증을 켜면 경고·오류가 `engine: graphics validation …` 줄로, 끝날 때 살아 있는 객체와 요약이 `engine: graphics live object:`·
+  `engine: graphics validation summary:` 줄로 남습니다. 같은 메시지는 세 번, 전체는 100줄까지 적고 나머지는 요약에서 셉니다.
+
+### 빌드에서 끄기
+
+MSBuild 속성 `YoumuGraphicsSwitches`를 `false`로 빌드하면(`msbuild YOUMU.sln /p:YoumuGraphicsSwitches=false ...`)
+그 빌드는 위 여섯 키를 무시하고 엔진 기본값으로 실행합니다. 로그 줄은 `graphics switches: ignored by this build, ...`가 됩니다.
+누군가 `Option.ini`를 고쳐도 배포한 빌드가 검증이나 소프트웨어 어댑터로 돌지 않게 하기 위한 것입니다.
+
+- 속성은 `Client/YOUMU.Client.vcxproj`가 전처리기 정의 `YOUMU_GRAPHICS_SWITCHES`(`1`/`0`)로 넘기고,
+  `Client/Diagnostics/GraphicsSwitches.cpp`만 그 값을 봅니다.
+- 기본값은 `true`(허용)입니다. 데모 빌드도 켠 채로 두고, 실제 배포 빌드만 `false`로 빌드합니다.
+  `DeviceRemovedData`는 이 속성과 상관없이 늘 읽습니다.
+- `Tests/Presentation/RunGraphicsSwitchesTests.ps1`이 테스트를 정의 `1`·`0`으로 두 번 빌드합니다.
+  `0` 빌드는 `Option.ini`에 값이 있어도 엔진 설정이 기본값인지, 로그 줄이 무시한다고 말하는지 확인합니다.
+  그리고 `YoumuGraphicsSwitches=false`가 정의 `0`으로 이어지는지 MSBuild로 확인합니다.
 
 ## 일부러 일으켜 보기
 

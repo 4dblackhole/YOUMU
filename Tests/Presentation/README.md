@@ -19,6 +19,7 @@
 | [GameplayAudioRetirementTests](#gameplayaudioretirementtests) | 플레이 오디오 라우터의 clip 해제·bus 음량 | 12 / 16 |
 | [GameplayJudgementTests](#gameplayjudgementtests) | 플레이 HUD·판정 표시·타이밍 인디케이터·노트 표시·진행 막대·키빔 | 27 / 42 |
 | [GameplayPauseTests](#gameplaypausetests) | 일시정지 메뉴·재개·되감기·Retry·Retire·재시작 키·Debug 조작 | 29 / 47 |
+| [GraphicsSwitchesTests](#graphicsswitchestests) | Option.ini의 그래픽 장치 시험 설정 읽기·저장·범위, 빌드에서 끄기(`YoumuGraphicsSwitches=false`) | 측정 전 |
 | [LanguageFileTests](#languagefiletests) | 외부 UTF-8 언어 파일·영어 기본값 | 14 / 15 |
 | [MusicSelectViewTests](#musicselectviewtests) | 곡 선택·에디터 곡 선택·필터·즐겨찾기·기록·검색·플레이 옵션·F7 띠 | 59 / 80 |
 | [NewDifficultyTests](#newdifficultytests) | 새 난이도 메타데이터와 파일 만들기 | 13 / 22 |
@@ -208,6 +209,16 @@ Reset하거나 다시 만든 bus도 플레이어 음량을 유지하는지 봅�
 
 연관 로직 테스트: PlayPauseTests(Buzz 안 되감기, 반복 취소, 입력 기록 보존, 롱노트 일곱 종류의 0점 MISS 강제). 이 검사는 자동 입력 의도와
 그리기·오디오 확인이며 실제 ESC·화살표 키, 청음, 화면 확인이 아닙니다.
+
+## GraphicsSwitchesTests
+
+- `[Diagnostics]`의 `GraphicsValidation`·`GraphicsAdapter`·`AllowTearing`·`SwapChainBuffers`·`WaitableSwapChain`·`RenderRateOverrideHz`를 읽습니다.
+  없는 키는 엔진 기본값이고, `WARP`는 대소문자를 가리지 않으며, 숫자는 어댑터 번호, 그 밖의 글자는 이름입니다.
+  범위 밖의 값은 파일을 거부하는지, 저장한 값이 그대로 다시 읽히는지, 숫자로 읽힐 이름은 저장하지 않는지 확인합니다.
+- 테스트를 `YOUMU_GRAPHICS_SWITCHES=1`·`0`으로 두 번 빌드합니다. `0` 빌드는 `Option.ini`에 시험 값이 있어도 엔진에 기본값(렌더 속도 고정 없음 포함)을 넘기고,
+  로그 줄이 `ignored by this build`를 말해야 합니다. 이어서 `msbuild -getProperty`로 `YoumuGraphicsSwitches=false`가 정의 `0`이 되는지 봅니다.
+- `Option.ini`는 `build/` 아래 임시 폴더에 쓰고, 통과하면 지웁니다. 엔진을 실행하지 않습니다.
+- 계약은 [크래시 진단 기록](../../Docs/Features/CrashDiagnostics.md#그래픽-장치-시험-설정)에 있습니다.
 
 ## LanguageFileTests
 

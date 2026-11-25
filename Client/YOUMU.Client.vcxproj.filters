@@ -53,6 +53,8 @@
     <ClInclude Include="Diagnostics\GameDiagnostics.h"><Filter>Diagnostics</Filter></ClInclude>
     <ClCompile Include="Diagnostics\LaunchDiagnostics.cpp"><Filter>Diagnostics</Filter></ClCompile>
     <ClInclude Include="Diagnostics\LaunchDiagnostics.h"><Filter>Diagnostics</Filter></ClInclude>
+    <ClCompile Include="Diagnostics\GraphicsSwitches.cpp"><Filter>Diagnostics</Filter></ClCompile>
+    <ClInclude Include="Diagnostics\GraphicsSwitches.h"><Filter>Diagnostics</Filter></ClInclude>
     <ClCompile Include="EditorScene\Submodules\EditorForms.cpp">
       <Filter>EditorScene\Submodules</Filter>
     </ClCompile>

@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 
+// [Diagnostics] RenderRateOverrideHz accepts 0 or a rate in this range.
+inline constexpr std::uint32_t MinRenderRateOverrideHz = 10;
+inline constexpr std::uint32_t MaxRenderRateOverrideHz = 5000;
+
 // FMOD mixer buffer lengths offered in the options, in samples (four buffers each).
 inline constexpr std::array<std::uint32_t, 4> DspBufferLengths{128, 256, 512, 1024};
 
@@ -69,8 +73,20 @@ struct OptionValues
     // finished last (D3D12 DRED), which costs a little on every draw; it is for chasing a lost device. The
     // engine reads it when it starts. It has no control in the options panel.
     bool deviceRemovedData{};
+    // [Diagnostics] graphics switches for crash experiments: GraphicsValidation (0 off, 1 debug layer, 2 also
+    // GPU-based), GraphicsAdapter (Default, WARP, an adapter number or part of its name), AllowTearing (0/1),
+    // SwapChainBuffers (2/3) and WaitableSwapChain (0/1). The defaults are the engine's normal behaviour. Read at
+    // start only, no control in the options panel, and ignored by a build made without them (GraphicsSwitches.h).
+    PhantomCore::GraphicsDeviceDiagnosticsConfig graphics;
+    // [Diagnostics] RenderRateOverrideHz, 0 (off) or MinRenderRateOverrideHz..MaxRenderRateOverrideHz: the engine's
+    // base render rate in place of the display refresh rate (RenderRate display draws at it, double at twice it,
+    // unlimited ignores it). A crash experiment switch like the ones above.
+    std::uint32_t renderRateOverrideHz{};
     std::map<std::string, std::map<std::string, std::vector<std::uint16_t>>> modeKeys;
 };
+
+// The GraphicsAdapter value as Option.ini writes it: "Default", "WARP", the adapter number, or the name part.
+[[nodiscard]] std::string GraphicsAdapterSetting(const PhantomCore::GraphicsDeviceDiagnosticsConfig &graphics);
 
 // Owns the persistent values, independently of the panel and audio handles.
 // A successful atomic file replacement is required before publishing a change.

@@ -5,6 +5,7 @@
 
 #include <Windows.h>
 
+#include <cctype>
 #include <charconv>
 #include <fstream>
 #include <stdexcept>
@@ -152,6 +153,95 @@ namespace
             target = number;
     }
 
+    // [Diagnostics] switches fail the file when out of range, as DeviceRemovedData does: a mistyped experiment
+    // should be noticed, not run as something else.
+    [[nodiscard]] bool ReadFlag(const std::string_view value, const char *key)
+    {
+        const int flag = ReadInteger<int>(value);
+        if (flag != 0 && flag != 1)
+            throw std::runtime_error(std::string(key) + " must be 0 or 1.");
+        return flag == 1;
+    }
+
+    constexpr std::array GraphicsValidationLevels{GraphicsValidation::Off, GraphicsValidation::DebugLayer,
+                                                  GraphicsValidation::GpuBased};
+
+    [[nodiscard]] GraphicsValidation ReadGraphicsValidation(const std::string_view value)
+    {
+        const int level = ReadInteger<int>(value);
+        if (level < 0 || level >= static_cast<int>(GraphicsValidationLevels.size()))
+            throw std::runtime_error("GraphicsValidation must be 0, 1 or 2.");
+        return GraphicsValidationLevels[static_cast<std::size_t>(level)];
+    }
+
+    [[nodiscard]] bool SameAscii(const std::string_view left, const std::string_view right)
+    {
+        return std::ranges::equal(left, right, [](const char a, const char b) {
+            return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
+        });
+    }
+
+    // Default, WARP (any case), an adapter number, or otherwise part of an adapter's name.
+    void ReadGraphicsAdapter(GraphicsDeviceDiagnosticsConfig &graphics, const std::string_view value)
+    {
+        graphics.adapterIndex = 0;
+        graphics.adapterName.clear();
+        if (value.empty() || SameAscii(value, "Default"))
+            graphics.adapter = GraphicsAdapterRequest::Default;
+        else if (SameAscii(value, "WARP"))
+            graphics.adapter = GraphicsAdapterRequest::Warp;
+        else if (std::ranges::all_of(value, [](const char c) { return c >= '0' && c <= '9'; }))
+        {
+            graphics.adapter = GraphicsAdapterRequest::Index;
+            graphics.adapterIndex = ReadInteger<std::uint32_t>(value);
+        }
+        else
+        {
+            graphics.adapter = GraphicsAdapterRequest::Name;
+            graphics.adapterName = std::string(value);
+        }
+    }
+
+    // What Save writes must read back as the same switches.
+    void ValidateGraphicsSwitches(const GraphicsDeviceDiagnosticsConfig &graphics)
+    {
+        if (static_cast<std::size_t>(graphics.validation) >= GraphicsValidationLevels.size())
+            throw std::runtime_error("GraphicsValidation must be 0, 1 or 2.");
+        if (graphics.swapChainBuffers != 2 && graphics.swapChainBuffers != 3)
+            throw std::runtime_error("SwapChainBuffers must be 2 or 3.");
+        if (graphics.adapter != GraphicsAdapterRequest::Name)
+            return;
+        GraphicsDeviceDiagnosticsConfig readBack;
+        ReadGraphicsAdapter(readBack, graphics.adapterName);
+        const bool sameName = readBack.adapter == GraphicsAdapterRequest::Name && readBack.adapterName == graphics.adapterName;
+        if (!sameName || !IsSingleLine(graphics.adapterName))
+            throw std::runtime_error("GraphicsAdapter must name part of an adapter on one line.");
+    }
+
+    // Returns false for a key that is not one of the graphics switches.
+    bool ReadGraphicsSwitch(GraphicsDeviceDiagnosticsConfig &graphics, const std::string_view key,
+                            const std::string_view value)
+    {
+        if (key == "GraphicsValidation")
+            graphics.validation = ReadGraphicsValidation(value);
+        else if (key == "GraphicsAdapter")
+            ReadGraphicsAdapter(graphics, value);
+        else if (key == "AllowTearing")
+            graphics.allowTearing = ReadFlag(value, "AllowTearing");
+        else if (key == "WaitableSwapChain")
+            graphics.waitableSwapChain = ReadFlag(value, "WaitableSwapChain");
+        else if (key == "SwapChainBuffers")
+        {
+            const auto buffers = ReadInteger<std::uint32_t>(value);
+            if (buffers != 2 && buffers != 3)
+                throw std::runtime_error("SwapChainBuffers must be 2 or 3.");
+            graphics.swapChainBuffers = buffers;
+        }
+        else
+            return false;
+        return true;
+    }
+
     bool IsIdentifierCharacter(char c)
     {
         const bool lower = c >= 'a' && c <= 'z';
@@ -231,6 +321,11 @@ namespace
             throw std::runtime_error("The Resume lead-in must be 0..3000 ms in 500 ms steps.");
         if (!IsValidPauseRewindMeasures(values.pauseRewindMeasures))
             throw std::runtime_error("The Rewind measure count must be 1..65535.");
+        ValidateGraphicsSwitches(values.graphics);
+        const bool overrideInRange = values.renderRateOverrideHz >= MinRenderRateOverrideHz &&
+                                     values.renderRateOverrideHz <= MaxRenderRateOverrideHz;
+        if (values.renderRateOverrideHz != 0 && !overrideInRange)
+            throw std::runtime_error("RenderRateOverrideHz must be 0 or 10..5000.");
         static_cast<void>(OutputName(values.audioOutput));
         static_cast<void>(RenderRateName(values.renderRate));
         static_cast<void>(WindowModeName(values.windowMode));
@@ -337,12 +432,11 @@ namespace
         else if (section == "Diagnostics")
         {
             if (key == "DeviceRemovedData")
-            {
-                const int flag = ReadInteger<int>(value);
-                if (flag != 0 && flag != 1)
-                    throw std::runtime_error("DeviceRemovedData must be 0 or 1.");
-                values.deviceRemovedData = flag == 1;
-            }
+                values.deviceRemovedData = ReadFlag(value, "DeviceRemovedData");
+            else if (key == "RenderRateOverrideHz")
+                values.renderRateOverrideHz = ReadInteger<std::uint32_t>(value);
+            else
+                static_cast<void>(ReadGraphicsSwitch(values.graphics, key, value));
         }
         else if (section == "Audio")
         {
@@ -370,6 +464,17 @@ namespace
         }
     }
 
+}
+
+std::string GraphicsAdapterSetting(const GraphicsDeviceDiagnosticsConfig &graphics)
+{
+    if (graphics.adapter == GraphicsAdapterRequest::Warp)
+        return "WARP";
+    if (graphics.adapter == GraphicsAdapterRequest::Index)
+        return std::to_string(graphics.adapterIndex);
+    if (graphics.adapter == GraphicsAdapterRequest::Name)
+        return graphics.adapterName;
+    return "Default";
 }
 
 OptionSettings::OptionSettings(std::filesystem::path path) : path_(std::move(path)), values_(DefaultValues()) {}
@@ -469,7 +574,13 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\n\r\n[Controls]\r\nRestartKey=" << values.restartKey
              << "\r\n\r\n[Pause]\r\nResumeLeadInMs=" << values.pauseResumeLeadInMs
              << "\r\nRewindMeasures=" << values.pauseRewindMeasures
-             << "\r\n\r\n[Diagnostics]\r\nDeviceRemovedData=" << (values.deviceRemovedData ? 1 : 0) << "\r\n";
+             << "\r\n\r\n[Diagnostics]\r\nDeviceRemovedData=" << (values.deviceRemovedData ? 1 : 0)
+             << "\r\nGraphicsValidation=" << static_cast<int>(values.graphics.validation)
+             << "\r\nGraphicsAdapter=" << GraphicsAdapterSetting(values.graphics)
+             << "\r\nAllowTearing=" << (values.graphics.allowTearing ? 1 : 0)
+             << "\r\nSwapChainBuffers=" << values.graphics.swapChainBuffers
+             << "\r\nWaitableSwapChain=" << (values.graphics.waitableSwapChain ? 1 : 0)
+             << "\r\nRenderRateOverrideHz=" << values.renderRateOverrideHz << "\r\n";
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             file << "\r\n[Keys." << mode << "]\r\n";

@@ -41,7 +41,15 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <!-- false: the build ignores the Option.ini [Diagnostics] graphics switches (Diagnostics/GraphicsSwitches.h),
+         for builds handed to players. Pass /p:YoumuGraphicsSwitches=false to msbuild. -->
+    <YoumuGraphicsSwitches Condition="'$(YoumuGraphicsSwitches)' == ''">true</YoumuGraphicsSwitches>
+  </PropertyGroup>
+  <PropertyGroup>
+    <YoumuGraphicsSwitchesValue>0</YoumuGraphicsSwitchesValue>
+    <YoumuGraphicsSwitchesValue Condition="'$(YoumuGraphicsSwitches)' == 'true'">1</YoumuGraphicsSwitchesValue>
+  </PropertyGroup>
   <PropertyGroup>
     <OutDir>$(BaseOutputPath)$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(BaseIntermediateOutputPath)$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
@@ -50,7 +58,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(IntDir)Generated;$(ProjectDir);$(ProjectDir)..\Dependencies\PhantomCore\Engine\SDK;$(ProjectDir)..\YOUMU.Rhythm;$(ProjectDir)..\YOUMU.Chart;$(ProjectDir)..\YOUMU.Modes;$(ProjectDir)..\YOUMU.Assets\Public;$(ProjectDir)..\YOUMU.Editor;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;YOUMU_GRAPHICS_SWITCHES=$(YoumuGraphicsSwitchesValue);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
@@ -142,6 +150,8 @@
     <ClInclude Include="Diagnostics\GameDiagnostics.h" />
     <ClCompile Include="Diagnostics\LaunchDiagnostics.cpp" />
     <ClInclude Include="Diagnostics\LaunchDiagnostics.h" />
+    <ClCompile Include="Diagnostics\GraphicsSwitches.cpp" />
+    <ClInclude Include="Diagnostics\GraphicsSwitches.h" />
     <ClCompile Include="EditorScene\Submodules\EditorForms.cpp" />
     <ClCompile Include="App\SkinManifest.cpp" />
     <ClInclude Include="App\SkinManifest.h" />
