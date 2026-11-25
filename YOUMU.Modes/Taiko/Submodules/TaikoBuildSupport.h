@@ -20,11 +20,10 @@
 class EffectLookup final
 {
   public:
-    explicit EffectLookup(const std::vector<CompiledEffectCommand> &commands, std::stop_token stop = {})
+    explicit EffectLookup(const std::vector<CompiledEffectCommand> &commands)
     {
         for (const auto &command : commands)
         {
-            CheckChartLoadCancellation(stop);
             index_.insert_or_assign({command.command.type, command.timing}, &command);
         }
     }
@@ -71,25 +70,22 @@ inline bool UsesSyncopation(const EffectLookup &effects, const MusicalTimeline &
 }
 inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &pattern,
                                const EffectDocument &effects, const MusicalTimeline &timeline,
-                               std::vector<Diagnostic> &diagnostics, std::stop_token stop = {})
+                               std::vector<Diagnostic> &diagnostics)
 {
     std::map<SoundId, std::filesystem::path> files;
     std::set<std::string> used;
     for (const auto &note : pattern.notes)
     {
-        CheckChartLoadCancellation(stop);
         if (!note.hitSound.empty())
             used.insert(note.hitSound);
     }
     for (const auto &change : effects.hitSoundChanges)
     {
-        CheckChartLoadCancellation(stop);
         if (timeline.IsPositionActive(change.position))
             used.insert(change.soundIndex);
     }
     for (const auto &[index, path] : effects.hitSounds)
     {
-        CheckChartLoadCancellation(stop);
         if (used.contains(index))
             files.emplace(ChartSoundId(index), (effects.sourcePath.parent_path() / path).lexically_normal());
     }
@@ -99,7 +95,6 @@ inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &patt
     std::vector<TimedSoundOverride> katChanges;
     for (const auto &change : effects.hitSoundChanges)
     {
-        CheckChartLoadCancellation(stop);
         const bool knownKey = change.keyType == 1 || change.keyType == 2;
         if (!knownKey || !effects.hitSounds.contains(change.soundIndex) ||
             !IsPositionWithinMeasure(change.position, timeline))
@@ -116,7 +111,6 @@ inline void ConfigureHitSounds(PlaySession &session, const PatternDocument &patt
     }
     for (const auto &binding : TimedSoundBindings)
     {
-        CheckChartLoadCancellation(stop);
         session.SetSoundOverrides(binding.sound, binding.keyType == 1 ? donChanges : katChanges);
     }
 }

@@ -118,7 +118,7 @@
   첫 탐색 중 곡이 아직 없거나 패턴이 추가되지 않은 곡은 `NO DIFFICULTIES`로 표시합니다.
   읽힌 패턴은 전체 탐색 중에도 선택·플레이/편집기 진입을 허용하고 나머지 탐색은 계속합니다.
   새 난이도 생성·가져오기는 전체 탐색 후 허용합니다. 최신 루트만 게시하고 부분/최종 갱신은
-  선택 경로·검색·필터를 보존합니다. 파싱·컴파일·세션 구성은 협력 취소하며 UI에서 join하지 않습니다.
+  선택 경로·검색·필터를 보존합니다. 로딩은 단계 사이에서 협력 취소하며(예외 없이, 취소된 결과는 버림) UI에서 join하지 않습니다.
 
 상세: [ResourceLoading](../Features/ResourceLoading.md), [Audio](../Features/Gameplay/Audio.md).
 검증: SongCatalogTests, MusicSelectViewTests, GameplayPauseTests의 cold-start/실패/Retry.

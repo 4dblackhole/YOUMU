@@ -1,19 +1,11 @@
 #pragma once
 
-#include <exception>
 #include <stop_token>
 
-class ChartLoadCancelled final : public std::exception
+// Cancelling a chart or catalog load is an expected outcome, not an error, so nothing throws for it. The code
+// that runs a load checks this between its stages (one file, one chart, one build step) and returns a result
+// marked as cancelled; a cancelled load never becomes a chart diagnostic and nothing of it is published.
+[[nodiscard]] inline bool ChartLoadStopped(const std::stop_token& stop) noexcept
 {
-public:
-    const char* what() const noexcept override
-    {
-        return "Chart loading was cancelled.";
-    }
-};
-
-inline void CheckChartLoadCancellation(const std::stop_token& stop)
-{
-    if (stop.stop_requested())
-        throw ChartLoadCancelled{};
+    return stop.stop_requested();
 }

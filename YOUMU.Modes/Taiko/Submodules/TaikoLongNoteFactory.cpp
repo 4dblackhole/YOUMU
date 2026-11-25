@@ -16,9 +16,8 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
                                       const MusicalTimeline &timeline,
                                       const std::shared_ptr<const AccuracyRange> &profile,
                                       Lane &lane, PlaySession &session, NoteId &nextId,
-                                      std::vector<Diagnostic> &diagnostics, std::stop_token stop)
+                                      std::vector<Diagnostic> &diagnostics)
 {
-    CheckChartLoadCancellation(stop);
     const PatternNote &head = compiledHead.note;
     const PatternNote &tail = compiledTail.note;
     const RhythmTime begin = compiledHead.timing;
@@ -42,7 +41,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
     case TaikoNoteType::Roll:
     case TaikoNoteType::BigRoll: {
         const auto hitCount = ReadHitCount(
-            head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision, stop)),
+            head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision)),
             diagnostics);
         if (!hitCount.has_value())
         {
@@ -59,7 +58,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
         if (const auto division =
                 ReadPositiveOption(head, TickDivision, 16, diagnostics))
         {
-            tickTimes = timeline.CompileSubdivisions(head.position, tail.position, *division, stop);
+            tickTimes = timeline.CompileSubdivisions(head.position, tail.position, *division);
             rule = std::make_unique<TickRollInputRule>(
                 std::vector<NoteAction>{ActionValue(TaikoAction::Don), ActionValue(TaikoAction::Kat)}, end,
                 tickTimes);
@@ -68,7 +67,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
         break;
     case TaikoNoteType::Balloon:
         if (const auto hitCount = ReadHitCount(
-                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision, stop)),
+                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision)),
                 diagnostics))
         {
             rule = std::make_unique<TimedSequenceInputRule>(
@@ -78,7 +77,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
         break;
     case TaikoNoteType::DengDeng:
         if (const auto hitCount = ReadHitCount(
-                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision, stop)),
+                head, std::max(std::size_t{1}, timeline.CountSubdivisions(head.position, tail.position, DefaultLongNoteSubdivision)),
                 diagnostics))
         {
             rule = std::make_unique<TimedSequenceInputRule>(
@@ -93,7 +92,7 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
                 ReadPositiveOption(head, TickDivision, 16, diagnostics);
             buzzAction.has_value() && division.has_value())
         {
-            tickTimes = timeline.CompileSubdivisions(head.position, tail.position, *division, stop);
+            tickTimes = timeline.CompileSubdivisions(head.position, tail.position, *division);
             // The head has its own timing score, not a body tick.
             if (compiledHead.positionActive && !tickTimes.empty() && tickTimes.front() == begin)
             {
@@ -122,7 +121,6 @@ void TaikoSessionBuilder::AddLongNote(const CompiledPatternNote &compiledHead,
 
     // One rule-based note owns the complete interval; presentation keeps
     // the tail time separate from its input and scoring rule.
-    CheckChartLoadCancellation(stop);
     const NoteId noteId = nextId++;
     lane.AddNote(
         std::make_unique<RuleBasedNote>(noteId, begin, profile, std::move(rule), std::move(soundPolicy)));

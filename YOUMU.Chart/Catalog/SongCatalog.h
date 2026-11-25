@@ -44,6 +44,9 @@ struct SongCatalogLoadResult
     std::vector<Diagnostic> diagnostics;
     std::size_t discoveredMusicFiles{};
     std::size_t discoveredPatternFiles{};
+    // The scan stopped early because it was cancelled (Parsing/LoadCancellation.h): the songs so far are
+    // incomplete and not a catalog to show. Whoever cancelled it discards it.
+    bool cancelled{};
 
     [[nodiscard]] std::size_t PatternCount() const noexcept;
     [[nodiscard]] bool Succeeded() const noexcept;
@@ -73,8 +76,8 @@ public:
         ProgressHandler progress = {}) const;
 
   private:
-    void ReadIndex(const std::filesystem::path &root, std::stop_token stop) const;
-    void WriteIndex(const std::filesystem::path &root, std::stop_token stop) const;
+    void ReadIndex(const std::filesystem::path &root) const;
+    void WriteIndex(const std::filesystem::path &root) const;
     PatternNoteCounter countNotes_;
     bool metadataOnly_{};
     std::filesystem::path cacheFile_;

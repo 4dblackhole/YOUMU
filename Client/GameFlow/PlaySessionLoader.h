@@ -19,12 +19,14 @@ class PlaySessionLoader final
         {
             try
             {
-                CheckChartLoadCancellation(stop);
+                if (ChartLoadStopped(stop))
+                    return ModeLoadResult::Cancelled();
                 auto result = CreatePlayGameMode(request.mode,
                     {request.CompiledOffset(), request.inputKeys,
                      request.playOptions})
                     ->LoadSession(request.patternPath, request.effectPath, stop);
-                CheckChartLoadCancellation(stop);
+                if (result.cancelled || ChartLoadStopped(stop))
+                    return ModeLoadResult::Cancelled();
                 if (result.Succeeded() && !result.session->CanEnterGameplay())
                 {
                     result.session.reset();
@@ -32,10 +34,6 @@ class PlaySessionLoader final
                         "A chart with no playable notes cannot be played."});
                 }
                 return result;
-            }
-            catch (const ChartLoadCancelled&)
-            {
-                throw;
             }
             catch (const std::exception& error)
             {
@@ -45,9 +43,13 @@ class PlaySessionLoader final
             }
         });
     }
+    // A cancelled load has nothing to show and is dropped like one that has not finished.
     std::optional<ModeLoadResult> Poll()
     {
-        return job_.Poll();
+        auto result = job_.Poll();
+        if (result && result->cancelled)
+            return {};
+        return result;
     }
   private:
     ChartLoadJob<ModeLoadResult> job_;

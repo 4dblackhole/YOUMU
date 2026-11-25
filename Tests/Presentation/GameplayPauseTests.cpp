@@ -7,6 +7,7 @@
 #include "GameScene/RhythmTestScene/RhythmTestScene.h"
 #include "Taiko/Results/TaikoPlayResult.h"
 #include "Taiko/TaikoMode.h"
+#include "Parsing/LoadCancellation.h"
 #include "Note/Submodules/RuleBasedNote.h"
 #include "Note/Submodules/TapInputRule.h"
 #include <algorithm>
@@ -552,9 +553,10 @@ namespace
         ModeLoadResult CreateSession(const PatternDocument &pattern,
                                            const EffectDocument &, std::stop_token stop = {}) const override
         {
-            CheckChartLoadCancellation(stop);
+            if (ChartLoadStopped(stop))
+                return ModeLoadResult::Cancelled();
             auto session = std::make_unique<PlaySession>();
-            session->SetTimeline(MusicalTimeline(pattern, {}, stop));
+            session->SetTimeline(MusicalTimeline(pattern, {}));
             session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(
                 1, RhythmTime{}, std::make_shared<const AccuracyRange>(), std::make_unique<TapInputRule>(1)));
             session->Gear().CreateLane().AddNote(std::make_unique<RuleBasedNote>(

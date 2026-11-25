@@ -29,9 +29,8 @@ void ValidateEffectValue(EffectCommandType type, double value)
         throw std::invalid_argument("Volume cannot be negative.");
 }
 
-void ValidateEffectCommand(const EffectCommand &command, std::stop_token stop)
+void ValidateEffectCommand(const EffectCommand &command)
 {
-    CheckChartLoadCancellation(stop);
     ValidateEffectValue(command.type, command.beginValue);
     ValidateEffectValue(command.type, command.endValue);
     if (!std::isfinite(command.durationMilliseconds) || command.durationMilliseconds < 0)
@@ -52,45 +51,38 @@ void ValidateEffectCommand(const EffectCommand &command, std::stop_token stop)
         // still guard unsampled singularities in user expressions.
         for (int i = 0; i <= 128; ++i)
         {
-            CheckChartLoadCancellation(stop);
             ValidateEffectValue(command.type, EvaluateInterpolation(command, i / 128.0));
         }
     }
 }
 
-void ResolveEffectInterpolations(EffectDocument &document, std::stop_token stop)
+void ResolveEffectInterpolations(EffectDocument &document)
 {
     CompiledInterpolations compiled;
-    CheckChartLoadCancellation(stop);
     for (const auto &[name, expression] : document.interpolations)
     {
-        CheckChartLoadCancellation(stop);
         compiled.emplace(name, std::make_shared<const InterpolationExpression>(expression));
     }
     for (auto &command : document.commands)
     {
-        CheckChartLoadCancellation(stop);
         if (command.endPosition && !command.curveName.empty())
             ResolveInterpolation(command, compiled);
     }
 }
 
-void ValidateEffectDocument(const EffectDocument &document, std::stop_token stop)
+void ValidateEffectDocument(const EffectDocument &document)
 {
-    CheckChartLoadCancellation(stop);
     for (const auto &command : document.commands)
-        ValidateEffectCommand(command, stop);
+        ValidateEffectCommand(command);
     for (const auto &change : document.hitSoundChanges)
     {
-        CheckChartLoadCancellation(stop);
         if (!document.hitSounds.contains(change.soundIndex) || (change.keyType != 1 && change.keyType != 2))
             throw std::invalid_argument("Invalid hit sound change index or key ID.");
     }
 }
 
-void ValidateEffectPositions(const EffectDocument &document, const MusicalTimeline &timeline, std::stop_token stop)
+void ValidateEffectPositions(const EffectDocument &document, const MusicalTimeline &timeline)
 {
-    CheckChartLoadCancellation(stop);
     const auto valid = [&timeline](MusicalPosition p)
     {
         return p.measure >= 0 && p.measure < MaximumMeasureCount && p.fraction >= Rational{} &&
@@ -98,13 +90,11 @@ void ValidateEffectPositions(const EffectDocument &document, const MusicalTimeli
     };
     for (const auto &command : document.commands)
     {
-        CheckChartLoadCancellation(stop);
         if (!valid(command.position) || (command.endPosition && !valid(*command.endPosition)))
             throw std::invalid_argument("Effect starts or ends outside its measure.");
     }
     for (const auto &change : document.hitSoundChanges)
     {
-        CheckChartLoadCancellation(stop);
         if (!valid(change.position))
             throw std::invalid_argument("Hit sound change starts outside its measure.");
     }

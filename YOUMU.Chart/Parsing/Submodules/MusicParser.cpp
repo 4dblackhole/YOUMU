@@ -6,9 +6,8 @@ ParseResult<MusicDocument> ChartParser::ParseMusic(const std::string_view utf8,
     ParseResult<MusicDocument> result;
     result.document.sourcePath = std::move(source);
     const auto &sourcePath = result.document.sourcePath;
-    for (const auto &[lineNumber, rawLine] : EnumerateLines(utf8, stop_))
+    for (const auto &[lineNumber, rawLine] : EnumerateLines(utf8))
     {
-        CheckChartLoadCancellation(stop_);
         const std::string_view line = Trim(rawLine);
         if (line.empty() || StartsWithInsensitive(line, "//"))
         {
@@ -57,6 +56,5 @@ ParseResult<MusicDocument> ChartParser::ParseMusic(const std::string_view utf8,
         AddDiagnostic(result.diagnostics, sourcePath, 1,
                       "Music metadata is missing the audio File field.");
     }
-    CheckChartLoadCancellation(stop_);
     return result;
 }

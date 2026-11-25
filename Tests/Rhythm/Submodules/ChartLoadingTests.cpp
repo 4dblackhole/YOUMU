@@ -10,13 +10,6 @@ namespace tests
 {
     namespace
     {
-        template<class Work> void RequireCancelled(Work work)
-        {
-            bool cancelled = false;
-            try { work(); }
-            catch (const ChartLoadCancelled&) { cancelled = true; }
-            Require(cancelled, "Loading cancellation must propagate rather than become a chart diagnostic.");
-        }
         template<class Result> Result WaitForLoad(ChartLoadJob<Result>& job)
         {
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
@@ -29,22 +22,25 @@ namespace tests
         }
     }
 
+    // Cancelling is an expected outcome (Parsing/LoadCancellation.h): a cancelled load returns a result marked as
+    // cancelled, never a chart diagnostic and never an exception. Checks sit between the stages of a load.
     void TestChartLoadCancellation()
     {
         std::stop_source cancellation;
         static_cast<void>(cancellation.request_stop());
         const auto stop = cancellation.get_token();
-        ChartParser parser(stop);
-        RequireCancelled([&] { static_cast<void>(parser.ParseMusic("")); });
-        RequireCancelled([&] { static_cast<void>(parser.ParsePattern("")); });
-        RequireCancelled([&] { static_cast<void>(parser.ParseEffect("")); });
-        RequireCancelled([&] { static_cast<void>(parser.ParsePatternFile("does-not-exist.ymp")); });
         PatternDocument pattern;
         pattern.mode = "Taiko";
-        RequireCancelled([&] { static_cast<void>(MusicalTimeline(pattern, {}, stop)); });
-        RequireCancelled([&] { static_cast<void>(TaikoMode{}.CreateSession(pattern, {}, stop)); });
-        RequireCancelled([&] { static_cast<void>(CountPlayableNotes(pattern, {}, stop)); });
-        RequireCancelled([&] { static_cast<void>(TaikoMode{}.LoadSession("missing.ymp", {}, stop)); });
+        const auto created = TaikoMode{}.CreateSession(pattern, {}, stop);
+        Require(created.cancelled && !created.session && created.diagnostics.empty(),
+                "A cancelled session build returns a cancelled result without a session or diagnostics.");
+        Require(!CountPlayableNotes(pattern, {}, stop).has_value(), "A cancelled note count has no count.");
+        const auto loaded = TaikoMode{}.LoadSession("missing.ymp", {}, stop);
+        Require(loaded.cancelled && loaded.diagnostics.empty(),
+                "Loading cancellation must not become a chart diagnostic (here: a missing file).");
+        const auto missing = TaikoMode{}.LoadSession("missing.ymp");
+        Require(!missing.cancelled && !missing.diagnostics.empty(),
+                "A missing chart without cancellation is a diagnostic, reported without an exception.");
 
         TemporaryDirectory fixture("YOUMUCatalogProgress");
         const auto root = fixture.Path() / "Songs";
@@ -67,15 +63,13 @@ namespace tests
         const std::string before{std::istreambuf_iterator<char>{beforeFile}, {}};
         beforeFile.close();
         std::stop_source duringProgress;
-        RequireCancelled([&]
-        {
-            static_cast<void>(SongCatalog::MetadataIndex(cache, CountPlayableNotes).Load(root,
-                duringProgress.get_token(), [&](SongCatalogEntry entry)
-                {
-                    Require(entry.patterns.empty(), "Cancellation after metadata must prevent pattern publication.");
-                    static_cast<void>(duringProgress.request_stop());
-                }));
-        });
+        const auto stoppedAfterMetadata = SongCatalog::MetadataIndex(cache, CountPlayableNotes).Load(root,
+            duringProgress.get_token(), [&](SongCatalogEntry entry)
+            {
+                Require(entry.patterns.empty(), "Cancellation after metadata must prevent pattern publication.");
+                static_cast<void>(duringProgress.request_stop());
+            });
+        Require(stoppedAfterMetadata.cancelled, "A scan cancelled during progress returns a cancelled catalog.");
         std::ifstream afterFile(cache, std::ios::binary);
         const std::string after{std::istreambuf_iterator<char>{afterFile}, {}};
         Require(before == after, "Canceled loading must preserve the previously committed index.");
@@ -87,8 +81,8 @@ namespace tests
             static_cast<void>(duringCount.request_stop());
             return CountPlayableNotes(document, effects, token);
         };
-        RequireCancelled([&] { static_cast<void>(SongCatalog::MetadataIndex(canceledCache, counter)
-            .Load(root, duringCount.get_token())); });
+        const auto stoppedInCount = SongCatalog::MetadataIndex(canceledCache, counter).Load(root, duringCount.get_token());
+        Require(stoppedInCount.cancelled, "A scan cancelled while counting notes returns a cancelled catalog.");
         Require(!std::filesystem::exists(canceledCache), "A canceled note compilation must not commit an index.");
         for (const auto& file : std::filesystem::directory_iterator(fixture.Path()))
             Require(file.path().extension() != ".tmp", "Canceled cache writes must not leave temporary files.");

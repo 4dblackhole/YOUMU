@@ -49,8 +49,8 @@ std::unique_ptr<IPlayGameMode> CreatePlayGameMode(std::string_view id, PlaySessi
 std::optional<std::size_t> CountPlayableNotes(
     const PatternDocument& pattern, const EffectDocument& effects, std::stop_token stop)
 {
-    CheckChartLoadCancellation(stop);
-    if (!IsSupportedPlayGameMode(pattern.mode)) return std::nullopt;
+    // A cancelled count is no count either; the caller that cancelled checks its own stop token.
+    if (ChartLoadStopped(stop) || !IsSupportedPlayGameMode(pattern.mode)) return std::nullopt;
     const auto result = CreatePlayGameMode(pattern.mode)->CreateSession(pattern, effects, stop);
     return result.Succeeded()
         ? std::optional{result.session->PlayableNoteCount()} : std::nullopt;
