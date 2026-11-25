@@ -34,6 +34,8 @@ namespace
     // the shortened limit, and then needs time to be seen running again.
     constexpr std::uint64_t DeviceTestFrames = 600;
     constexpr std::uint64_t StallTestFrames = 600;
+    // An exception or a crash test ends the run itself, half a second in.
+    constexpr std::uint64_t FailTestFrames = 100000;
     constexpr double StallTestLimitSeconds = 1.0;
     constexpr DWORD StallTestHoldMilliseconds = 3000;
 
@@ -96,6 +98,9 @@ YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId, const boo
     initialRequest.songsRoot = optionSettings_.SongsRoot();
     launchRequest_->Set(std::move(initialRequest));
     texts_.SetLanguage(optionSettings_.Values().language);
+    // A run with a window tells the player where the record of a fatal error is; a hidden run shows nothing.
+    if (diagnostics_ && !smokeTest_)
+        diagnostics_->ShowFatalErrors(std::wstring(texts_.Get("Startup.logNote")));
     for (const auto &diagnostic : texts_.Diagnostics())
         game_log::Write("texts: " + diagnostic);
     SkinSetSelection::Instance().Initialize(optionSettings_.Values().skinSet);
@@ -136,6 +141,8 @@ EngineConfig YOUMUGame::GetEngineConfig() const
         config.diagnostics.mainLoopStallSeconds = StallTestLimitSeconds;
         config.autoExitAfterRenderedFrames = smokeTest_ ? StallTestFrames : 0;
     }
+    if (launch_.throwException || launch_.crash)
+        config.autoExitAfterRenderedFrames = smokeTest_ ? FailTestFrames : 0;
     return config;
 }
 
@@ -262,7 +269,7 @@ void YOUMUGame::OnClientUpdated(const UpdateContext &context)
         lastPerformanceMeasurementIndex_ = context.performance.measurementIndex;
     }
     RecordDiagnostics(context, measured);
-    StallOnceForTest(context);
+    FailOnceForTest(context);
     performanceBand_.Update();
     volumeOverlay_.Update(context.input, context.deltaSeconds);
 }
@@ -281,14 +288,30 @@ void YOUMUGame::RecordDiagnostics(const UpdateContext &context, const bool measu
         diagnostics_->AddSample(context.performance, context.totalSeconds, scene);
 }
 
-// --crash-test=stall: one Update that does not come back for a while.
-void YOUMUGame::StallOnceForTest(const UpdateContext &context)
+// The hidden crash tests, half a second into the run and once: an Update that does not come back for a while
+// (stall), one that throws (exception), one that faults the way a wild pointer does (crash).
+void YOUMUGame::FailOnceForTest(const UpdateContext &context)
 {
-    if (!launch_.stallMainLoop || stalledForTest_ || context.totalSeconds < 0.5)
+    if (failedForTest_ || context.totalSeconds < 0.5)
         return;
-    stalledForTest_ = true;
-    game_log::Write("crash test: holding one Update");
-    Sleep(StallTestHoldMilliseconds);
+    failedForTest_ = true;
+    if (launch_.stallMainLoop)
+    {
+        game_log::Write("crash test: holding one Update");
+        Sleep(StallTestHoldMilliseconds);
+    }
+    if (launch_.throwException)
+    {
+        game_log::Write("crash test: throwing from Update");
+        throw std::runtime_error("Crash test: an exception thrown on purpose.");
+    }
+    if (launch_.crash)
+    {
+        game_log::WriteNow("crash test: faulting in Update");
+        // A test must not leave a Windows error box on screen. This is the only place that asks for that.
+        SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+        RaiseException(EXCEPTION_ACCESS_VIOLATION, EXCEPTION_NONCONTINUABLE, 0, nullptr);
+    }
 }
 
 // A framed window the user dragged starts in the same place next time.

@@ -8,6 +8,7 @@
 
 #include "App/YOUMUGame.h"
 #include "App/GameDataPaths.h"
+#include "Diagnostics/CrashDumpLog.h"
 #include "Diagnostics/GameDiagnostics.h"
 #include "Diagnostics/GameLog.h"
 #include "Diagnostics/LaunchDiagnostics.h"
@@ -43,6 +44,8 @@ namespace
     }
 
     using VersionFunction = LONG(WINAPI *)(OSVERSIONINFOW *);
+    // The newest dump files that stay in <game>/Data/Crash.
+    constexpr std::uint32_t KeptCrashDumps = 5;
 
     // What the run starts on: the build, Windows, the PC. The engine adds the
     // graphics adapter and the window, the game its options.
@@ -72,9 +75,8 @@ namespace
                                     version.dwMinorVersion, version.dwBuildNumber, system.dwNumberOfProcessors,
                                     memory.ullTotalPhys / (1024 * 1024)));
 
-        const char *crashTest = launch.removeGraphicsDevice ? "device" : launch.stallMainLoop ? "stall" : "none";
         game_log::Write(std::format("start: scene {}, smoke test {}, crash test {}", initialScene,
-                                    smokeTest ? "yes" : "no", crashTest));
+                                    smokeTest ? "yes" : "no", launch.CrashTestName()));
     }
 
     void ReportStartupError(const char *error, const bool showWindow)
@@ -150,6 +152,21 @@ int WINAPI wWinMain(
     LogStart(initialScene, smokeTest, launch);
     // Declared before Run and destroyed after it: the engine keeps a pointer for the whole run.
     GameDiagnostics diagnostics;
+    // From here a crash leaves a dump file. The service tells dumpLog, and the diagnostics ask the service for
+    // the dump of a stalled loop: it is declared after both, so it goes first.
+    CrashDumpLog dumpLog(diagnostics.Recent());
+    std::optional<CrashDumpService> dumps;
+    try
+    {
+        dumps.emplace(launch.logDirectory.empty() ? GameCrashDirectory() : launch.logDirectory / L"Crash", L"youmu",
+                      KeptCrashDumps, &dumpLog);
+        diagnostics.UseDumps(&*dumps);
+    }
+    catch (const std::exception &error)
+    {
+        // The game runs without dump files, like it runs without a log.
+        game_log::Write(std::string("crash dumps are off: ") + error.what());
+    }
 
     // Specialized hidden routes exercise catalog widgets and layered Taiko
     // assets without changing the normal executable's Logo entry point.

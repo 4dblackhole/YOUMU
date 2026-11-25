@@ -1,6 +1,7 @@
 #include "Diagnostics/GameDiagnostics.h"
 
 #include "Diagnostics/GameLog.h"
+#include "Texts/GameIdentity.h"
 
 #include <Psapi.h>
 
@@ -108,7 +109,31 @@ FatalErrorPresentation GameDiagnostics::OnFatalError(const std::string_view mess
     {
     }
     WriteRecentOnce();
-    return FatalErrorPresentation::EngineDialog;
+    if (!showFatalErrors_)
+        return FatalErrorPresentation::EngineDialog;
+    try
+    {
+        // The engine's text, then where the record of this run is.
+        const int size = static_cast<int>(message.size());
+        const int length = MultiByteToWideChar(CP_UTF8, 0, message.data(), size, nullptr, 0);
+        std::wstring text(static_cast<std::size_t>(std::max(length, 0)), L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, message.data(), size, text.data(), length);
+        const std::filesystem::path log = game_log::CurrentFile();
+        if (!log.empty())
+            text += L"\n\n" + fatalErrorNote_ + L"\n" + log.wstring();
+        MessageBoxW(nullptr, text.c_str(), GameName, MB_OK | MB_ICONERROR);
+        return FatalErrorPresentation::Handled;
+    }
+    catch (...)
+    {
+        return FatalErrorPresentation::EngineDialog;
+    }
+}
+
+void GameDiagnostics::ShowFatalErrors(std::wstring note)
+{
+    fatalErrorNote_ = std::move(note);
+    showFatalErrors_ = true;
 }
 
 // From the engine's watch thread, while the game loop is stuck. The loop's
@@ -123,6 +148,9 @@ void GameDiagnostics::OnMainLoopStalled(const MainLoopStallReport &report) noexc
     if (length > 0)
         game_log::WritePlain(std::string_view(line, std::min(static_cast<std::size_t>(length), sizeof(line) - 1)));
     recent_.WriteToLog();
+    // Every thread's call stack, while the loop is still stuck. The service's observer notes the file.
+    if (dumps_)
+        static_cast<void>(dumps_->WriteNow("stall"));
 }
 
 void GameDiagnostics::OnMainLoopResumed(const double stalledSeconds) noexcept

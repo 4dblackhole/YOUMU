@@ -25,6 +25,8 @@ namespace game_log
             std::string_view shown;
         };
         std::array<HiddenFolder, 2> hiddenFolders;
+        // Set and cleared by the Session, on the thread that owns it.
+        std::filesystem::path currentFile;
 
         [[nodiscard]] std::wstring UserProfileFolder()
         {
@@ -139,6 +141,7 @@ namespace game_log
                 return;
             file.store(opened);
             file_ = std::move(path);
+            currentFile = file_;
         }
         catch (...)
         {
@@ -151,6 +154,12 @@ namespace game_log
         const HANDLE opened = file.exchange(INVALID_HANDLE_VALUE);
         if (opened != INVALID_HANDLE_VALUE)
             CloseHandle(opened);
+        currentFile.clear();
+    }
+
+    std::filesystem::path CurrentFile()
+    {
+        return currentFile;
     }
 
     void Write(const std::string_view line) noexcept

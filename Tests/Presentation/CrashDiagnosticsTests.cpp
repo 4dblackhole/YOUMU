@@ -1,3 +1,4 @@
+#include "Diagnostics/CrashDumpLog.h"
 #include "Diagnostics/GameDiagnostics.h"
 #include "Diagnostics/GameLog.h"
 #include "Diagnostics/LaunchDiagnostics.h"
@@ -65,6 +66,15 @@ namespace
             ParseDiagnosticsLaunchOptions(LR"(game.exe --log-dir="C:\Temp\my logs" --crash-test=stall --smoke-lobby)");
         Check(stall.stallMainLoop && !stall.removeGraphicsDevice, "--crash-test=stall must be read alone.");
         Check(stall.logDirectory == LR"(C:\Temp\my logs)", "A quoted --log-dir keeps its spaces and loses its quotes.");
+
+        const auto thrown = ParseDiagnosticsLaunchOptions(L"game.exe --crash-test=exception");
+        const auto crashed = ParseDiagnosticsLaunchOptions(L"game.exe --crash-test=crash");
+        Check(thrown.throwException && !thrown.crash, "--crash-test=exception must be read alone.");
+        Check(crashed.crash && !crashed.throwException, "--crash-test=crash must be read alone.");
+        const bool named = std::string_view(plain.CrashTestName()) == "none" &&
+                           std::string_view(device.CrashTestName()) == "device" &&
+                           std::string_view(crashed.CrashTestName()) == "crash";
+        Check(named, "Each crash test has its name for the log.");
     }
 
     void TestRecentStatistics()
@@ -173,6 +183,24 @@ namespace
         Check(text.find("main loop stalled: no pass for 10.5 s (thread 77, 123456 passes before)") != std::string::npos,
               "A stall is written with its length, thread and passes.");
         Check(text.find("main loop resumed after 14.5 s") != std::string::npos, "The end of a stall is written.");
+
+        // A crash: the dump thread tells the observer. The folder of the dump (it may hold a user name) is
+        // not written, only the file name; and the statistics follow, since nothing wrote them for this ending.
+        CrashDumpReport crash;
+        crash.reason = CrashDumpReason::UnhandledException;
+        crash.exceptionCode = 0xC0000005;
+        crash.exceptionAddress = 0x7FF612345678;
+        crash.threadId = 77;
+        crash.dumpWritten = true;
+        crash.dumpPath = LR"(C:\Users\someone\Game\Data\Crash\youmu-20261125-101010-crash.dmp)";
+        CrashDumpLog dumpLog(diagnostics->Recent());
+        dumpLog.OnCrashDump(crash);
+        const std::string after = ReadAll(session.File());
+        Check(after.find("crash: unhandled exception, code 0xC0000005 at 0x7FF612345678, thread 77, dump written: "
+                         "youmu-20261125-101010-crash.dmp") != std::string::npos,
+              "A crash is written with its code, address, thread and dump file name.");
+        Check(after.find("someone") == std::string::npos, "The folder of the dump must not appear in the log.");
+        Check(Count(after, "recent statistics, 1 seconds") == 3, "A crash is followed by the statistics.");
     }
     // Not a pass/fail check: prints what the game loop pays for the diagnostics. The sample is added once a
     // second; the Scene name is compared on every Update.
@@ -223,7 +251,7 @@ int wmain(int argc, wchar_t *argv[])
         }
         PrintCosts();
         std::cout << "Crash diagnostics passed: launch switches, statistics history, kept log files, hidden folder "
-                     "names, lost device, fatal error and stall lines.\n";
+                     "names, lost device, fatal error, stall and crash lines.\n";
         return 0;
     }
     catch (const std::exception &error)

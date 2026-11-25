@@ -53,6 +53,9 @@ namespace game_log
     void WriteRaw(const char *text, std::size_t length) noexcept;
     void Flush() noexcept;
 
+    // The file of this run; empty without a Session or when it could not be opened. Not for handlers: it copies.
+    [[nodiscard]] std::filesystem::path CurrentFile();
+
     // Log lines are UTF-8; names and paths in the game are wide.
     [[nodiscard]] std::string ToUtf8(std::wstring_view text);
 } // namespace game_log

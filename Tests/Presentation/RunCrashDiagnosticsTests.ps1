@@ -1,14 +1,15 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
-# 크래시 진단 기록: 단위 검사(실행 인자, 최근 통계, 로그 파일 보관·폴더 이름 가림, 장치 끊김·치명적 오류·멈춤 줄)를 돌린 뒤,
-# 게임 exe를 숨김 창으로 세 번 실행해(정상, 그래픽 장치 일부러 제거, Update 일부러 멈춤) 로그 파일의 내용을 확인합니다.
-# 로그는 --log-dir로 build/ 아래 임시 폴더에 쓰므로 게임 폴더의 Data/Logs를 건드리지 않습니다.
+# 크래시 진단 기록: 단위 검사(실행 인자, 최근 통계, 로그 파일 보관·폴더 이름 가림, 장치 끊김·치명적 오류·멈춤·크래시 줄)를 돌린 뒤,
+# 게임 exe를 숨김 창으로 다섯 번 실행해(정상, 그래픽 장치 일부러 제거, Update 일부러 멈춤, 예외 던지기, 일부러 죽기)
+# 로그 파일의 내용과 덤프 파일을 확인합니다.
+# 로그와 덤프는 --log-dir로 build/ 아래 임시 폴더에 쓰므로 게임 폴더의 Data/Logs·Data/Crash를 건드리지 않습니다.
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $testRoot = Join-Path $repoRoot ('build/crash-diagnostics-tests/' + $Configuration + '-' + [guid]::NewGuid().ToString('N'))
 $objects = Join-Path $testRoot 'obj'
 New-Item -ItemType Directory -Path $objects -Force | Out-Null
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
-$units = @('Pch', 'GameLog', 'RecentStatistics', 'GameDiagnostics', 'LaunchDiagnostics')
+$units = @('Pch', 'GameLog', 'RecentStatistics', 'GameDiagnostics', 'CrashDumpLog', 'LaunchDiagnostics')
 $clientObjects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $testExe = Join-Path $testRoot 'CrashDiagnosticsTests.exe'
 
@@ -48,16 +49,31 @@ try {
         @{ Name = 'device'; Arguments = @('--smoke-lobby', '--crash-test=device'); ExitCode = 1
            Expected = @('crash test device', 'graphics device lost: ', 'reason DXGI_ERROR_DEVICE_REMOVED', 'recent statistics, ',
                'fatal error: ', 'exit code 1') },
-        @{ Name = 'stall'; Arguments = @('--smoke-lobby', '--crash-test=stall'); ExitCode = 0
+        @{ Name = 'stall'; Arguments = @('--smoke-lobby', '--crash-test=stall'); ExitCode = 0; Dump = 'stall'
            Expected = @('crash test stall', 'crash test: holding one Update', 'main loop stalled: no pass for ', 'recent statistics, ',
-               'main loop resumed after ', 'exit code 0') })
+               'dump requested, ', 'dump written: youmu-', 'main loop resumed after ', 'exit code 0') },
+        @{ Name = 'exception'; Arguments = @('--smoke-lobby', '--crash-test=exception'); ExitCode = 1
+           Expected = @('crash test exception', 'crash test: throwing from Update',
+               'fatal error: Crash test: an exception thrown on purpose.', 'recent statistics, ', 'exit code 1') },
+        # 0xC0000005: 아무도 잡지 않은 접근 위반으로 Windows가 프로세스를 끝낸 종료 코드입니다.
+        @{ Name = 'crash'; Arguments = @('--smoke-lobby', '--crash-test=crash'); ExitCode = -1073741819; Dump = 'crash'
+           Expected = @('crash test crash', 'crash test: faulting in Update', 'crash: unhandled exception, code 0xC0000005 at 0x',
+               'dump written: youmu-', 'recent statistics, ') })
     foreach ($run in $runs) {
         $logFolder = Join-Path $testRoot ('logs-' + $run.Name)
         $arguments = $run.Arguments + ('--log-dir="' + $logFolder + '"')
         $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden -Wait -PassThru
         if ($process.ExitCode -ne $run.ExitCode) { throw "$($run.Name): exit code $($process.ExitCode), expected $($run.ExitCode)." }
         $text = Test-GameLog $run.Name $logFolder $run.Expected
-        Write-Output "PASS $($run.Name): exit $($process.ExitCode), $(@($text -split "`r`n").Count - 1) log lines"
+        # 덤프는 덤프를 남겨야 하는 실행에만, 이름에 사유가 든 파일 하나가 있어야 합니다. 미니덤프는 'MDMP'로 시작합니다.
+        $dumps = @(Get-ChildItem -LiteralPath (Join-Path $logFolder 'Crash') -Filter 'youmu-*.dmp' -ErrorAction SilentlyContinue)
+        $wanted = if ($run.Dump) { 1 } else { 0 }
+        if ($dumps.Count -ne $wanted) { throw "$($run.Name): expected $wanted dump file(s), found $($dumps.Count)." }
+        foreach ($dump in $dumps) {
+            $head = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($dump.FullName), 0, 4)
+            if ($head -ne 'MDMP' -or $dump.Name -notlike "*-$($run.Dump).dmp") { throw "$($run.Name): $($dump.Name) is not the expected minidump." }
+        }
+        Write-Output "PASS $($run.Name): exit $($process.ExitCode), $(@($text -split "`r`n").Count - 1) log lines, $($dumps.Count) dump(s)$(if ($dumps.Count) { ", $([int]($dumps[0].Length / 1KB)) KB" })"
     }
     # A passing run leaves nothing behind; a failing run keeps its logs (the throw above skips this) for diagnosis.
     Remove-Item -LiteralPath $testRoot -Recurse -Force

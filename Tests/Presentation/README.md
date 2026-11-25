@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | [AllNotesGameplayTests](#allnotesgameplaytests) | 전체 노트 채보를 실제 D3D12·FMOD로 끝까지 재생·판정(`-Effects`는 YME 효과 채보) | 44 / 63 |
 | [AssetPathTests](#assetpathtests) | 개발·배포 폴더의 Songs·스킨·Option.ini 경로 | 11 / 18 |
-| [CrashDiagnosticsTests](#crashdiagnosticstests) | 로그 파일·최근 통계·폴더 이름 가림, 게임 exe의 정상·장치 제거·멈춤 실행 로그 | 30 / 28 |
+| [CrashDiagnosticsTests](#crashdiagnosticstests) | 로그 파일·최근 통계·폴더 이름 가림, 게임 exe의 정상·장치 제거·멈춤·예외·크래시 실행의 로그와 덤프 | 31 / 30 |
 | [EditorPresentationTests](#editorpresentationtests) | 에디터 화면·도구·메뉴·오디오 분석·재생·미리듣기·경고 대화상자 | 102 / 117 |
 | [FailureBoundaryTests](#failureboundarytests) | 메모리 할당 실패 경계 | 9 / 9 |
 | [GameplayAudioRetirementTests](#gameplayaudioretirementtests) | 플레이 오디오 라우터의 clip 해제·bus 음량 | 12 / 16 |
@@ -90,11 +90,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/Test.ps1 -Con
 ## CrashDiagnosticsTests
 
 - `Client/Diagnostics`의 오브젝트를 링크해 실행 인자 읽기, 최근 통계의 고리(120개 유지·오래된 것부터), 로그 파일 보관 개수,
-  사용자 프로필·게임 폴더 이름 가림, 그래픽 장치 끊김·치명적 오류·멈춤 줄의 문구를 확인합니다. 표본 하나를 넣는 비용과
+  사용자 프로필·게임 폴더 이름 가림, 그래픽 장치 끊김·치명적 오류·멈춤·크래시 줄의 문구를 확인합니다. 표본 하나를 넣는 비용과
   Scene 이름 비교 비용도 출력합니다(통과 조건은 아닙니다).
-- 이어서 게임 exe를 숨김 창으로 세 번 실행하고 로그 파일을 읽습니다: 정상(`--smoke-lobby`, 종료 코드 0), 그래픽 장치 일부러 제거
-  (`--crash-test=device`, 종료 코드 1, 장치 끊김·최근 통계·치명적 오류 줄), Update 일부러 멈춤(`--crash-test=stall`, 멈춤·풀림 줄).
-- 로그는 `--log-dir`로 `build/` 아래 임시 폴더에 쓰므로 게임 폴더의 `Data/Logs`를 건드리지 않습니다. 통과하면 임시 폴더를 지웁니다.
+- 이어서 게임 exe를 숨김 창으로 다섯 번 실행하고 로그 파일과 덤프 파일을 읽습니다: 정상(`--smoke-lobby`, 종료 코드 0), 그래픽 장치 일부러 제거
+  (`--crash-test=device`, 종료 코드 1, 장치 끊김·최근 통계·치명적 오류 줄), Update 일부러 멈춤(`--crash-test=stall`, 멈춤·풀림 줄과 `-stall.dmp`),
+  예외 던지기(`--crash-test=exception`, 종료 코드 1, 치명적 오류 줄), 일부러 죽기(`--crash-test=crash`, 종료 코드 0xC0000005, 크래시 줄과 `-crash.dmp`).
+  덤프는 남겨야 하는 실행에만 하나씩 있고 미니덤프 형식인지 확인합니다.
+- 로그와 덤프는 `--log-dir`로 `build/` 아래 임시 폴더에 쓰므로 게임 폴더의 `Data/Logs`·`Data/Crash`를 건드리지 않습니다. 통과하면 임시 폴더를 지웁니다.
 - 계약은 [크래시 진단 기록](../../Docs/Features/CrashDiagnostics.md)에 있습니다.
 
 ## EditorPresentationTests
