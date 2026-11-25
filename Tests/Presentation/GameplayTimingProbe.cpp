@@ -313,6 +313,8 @@ namespace
             config.windowWidth = options_.width;
             config.windowHeight = options_.height;
             config.showWindow = true;
+            // The probe measures frame timing; it must not slow to the background cap behind another window.
+            config.backgroundRenderRateHz = 0.0;
             config.audio.allowNoSoundFallback = false;
             return config;
         }
