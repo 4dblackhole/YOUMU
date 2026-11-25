@@ -8,7 +8,7 @@
 
 | 저장소 | main | 비고 |
 | --- | --- | --- |
-| YOUMU | `bedb5a1` (#162) | 게임 |
+| YOUMU | `c4d9290` (#164) | 게임 |
 | PhantomCore | `1758f2c` (#38) | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
 | OsuTaikoConverter | `a8c2c2e` (#11) | YOUMU 솔루션이 형제 폴더로 참조 |
 
