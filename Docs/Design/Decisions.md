@@ -222,8 +222,12 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 - 키 해제(InputEdge::Released)·판정 범위 밖 입력을 이 패널티로 취급하지 않습니다.
   이 키 해제는 Release 빌드라는 뜻이 아니며 판정 규칙은 Debug/Release 공통입니다.
 - HP 설계에서는 POOR 발생 즉시 감소하지 않고 대상 판정이 확정될 때 감소를 반영합니다.
-- POOR 뒤 다시 쳐 GOOD~MAX가 나면 [BAD 복귀](#game-05-bad-복귀-판정)입니다(BAD 1, 정확도 0, HP 감소, 콤보 0).
-  POOR 뒤 놓치면 MISS입니다. POOR는 그 순간 콤보를 바꾸지 않고 노트가 끝날 때 0이 됩니다.
+- POOR는 BAD의 한 종류이며 POOR가 된 노트의 결과는 POOR 하나입니다(사용자 결정: "POOR는 BAD의 아종인것으로 해주세요").
+  - 다른 색을 연타해도 POOR 개수는 노트당 1이고, 적색 키빔과 POOR 글자는 누를 때마다 보입니다(사용자 결정).
+  - POOR가 된 노트는 GOOD 이상으로만 처리됩니다(POOR 복귀). BAD 범위의 맞는 색 누름은 BAD를 세지 않고 노트는 계속 기다립니다(사용자 결정).
+  - POOR 복귀는 등급 글자(보라)를 보이지만 더 세지 않습니다. 정확도 0, HP 감소, 콤보 0은 BAD 복귀와 같습니다.
+  - POOR 뒤 놓치면 MISS가 아니라 POOR입니다(사용자 결정: "POOR를 치고 그대로 놓칠경우 MISS가 아니라 POOR로 하겠습니다").
+  - POOR는 그 순간 콤보를 바꾸지 않고 노트가 끝날 때 0이 됩니다.
 
 상세: [Rules](../Features/Gameplay/Rules.md), [HP 설계](../Formats/Ymp.md#hp-게이지).
 검증: [TestPoorSingleNoteAccuracy·TestPoorLargeNoteAccuracy·TestBuzzTickColorFocus](../../Tests/Rhythm/Submodules/AccuracyTests.cpp).
@@ -235,7 +239,7 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 - 정상 처리한 헤드는 확정됩니다. 이후 입력은 몸통 틱을 대상으로 하며 헤드의 판정·POOR·
   정확도를 다시 바꾸지 않습니다. 반대 색을 유지하는 각 틱은 TickRejected로 확정하며 처리하지 못한 틱일 뿐입니다
   (사용자 결정: POOR 글자·개수·즉시 콤보 초기화 없음).
-- 헤드가 BAD·POOR(복귀 포함)이면 헤드 점수만 0이고 BAD 1·HP 감소·콤보 0입니다. 헤드는 GOOD 이상이지만 몸통 틱을
+- 헤드가 BAD·POOR(복귀 포함)이면 헤드 점수만 0이고 BAD 1(POOR면 POOR 1)·HP 감소·콤보 0입니다. 헤드는 GOOD 이상이지만 몸통 틱을
   하나도 처리하지 못하면 헤드 점수는 남기고 MISS·HP 감소·콤보 0입니다(사용자 결정). 콤보는 Buzz 하나당 1이며 Buzz 처리가
   끝났을 때 계산합니다.
 - 헤드 MAX, 몸통 9틱 중 1~3 성공·4~6 실패·7~9 성공이면
@@ -269,7 +273,8 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 - 콤보는 노트 처리가 완전히 끝났을 때 계산합니다. early BAD·POOR는 그 순간 콤보를 바꾸지 않습니다.
 - early BAD 뒤 같은 노트를 다시 쳐 GOOD~MAX(BAD 복귀): 등급 글자의 아래가 보라로 물든 판정 글자, BAD 1(그 등급으로 세지 않음),
   정확도 0, HP 감소, 콤보 0. early BAD 상태로 놓치면 추가 글자 없이 BAD 1로 확정합니다(MISS 아님).
-- POOR 입력은 POOR 1, HP 변화 없음. POOR 뒤 놓치면 MISS, POOR 뒤 다시 쳐 GOOD~MAX면 BAD 복귀와 같습니다.
+- POOR 입력은 노트당 POOR 1, HP 변화 없음. POOR 뒤 놓쳐도, 다시 쳐 GOOD~MAX가 나도(POOR 복귀) 더 세지 않습니다
+  ([GAME-03](#game-03-poor)). POOR 복귀의 글자·정확도·HP·콤보는 BAD 복귀와 같습니다.
 - 큰·보라 노트는 한 입력이라도 BAD(늦은 BAD·복귀)면 노트 전체를 BAD로 처리합니다. 판정 개수는 입력별로 셉니다.
 - Buzz는 [GAME-04](#game-04-buzz와-틱)를 따릅니다. 결과·기록에 BAD 복귀 횟수를 따로 두지 않습니다.
 - 이 규칙이 바뀌기 전에 저장한 기록의 정확도·콤보·HP는 예전 규칙의 값입니다. 기록을 다시 계산하지 않습니다.

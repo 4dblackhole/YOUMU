@@ -161,21 +161,30 @@ Buzz 헤드가 BAD·POOR(복귀 포함)이면 헤드의 정확도만 0으로 확
 
 ## BAD 복귀 판정
 
-사용자 결정입니다. early BAD는 배드말림을 막으려고 포커스를 유지할 뿐 기본적으로 BAD 처리이고, POOR 뒤의 재입력도 같습니다.
-콤보는 노트 처리가 완전히 끝났을 때 계산합니다.
+사용자 결정입니다. early BAD는 배드말림을 막으려고 포커스를 유지할 뿐 기본적으로 BAD 처리입니다. POOR는 BAD의 한 종류이며
+(사용자 결정: "POOR는 BAD의 아종인것으로 해주세요") POOR가 된 노트의 결과는 POOR 하나입니다. 콤보는 노트 처리가 완전히 끝났을 때
+계산합니다.
 
 | 상황 | 판정 글자 | 판정 개수 | 정확도·점수 | HP | 콤보 |
 | --- | --- | --- | --- | --- | --- |
 | early BAD 입력(노트는 남음) | BAD | 아직 안 셈 | 미확정 | 감소 대기 | 끝날 때 0 |
 | 그 노트를 다시 쳐 GOOD~MAX(BAD 복귀) | 등급 글자 + 아래가 보라로 물든 판정 글자 | BAD 1 | 노트 0 | BAD 감소 | 0 |
 | early BAD 상태로 놓침 | 추가 글자 없음 | BAD 1(MISS 아님) | 0 | 감소 | 0 |
-| POOR 입력 | POOR | POOR 1 | 미확정 | 변화 없음 | 끝날 때 결정 |
-| POOR 뒤 놓침 | MISS | MISS 1 | 0 | 감소 | 0 |
-| POOR 뒤 다시 쳐 GOOD~MAX(BAD 복귀) | 등급 + 보라 | POOR 1 + BAD 1 | 0 | 감소 | 0 |
+| POOR 입력 | 누를 때마다 POOR(적색 키빔) | 노트당 POOR 1(연타해도 1) | 미확정 | 변화 없음 | 끝날 때 0 |
+| POOR 뒤 맞는 색을 BAD 범위로 누름 | BAD | 안 셈(노트는 계속 기다림) | 미확정 | 변화 없음 | 끝날 때 0 |
+| POOR 뒤 놓침 | 추가 글자 없음 | POOR 1만(MISS 아님) | 0 | 감소 | 0 |
+| POOR 뒤 다시 쳐 GOOD~MAX(POOR 복귀) | 등급 + 보라 | POOR 1만(더 세지 않음) | 0 | 감소 | 0 |
 | 늦은 BAD | BAD | BAD 1 | 0 | 감소 | 0 |
 
 `RuleBasedNote`가 early BAD(`RecordEarlyBad`, Lane이 알림)·POOR·늦은 BAD를 기억하고, 그 뒤 같은 타이밍 대상에 받은 타격 이벤트에
-`recovery`를, early BAD 상태로 놓친 `Missed`에 `leftAtEarlyBad`를 표시합니다. 완료 정확도의 `rejectedTiming`이 이 처리를 나타냅니다.
+`recovery`를, early BAD 상태로 놓친 `Missed`에 `leftAtEarlyBad`를, POOR 뒤 놓친 `Missed`에 `leftAtPoor`를 표시합니다.
+완료 정확도의 `rejectedTiming`이 이 처리를 나타냅니다.
+POOR가 된 노트는 GOOD 이상만 받습니다(사용자 결정: "POOR처리된 노트는 BAD범위로 누르더라도 BAD카운트가 올라가지않습니다. POOR복귀는
+GOOD 이상의 정확도로 쳐야하는것으로 하겠습니다"). 그 노트 앞 BAD 범위의 누름은 early BAD로 기록하지 않고, 뒤 BAD 범위의 맞는 색은
+받지 않고 거부합니다(`RuleBasedNote::WaitsForGoodAfterPoor`). 둘 다 판정 글자만 보이고 아무것도 세지 않습니다. 결과 수집기는
+노트마다 POOR를 한 번만 세고(사용자 결정: "다른 색상을 마구 연타하더라도 POOR카운트는 1개만 오르도록 해주세요 대신 적색 키빔이랑
+판정글자는 그대로 표시해주세요"), 그 노트의 뒤 타격과 놓침은 세지 않습니다(사용자 결정: "POOR를 치고 그대로 놓칠경우 MISS가 아니라
+POOR로 하겠습니다"). early BAD 뒤 POOR가 나면 그 노트도 POOR 하나로 끝납니다. HP는 노트가 끝날 때 한 번만 감소합니다.
 early BAD는 누르는 입력만입니다. 앞 노트를 친 키를 떼는 시각은 다음 노트의 early BAD 구간에 자주 들어가므로, Lane은 떼는 입력에
 `RecordEarlyBad`를 부르지 않습니다. 떼는 입력의 early BAD 이벤트(`InputRejected`)는 예전처럼 남지만, 결과 수집기·HP·판정 글자·키빔은
 누르는 입력(`keyPressed`)이 아닌 이벤트를 읽지 않으므로 아무것도 바뀌지 않습니다. 큰 노트의 두 키, 주 키와 보조 키를 번갈아 쓰는 경우,
