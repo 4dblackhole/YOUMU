@@ -1,11 +1,13 @@
-// Option.ini [Diagnostics] graphics switches: reading, writing back, rejecting bad values, and whether the build
-// passes them to the engine. RunGraphicsSwitchesTests.ps1 builds this twice, with YOUMU_GRAPHICS_SWITCHES=1 and =0,
-// and runs each with "allowed" or "blocked".
+// Option.ini [Diagnostics] graphics switches: reading, writing back with a comment line per key, rejecting bad values,
+// and whether the build passes them to the engine. RunGraphicsSwitchesTests.ps1 builds this twice, with
+// YOUMU_GRAPHICS_SWITCHES=1 and =0, and runs each with "allowed" or "blocked".
 #include "App/OptionSettings.h"
 #include "Diagnostics/GraphicsSwitches.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -103,6 +105,54 @@ namespace
         Check(!settings.Save(values, error), "An adapter name that would read back as a number is not saved.");
     }
 
+    std::string ReadFile(const std::filesystem::path &path)
+    {
+        std::ifstream file(path, std::ios::binary);
+        return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    }
+
+    // The saved [Diagnostics] section, up to the next section.
+    std::string DiagnosticsText(const std::string &text)
+    {
+        const auto section = text.find("[Diagnostics]");
+        Check(section != std::string::npos, "The saved file has [Diagnostics].");
+        const auto next = text.find("\r\n[", section);
+        return text.substr(section, next == std::string::npos ? std::string::npos : next - section);
+    }
+
+    // Save puts a comment line, in ASCII, directly before each [Diagnostics] key; comments change nothing that loads.
+    void TestComments(const std::filesystem::path &ini)
+    {
+        OptionValues values;
+        Check(Load(ini, Experiment, values), "The experiment switches load.");
+        OptionSettings settings(ini);
+        std::string error;
+        Check(settings.Save(values, error), "Option.ini with the experiment switches is saved.");
+        const std::string diagnostics = DiagnosticsText(ReadFile(ini));
+        for (const char *key : {"DeviceRemovedData", "GraphicsValidation", "GraphicsAdapter", "AllowTearing",
+                                "SwapChainBuffers", "WaitableSwapChain", "RenderRateOverrideHz"})
+        {
+            const auto comment = diagnostics.find(std::string("\r\n; ") + key + ": ");
+            const auto entry = diagnostics.find(std::string("\r\n") + key + "=");
+            const bool directlyBefore = comment != std::string::npos && diagnostics.find("\r\n", comment + 2) == entry;
+            Check(entry != std::string::npos && directlyBefore, "Each [Diagnostics] key has its comment just before it.");
+        }
+        const auto isAscii = [](const char c) { return static_cast<unsigned char>(c) < 0x80; };
+        const bool ascii = std::ranges::all_of(diagnostics, isAscii);
+        Check(ascii, "The [Diagnostics] comments are ASCII.");
+
+        OptionSettings reread(ini);
+        Check(reread.Load(error) && reread.LoadWarning().empty(), "A saved file with its comments loads without a warning.");
+        const bool same = SameSwitches(reread.Values().graphics, values.graphics) && reread.Values().deviceRemovedData;
+        Check(same && reread.Values().renderRateOverrideHz == 300, "The saved values read back the same past the comments.");
+
+        Check(Load(ini, "[Diagnostics]\r\n; a note\r\n# another\r\n   ; indented\r\nGraphicsValidation=1\r\n", values),
+              "Comment lines typed by hand load.");
+        Check(values.graphics.validation == GraphicsValidation::DebugLayer, "The value after the comment lines is read.");
+        Check(!Load(ini, "[Diagnostics]\r\nGraphicsValidation=1 ; a note\r\n", values),
+              "Text after a value is part of the value, so the file is rejected, as the saved comment says.");
+    }
+
     void TestBuildSwitch(const bool expectAllowed, const std::filesystem::path &ini)
     {
         OptionValues values;
@@ -139,6 +189,7 @@ int wmain(const int argc, wchar_t **argv)
         const auto ini = folder / L"Option.ini";
         TestReading(ini);
         TestWriting(ini);
+        TestComments(ini);
         TestBuildSwitch(expectAllowed, ini);
         std::cout << "Graphics switches passed (" << (expectAllowed ? "allowed" : "blocked") << " build).\n";
         return 0;

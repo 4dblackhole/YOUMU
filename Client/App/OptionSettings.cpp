@@ -106,6 +106,47 @@ namespace
                std::to_string(values.windowPosition->y);
     }
 
+    // [Diagnostics] as Save writes it. These keys have no control in the options panel, so a comment line before each
+    // says what it takes. Save rewrites the whole file, so comments typed by hand do not survive a save; Load skips a
+    // line that starts with ';' or '#', but text after a value is part of the value. ASCII, so any editor reads it.
+    std::string DiagnosticsSection(const OptionValues &values)
+    {
+        const auto flag = [](const bool on) { return on ? "1" : "0"; };
+        const auto &graphics = values.graphics;
+        return std::string("\r\n\r\n[Diagnostics]"
+                           "\r\n; Read when the game starts. A comment needs a line of its own that starts with ; or #."
+                           "\r\n; An invalid value in this section makes the game ignore the whole file"
+                           " and use the defaults."
+                           "\r\n; DeviceRemovedData: 0 off, 1 record the GPU's last finished work if the device is lost"
+                           " (D3D12 DRED, a little slower). Default 0."
+                           "\r\nDeviceRemovedData=") +
+               flag(values.deviceRemovedData) +
+               "\r\n; The keys below are crash experiments."
+               " Builds made with /p:YoumuGraphicsSwitches=false ignore them."
+               "\r\n; GraphicsValidation: 0 off, 1 D3D12 debug layer, 2 debug layer and GPU-based validation"
+               " (much slower). Default 0."
+               "\r\nGraphicsValidation=" +
+               std::to_string(static_cast<int>(graphics.validation)) +
+               "\r\n; GraphicsAdapter: Default (the default), WARP (software, slow), an adapter number from 0,"
+               " or part of an adapter name."
+               "\r\nGraphicsAdapter=" +
+               GraphicsAdapterSetting(graphics) +
+               "\r\n; AllowTearing: 1 allow tearing where supported, 0 never tear. Default 1."
+               "\r\nAllowTearing=" +
+               flag(graphics.allowTearing) +
+               "\r\n; SwapChainBuffers: 2 or 3 back buffers. Default 2."
+               "\r\nSwapChainBuffers=" +
+               std::to_string(graphics.swapChainBuffers) +
+               "\r\n; WaitableSwapChain: 0 off, 1 queue at most one frame and wait for the swap chain every frame."
+               " Default 0."
+               "\r\nWaitableSwapChain=" +
+               flag(graphics.waitableSwapChain) +
+               "\r\n; RenderRateOverrideHz: 0 off, or 10 to 5000 used in place of the display refresh rate by"
+               " [Display] RenderRate. Default 0."
+               "\r\nRenderRateOverrideHz=" +
+               std::to_string(values.renderRateOverrideHz) + "\r\n";
+    }
+
     std::string_view RenderRateName(const RenderRateMode mode)
     {
         switch (mode)
@@ -573,14 +614,7 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nDspBufferLength=" << values.dspBufferLength
              << "\r\n\r\n[Controls]\r\nRestartKey=" << values.restartKey
              << "\r\n\r\n[Pause]\r\nResumeLeadInMs=" << values.pauseResumeLeadInMs
-             << "\r\nRewindMeasures=" << values.pauseRewindMeasures
-             << "\r\n\r\n[Diagnostics]\r\nDeviceRemovedData=" << (values.deviceRemovedData ? 1 : 0)
-             << "\r\nGraphicsValidation=" << static_cast<int>(values.graphics.validation)
-             << "\r\nGraphicsAdapter=" << GraphicsAdapterSetting(values.graphics)
-             << "\r\nAllowTearing=" << (values.graphics.allowTearing ? 1 : 0)
-             << "\r\nSwapChainBuffers=" << values.graphics.swapChainBuffers
-             << "\r\nWaitableSwapChain=" << (values.graphics.waitableSwapChain ? 1 : 0)
-             << "\r\nRenderRateOverrideHz=" << values.renderRateOverrideHz << "\r\n";
+             << "\r\nRewindMeasures=" << values.pauseRewindMeasures << DiagnosticsSection(values);
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             file << "\r\n[Keys." << mode << "]\r\n";
