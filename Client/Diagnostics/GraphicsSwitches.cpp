@@ -8,7 +8,12 @@
 
 bool GraphicsSwitchesAllowed() noexcept
 {
-    return YOUMU_GRAPHICS_SWITCHES != 0;
+    // A preprocessor branch, not a comparison: comparing the two constants is a Code Analysis warning (C6326).
+#if YOUMU_GRAPHICS_SWITCHES
+    return true;
+#else
+    return false;
+#endif
 }
 
 PhantomCore::GraphicsDeviceDiagnosticsConfig GraphicsSwitchesForRun(const OptionValues &values)
