@@ -130,6 +130,14 @@
     <ClInclude Include="App\AssetPaths.h" />
     <ClCompile Include="App\GameDataPaths.cpp" />
     <ClInclude Include="App\GameDataPaths.h" />
+    <ClCompile Include="Diagnostics\GameLog.cpp" />
+    <ClInclude Include="Diagnostics\GameLog.h" />
+    <ClCompile Include="Diagnostics\RecentStatistics.cpp" />
+    <ClInclude Include="Diagnostics\RecentStatistics.h" />
+    <ClCompile Include="Diagnostics\GameDiagnostics.cpp" />
+    <ClInclude Include="Diagnostics\GameDiagnostics.h" />
+    <ClCompile Include="Diagnostics\LaunchDiagnostics.cpp" />
+    <ClInclude Include="Diagnostics\LaunchDiagnostics.h" />
     <ClCompile Include="EditorScene\Submodules\EditorForms.cpp" />
     <ClCompile Include="App\SkinManifest.cpp" />
     <ClInclude Include="App\SkinManifest.h" />

@@ -5,6 +5,7 @@
 #include "GameFlow/GameplayLaunchStore.h"
 #include "Texts/TextCatalog.h"
 #include "App/OptionSettings.h"
+#include "Diagnostics/LaunchDiagnostics.h"
 #include "Mode/Results/IPlayResult.h"
 #include "Presentation/PerformanceBand.h"
 #include "Presentation/VolumeOverlay.h"
@@ -14,14 +15,17 @@
 #include <string>
 #include <string_view>
 class SongLibrary;
+class GameDiagnostics;
 
 // The Client root for YOUMU.  The Engine owns the platform loop while
 // this class selects the game window policy and registers game-owned Scenes.
 class YOUMUGame final : public PhantomCore::SceneGameClient
 {
   public:
-    YOUMUGame(bool smokeTest, std::string initialSceneId,
-                   bool rhythmDebugMode = false);
+    // diagnostics receives the engine's records and the one-second samples; it is owned by wWinMain and may
+    // be null (no records). launch carries the hidden switches that fail on purpose.
+    YOUMUGame(bool smokeTest, std::string initialSceneId, bool rhythmDebugMode = false,
+              GameDiagnostics *diagnostics = nullptr, DiagnosticsLaunchOptions launch = {});
 
     [[nodiscard]] PhantomCore::EngineConfig GetEngineConfig() const override;
 
@@ -36,6 +40,8 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     std::unique_ptr<PhantomCore::GameScene> CreateResultScene();
     void RestoreSavedAudioDriver(PhantomCore::AudioSystem &audio);
     void SaveDraggedWindowPosition();
+    void RecordDiagnostics(const PhantomCore::UpdateContext &context, bool measured);
+    void StallOnceForTest(const PhantomCore::UpdateContext &context);
 
     bool smokeTest_{};
     bool showPerformanceOverlay_{};
@@ -53,4 +59,8 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     VolumeOverlay volumeOverlay_;
     PhantomCore::IWindowControl *windowControl_{};         // Engine-owned; null in offscreen runs.
     std::uint64_t lastPerformanceMeasurementIndex_{};
+    GameDiagnostics *diagnostics_{}; // Owned by wWinMain; null when nothing is recorded.
+    DiagnosticsLaunchOptions launch_;
+    std::string loggedScene_;
+    bool stalledForTest_{};
 };

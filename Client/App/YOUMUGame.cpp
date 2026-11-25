@@ -12,6 +12,8 @@
 #include "Presentation/UiColors.h"
 #include "Texts/GameIdentity.h"
 #include "App/GameDataPaths.h"
+#include "Diagnostics/GameDiagnostics.h"
+#include "Diagnostics/GameLog.h"
 #include "Records/LocalOffsetStore.h"
 #include "Records/PlayRecordStore.h"
 
@@ -25,24 +27,77 @@
 
 using namespace PhantomCore;
 
-YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId,
-                               const bool rhythmDebugMode)
+namespace
+{
+    // How long the crash tests run. A device test loses the device after
+    // DeviceTestFrames; a stall test holds one Update for StallTestHold, past
+    // the shortened limit, and then needs time to be seen running again.
+    constexpr std::uint64_t DeviceTestFrames = 600;
+    constexpr std::uint64_t StallTestFrames = 600;
+    constexpr double StallTestLimitSeconds = 1.0;
+    constexpr DWORD StallTestHoldMilliseconds = 3000;
+
+    [[nodiscard]] const char *Name(const AudioOutputBackend output) noexcept
+    {
+        switch (output)
+        {
+        case AudioOutputBackend::Automatic:
+            return "Automatic";
+        case AudioOutputBackend::Wasapi:
+            return "WASAPI";
+        case AudioOutputBackend::Asio:
+            return "ASIO";
+        case AudioOutputBackend::NoSound:
+            return "NoSound";
+        }
+        return "unknown";
+    }
+
+    [[nodiscard]] const char *Name(const Language language) noexcept
+    {
+        switch (language)
+        {
+        case Language::Korean:
+            return "ko";
+        case Language::English:
+            return "en";
+        case Language::Japanese:
+            return "ja";
+        }
+        return "unknown";
+    }
+
+    // The settings the engine's own start record does not show.
+    void LogOptions(const OptionSettings &options)
+    {
+        const OptionValues &values = options.Values();
+        game_log::Write(
+            std::format("options: audio {} buffer {}, language {}, skin {}, songs {}, device removed data {}",
+                        Name(values.audioOutput), values.dspBufferLength, Name(values.language),
+                        game_log::ToUtf8(values.skinSet), game_log::ToUtf8(options.SongsRoot().wstring()),
+                        values.deviceRemovedData ? "on" : "off"));
+    }
+} // namespace
+
+YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId, const bool rhythmDebugMode,
+                     GameDiagnostics *diagnostics, DiagnosticsLaunchOptions launch)
     : smokeTest_(smokeTest), showPerformanceOverlay_(smokeTest), rhythmDebugMode_(rhythmDebugMode),
       initialSceneId_(std::move(initialSceneId)),
       launchRequest_(std::make_shared<GameplayLaunchStore>()),
-      optionSettings_(OptionSettings::NextToExecutable())
+      optionSettings_(OptionSettings::NextToExecutable()), diagnostics_(diagnostics), launch_(std::move(launch))
 {
     std::string error;
     // Invalid/unwritable settings must not prevent startup. The options panel
     // retains the load warning until the user successfully saves new settings.
     if (!optionSettings_.Load(error))
-        OutputDebugStringA(error.c_str());
+        game_log::Write("Option.ini was not read: " + error);
+    LogOptions(optionSettings_);
     GameplayLaunchRequest initialRequest;
     initialRequest.songsRoot = optionSettings_.SongsRoot();
     launchRequest_->Set(std::move(initialRequest));
     texts_.SetLanguage(optionSettings_.Values().language);
     for (const auto &diagnostic : texts_.Diagnostics())
-        OutputDebugStringA((diagnostic + "\n").c_str());
+        game_log::Write("texts: " + diagnostic);
     SkinSetSelection::Instance().Initialize(optionSettings_.Values().skinSet);
 }
 
@@ -66,6 +121,21 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.audio.allowNoSoundFallback = true;
     config.showWindow = !smokeTest_;
     config.autoExitAfterRenderedFrames = smokeTest_ ? 3 : 0;
+
+    config.diagnostics.sink = diagnostics_;
+    config.diagnostics.graphicsDeviceRemovedData = optionSettings_.Values().deviceRemovedData;
+    config.diagnostics.mainLoopStallSeconds = GameDiagnostics::MainLoopStallSeconds;
+    // The hidden crash tests need more than a smoke run's three frames.
+    if (launch_.removeGraphicsDevice)
+    {
+        config.diagnostics.removeGraphicsDeviceAfterRenderedFrames = DeviceTestFrames;
+        config.autoExitAfterRenderedFrames = 0;
+    }
+    if (launch_.stallMainLoop)
+    {
+        config.diagnostics.mainLoopStallSeconds = StallTestLimitSeconds;
+        config.autoExitAfterRenderedFrames = smokeTest_ ? StallTestFrames : 0;
+    }
     return config;
 }
 
@@ -191,8 +261,34 @@ void YOUMUGame::OnClientUpdated(const UpdateContext &context)
         performanceBand_.Refresh(context.performance);
         lastPerformanceMeasurementIndex_ = context.performance.measurementIndex;
     }
+    RecordDiagnostics(context, measured);
+    StallOnceForTest(context);
     performanceBand_.Update();
     volumeOverlay_.Update(context.input, context.deltaSeconds);
+}
+
+// The log gets a line when the Scene on screen changes; the recent statistics get the engine's sample once a
+// second. Neither writes to disk in a normal run beyond the Scene lines.
+void YOUMUGame::RecordDiagnostics(const UpdateContext &context, const bool measured)
+{
+    const std::string_view scene = Scenes().CurrentSceneId();
+    if (scene != loggedScene_)
+    {
+        loggedScene_ = scene;
+        game_log::Write("scene: " + loggedScene_);
+    }
+    if (measured && diagnostics_)
+        diagnostics_->AddSample(context.performance, context.totalSeconds, scene);
+}
+
+// --crash-test=stall: one Update that does not come back for a while.
+void YOUMUGame::StallOnceForTest(const UpdateContext &context)
+{
+    if (!launch_.stallMainLoop || stalledForTest_ || context.totalSeconds < 0.5)
+        return;
+    stalledForTest_ = true;
+    game_log::Write("crash test: holding one Update");
+    Sleep(StallTestHoldMilliseconds);
 }
 
 // A framed window the user dragged starts in the same place next time.
@@ -205,7 +301,7 @@ void YOUMUGame::SaveDraggedWindowPosition()
     candidate.windowPosition = position;
     std::string error;
     if (!optionSettings_.Save(candidate, error))
-        OutputDebugStringA(error.c_str());
+        game_log::Write("The window position was not saved: " + error);
 }
 
 void YOUMUGame::OnClientShuttingDown() noexcept
@@ -228,5 +324,6 @@ void YOUMUGame::RestoreSavedAudioDriver(AudioSystem &audio)
         selected = std::ranges::find(drivers, saved.driverName, &AudioDeviceInfo::name);
     if (selected == drivers.end()) return; // Keep the default device when hardware is unavailable.
     std::string error;
-    if (!audio.SetOutputDriver(selected->driverIndex, error)) OutputDebugStringA(error.c_str());
+    if (!audio.SetOutputDriver(selected->driverIndex, error))
+        game_log::Write("The saved audio device was not restored: " + error);
 }

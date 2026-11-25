@@ -334,6 +334,16 @@ namespace
             }
             values.modeKeys[std::string(section.substr(5))][std::string(key)] = std::move(keys);
         }
+        else if (section == "Diagnostics")
+        {
+            if (key == "DeviceRemovedData")
+            {
+                const int flag = ReadInteger<int>(value);
+                if (flag != 0 && flag != 1)
+                    throw std::runtime_error("DeviceRemovedData must be 0 or 1.");
+                values.deviceRemovedData = flag == 1;
+            }
+        }
         else if (section == "Audio")
         {
             if (key == "Middleware") values.audioMiddleware = value;
@@ -458,7 +468,8 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nDspBufferLength=" << values.dspBufferLength
              << "\r\n\r\n[Controls]\r\nRestartKey=" << values.restartKey
              << "\r\n\r\n[Pause]\r\nResumeLeadInMs=" << values.pauseResumeLeadInMs
-             << "\r\nRewindMeasures=" << values.pauseRewindMeasures << "\r\n";
+             << "\r\nRewindMeasures=" << values.pauseRewindMeasures
+             << "\r\n\r\n[Diagnostics]\r\nDeviceRemovedData=" << (values.deviceRemovedData ? 1 : 0) << "\r\n";
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             file << "\r\n[Keys." << mode << "]\r\n";
