@@ -33,6 +33,8 @@ class TickRollInputRule final : public INoteRule
   private:
     void AppendExpiredTicks(const NoteRuleContext &context, RhythmTime time,
                             NoteProcessResult &output);
+    // The later of the tail and the last tick's late window edge.
+    [[nodiscard]] RhythmTime FinalTime(const NoteRuleContext &context) const noexcept;
 
     std::vector<NoteAction> acceptedActions_;
     RhythmTime endTime_{};
