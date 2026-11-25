@@ -32,8 +32,15 @@ try {
         $options = Join-Path (Split-Path $exe) 'Option.ini'
         $before = if (Test-Path -LiteralPath $options) { (Get-FileHash -LiteralPath $options).Hash } else { '' }
         foreach ($route in '--smoke-test', '--smoke-lobby', '--smoke-gameplay', '--smoke-editor') {
-            $process = Start-Process -FilePath $exe -ArgumentList $route -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden -Wait -PassThru
-            if ($process.ExitCode -ne 0) { $failed += "smoke $route"; "FAIL $route exit $($process.ExitCode)" } else { "PASS $route" }
+            # 로그는 검증 로그 폴더에 둡니다. 실패하면(던진 예외는 종료 코드 3) 그 로그의 해당 줄을 보여 줍니다.
+            $smokeLogs = Join-Path $script:VerifyLogDir "$($route.TrimStart('-'))-$Configuration"
+            Remove-Item -LiteralPath $smokeLogs -Recurse -Force -ErrorAction SilentlyContinue
+            $process = Start-Process -FilePath $exe -ArgumentList @($route, "--log-dir=`"$smokeLogs`"") -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden -Wait -PassThru
+            if ($process.ExitCode -eq 0) { "PASS $route"; continue }
+            $failed += "smoke $route"
+            "FAIL $route exit $($process.ExitCode) (log: $smokeLogs)"
+            Get-ChildItem -LiteralPath $smokeLogs -Filter *.log -ErrorAction SilentlyContinue | Get-Content |
+                Select-String -Pattern 'threw|\]\s+thread |\]\s+at |error' | Select-Object -First 40 | ForEach-Object { "  $($_.Line)" }
         }
         $after = if (Test-Path -LiteralPath $options) { (Get-FileHash -LiteralPath $options).Hash } else { '' }
         # 새 워크트리에는 Option.ini가 없으므로 첫 smoke가 기본 파일을 만드는 것은 변경이 아닙니다.

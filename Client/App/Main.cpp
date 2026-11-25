@@ -21,8 +21,11 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <cstdint>
 #include <exception>
+#include <format>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -79,6 +82,49 @@ namespace
                                     smokeTest ? "yes" : "no", launch.CrashTestName()));
     }
 
+    // A normal run throws no C++ exception (Docs/Design/Principles.md); smoke runs check it. A smoke run that
+    // threw ends with this code once the log lists the throws.
+    constexpr int SmokeThrewExitCode = 3;
+
+    // Smoke routes are watched; a crash test throws on purpose and is not. Normal runs create no watch.
+    [[nodiscard]] bool WatchesThrows(const std::wstring_view commandLine) noexcept
+    {
+        const bool smoke = commandLine.find(L"--smoke-") != std::wstring_view::npos;
+        return smoke && commandLine.find(L"--crash-test=") == std::wstring_view::npos;
+    }
+
+    // A return address as <module>+0x<offset>; with that build's PDB, cdb's `ln` names the function.
+    std::string DescribeFrame(void *address)
+    {
+        HMODULE module = nullptr;
+        const DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+        if (!GetModuleHandleExW(flags, static_cast<LPCWSTR>(address), &module))
+            return std::format("{}", address);
+        wchar_t path[MAX_PATH]{};
+        const DWORD length = GetModuleFileNameW(module, path, MAX_PATH);
+        const std::wstring_view full(path, length);
+        const auto name = full.substr(full.find_last_of(L'\\') + 1);
+        char narrow[MAX_PATH]{};
+        WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast<int>(name.size()), narrow, MAX_PATH - 1, nullptr,
+                            nullptr);
+        const auto offset = reinterpret_cast<std::uintptr_t>(address) - reinterpret_cast<std::uintptr_t>(module);
+        return std::format("{}+0x{:x}", narrow, offset);
+    }
+
+    void ReportThrownExceptions(const ThrownExceptionWatch &watch)
+    {
+        game_log::Write(std::format("smoke run threw {} C++ exception(s); a normal run must throw none", watch.Count()));
+        for (const auto &record : watch.Records())
+        {
+            game_log::Write(std::format("  thread {} {} what: {}", record.threadId, record.typeName.data(),
+                                        record.what.data()));
+            std::string frames = "    at";
+            for (std::size_t i = 0; i < record.frameCount; ++i)
+                frames += ' ' + DescribeFrame(record.frames[i]);
+            game_log::Write(frames);
+        }
+    }
+
     void ReportStartupError(const char *error, const bool showWindow)
     {
         game_log::WriteNow(std::string("startup error: ") + error);
@@ -108,6 +154,9 @@ int WINAPI wWinMain(
     const DiagnosticsLaunchOptions launch = ParseDiagnosticsLaunchOptions(commandLine);
     const game_log::Session log(launch.logDirectory.empty() ? GameLogDirectory() : launch.logDirectory,
                                 game_log::KeptLogFiles);
+    std::optional<ThrownExceptionWatch> thrown;
+    if (WatchesThrows(commandLine))
+        thrown.emplace();
 
     std::string assetError;
     if (!InitializeBuiltInAssets(assetError))
@@ -175,6 +224,11 @@ int WINAPI wWinMain(
         const int exitCode = Run(std::make_unique<YOUMUGame>(smokeTest, std::move(initialScene), rhythmDebugMode,
                                                              &diagnostics, launch));
         game_log::WriteNow(std::format("exit code {}", exitCode));
+        if (exitCode == EXIT_SUCCESS && thrown && thrown->Count() != 0)
+        {
+            ReportThrownExceptions(*thrown);
+            return SmokeThrewExitCode;
+        }
         return exitCode;
     }
     catch (const std::exception &error)
