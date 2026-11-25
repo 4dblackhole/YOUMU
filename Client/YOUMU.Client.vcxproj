@@ -106,6 +106,7 @@
   <Target Name="CopyRuntimeFiles" AfterTargets="Build">
     <ItemGroup>
       <LanguageFiles Include="Texts\Languages\*.ini" />
+      <WatchLauncher Include="Launch\*.bat" />
       <StretchNotice Include="..\Dependencies\PhantomCore\Engine\Audio\ThirdParty\Signalsmith\signalsmith-stretch\LICENSE.txt" />
       <LinearNotice Include="..\Dependencies\PhantomCore\Engine\Audio\ThirdParty\Signalsmith\signalsmith-linear\LICENSE.txt" />
     </ItemGroup>
@@ -116,6 +117,8 @@
     <Copy SourceFiles="@(StretchNotice)" DestinationFolder="$(OutDir)ThirdPartyNotices\SignalsmithStretch" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(LinearNotice)" DestinationFolder="$(OutDir)ThirdPartyNotices\SignalsmithLinear" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(FmodRuntime)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <!-- The watch mode launcher goes next to the EXE, where a deployment keeps it (Docs/Features/Assets.md). -->
+    <Copy SourceFiles="@(WatchLauncher)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <!-- The converter lives under <asset root>/Submodules: Client/Assets in the repository (the last built
          configuration's copy) and Asset beside the EXE in a deployment, which the output folder mirrors. -->
     <Copy SourceFiles="$(ProjectDir)..\..\OsuTaikoConverter\bin\$(Platform)\$(Configuration)\OsuTaikoConverter.exe"

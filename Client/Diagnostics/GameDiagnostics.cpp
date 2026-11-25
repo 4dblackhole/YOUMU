@@ -54,6 +54,22 @@ void GameDiagnostics::AddSample(const PerformanceStatistics &performance, const 
     ReadProcess(sample);
     SetScene(sample, scene);
     recent_.Add(sample);
+    if (watch_)
+        WriteWatched(sample);
+}
+
+void GameDiagnostics::WriteWatched(const StatisticsSample &sample) noexcept
+{
+    if (watchedBytes_ >= WatchLogBytes)
+        return;
+    char line[256];
+    const std::size_t length = FormatSample(sample, line, sizeof(line));
+    if (length == 0)
+        return;
+    game_log::WriteRaw(line, length);
+    watchedBytes_ += length;
+    if (watchedBytes_ >= WatchLogBytes)
+        game_log::WritePlain("watch: the statistics lines stop here (size limit); what happens is still recorded");
 }
 
 void GameDiagnostics::WriteRecentOnce() noexcept

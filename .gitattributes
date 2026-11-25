@@ -2,3 +2,5 @@
 YOUMU.Editor/ThirdParty/stb/stb_vorbis.c -text
 YOUMU.Editor/ThirdParty/stb/LICENSE -text
 YOUMU.Assets/Assets/Licenses/stb-vorbis.txt -text
+# cmd.exe reads batch files with CRLF line ends.
+*.bat text eol=crlf

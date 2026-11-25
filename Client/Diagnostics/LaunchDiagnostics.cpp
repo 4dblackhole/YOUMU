@@ -27,6 +27,7 @@ DiagnosticsLaunchOptions ParseDiagnosticsLaunchOptions(const std::wstring_view c
     options.stallMainLoop = commandLine.find(L"--crash-test=stall") != std::wstring_view::npos;
     options.throwException = commandLine.find(L"--crash-test=exception") != std::wstring_view::npos;
     options.crash = commandLine.find(L"--crash-test=crash") != std::wstring_view::npos;
+    options.watch = commandLine.find(L"--diagnostics=watch") != std::wstring_view::npos;
     return options;
 }
 

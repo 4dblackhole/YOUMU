@@ -75,6 +75,13 @@ namespace
                            std::string_view(device.CrashTestName()) == "device" &&
                            std::string_view(crashed.CrashTestName()) == "crash";
         Check(named, "Each crash test has its name for the log.");
+
+        const auto watched = ParseDiagnosticsLaunchOptions(LR"("C:\Games\game.exe" --diagnostics=watch)");
+        Check(watched.watch && !watched.crash, "--diagnostics=watch must be read alone.");
+        Check(!plain.watch && !device.watch, "A run without --diagnostics=watch is a normal run.");
+        const bool modes = std::string_view(watched.ModeName()) == "watch" &&
+                           std::string_view(plain.ModeName()) == "normal";
+        Check(modes, "Each mode has its name for the log.");
     }
 
     void TestRecentStatistics()
@@ -96,6 +103,29 @@ namespace
         const std::string_view scene = samples->front().scene;
         Check(scene.size() == sizeof(StatisticsSample::scene) - 1,
               "A long Scene name is cut to the field and terminated.");
+    }
+
+    // A normal run writes no line per sample; a watched run writes each one as it comes.
+    void TestWatchedStatistics(const std::filesystem::path &folder)
+    {
+        std::filesystem::path file;
+        {
+            const game_log::Session session(folder, 10);
+            file = session.File();
+            const auto diagnostics = std::make_unique<GameDiagnostics>();
+            PhantomCore::PerformanceStatistics performance;
+            performance.framesPerSecond = 361;
+            diagnostics->AddSample(performance, 1.0, "Quiet.Scene");
+            diagnostics->WatchStatistics();
+            performance.framesPerSecond = 722;
+            diagnostics->AddSample(performance, 2.0, "Watched.Scene");
+        }
+        std::ifstream stream(file, std::ios::binary);
+        const std::string text{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+        Check(text.find("Quiet.Scene") == std::string::npos, "A normal run must not write its samples.");
+        const bool written = text.find("fps  722") != std::string::npos &&
+                             text.find("Watched.Scene\r\n") != std::string::npos;
+        Check(written, "A watched run writes each sample as one line.");
     }
 
     // Twelve old logs and a file that is not a log: opening a session that keeps ten leaves the nine newest
@@ -249,9 +279,13 @@ int wmain(int argc, wchar_t *argv[])
             const ScopedTestFolder diagnostics(argv[1], L"diagnostics");
             TestDiagnosticsText(diagnostics.Path());
         }
+        {
+            const ScopedTestFolder watched(argv[1], L"watched");
+            TestWatchedStatistics(watched.Path());
+        }
         PrintCosts();
         std::cout << "Crash diagnostics passed: launch switches, statistics history, kept log files, hidden folder "
-                     "names, lost device, fatal error, stall and crash lines.\n";
+                     "names, lost device, fatal error, stall and crash lines, watched statistics.\n";
         return 0;
     }
     catch (const std::exception &error)

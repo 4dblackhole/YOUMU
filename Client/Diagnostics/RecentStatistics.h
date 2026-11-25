@@ -54,5 +54,9 @@ class RecentStatistics final
     std::size_t count_{};
 };
 
+// The log line of one sample, ending in "\r\n", written into line without
+// allocating. Returns its length, 0 when it does not fit.
+[[nodiscard]] std::size_t FormatSample(const StatisticsSample &sample, char *line, std::size_t size) noexcept;
+
 // Copies name into sample.scene, cut to fit.
 void SetScene(StatisticsSample &sample, std::string_view name) noexcept;
