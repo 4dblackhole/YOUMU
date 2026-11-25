@@ -600,12 +600,14 @@ namespace
         importer.Discard();
         Check(!importer.Busy(), "A finished import holds no job.");
     }
-    // What a node shows: its colour at this moment and where it is.
+    // What a node shows: the colour its sprite draws at this moment and where it is.
     std::array<float, 8> Look(Visual2DNode &node)
     {
         const auto *sprite = node.GetComponent<SpriteVisualComponent>();
         if (!sprite) throw std::runtime_error("Node without a sprite: " + node.Name());
-        const auto colour = sprite->CurrentColor();
+        std::vector<DrawPacket> packets;
+        sprite->AppendDrawPackets(packets);
+        const auto colour = packets.empty() ? Color{0, 0, 0, 0} : packets.front().color;
         const auto bounds = node.BoundsInCanvas();
         return {colour.red, colour.green, colour.blue, colour.alpha, bounds.x, bounds.y, bounds.width, bounds.height};
     }
