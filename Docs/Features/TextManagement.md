@@ -426,6 +426,7 @@ GraphicsAdapter=Default
 AllowTearing=1
 SwapChainBuffers=2
 WaitableSwapChain=0
+RenderRateOverrideHz=0
 ```
 
 - `Language`: 설명 언어 `ko`, `en`, `ja`. 항목명·버튼은 영어를 사용합니다.
@@ -477,7 +478,7 @@ WaitableSwapChain=0
 - `DeviceRemovedData`: `0` 또는 `1`, 누락 시 `0`. `1`이면 그래픽 장치가 끊겼을 때 GPU가 마지막으로 끝낸 동작을 로그에 남깁니다
   (D3D12 DRED). 모든 그리기에 비용이 조금 붙으므로 그래픽 문제를 쫓을 때만 켭니다. 엔진은 시작할 때만 읽고, 옵션 창에는 항목이 없습니다.
   자세한 내용은 [크래시 진단 기록](CrashDiagnostics.md)에 있습니다.
-- `GraphicsValidation`, `GraphicsAdapter`, `AllowTearing`, `SwapChainBuffers`, `WaitableSwapChain`: 그래픽 장치 시험 설정입니다.
+- `GraphicsValidation`, `GraphicsAdapter`, `AllowTearing`, `SwapChainBuffers`, `WaitableSwapChain`, `RenderRateOverrideHz`: 그래픽 장치 시험 설정입니다.
   누락 시 위 기본값(지금까지의 동작)이고 범위 밖은 오류입니다. 엔진은 시작할 때만 읽고, 옵션 창에는 항목이 없으며, 이 설정을 무시하게
   만든 빌드에서는 값이 있어도 쓰지 않습니다. 값의 뜻은 [크래시 진단 기록](CrashDiagnostics.md#그래픽-장치-시험-설정)에 있습니다.
 - `DspBufferLength`: FMOD 믹서 버퍼 길이(샘플), 128·256·512·1024 중 하나이며 버퍼 개수는 4로 고정입니다. 누락 시 256.

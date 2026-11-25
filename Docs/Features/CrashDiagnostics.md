@@ -27,7 +27,7 @@
 [09:21:32.933] windows 10.0.19045, 4 logical processors, 16296 MB memory
 [09:21:32.933] start: scene YOUMU.Lobby, smoke test no, crash test none
 [09:21:32.969] options: audio Automatic buffer 256, language ko, skin Default Skin, songs <game>\Asset\Songs, device removed data off
-[09:21:32.969] graphics switches: validation 0, adapter Default, tearing 1, buffers 2, waitable 0
+[09:21:32.969] graphics switches: validation 0, adapter Default, tearing 1, buffers 2, waitable 0, render rate override 0
 [09:21:33.484] engine: graphics adapter: NVIDIA GeForce GTX 1060 3GB, vendor 10DE device 1C02, 2965 MB dedicated, driver 32.0.15.6094
 [09:21:33.484] engine: swap chain: 1280x720, 2 buffers, tearing allowed
 [09:21:33.484] engine: device removed data: off
@@ -156,6 +156,7 @@ cdb -z youmu-20261125-101010-crash.dmp -y <exe와 PDB를 보관한 폴더> -c ".
 | `AllowTearing` | `1` | `0`이면 찢어짐 허용 없이 표시합니다. 창이 모니터를 혼자 덮는 경우에는 렌더와 Update가 화면 주사율에 묶일 수 있습니다 |
 | `SwapChainBuffers` | `2` | `2` 또는 `3`. 스왑 체인의 back buffer 수 |
 | `WaitableSwapChain` | `0` | `1`이면 표시 대기열을 1프레임으로 줄이고 프레임마다 스왑 체인을 기다립니다 |
+| `RenderRateOverrideHz` | `0` | `0`은 모니터 주사율. `10`~`5000`이면 그 값을 렌더 기준 속도로 씁니다(`[Display] RenderRate`가 `display`면 그 속도, `double`이면 두 배, `unlimited`면 효과 없음). 예: `300`은 초당 300번 그리기 |
 
 - 범위 밖의 값은 `DeviceRemovedData`처럼 `Option.ini` 전체를 읽지 못한 것으로 처리합니다(경고를 남기고 기본 설정으로 실행).
   잘못 적은 시험이 다른 설정으로 돌아가는 것보다 알아채는 편이 낫기 때문입니다.
@@ -166,7 +167,7 @@ cdb -z youmu-20261125-101010-crash.dmp -y <exe와 PDB를 보관한 폴더> -c ".
 ### 빌드에서 끄기
 
 MSBuild 속성 `YoumuGraphicsSwitches`를 `false`로 빌드하면(`msbuild YOUMU.sln /p:YoumuGraphicsSwitches=false ...`)
-그 빌드는 위 다섯 키를 무시하고 엔진 기본값으로 실행합니다. 로그 줄은 `graphics switches: ignored by this build, ...`가 됩니다.
+그 빌드는 위 여섯 키를 무시하고 엔진 기본값으로 실행합니다. 로그 줄은 `graphics switches: ignored by this build, ...`가 됩니다.
 누군가 `Option.ini`를 고쳐도 배포한 빌드가 검증이나 소프트웨어 어댑터로 돌지 않게 하기 위한 것입니다.
 
 - 속성은 `Client/YOUMU.Client.vcxproj`가 전처리기 정의 `YOUMU_GRAPHICS_SWITCHES`(`1`/`0`)로 넘기고,

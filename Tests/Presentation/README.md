@@ -212,10 +212,10 @@ Reset하거나 다시 만든 bus도 플레이어 음량을 유지하는지 봅�
 
 ## GraphicsSwitchesTests
 
-- `[Diagnostics]`의 `GraphicsValidation`·`GraphicsAdapter`·`AllowTearing`·`SwapChainBuffers`·`WaitableSwapChain`를 읽습니다.
+- `[Diagnostics]`의 `GraphicsValidation`·`GraphicsAdapter`·`AllowTearing`·`SwapChainBuffers`·`WaitableSwapChain`·`RenderRateOverrideHz`를 읽습니다.
   없는 키는 엔진 기본값이고, `WARP`는 대소문자를 가리지 않으며, 숫자는 어댑터 번호, 그 밖의 글자는 이름입니다.
   범위 밖의 값은 파일을 거부하는지, 저장한 값이 그대로 다시 읽히는지, 숫자로 읽힐 이름은 저장하지 않는지 확인합니다.
-- 테스트를 `YOUMU_GRAPHICS_SWITCHES=1`·`0`으로 두 번 빌드합니다. `0` 빌드는 `Option.ini`에 시험 값이 있어도 엔진에 기본값을 넘기고,
+- 테스트를 `YOUMU_GRAPHICS_SWITCHES=1`·`0`으로 두 번 빌드합니다. `0` 빌드는 `Option.ini`에 시험 값이 있어도 엔진에 기본값(렌더 속도 고정 없음 포함)을 넘기고,
   로그 줄이 `ignored by this build`를 말해야 합니다. 이어서 `msbuild -getProperty`로 `YoumuGraphicsSwitches=false`가 정의 `0`이 되는지 봅니다.
 - `Option.ini`는 `build/` 아래 임시 폴더에 쓰고, 통과하면 지웁니다. 엔진을 실행하지 않습니다.
 - 계약은 [크래시 진단 기록](../../Docs/Features/CrashDiagnostics.md#그래픽-장치-시험-설정)에 있습니다.
