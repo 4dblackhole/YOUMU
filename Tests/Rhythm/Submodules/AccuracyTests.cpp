@@ -460,15 +460,17 @@ namespace tests
             Require(ticks(log) == 9, "The press after that release still takes the last tick.");
         }
         {
-            // Every tick taken on time: the roll still ends at its tail, as before.
+            // Every tick taken on time: the press that takes the last tick ends the roll with full accuracy.
             auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"}));
             Require(loaded.Succeeded(), "Clean tick-roll fixture must load.");
-            for (std::int64_t i = 0; i <= 8; ++i)
+            for (std::int64_t i = 0; i < 8; ++i)
                 static_cast<void>(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{i * Interval}));
-            const auto ended = loaded.session->Update(RhythmTime{Tail});
+            const auto ended = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{Tail});
             Require(HasEvent(ended, NoteEventType::Completed) && ticks(ended) == 9 &&
                         loaded.session->AccuracyRate() == 1.0,
-                    "A roll with every tick taken ends at its tail with full accuracy.");
+                    "A roll with every tick taken ends on its last tick with full accuracy.");
+            Require(loaded.session->Update(RhythmTime{Tail + 1}).events.empty(),
+                    "A roll that already ended emits nothing at its tail.");
         }
         {
             // A single-tick roll (the tail is off the tick grid) keeps the head tick's late window.
@@ -499,6 +501,90 @@ namespace tests
             const auto hit = std::ranges::find(log.events, NoteEventType::HitAccepted, &NoteEvent::type);
             Require(hit != log.events.end() && hit->judgement.grade == JudgementGrade::Max && !hit->recovery,
                     "The Don after the roll takes its own on-time press.");
+        }
+    }
+
+    // A note right behind a tick roll (user decision: the roll keeps the focus while a tick can still be hit, and
+    // gives it up as soon as that is no longer so). Judge level 25 so the windows overlap; the next note is a
+    // 1/32 after the tail (62.5 ms) or a 1/16 (125 ms).
+    void TestTickRollFocusAgainstNextNote()
+    {
+        constexpr std::int64_t Interval = 125'000, Tail = 1'000'000;
+        const auto session = [](TaikoNoteType next, Rational at) {
+            auto pattern = MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"});
+            pattern.judgementLevel = JudgeLevel{25};
+            pattern.notes.push_back({.position = {0, at}, .keyType = static_cast<int>(next), .sourceOrder = 2});
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Roll-then-note fixture must load.");
+            for (std::int64_t i = 0; i < 8; ++i)
+                static_cast<void>(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{i * Interval}));
+            return std::move(loaded.session);
+        };
+        const auto noteId = [](const auto &play, std::size_t index) {
+            return play->Gear().Lanes().front()->Notes()[index]->Id();
+        };
+        const auto rollTicks = [&](const auto &play, const NoteProcessResult &log) {
+            const auto found = std::ranges::find(log.finalizedAccuracies, noteId(play, 0), &NoteAccuracy::noteId);
+            return found == log.finalizedAccuracies.end() ? std::size_t{} : found->acceptedTicks;
+        };
+        // The next note's first accepted hit, if any.
+        const auto nextHit = [&](const auto &play, const NoteProcessResult &log) -> const NoteEvent * {
+            const auto id = noteId(play, 1);
+            const auto found = std::ranges::find_if(log.events, [&](const NoteEvent &event) {
+                return event.type == NoteEventType::HitAccepted && event.noteId == id;
+            });
+            return found == log.events.end() ? nullptr : &*found;
+        };
+        // The last tick still waits: a press of either colour inside its window goes to the roll, even within the
+        // next note's GOOD window, and the next note then takes its own on-time press.
+        struct Waiting
+        {
+            TaikoNoteType next;
+            PhysicalKey press;
+            PhysicalKey onTime;
+        };
+        for (const Waiting waiting : {Waiting{TaikoNoteType::Kat, 'K', 'K'}, Waiting{TaikoNoteType::BigKat, 'D', 'K'},
+                                      Waiting{TaikoNoteType::BigDon, 'K', 'C'}})
+        {
+            auto play = session(waiting.next, Rational{17, 32});
+            auto log = play->ProcessInput(waiting.press, InputEdge::Pressed, RhythmTime{Tail + 30'000});
+            Require(rollTicks(play, log) == 9 && nextHit(play, log) == nullptr,
+                    "A press of either colour in the last tick's window takes that tick, not the next note.");
+            log.Append(play->ProcessInput(waiting.onTime, InputEdge::Pressed, RhythmTime{Tail + 62'500}));
+            const NoteEvent *hit = nextHit(play, log);
+            Require(hit != nullptr && hit->judgement.grade == JudgementGrade::Max && !hit->recovery,
+                    "The note after the roll takes its own on-time press.");
+            Require(play->Statistics().poorCount == 0, "The roll's last tick leaves no POOR on the next note.");
+        }
+        // Every tick taken before the tail: the roll ends on that press and the next input goes to the next note,
+        // still before the tail.
+        struct Settled
+        {
+            TaikoNoteType next;
+            PhysicalKey press;
+        };
+        for (const Settled settled : {Settled{TaikoNoteType::Don, 'C'}, Settled{TaikoNoteType::Kat, 'K'},
+                                      Settled{TaikoNoteType::BigDon, 'M'}})
+        {
+            auto play = session(settled.next, Rational{17, 32});
+            auto log = play->ProcessInput('C', InputEdge::Pressed, RhythmTime{Tail - 30'000});
+            Require(rollTicks(play, log) == 9 && HasEvent(log, NoteEventType::Completed),
+                    "Taking the last tick before the tail ends the roll at once.");
+            Require(play->Gear().Lanes().front()->CurrentIndex() == 1, "The next note takes the focus.");
+            log.Append(play->ProcessInput(settled.press, InputEdge::Pressed, RhythmTime{Tail - 10'000}));
+            const NoteEvent *hit = nextHit(play, log);
+            Require(hit != nullptr && IsAtLeastAsAccurateAs(hit->judgement.grade, JudgementGrade::Good),
+                    "A press right after the roll ended is the next note's hit, not a rejected roll input.");
+            Require(!hit->recovery, "That hit is not a BAD recovery.");
+        }
+        {
+            // The last tick's window passes with the tick missed: the roll settles and the next press goes to the
+            // next note.
+            const auto window = AccuracyRange("Taiko.Default", JudgeLevel{25}).HalfWindow(JudgementGrade::Good).count();
+            auto play = session(TaikoNoteType::Kat, Rational{9, 16});
+            auto log = play->ProcessInput('K', InputEdge::Pressed, RhythmTime{Tail + window + 1});
+            Require(rollTicks(play, log) == 8, "A press past the last tick's window leaves that tick missed.");
+            Require(nextHit(play, log) != nullptr, "That press goes to the next note once the roll can no longer take it.");
         }
     }
 

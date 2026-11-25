@@ -515,7 +515,11 @@ void GameplayNoteView::UpdateNote(const INote &model, const RhythmTime time, con
     const auto position = LaneObjectPosition(targetTime, time, speed);
     layers.root->SetPosition(position);
     const bool focusVisible = !completed && (!processing || missed);
-    const bool laneVisible = !completed && !missed;
+    // A tick roll completes as soon as its last tick is settled, which can be before its tail; it is still
+    // drawn up to the tail, as before.
+    const bool tickRoll = model.Accuracy().target.kind == NoteAccuracyKind::Ticks;
+    const bool settledRollShown = completed && tickRoll && time < layers.endTime;
+    const bool laneVisible = (!completed || settledRollShown) && !missed;
     const bool showLaneHead = focusNote ? focusVisible : laneVisible;
     layers.root->SetVisible(showLaneHead);
 
