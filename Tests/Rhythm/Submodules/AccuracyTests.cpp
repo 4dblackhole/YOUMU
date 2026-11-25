@@ -393,6 +393,115 @@ namespace tests
         }
     }
 
+    // The last tick of a tick roll keeps its whole GOOD window, even past the tail (user decision: "맨마지막 틱의
+    // 포커스가 끝나기 전 혹은 처리되기 전에 틱롤노트의 처리가 종료되면 안됩니다"). The window comes from the note's
+    // judgement profile, never a fixed number, so it follows the judge level.
+    void TestTickRollLastTickWindow()
+    {
+        // 120 BPM, half a measure, 16th ticks: nine ticks every 125 ms and the ninth on the tail at 1000 ms.
+        constexpr std::int64_t Interval = 125'000, Tail = 1'000'000;
+        const auto play = [](TaikoNoteType type, double level, std::int64_t lastPress, std::int64_t settleAt) {
+            auto pattern = MakeLongPattern(type, {"TickDivision=16"});
+            pattern.judgementLevel = JudgeLevel{level};
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Last-tick fixture must load.");
+            NoteProcessResult log;
+            for (std::int64_t i = 0; i < 8; ++i)
+                log.Append(loaded.session->ProcessInput(i % 2 ? 'M' : 'C', InputEdge::Pressed, RhythmTime{i * Interval}));
+            log.Append(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{lastPress}));
+            log.Append(loaded.session->Update(RhythmTime{settleAt}));
+            return log;
+        };
+        const auto ticks = [](const NoteProcessResult &log) {
+            return log.finalizedAccuracies.empty() ? std::size_t{} : log.finalizedAccuracies.front().acceptedTicks;
+        };
+        for (const double level : {50.0, 25.0, 80.0})
+        {
+            const auto window = AccuracyRange("Taiko.Default", JudgeLevel{level}).HalfWindow(JudgementGrade::Good).count();
+            const std::int64_t edge = Tail + window;
+            for (const auto type : {TaikoNoteType::TickRoll, TaikoNoteType::BigTickRoll})
+            {
+                const auto inside = play(type, level, edge, edge + 1);
+                Require(ticks(inside) == 9 && inside.finalizedAccuracies.front().target.ticks == 9,
+                        "A press at the late edge of the last tick's window is taken, even after the tail.");
+                const auto outside = play(type, level, edge + 1, edge + 2);
+                Require(ticks(outside) == 8, "A press just past the last tick's window is not taken.");
+            }
+            // The roll stays open while its last tick waits, and settles at the late edge of that window.
+            auto pattern = MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"});
+            pattern.judgementLevel = JudgeLevel{level};
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Last-tick settle fixture must load.");
+            for (std::int64_t i = 0; i < 8; ++i)
+                static_cast<void>(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{i * Interval}));
+            Require(!HasEvent(loaded.session->Update(RhythmTime{edge - 1}), NoteEventType::Completed),
+                    "A roll whose last tick still waits does not end at its tail.");
+            const auto settled = loaded.session->Update(RhythmTime{edge});
+            Require(HasEvent(settled, NoteEventType::Completed) && HasEvent(settled, NoteEventType::TickMissed) &&
+                        ticks(settled) == 8,
+                    "At the late edge of the last tick's window the roll ends and that tick is missed.");
+        }
+        {
+            // A key released after the tail while the last tick waits takes nothing; the press after it still takes
+            // the last tick.
+            auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"}));
+            Require(loaded.Succeeded(), "Release past the tail fixture must load.");
+            NoteProcessResult log;
+            for (std::int64_t i = 0; i < 8; ++i)
+            {
+                log.Append(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{i * Interval}));
+                log.Append(loaded.session->ProcessInput('C', InputEdge::Released, RhythmTime{i * Interval + 5'000}));
+            }
+            log.Append(loaded.session->ProcessInput('M', InputEdge::Released, RhythmTime{Tail + 10'000}));
+            Require(log.finalizedAccuracies.empty() && loaded.session->Gear().Lanes().front()->CurrentIndex() == 0,
+                    "A release after the tail neither takes the last tick nor ends the roll.");
+            log.Append(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{Tail + 20'000}));
+            log.Append(loaded.session->Update(RhythmTime{Tail + 30'000}));
+            Require(ticks(log) == 9, "The press after that release still takes the last tick.");
+        }
+        {
+            // Every tick taken on time: the roll still ends at its tail, as before.
+            auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"}));
+            Require(loaded.Succeeded(), "Clean tick-roll fixture must load.");
+            for (std::int64_t i = 0; i <= 8; ++i)
+                static_cast<void>(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{i * Interval}));
+            const auto ended = loaded.session->Update(RhythmTime{Tail});
+            Require(HasEvent(ended, NoteEventType::Completed) && ticks(ended) == 9 &&
+                        loaded.session->AccuracyRate() == 1.0,
+                    "A roll with every tick taken ends at its tail with full accuracy.");
+        }
+        {
+            // A single-tick roll (the tail is off the tick grid) keeps the head tick's late window.
+            auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=1"}));
+            Require(loaded.Succeeded(), "Single-tick roll fixture must load.");
+            const auto window = AccuracyRange("Taiko.Default", JudgeLevel{50}).HalfWindow(JudgementGrade::Good).count();
+            auto taken = loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{window});
+            taken.Append(loaded.session->Update(RhythmTime{Tail}));
+            Require(ticks(taken) == 1 && taken.finalizedAccuracies.front().target.ticks == 1,
+                    "A single-tick roll takes its tick through the window's late edge.");
+        }
+        {
+            // A Don right after the tail (1/16 later) while the last tick waits, at a wide judge level where the
+            // windows overlap: a press inside the last tick's window goes to the roll, and the Don then takes its
+            // own on-time press.
+            auto pattern = MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"});
+            pattern.judgementLevel = JudgeLevel{25};
+            pattern.notes.push_back(
+                {.position = {0, Rational{9, 16}}, .keyType = 1, .sourceOrder = 2});
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Roll-then-Don fixture must load.");
+            auto &session = *loaded.session;
+            for (std::int64_t i = 0; i < 8; ++i)
+                static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{i * Interval}));
+            auto log = session.ProcessInput('M', InputEdge::Pressed, RhythmTime{Tail + 60'000});
+            log.Append(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{Tail + Interval}));
+            Require(ticks(log) == 9, "A press inside the last tick's window goes to the roll's last tick.");
+            const auto hit = std::ranges::find(log.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            Require(hit != log.events.end() && hit->judgement.grade == JudgementGrade::Max && !hit->recovery,
+                    "The Don after the roll takes its own on-time press.");
+        }
+    }
+
     void TestPoorSingleNoteAccuracy()
     {
         auto profile = std::make_shared<AccuracyRange>();
@@ -594,7 +703,10 @@ namespace tests
                                         }),
                     "Each TickRoll tick, including head, is binary within inclusive Good.");
         }
-        static_cast<void>(tickRoll.session->Update(RhythmTime{1'000'000}));
+        // The missed tail tick keeps its window past the tail, so the roll settles at that window's late edge.
+        const auto &rollNote = *tickRoll.session->Gear().Lanes().front()->Notes().front();
+        static_cast<void>(tickRoll.session->Update(
+            RhythmTime{1'000'000} + rollNote.Profile().HalfWindow(JudgementGrade::Good)));
         Require(tickRoll.session->AccuracyRate() == AccuracyScore::FromUnits(22'222'222).Rate(),
                 "Two accepted ticks of nine must score 2/9, including the missed tail.");
 

@@ -36,7 +36,7 @@ bool TickRollInputRule::CanAccept(const NoteRuleContext &context, const RhythmIn
     {
         return false;
     }
-    if (input.time > endTime_ || std::ranges::find(acceptedActions_, input.action) == acceptedActions_.end())
+    if (input.time > FinalTime(context) || std::ranges::find(acceptedActions_, input.action) == acceptedActions_.end())
     {
         return false;
     }
@@ -84,7 +84,12 @@ void TickRollInputRule::Update(const NoteRuleContext &context, const NoteUpdateC
     {
         return;
     }
-
+    // A tick still waiting keeps the note open until the late edge of its window, even after the tail (user
+    // decision). At that edge the note settles, matching the lane's expiry (time > ExpireTime) one step later.
+    if (nextTickIndex_ < tickTimes_.size() && update.time < FinalTime(context))
+    {
+        return;
+    }
     while (nextTickIndex_ < tickTimes_.size())
     {
         const std::size_t missedIndex = nextTickIndex_++;
@@ -99,15 +104,26 @@ void TickRollInputRule::Update(const NoteRuleContext &context, const NoteUpdateC
                                       nextTickIndex_));
 }
 
+RhythmTime TickRollInputRule::FinalTime(const NoteRuleContext &context) const noexcept
+{
+    // The last tick takes input through the late edge of its window in this note's judgement profile
+    // (the judge level and any syncopation range), so the note never ends before that edge.
+    if (tickTimes_.empty())
+        return endTime_;
+    return std::max(endTime_, tickTimes_.back() + context.judgementProfile.HalfWindow(maximumGrade_));
+}
+
 void TickRollInputRule::MarkMissed(const NoteRuleContext &context, const RhythmTime time,
                                    NoteProcessResult &output)
 {
     MarkRuleMissed(context, time, state_, output, 0, nextTickIndex_);
 }
 
-RhythmTime TickRollInputRule::ExpireTime(const NoteRuleContext &) const noexcept
+RhythmTime TickRollInputRule::ExpireTime(const NoteRuleContext &context) const noexcept
 {
-    return endTime_;
+    // Fixed for the note's lifetime so lane indexes stay valid; a roll whose ticks are all settled still
+    // completes at its tail in Update.
+    return FinalTime(context);
 }
 
 void TickRollInputRule::AppendExpiredTicks(const NoteRuleContext &context,

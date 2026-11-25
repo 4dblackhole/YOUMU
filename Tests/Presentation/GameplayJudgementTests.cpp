@@ -1028,9 +1028,14 @@ namespace
         presenter.ApplyFeedback({.reset = true});
         presenter.UpdatePresentation(RhythmTime{});
         Check(visibleTicks() == 4, "Reset must restore consumed tick sprites, including the tail.");
+        // The untouched tail tick keeps its window past the tail, so the MISS shows at that window's late edge.
+        const auto settle = RhythmTime{500'000} +
+            loaded.session->Gear().Lanes().front()->Notes().front()->Profile().HalfWindow(JudgementGrade::Good);
         presenter.ApplyFeedback({.result = loaded.session->Update(RhythmTime{500'000})});
+        CheckOverlay(root, "");
+        presenter.ApplyFeedback({.result = loaded.session->Update(settle)});
         CheckOverlay(root, "MISS");
-        presenter.UpdatePresentation(RhythmTime{500'000});
+        presenter.UpdatePresentation(settle);
         Check(visibleTicks() == 0, "Expired/missed ticks must also be hidden.");
         presenter.Shutdown();
         pattern.notes.back().position = {0, {1, 1}};

@@ -195,7 +195,7 @@ N/D,KeyType,ActionType,HitSound,ExtraData...
 
 | 노트 | 시작 줄의 옵션 | 설명 |
 | --- | --- | --- |
-| TickRoll, BigTickRoll | `TickDivision=16` | 온음표를 몇 등분할지 지정합니다. 16은 16분음표 간격입니다. 생략 시 16입니다. 각 틱은 현재 `JudgeLevel`의 Good 범위 안에서 한 번만 받을 수 있습니다. |
+| TickRoll, BigTickRoll | `TickDivision=16` | 온음표를 몇 등분할지 지정합니다. 16은 16분음표 간격입니다. 생략 시 16입니다. 각 틱은 현재 `JudgeLevel`의 Good 범위(판정 폭 설정을 따름, 기본 반폭 54.5ms) 안에서 한 번만 받을 수 있습니다. 마지막 틱은 테일이 지나도 그 범위 끝까지 받습니다. |
 | Roll, BigRoll, Balloon, DengDeng | `8` | 목표 입력 횟수입니다. bare 양의 정수와 `HitCount=8`을 모두 지원합니다. 생략하면 롱노트의 정확한 유리수 길이 `L`에 대해 `ceil(L × 12)`회입니다. 길이 `1/4`는 3회, `1/7`은 2회입니다. Balloon은 동만, DengDeng은 동부터 교대합니다. |
 | Buzz | `Action=Don,TickDivision=16` | 유지할 입력은 `Don` 또는 `Kat`이며 필수입니다. 틱 분할은 생략 시 16입니다. |
 
