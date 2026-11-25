@@ -31,6 +31,8 @@ Client/Texts/
 
 실제로 읽는 파일은 `<자산 루트>/Languages/ko.ini`, `en.ini`, `ja.ini`입니다.
 개발 실행은 `Client/Assets/Languages`, 배포는 EXE 옆 `Asset/Languages`를 사용합니다.
+개발용 `Client/Assets/Languages`는 Git에서 제외된 사본이며, 빌드마다 `Client/Texts/Languages` 원본과 크기·시각이
+다르면 덮어써 항상 최신으로 유지합니다(사본을 직접 고쳐 쓰지 않습니다).
 기존 `General/Language=ko` 또는 `en`을 보존하고 `ja`도 지원합니다. 새 필드를 만들지 않으며
 이 값은 설명 언어를 선택합니다. 기본 `Get(key)`는 ExplanationKeys의 안내 키만 선택 언어로,
 나머지는 영어로 읽습니다. `Get(language,key)`는 특정 원본 팩을 조회하는 명시적 API입니다.
