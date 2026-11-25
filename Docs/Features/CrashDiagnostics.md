@@ -195,6 +195,12 @@ MSBuild 속성 `YoumuGraphicsSwitches`를 `false`로 빌드하면(`msbuild YOUMU
 
 `Tests/Presentation/RunCrashDiagnosticsTests.ps1`이 이 인자로 게임을 숨김 창으로 다섯 번 돌려 로그 내용과 덤프 파일을 확인합니다.
 
+## smoke의 예외 검사
+
+smoke 경로(`--smoke-*`)는 로그를 연 바로 다음에 엔진의 `ThrownExceptionWatch`를 만듭니다. 실행이 성공으로 끝났는데 C++ 예외를
+던졌다면 로그에 개수와 처음 16개의 스레드·형식·`what()`·스택(`<모듈>+0x<오프셋>`)을 적고 종료 코드 3으로 끝냅니다.
+`--crash-test=`가 붙은 실행은 일부러 던지므로 만들지 않습니다. 보통 실행은 만들지 않아 비용이 없습니다.
+
 ## 코드
 
 | 파일(`Client/Diagnostics`) | 맡은 일 |
