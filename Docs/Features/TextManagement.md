@@ -378,6 +378,13 @@ API에 선택을 전달하며 별도 옵션 Controller나 새로운 오디오 �
 EXE와 같은 폴더에 `Option.ini`가 없으면 처음 실행할 때 생성합니다. UTF-8 형식이며
 `;`/`#`로 시작하는 주석과 UTF-8 BOM을 읽습니다. 다음은 키와 예시이며 Language의 첫 실행 값은 ko/ja/en입니다.
 
+- 주석은 줄 하나를 차지해야 합니다(앞의 공백은 괜찮음). 값 뒤에 붙인 `; ...`는 값의 일부로 읽혀, 그 키가 받지 않는 값이면
+  파일 전체를 읽지 못한 것이 됩니다.
+- 저장할 때 파일 전체를 다시 쓰므로, 손으로 넣은 주석은 다음 저장 때 사라집니다.
+- 옵션 창에 항목이 없는 `[Diagnostics]`에는 게임이 키마다 받는 값과 기본값을 적은 영어(ASCII) 주석 한 줄을 그 키 바로 위에 씁니다.
+  섹션 맨 위의 두 줄은 시작할 때 읽는다는 것과 주석·틀린 값의 규칙입니다. 이 주석은 빌드 속성과 상관없이 같습니다.
+  기존 파일은 다음 저장 때 값을 그대로 두고 주석이 붙습니다.
+
 ```ini
 [General]
 Language=ko
@@ -420,12 +427,22 @@ ResumeLeadInMs=500
 RewindMeasures=4
 
 [Diagnostics]
+; Read when the game starts. A comment needs a line of its own that starts with ; or #.
+; An invalid value in this section makes the game ignore the whole file and use the defaults.
+; DeviceRemovedData: 0 off, 1 record the GPU's last finished work if the device is lost (D3D12 DRED, a little slower). Default 0.
 DeviceRemovedData=0
+; The keys below are crash experiments. Builds made with /p:YoumuGraphicsSwitches=false ignore them.
+; GraphicsValidation: 0 off, 1 D3D12 debug layer, 2 debug layer and GPU-based validation (much slower). Default 0.
 GraphicsValidation=0
+; GraphicsAdapter: Default (the default), WARP (software, slow), an adapter number from 0, or part of an adapter name.
 GraphicsAdapter=Default
+; AllowTearing: 1 allow tearing where supported, 0 never tear. Default 1.
 AllowTearing=1
+; SwapChainBuffers: 2 or 3 back buffers. Default 2.
 SwapChainBuffers=2
+; WaitableSwapChain: 0 off, 1 queue at most one frame and wait for the swap chain every frame. Default 0.
 WaitableSwapChain=0
+; RenderRateOverrideHz: 0 off, or 10 to 5000 used in place of the display refresh rate by [Display] RenderRate. Default 0.
 RenderRateOverrideHz=0
 ```
 
