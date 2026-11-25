@@ -106,6 +106,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestReleaseIsNotEarlyBad", TestReleaseIsNotEarlyBad},
         {"TestWrongColourPoor", TestWrongColourPoor},
         {"TestTickRollLastTickWindow", TestTickRollLastTickWindow},
+        {"TestTickRollFocusAgainstNextNote", TestTickRollFocusAgainstNextNote},
         {"TestPoorSingleNoteAccuracy", TestPoorSingleNoteAccuracy},
         {"TestPoorLargeNoteAccuracy", TestPoorLargeNoteAccuracy},
         {"TestBuzzTickColorFocus", TestBuzzTickColorFocus},

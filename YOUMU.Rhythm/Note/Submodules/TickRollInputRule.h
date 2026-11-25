@@ -35,6 +35,9 @@ class TickRollInputRule final : public INoteRule
                             NoteProcessResult &output);
     // The later of the tail and the last tick's late window edge.
     [[nodiscard]] RhythmTime FinalTime(const NoteRuleContext &context) const noexcept;
+    // Every tick has been accepted or missed.
+    [[nodiscard]] bool AllTicksSettled() const noexcept;
+    void Complete(const NoteRuleContext &context, RhythmTime time, NoteProcessResult &output);
 
     std::vector<NoteAction> acceptedActions_;
     RhythmTime endTime_{};

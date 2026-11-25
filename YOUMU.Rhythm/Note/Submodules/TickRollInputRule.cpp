@@ -70,6 +70,8 @@ void TickRollInputRule::ProcessInput(const NoteRuleContext &context,
         MakeEvent(context, NoteEventType::TickAccepted, state_, state_,
                   {JudgementGrade::Unjudged, input.time - tickTimes_[acceptedIndex], 1.0},
                   input.time, 0, acceptedIndex));
+    if (AllTicksSettled())
+        Complete(context, input.time, output);
 }
 
 void TickRollInputRule::Update(const NoteRuleContext &context, const NoteUpdateContext &update,
@@ -80,13 +82,16 @@ void TickRollInputRule::Update(const NoteRuleContext &context, const NoteUpdateC
         return;
     }
     AppendExpiredTicks(context, update.time, output);
-    if (update.time < endTime_)
+    // The roll keeps the lane's focus only while a tick can still be hit (user decision): once every tick is
+    // settled it completes at once, even before its tail, and the next note takes the following input.
+    if (AllTicksSettled())
     {
+        Complete(context, update.time, output);
         return;
     }
     // A tick still waiting keeps the note open until the late edge of its window, even after the tail (user
     // decision). At that edge the note settles, matching the lane's expiry (time > ExpireTime) one step later.
-    if (nextTickIndex_ < tickTimes_.size() && update.time < FinalTime(context))
+    if (update.time < FinalTime(context))
     {
         return;
     }
@@ -97,11 +102,21 @@ void TickRollInputRule::Update(const NoteRuleContext &context, const NoteUpdateC
                                           MissJudgement(context, tickTimes_[missedIndex]),
                                           tickTimes_[missedIndex], 0, missedIndex));
     }
+    Complete(context, update.time, output);
+}
+
+bool TickRollInputRule::AllTicksSettled() const noexcept
+{
+    // A roll without ticks has nothing to settle early and still ends at its tail.
+    return !tickTimes_.empty() && nextTickIndex_ == tickTimes_.size();
+}
+
+void TickRollInputRule::Complete(const NoteRuleContext &context, const RhythmTime time, NoteProcessResult &output)
+{
     const NoteState before = state_;
     state_ = NoteState::Completed;
     output.events.push_back(MakeEvent(context, NoteEventType::Completed, before, state_,
-                                      {JudgementGrade::Unjudged, {}, 1.0}, endTime_, 0,
-                                      nextTickIndex_));
+                                      {JudgementGrade::Unjudged, {}, 1.0}, time, 0, nextTickIndex_));
 }
 
 RhythmTime TickRollInputRule::FinalTime(const NoteRuleContext &context) const noexcept
@@ -121,8 +136,8 @@ void TickRollInputRule::MarkMissed(const NoteRuleContext &context, const RhythmT
 
 RhythmTime TickRollInputRule::ExpireTime(const NoteRuleContext &context) const noexcept
 {
-    // Fixed for the note's lifetime so lane indexes stay valid; a roll whose ticks are all settled still
-    // completes at its tail in Update.
+    // Fixed for the note's lifetime so lane indexes stay valid; a roll whose ticks are all settled completes
+    // earlier, when the last one is settled.
     return FinalTime(context);
 }
 
