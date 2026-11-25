@@ -163,6 +163,9 @@ cdb -z youmu-20261125-101010-crash.dmp -y <exe와 PDB를 보관한 폴더> -c ".
 - 로그의 `graphics switches:` 줄이 요청한 값, `engine: swap chain:`·`engine: graphics options:` 줄이 실제로 쓴 값입니다.
   검증을 켜면 경고·오류가 `engine: graphics validation …` 줄로, 끝날 때 살아 있는 객체와 요약이 `engine: graphics live object:`·
   `engine: graphics validation summary:` 줄로 남습니다. 같은 메시지는 세 번, 전체는 100줄까지 적고 나머지는 요약에서 셉니다.
+  `RenderRateOverrideHz`는 엔진 시작 기록에 나오지 않습니다. `graphics switches:` 줄의 `render rate override`만 봅니다.
+- 게임이 저장한 `Option.ini`의 `[Diagnostics]`에는 키마다 받는 값과 기본값을 적은 영어 주석 한 줄이 바로 위에 붙습니다.
+  `DeviceRemovedData`도 같습니다. 주석의 형식은 [Option.ini](TextManagement.md#optionini)에 있습니다.
 
 ### 빌드에서 끄기
 
