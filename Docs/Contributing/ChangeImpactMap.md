@@ -7,7 +7,7 @@
 
 | 작업 | 소유 코드 | 관련 회귀 |
 | --- | --- | --- |
-| 로그 파일·덤프 파일·최근 통계·엔진 진단 받는 쪽·치명적 오류 창·숨은 실행 인자(`--crash-test`, `--log-dir`) | `Client/Diagnostics`: GameLog, RecentStatistics, GameDiagnostics, CrashDumpLog, LaunchDiagnostics; 연결은 `App/Main.cpp`(소유)·YOUMUGame(엔진 설정, 1초 표본, Scene 줄), OptionSettings의 `[Diagnostics]` | RunCrashDiagnosticsTests |
+| 로그 파일·덤프 파일·최근 통계·엔진 진단 받는 쪽·치명적 오류 창·숨은 실행 인자(`--crash-test`, `--log-dir`)·그래픽 장치 시험 설정 | `Client/Diagnostics`: GameLog, RecentStatistics, GameDiagnostics, CrashDumpLog, LaunchDiagnostics, GraphicsSwitches(빌드 속성 `YoumuGraphicsSwitches`); 연결은 `App/Main.cpp`(소유)·YOUMUGame(엔진 설정, 1초 표본, Scene 줄), OptionSettings의 `[Diagnostics]` | RunCrashDiagnosticsTests, RunGraphicsSwitchesTests |
 | 곡 카드·검색·정렬·이동·배경/메타데이터 | `MusicSelectScene/Submodules`: MusicSelectView, SongListView(행·카드 가상화·스크롤·난이도 버튼), SongSelectLayout/Panels/Input/Search, SongSelectionState | SceneStateTests, RunMusicSelectViewTests(SongSearchInputTests 포함) |
 | 선곡 필터(줄 스위치·HP·Length·Tag)·계산 난이도 빈 필드 | SongFilter, SongFilterPanel, SongSelectionState의 패턴 투영; SongCatalogPattern 런타임 메타데이터, 채보 길이는 SongCatalog/SongCatalogIndex(캐시 스키마) | TestSongFilters·TestSongFilterRows, TestSongCatalogChartLength, RunMusicSelectViewTests(필터 적용/취소·스위치·실 native 입력 포함) |
 | 컬렉션(즐겨찾기)·탭·컬렉션 파일·Import/Export·favorites.json 옮기기 | SongFavorites/Json, SongFavoriteTabs, SongFavoritesPanel, SongSelectFavorites; Scene 진입 로드와 SongSelectionState의 패턴 투영; 채보 해시는 `Catalog/ChartHash`와 SongCatalog/SongCatalogIndex(캐시 스키마), 저장 위치는 SongLibrary(`UserAssetRoot()/Collections`) | SongFavoritesTests(저장·옮기기·선택), TestSongCatalogIndex(해시), RunMusicSelectViewTests(관리·복수 소속·가로 스크롤·실 이름 입력·모달 격리·Import/Export) |
