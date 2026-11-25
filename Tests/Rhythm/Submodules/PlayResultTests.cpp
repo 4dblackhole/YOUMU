@@ -56,9 +56,10 @@ namespace tests
                 "A POOR counts at once but its note's combo waits for the note to finish; releases never add POOR.");
         hit('C', 3'000'000);
         Require(session.Statistics().combo == 0 && session.Statistics().maximumCombo == 3,
-                "The MAX that answers a POOR is a BAD recovery: it breaks the combo and keeps the maximum.");
-        Require(session.Statistics().judgements[0] == 4 && session.Statistics().judgements[4] == 2,
-                "A BAD recovery counts as a BAD, not as its own grade.");
+                "The MAX that answers a POOR is a recovery: it breaks the combo and keeps the maximum.");
+        Require(session.Statistics().judgements[0] == 4 && session.Statistics().judgements[4] == 1 &&
+                    session.Statistics().poorCount == 1,
+                "The hit that answers a POOR adds no count: the note's one POOR is its result.");
         session.RewindJudgements(RhythmTime{2'000'000});
         statistics = session.Statistics();
         Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.poorCount == 0,
@@ -107,7 +108,7 @@ namespace tests
         collector.Consume(batch, true);
         Require(collector.Statistics().combo == 1 && collector.Statistics().poorCount == 1,
                 "A POOR counts at once but leaves the combo of the note completed before it in the same batch.");
-        // GAME-05: the combo settles when the POOR note finishes; left alone it is a MISS.
+        // GAME-05: the combo settles when the POOR note finishes; left alone it stays that POOR.
         NoteEvent missed = poor;
         missed.type = NoteEventType::Missed;
         missed.stateAfter = NoteState::Missed;
@@ -119,6 +120,8 @@ namespace tests
         settle.events = {missed};
         settle.finalizedAccuracies = {missedAccuracy};
         collector.Consume(settle, false);
+        Require(collector.Statistics().judgements[5] == 0 && collector.Statistics().poorCount == 1,
+                "A POOR note left alone stays that POOR, not a MISS.");
         Require(collector.Statistics().combo == 0 && collector.Statistics().maximumCombo == 1,
                 "The POOR note breaks the combo when it settles and the maximum stays.");
         collector.ResetJudgements();
@@ -190,8 +193,8 @@ namespace tests
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
         Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 1 && taiko->judgements[5] == 0,
                 "Count graded inputs once; releases and blanks are never POOR.");
-        Require(taiko->judgements[static_cast<std::size_t>(JudgementGrade::Bad)] == 1,
-                "The GREAT that answers the first note's POOR is a BAD recovery and counts as a BAD (GAME-05).");
+        Require(taiko->judgements[static_cast<std::size_t>(JudgementGrade::Bad)] == 0,
+                "The GREAT that answers the first note's POOR adds no count: that note is its one POOR.");
         Require(taiko->poorCount == 1 && taiko->okCount == 1,
                 "A roll that took one of its three hits is an OK, not a MISS.");
         Require(taiko->timingErrors.size() == 3 && taiko->meanErrorMilliseconds &&

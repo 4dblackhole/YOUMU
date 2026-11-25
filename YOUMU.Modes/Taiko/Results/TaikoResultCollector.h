@@ -31,6 +31,8 @@ class TaikoResultCollector final : public IPlayResultCollector
     std::vector<bool> comboEligible_;
     // Notes missed while left at an early BAD settle as a BAD.
     std::vector<bool> settlesAsBad_;
+    // The note already counted its one POOR.
+    std::vector<bool> poorCounted_;
     std::size_t combo_{};
     RhythmDuration timingErrorSum_{}; // Running sum of result_->timingErrors.
 };

@@ -96,8 +96,9 @@ namespace tests
         }
     }
 
-    // BAD recovery (user decision): a BAD, an early BAD or a POOR settles the note as a BAD with zero accuracy and
-    // no combo; the GOOD..MAX that answers an early BAD or a POOR is marked as a recovery and counts as a BAD.
+    // BAD recovery (user decision): a BAD or an early BAD settles the note as a BAD with zero accuracy and no
+    // combo; the GOOD..MAX that answers an early BAD is marked as a recovery and counts as a BAD. A POOR settles
+    // the note as that one POOR: the hit that answers it is a recovery too but adds no count.
     void TestBadRecovery()
     {
         constexpr std::size_t Bad = 4, Miss = 5;
@@ -137,8 +138,8 @@ namespace tests
                     "A note left at an early BAD is a BAD, not a MISS, and breaks the combo.");
             static_cast<void>(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{1'500'000}));
             static_cast<void>(session.Update(RhythmTime{1'700'000}));
-            Require(session.Statistics().poorCount == 1 && session.Statistics().judgements[Miss] == 1 && bad(session.Statistics()) == 2,
-                    "A POOR left without a retry is a MISS.");
+            Require(session.Statistics().poorCount == 1 && session.Statistics().judgements[Miss] == 0 && bad(session.Statistics()) == 2,
+                    "A POOR left without a retry stays that POOR, not a MISS.");
         }
         {
             PatternDocument pattern;
@@ -305,13 +306,13 @@ namespace tests
                     "The early wrong colour counts one POOR at once and no BAD.");
             const auto answered = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
             const auto hit = std::ranges::find(answered.events, NoteEventType::HitAccepted, &NoteEvent::type);
-            Require(hit != answered.events.end() && hit->recovery && session.Statistics().judgements[Bad] == 1,
-                    "The right colour after that POOR is a BAD recovery (POOR 1 + BAD 1).");
+            Require(hit != answered.events.end() && hit->recovery && session.Statistics().judgements[Bad] == 0,
+                    "The right colour after that POOR is a recovery that adds no count (POOR 1, BAD 0).");
             Require(session.Statistics().combo == 0 && session.Statistics().poorCount == 1,
                     "The POOR note adds no combo.");
         }
         {
-            // A Kat press 70 ms after a Don note (late BAD window) is a POOR; leaving the note is a MISS.
+            // A Kat press 70 ms after a Don note (late BAD window) is a POOR; leaving the note keeps that POOR.
             auto loaded = TaikoMode{}.CreateSession(pattern({1}));
             Require(loaded.Succeeded(), "Late wrong-colour fixture must load.");
             auto &session = *loaded.session;
@@ -319,8 +320,9 @@ namespace tests
             Require(wrong.wrongPress && IsPoor(wrong) && session.Statistics().poorCount == 1,
                     "A wrong colour inside the late BAD window is a POOR.");
             static_cast<void>(session.Update(RhythmTime{500'000}));
-            Require(session.Statistics().judgements[Miss] == 1 && session.Statistics().judgements[Bad] == 0,
-                    "A note left after a late POOR is a MISS.");
+            Require(session.Statistics().judgements[Miss] == 0 && session.Statistics().judgements[Bad] == 0 &&
+                        session.Statistics().poorCount == 1,
+                    "A note left after a late POOR is that POOR, not a MISS.");
         }
         {
             // The right colour in the late BAD window stays a BAD hit.
@@ -356,9 +358,9 @@ namespace tests
             const auto hit = std::ranges::find(next.events, NoteEventType::HitAccepted, &NoteEvent::type);
             Require(hit != next.events.end() && !hit->recovery && hit->judgement.grade == JudgementGrade::Max,
                     "The note after a late POOR keeps its own grade.");
-            Require(session.Statistics().judgements[Miss] == 1 && session.Statistics().poorCount == 1 &&
+            Require(session.Statistics().judgements[Miss] == 0 && session.Statistics().poorCount == 1 &&
                         session.Statistics().combo == 1,
-                    "The late POOR note is a MISS; the next note starts a new combo.");
+                    "The late POOR note stays a POOR; the next note starts a new combo.");
         }
         {
             // A Buzz head: a wrong colour 70 ms early is a head POOR; the body ticks keep their own rule.
@@ -390,6 +392,130 @@ namespace tests
             static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
             Require(session.Statistics().combo == 1 && session.AccuracyRate() == 1.0,
                     "The note after an out-of-window wrong colour stays clean.");
+        }
+    }
+
+    // A POOR is a kind of BAD and settles its note (user decisions: "POOR는 BAD의 아종인것으로 해주세요",
+    // "다른 색상을 마구 연타하더라도 POOR카운트는 1개만 오르도록 해주세요", "POOR처리된 노트는 BAD범위로 누르더라도
+    // BAD카운트가 올라가지않습니다. POOR복귀는 GOOD 이상의 정확도로 쳐야하는것으로 하겠습니다", "POOR를 치고 그대로
+    // 놓칠경우 MISS가 아니라 POOR로 하겠습니다"). Don notes every 1/8 (250 ms) unless noted; JudgeLevel 50.
+    void TestPoorSettlesNote()
+    {
+        constexpr std::size_t Good = 3, Bad = 4, Miss = 5;
+        const auto pattern = [](std::initializer_list<int> keyTypes, std::int64_t division) {
+            PatternDocument document;
+            document.mode = "Taiko";
+            document.baseBpm = 120.0;
+            std::int64_t i = 0;
+            for (const int keyType : keyTypes)
+            {
+                document.notes.push_back(
+                    {.position = {0, {i, division}}, .keyType = keyType, .sourceOrder = static_cast<std::size_t>(i)});
+                ++i;
+            }
+            return document;
+        };
+        const auto load = [&](std::initializer_list<int> keyTypes, std::int64_t division = 8) {
+            auto loaded = TaikoMode{}.CreateSession(pattern(keyTypes, division));
+            Require(loaded.Succeeded(), "POOR fixture must load.");
+            return std::move(loaded.session);
+        };
+        const auto firstHit = [](const NoteProcessResult &result) -> const NoteEvent * {
+            const auto hit = std::ranges::find(result.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            return hit == result.events.end() ? nullptr : &*hit;
+        };
+        const auto counts = [](const PlayStatistics &statistics, std::size_t poor, std::size_t bad, std::size_t miss) {
+            const bool counted = statistics.poorCount == poor && statistics.judgements[Bad] == bad;
+            return counted && statistics.judgements[Miss] == miss;
+        };
+        {
+            // Mashing the wrong colour: every press is a POOR to show (red beam, POOR word), the count rises once.
+            auto session = load({1});
+            for (const std::int64_t at : {-80'000, -40'000, 0, 30'000, 60'000})
+            {
+                const auto wrong = session->ProcessInput('K', InputEdge::Pressed, RhythmTime{at});
+                Require(std::ranges::any_of(wrong.events, IsPoor), "Each wrong-colour press within BAD shows a POOR.");
+                static_cast<void>(session->ProcessInput('K', InputEdge::Released, RhythmTime{at + 5'000}));
+            }
+            Require(counts(session->Statistics(), 1, 0, 0), "Mashing the wrong colour counts one POOR.");
+            const auto left = session->Update(RhythmTime{500'000});
+            const auto missed = std::ranges::find(left.events, NoteEventType::Missed, &NoteEvent::type);
+            Require(missed != left.events.end() && missed->leftAtPoor && !missed->leftAtEarlyBad,
+                    "The note left after its POOR misses as left at that POOR (no MISS word).");
+            Require(counts(session->Statistics(), 1, 0, 0) && session->Statistics().combo == 0,
+                    "A POOR left alone stays that POOR: no MISS, no combo.");
+        }
+        {
+            // After a POOR, the right colour within BAD before the note counts no BAD and keeps the note waiting.
+            auto session = load({1, 1});
+            static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            static_cast<void>(session->ProcessInput('D', InputEdge::Pressed, RhythmTime{180'000}));
+            static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{185'000}));
+            Require(counts(session->Statistics(), 1, 0, 0), "A BAD-range press after a POOR counts no BAD.");
+            const auto answered = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
+            const NoteEvent *hit = firstHit(answered);
+            Require(hit != nullptr && hit->recovery && hit->judgement.grade == JudgementGrade::Max,
+                    "The on-time hit after it answers the POOR and shows its own grade.");
+            Require(counts(session->Statistics(), 1, 0, 0) && session->Statistics().judgements[0] == 1,
+                    "That recovery adds no count; only the first note's MAX and the POOR are counted.");
+        }
+        {
+            // After a late POOR, the right colour still in the late BAD window is not taken; the note then expires as
+            // its POOR.
+            auto session = load({1});
+            static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{60'000}));
+            const auto late = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{70'000});
+            Require(firstHit(late) == nullptr && HasEvent(late, NoteEventType::InputRejected),
+                    "A note with a POOR does not take a BAD hit.");
+            static_cast<void>(session->Update(RhythmTime{500'000}));
+            Require(counts(session->Statistics(), 1, 0, 0), "It ends as its POOR: no BAD and no MISS.");
+        }
+        {
+            // A POOR within GOOD (wrong colour on time), then GOOD or better answers it; releases add nothing.
+            auto session = load({1});
+            static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{-10'000}));
+            static_cast<void>(session->ProcessInput('K', InputEdge::Released, RhythmTime{-5'000}));
+            static_cast<void>(session->ProcessInput('C', InputEdge::Released, RhythmTime{0}));
+            Require(counts(session->Statistics(), 1, 0, 0), "Releases after a POOR add nothing.");
+            const auto answered = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{40'000});
+            const NoteEvent *hit = firstHit(answered);
+            Require(hit != nullptr && hit->recovery && hit->judgement.grade == JudgementGrade::Good,
+                    "A GOOD answers the POOR.");
+            Require(counts(session->Statistics(), 1, 0, 0) && session->Statistics().judgements[Good] == 0,
+                    "The GOOD that answers a POOR adds no count.");
+            Require(session->AccuracyRate() == 0.0, "A note with a POOR keeps zero accuracy, like a BAD.");
+        }
+        {
+            // An early BAD, then a POOR on the same note: the note ends as the POOR alone.
+            auto session = load({1});
+            static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{-60'000}));
+            static_cast<void>(session->Update(RhythmTime{500'000}));
+            Require(counts(session->Statistics(), 1, 0, 0), "An early BAD followed by a POOR settles as one POOR.");
+        }
+        {
+            // A note right behind (1/16, 125 ms): after a late POOR the focus moves on as usual and the next note
+            // takes its own grade.
+            auto session = load({1, 1}, 16);
+            static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{70'000}));
+            const auto next = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{95'000});
+            const NoteEvent *hit = firstHit(next);
+            Require(hit != nullptr && !hit->recovery && hit->noteId == session->Gear().Lanes().front()->Notes()[1]->Id(),
+                    "The press inside the next note's GOOD goes to that note, not a BAD on the POOR note.");
+            Require(counts(session->Statistics(), 1, 0, 0) && session->Statistics().combo == 1,
+                    "The POOR note ends as its POOR and the next note starts a combo.");
+        }
+        {
+            // A purple note hit twice with the same colour: the second is a POOR, counted once, and the other colour
+            // within GOOD completes it with no further count.
+            auto session = load({5});
+            static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            const auto twice = session->ProcessInput('V', InputEdge::Pressed, RhythmTime{5'000});
+            static_cast<void>(session->ProcessInput('M', InputEdge::Pressed, RhythmTime{8'000}));
+            Require(std::ranges::any_of(twice.events, IsPoor) && counts(session->Statistics(), 1, 0, 0),
+                    "The same colour twice on a purple note is one POOR however often it repeats.");
+            static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{10'000}));
+            Require(counts(session->Statistics(), 1, 0, 0), "The purple note completed after its POOR adds no count.");
         }
     }
 

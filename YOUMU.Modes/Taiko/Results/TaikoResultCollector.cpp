@@ -41,6 +41,7 @@ TaikoResultCollector::TaikoResultCollector(PlayResultSummary summary, std::size_
     noteIndices_.reserve(reserveNotes);
     comboEligible_.reserve(reserveNotes);
     settlesAsBad_.reserve(reserveNotes);
+    poorCounted_.reserve(reserveNotes);
 }
 void TaikoResultCollector::RegisterNote(NoteId id, TaikoNoteType type, RhythmTime time)
 {
@@ -49,6 +50,7 @@ void TaikoResultCollector::RegisterNote(NoteId id, TaikoNoteType type, RhythmTim
     result_->notes.push_back({id, type, time});
     comboEligible_.push_back(true);
     settlesAsBad_.push_back(false);
+    poorCounted_.push_back(false);
 }
 void TaikoResultCollector::RecordInput(const RhythmInputEvent &input)
 {
@@ -85,10 +87,14 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     if (event.type == NoteEventType::HitAccepted && grade < 5)
     {
         // A BAD recovery shows its own grade but counts as a BAD; the combo settles when the note finishes.
+        // A hit on a note that already counted its POOR adds no count (user decision: POOR is a kind of BAD).
         const bool bad = event.recovery || event.judgement.grade == JudgementGrade::Bad;
         if (bad)
             comboEligible_[found->second] = false;
-        ++result_->judgements[bad ? static_cast<std::size_t>(JudgementGrade::Bad) : grade];
+        if (poorCounted_[found->second])
+            comboEligible_[found->second] = false;
+        else
+            ++result_->judgements[bad ? static_cast<std::size_t>(JudgementGrade::Bad) : grade];
         result_->timingErrors.push_back({event.noteId, event.hitIndex, event.eventTime, event.judgement.signedError,
                                          event.judgement.grade,
                                          AccuracyScore::FromRate(event.judgement.scoreRate)});
@@ -96,8 +102,11 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     }
     else if (keyPressed && IsPoor(event))
     {
-        // A POOR counts now; the note's combo settles when it finishes (user decision).
-        ++result_->poorCount;
+        // A POOR counts now, once per note however many wrong presses follow; the note's combo settles when
+        // it finishes (user decisions).
+        if (!poorCounted_[found->second])
+            ++result_->poorCount;
+        poorCounted_[found->second] = true;
         comboEligible_[found->second] = false;
     }
     else if (keyPressed && IsEarlyBad(event))
@@ -150,6 +159,8 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Bad)];
     else if (longNote && HeadAlreadyCountedBad(accuracy, retired))
         return; // A Buzz head BAD or recovery already counted as its BAD.
+    else if (poorCounted_[found->second])
+        return; // A note that took a POOR and was not hit after it ends as that POOR, not a MISS (user decision).
     else if (note.finalState == NoteState::Missed || longNote)
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Miss)];
 }
@@ -210,6 +221,7 @@ void TaikoResultCollector::ResetJudgements() noexcept
     combo_ = result_->summary.maximumCombo = 0;
     std::fill(comboEligible_.begin(), comboEligible_.end(), true);
     std::fill(settlesAsBad_.begin(), settlesAsBad_.end(), false);
+    std::fill(poorCounted_.begin(), poorCounted_.end(), false);
 }
 PlayStatistics TaikoResultCollector::Statistics() const noexcept
 {
