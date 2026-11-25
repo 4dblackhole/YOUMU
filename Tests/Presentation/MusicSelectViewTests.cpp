@@ -16,6 +16,7 @@
 #include "Presentation/MarqueeTextComponent.h"
 #include "Presentation/PerformanceBand.h"
 #include "Presentation/UiFonts.h"
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -599,6 +600,77 @@ namespace
         importer.Discard();
         Check(!importer.Busy(), "A finished import holds no job.");
     }
+    // What a node shows: the colour its sprite draws at this moment and where it is.
+    std::array<float, 8> Look(Visual2DNode &node)
+    {
+        const auto *sprite = node.GetComponent<SpriteVisualComponent>();
+        if (!sprite) throw std::runtime_error("Node without a sprite: " + node.Name());
+        std::vector<DrawPacket> packets;
+        sprite->AppendDrawPackets(packets);
+        const auto colour = packets.empty() ? Color{0, 0, 0, 0} : packets.front().color;
+        const auto bounds = node.BoundsInCanvas();
+        return {colour.red, colour.green, colour.blue, colour.alpha, bounds.x, bounds.y, bounds.width, bounds.height};
+    }
+    // Presses `at` through the view's own pointer routing, as a real mouse does: the button goes down in
+    // one frame and comes up in the next. The list's shade and sheet look the same while it is held and
+    // after it is let go.
+    void PressOverList(MusicSelectView &view, Visual2DNode &shade, Visual2DNode &sheet, const Point at,
+                       const char *held, const char *released)
+    {
+        const auto shadeLook = Look(shade);
+        const auto sheetLook = Look(sheet);
+        const auto unchanged = [&] { return Look(shade) == shadeLook && Look(sheet) == sheetLook; };
+        InputState input;
+        InputStateTestAccess::Mouse(input, at, 0);
+        InputStateTestAccess::Button(input, true);
+        static_cast<void>(view.Update(input, 0));
+        Check(unchanged(), held);
+        InputStateTestAccess::Begin(input);
+        InputStateTestAccess::Mouse(input, at, 0);
+        InputStateTestAccess::Button(input, false);
+        static_cast<void>(view.Update(input, 0));
+        Check(unchanged(), released);
+    }
+    // User report 2026-11-25: pressing the osu! import list anywhere but a check box turned the whole
+    // background blue, and the favourites editor had the same shade. A press that misses every control
+    // of such a list lands on the full-screen shade behind it, and it does nothing: the shade and the
+    // list's sheet keep their colour and size, and the list stays open. `list` is the node name prefix
+    // ("OsuImport", "Favorites"); `gaps` adds places inside the list that are not controls.
+    void PressOutsideListControls(MusicSelectView &view, Visual2DCanvas &canvas, const std::string &list,
+                                  const std::vector<Point> &gaps = {})
+    {
+        const auto need = [&](const char *part) -> Visual2DNode &
+        { return Need(Find(canvas.Root(), list + part), "A part of the list is missing."); };
+        auto &shade = need(".Overlay");
+        auto &sheet = need(".Panel");
+        const auto screen = shade.BoundsInCanvas();
+        const auto panel = sheet.BoundsInCanvas();
+        std::vector<Point> misses{
+            Point{screen.x + 10, screen.y + 10},            // The dim screen around the list.
+            Point{panel.x + 8, panel.y + panel.height / 2}, // The sheet's margin.
+            Centre(need(".Title"))};                        // The title.
+        misses.insert(misses.end(), gaps.begin(), gaps.end());
+        for (const auto at : misses)
+        {
+            PressOverList(view, shade, sheet, at,
+                          "A held press outside a list's controls leaves its shade and sheet as they were.",
+                          "A press outside a list's controls leaves its shade and sheet as they were.");
+            Check(shade.IsVisible(), "A press outside a list's controls does not close it.");
+        }
+    }
+    void PressOutsideOsuImportControls(MusicSelectView &view, Visual2DCanvas &canvas)
+    {
+        const auto need = [&](const char *name) -> Visual2DNode & { return Need(Find(canvas.Root(), name), name); };
+        const auto row = need("OsuImport.Difficulty.0").BoundsInCanvas();
+        PressOutsideListControls(view, canvas, "OsuImport", {Point{row.x + row.width / 2, row.y - 2.5F}}); // Under the first row.
+        Check(need("OsuImport.Check.0").GetComponent<TextVisualComponent>()->Text() == L"✓",
+              "A press outside the import list's controls changes no check.");
+        // A name cell is a control of its own: a click selects its row and leaves the check alone.
+        PressOverList(view, need("OsuImport.Overlay"), need("OsuImport.Panel"), Centre(need("OsuImport.Difficulty.0")),
+                      "Holding a name cell leaves the shade as it was.", "Clicking a name cell leaves the shade as it was.");
+        Check(need("OsuImport.Check.0").GetComponent<TextVisualComponent>()->Text() == L"✓",
+              "Clicking a name cell leaves its check as it was.");
+    }
     // The difficulty list: only convertible difficulties can be checked, a selected failure
     // explains itself, and the answer is delivered exactly once.
     void TestOsuImportPanel()
@@ -650,6 +722,7 @@ namespace
                   label("OsuImport.Difficulty.1").find(texts.Get("OsuImport.exists")) != std::wstring::npos &&
                   label("OsuImport.Difficulty.2").starts_with(L"c [표준].osu"),
               "Rows show the chart's own name, or the file name when nothing was converted.");
+        PressOutsideOsuImportControls(view, *canvas);
         click("OsuImport.Difficulty.2");
         Check(label("OsuImport.Status") == L"Unsupported mode", "A selected failure shows the converter's reason.");
         click("OsuImport.Check.0");
@@ -911,6 +984,7 @@ namespace
             click("Favorites.Manage");
             auto *overlay = Find(canvas->Root(), "Favorites.Overlay");
             Check(overlay && overlay->IsVisible(), "Favorites opens one modal folder/membership editor.");
+            PressOutsideListControls(view, *canvas, "Favorites");
             click("Favorites.Member.2");
             Check(!state.favorites_.Values().Find(2)->charts.contains(key), "Membership edits remain a draft.");
             click("Favorites.Close");

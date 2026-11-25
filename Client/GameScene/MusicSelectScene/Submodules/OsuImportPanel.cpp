@@ -35,7 +35,9 @@ void OsuImportPanel::Initialize(Visual2DCanvas &canvas, TextCatalog &texts)
     texts_ = &texts;
     overlay_ = &CreatePanel(canvas.Root(), {}, "OsuImport.Overlay");
     overlay_->SetZIndex(1000);
-    ApplySpriteStyle(*overlay_, {0, 0, 0, .3F}, {0, 0, 0, .3F});
+    // The shade takes every press that misses a control, so it keeps one colour while pressed:
+    // a press tint would turn the whole screen behind the list blue.
+    ApplyFlatStyle(*overlay_, {0, 0, 0, .3F});
     overlay_->AddComponent<RectangleCollider2DComponent>();
     overlay_->AddComponent<PointerReceiverComponent>();
     panel_ = &CreatePanel(*overlay_, {}, "OsuImport.Panel");
