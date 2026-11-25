@@ -346,6 +346,40 @@ namespace tests
                     "A large note answered after a POOR settles at zero with no combo.");
         }
         {
+            // After a late POOR the focus still moves on: the note expires and the next one takes its own grade.
+            auto loaded = TaikoMode{}.CreateSession(pattern({1, 1}));
+            Require(loaded.Succeeded(), "Late POOR focus fixture must load.");
+            auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('K', InputEdge::Pressed, RhythmTime{70'000}));
+            static_cast<void>(session.Update(RhythmTime{200'000}));
+            const auto next = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
+            const auto hit = std::ranges::find(next.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            Require(hit != next.events.end() && !hit->recovery && hit->judgement.grade == JudgementGrade::Max,
+                    "The note after a late POOR keeps its own grade.");
+            Require(session.Statistics().judgements[Miss] == 1 && session.Statistics().poorCount == 1 &&
+                        session.Statistics().combo == 1,
+                    "The late POOR note is a MISS; the next note starts a new combo.");
+        }
+        {
+            // A Buzz head: a wrong colour 70 ms early is a head POOR; the body ticks keep their own rule.
+            auto buzz = MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"});
+            buzz.notes.back().position.fraction = Rational{9, 16};
+            const std::array held{static_cast<PhysicalKey>('C')};
+            auto loaded = TaikoMode{}.CreateSession(buzz);
+            Require(loaded.Succeeded(), "Buzz wrong-colour fixture must load.");
+            auto &session = *loaded.session;
+            const auto wrong = rejected(session.ProcessInput('K', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(session.ProcessInput('K', InputEdge::Released, RhythmTime{-60'000}));
+            Require(IsPoor(wrong) && !IsEarlyBad(wrong) && session.Statistics().poorCount == 1,
+                    "A wrong colour before a Buzz head is a POOR on the head.");
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(session.Update(RhythmTime{1'125'000}, held));
+            const auto rate = session.AccuracyRate();
+            Require(rate && *rate > 0.0 && *rate <= 0.5,
+                    "A POOR Buzz head scores zero while its ticks keep their half.");
+            Require(session.Statistics().poorCount == 1, "Buzz ticks add no POOR.");
+        }
+        {
             // A wrong colour outside the BAD window stays ignored.
             auto loaded = TaikoMode{}.CreateSession(pattern({1}));
             Require(loaded.Succeeded(), "Out-of-window wrong-colour fixture must load.");
