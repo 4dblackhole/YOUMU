@@ -172,7 +172,8 @@ MSBuild 속성 `YoumuGraphicsSwitches`를 `false`로 빌드하면(`msbuild YOUMU
 
 - 속성은 `Client/YOUMU.Client.vcxproj`가 전처리기 정의 `YOUMU_GRAPHICS_SWITCHES`(`1`/`0`)로 넘기고,
   `Client/Diagnostics/GraphicsSwitches.cpp`만 그 값을 봅니다.
-- 기본값은 `true`(허용)입니다. `DeviceRemovedData`는 이 속성과 상관없이 늘 읽습니다.
+- 기본값은 `true`(허용)입니다. 데모 빌드도 켠 채로 두고, 실제 배포 빌드만 `false`로 빌드합니다.
+  `DeviceRemovedData`는 이 속성과 상관없이 늘 읽습니다.
 - `Tests/Presentation/RunGraphicsSwitchesTests.ps1`이 테스트를 정의 `1`·`0`으로 두 번 빌드합니다.
   `0` 빌드는 `Option.ini`에 값이 있어도 엔진 설정이 기본값인지, 로그 줄이 무시한다고 말하는지 확인합니다.
   그리고 `YoumuGraphicsSwitches=false`가 정의 `0`으로 이어지는지 MSBuild로 확인합니다.
