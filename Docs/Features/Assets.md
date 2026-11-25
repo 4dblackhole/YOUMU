@@ -66,6 +66,8 @@ msbuild YOUMU.sln /m /p:Configuration=Release /p:Platform=x64
 
 게임 실행에 필요한 직접 배포 파일은 bin/x64/Release의 Y's Orchestral Unison - Melodic Ultimatum.exe와 fmod.dll입니다.
 PhantomCore 등 정적 라이브러리는 이미 EXE에 링크되므로 .lib/.pdb/테스트 EXE/fmodL.dll은 제외합니다.
+다만 사용자가 보낸 덤프 파일을 읽으려면 그 빌드의 EXE와 `.pdb`가 필요하므로, 배포할 때마다 둘을 배포본과 짝지어 따로 보관합니다
+([크래시 진단 기록](CrashDiagnostics.md#덤프-읽기와-pdb-보관)).
 에디터의 Import osu! folder 기능을 제공하려면 같은 빌드의 OsuTaikoConverter.exe도 `Asset/Submodules/`에
 동봉합니다(게임 EXE 옆이 아닙니다). 기본 플레이 실행에는 필요하지 않지만 가져오기 버튼은 이 파일을 실행합니다.
 빌드는 변환기를 `bin/x64/<구성>/Asset/Submodules/`에도 복사하므로 그 `Asset` 폴더째 배포 폴더에 넣으면 됩니다.

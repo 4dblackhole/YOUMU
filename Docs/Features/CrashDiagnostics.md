@@ -1,6 +1,7 @@
 # 크래시 진단 기록
 
-게임이 꺼지거나 멈췄을 때 무슨 일이 있었는지 나중에 알 수 있도록, 실행마다 로그 파일을 남깁니다.
+게임이 꺼지거나 멈췄을 때 무슨 일이 있었는지 나중에 알 수 있도록, 실행마다 로그 파일을 남기고
+죽거나 멈춘 순간에는 덤프 파일을 남깁니다.
 기록은 그 PC에만 남고 어디로도 보내지 않습니다.
 
 엔진 쪽 계약(받는 쪽 인터페이스, 그래픽 장치 끊김 보고서, 멈춤 감시, 덤프)은 엔진의
@@ -11,9 +12,11 @@
 | 위치 | 내용 | 보관 |
 | --- | --- | --- |
 | `<게임 폴더>/Data/Logs/youmu-YYYYMMDD-HHMMSS.log` | 실행 한 번의 로그(UTF-8 텍스트) | 최근 10개. 시작할 때 오래된 것부터 지웁니다 |
+| `<게임 폴더>/Data/Crash/youmu-YYYYMMDD-HHMMSS-<사유>.dmp` | 죽거나 멈춘 순간의 덤프(모든 스레드의 호출 스택) | 최근 5개 |
 
-게임 폴더는 실행 파일이 있는 폴더입니다. 폴더에 쓸 수 없으면 로그 없이 실행합니다(게임은 그대로 켜집니다).
-문제가 생겼을 때는 이 폴더에서 이름의 시각이 가장 늦은 파일을 보면 됩니다. 게임을 다시 켜도 지난 실행의 파일은 남아 있습니다.
+게임 폴더는 실행 파일이 있는 폴더입니다. 폴더에 쓸 수 없으면 로그나 덤프 없이 실행합니다(게임은 그대로 켜집니다).
+문제가 생겼을 때는 두 폴더에서 이름의 시각이 가장 늦은 파일을 보면 됩니다. 게임을 다시 켜도 지난 실행의 파일은 남아 있습니다.
+개발자에게 보낼 때는 로그 파일과, 있으면 같은 시각의 덤프 파일을 함께 보냅니다.
 
 ## 로그에 적히는 것
 
@@ -74,7 +77,8 @@ recent statistics, 1 seconds, oldest first:
 | --- | --- | --- |
 | 그래픽 장치가 끊김 | `graphics device lost: …` | 실패한 호출과 결과, 제거 사유, 마지막 프레임 번호·화면 크기·draw 수, 그래픽 메모리, DRED 내용(켰을 때), 최근 통계 |
 | 실행을 끝낸 예외 | `fatal error: …` | 예외 문구. 장치 끊김 뒤에 이어 오면 최근 통계를 다시 적지 않습니다 |
-| 메인 루프가 10초 동안 한 바퀴도 못 돎 | `main loop stalled: …` | 멈춘 시간, 메인 스레드 ID, 그 전까지 돈 횟수, 최근 통계. 풀리면 `main loop resumed after … s` |
+| 메인 루프가 10초 동안 한 바퀴도 못 돎 | `main loop stalled: …` | 멈춘 시간, 메인 스레드 ID, 그 전까지 돈 횟수, 최근 통계, 덤프(`…-stall.dmp`). 풀리면 `main loop resumed after … s` |
+| 게임이 죽음(잡히지 않은 예외) | `crash: …` | 사유, 예외 코드와 주소, 스레드 ID, 덤프 파일 이름, 최근 통계 |
 
 최근 통계 한 줄은 1초이고 오래된 것부터 적습니다.
 
@@ -91,7 +95,44 @@ recent statistics, 1 seconds, oldest first:
 멈춤은 창을 끌거나 크기를 바꾸는 동안, 메뉴·대화 상자, 디버거 중단에는 알리지 않습니다(엔진이 구분합니다).
 한도 10초는 곡 로딩 같은 정상 지연보다 넉넉히 길게 잡은 값입니다(`GameDiagnostics::MainLoopStallSeconds`).
 
-덤프 파일(`Data/Crash`)과 오류 창의 파일 위치 안내는 아직 없습니다. 다음 변경에서 넣습니다.
+## 덤프 파일
+
+엔진의 `CrashDumpService`가 씁니다. `wWinMain`이 로그 다음에 만들므로, 그 뒤의 어느 시점에 죽어도 남습니다.
+
+| 파일 이름 끝 | 언제 | 로그의 줄 |
+| --- | --- | --- |
+| `-crash.dmp` | 접근 위반·스택 넘침 같은 잡히지 않은 구조적 예외 | `crash: unhandled exception, code 0xC0000005 at 0x…, thread …, dump written: …` |
+| `-terminate.dmp` | `std::terminate`(아무도 잡지 않은 C++ 예외 등) | `crash: std::terminate, …` |
+| `-purecall.dmp` | 순수 가상 함수 호출 | `crash: pure virtual call, …` |
+| `-invalid-parameter.dmp` | C 런타임이 인자를 거부함 | `crash: the C runtime rejected an argument, …` |
+| `-stall.dmp` | 메인 루프가 10초 멈춤. 게임은 계속 돕니다 | `dump requested, …, dump written: …` |
+
+- 덤프에는 모든 스레드의 호출 스택과 로드된 모듈이 들어가고 힙은 들어가지 않습니다(수백 KB에서 수 MB).
+- 로그의 줄에는 덤프 파일의 이름만 적고 폴더는 적지 않습니다.
+- 덤프 안에는 실행 파일과 모듈의 전체 경로가 들어 있습니다. 사용자 폴더 아래에 게임을 두었다면 사용자 이름이 보입니다.
+- 그래픽 장치 끊김과 `Run`이 잡는 예외(치명적 오류)는 프로세스가 죽는 것이 아니므로 덤프가 없고 로그만 남습니다.
+- 잡지 못하는 경우와 내부 동작은 엔진 문서의 "크래시 덤프" 절에 있습니다.
+
+### 덤프 읽기와 PDB 보관
+
+덤프의 호출 스택을 함수 이름으로 보려면 **그 빌드의** 실행 파일과 PDB가 있어야 합니다. 다른 빌드의 PDB로는 맞지 않습니다.
+
+- 배포 폴더를 만들 때, 같은 빌드의 `bin/x64/Release/Y's Orchestral Unison - Melodic Ultimatum.exe`와 같은 이름의 `.pdb`를
+  배포본과 짝이 되는 보관 폴더에 함께 복사해 둡니다(예: `<보관 위치>/<배포 날짜>-<YOUMU 커밋>/`). 로그 첫 줄의 빌드 시각으로 짝을 찾습니다.
+- PDB는 배포 폴더에 넣지 않습니다([자산·스킨](Assets.md#release-배포-절차)의 제외 목록 그대로).
+- 읽을 때는 Visual Studio에서 `.dmp`를 열고 기호 경로에 보관 폴더를 넣거나, 아래처럼 봅니다.
+
+```powershell
+cdb -z youmu-20261125-101010-crash.dmp -y <exe와 PDB를 보관한 폴더> -c ".ecxr; k; q"
+```
+
+`-stall.dmp`에는 예외 정보가 없으므로 `.ecxr` 대신 `~*k`로 모든 스레드를 봅니다. 메인 스레드는 로그의 `main loop stalled` 줄에 적힌 스레드 ID입니다.
+
+## 치명적 오류 창
+
+`Run`이 잡은 예외로 게임이 끝날 때, 창이 있는 실행에서는 게임이 오류 창을 직접 띄웁니다. 엔진의 예외 문구 아래에
+"이 실행의 기록이 아래 파일에 남았습니다."(언어 파일의 `Startup.logNote`)와 로그 파일의 전체 경로를 보여 줍니다.
+숨김 실행(smoke)에서는 창을 띄우지 않습니다. 프로세스가 죽는 크래시에서는 창을 띄우지 않습니다(손상된 프로세스에서 창을 띄우지 않기 위해서입니다).
 
 ## 장치 제거 추가 정보(DRED)
 
@@ -107,9 +148,11 @@ recent statistics, 1 seconds, oldest first:
 | --- | --- |
 | `--crash-test=device` | 600프레임을 그린 뒤 엔진이 그래픽 장치를 일부러 제거합니다. 게임은 장치 끊김으로 끝납니다(종료 코드 1) |
 | `--crash-test=stall` | 시작 0.5초 뒤 Update 한 번이 3초 동안 돌아오지 않습니다. 이때만 멈춤 한도를 1초로 줄입니다 |
-| `--log-dir=<폴더>` | 로그를 `Data/Logs` 대신 준 폴더에 씁니다(따옴표로 감싼 경로 가능). 시험이 사용자의 폴더를 건드리지 않게 합니다 |
+| `--crash-test=exception` | 시작 0.5초 뒤 Update가 예외를 던집니다. 엔진이 잡아 치명적 오류로 끝납니다(로그, 오류 창, 종료 코드 1). 덤프는 없습니다 |
+| `--crash-test=crash` | 시작 0.5초 뒤 Update가 접근 위반을 일으킵니다. 아무도 잡지 않으므로 `-crash.dmp`가 남고 Windows가 프로세스를 끝냅니다(종료 코드 0xC0000005) |
+| `--log-dir=<폴더>` | 로그를 `Data/Logs` 대신 준 폴더에, 덤프를 `<폴더>/Crash`에 씁니다(따옴표로 감싼 경로 가능). 시험이 사용자의 폴더를 건드리지 않게 합니다 |
 
-`Tests/Presentation/RunCrashDiagnosticsTests.ps1`이 이 인자로 게임을 숨김 창으로 세 번 돌려 로그 내용을 확인합니다.
+`Tests/Presentation/RunCrashDiagnosticsTests.ps1`이 이 인자로 게임을 숨김 창으로 다섯 번 돌려 로그 내용과 덤프 파일을 확인합니다.
 
 ## 코드
 
@@ -117,10 +160,13 @@ recent statistics, 1 seconds, oldest first:
 | --- | --- |
 | `GameLog` | 로그 파일 하나. 프로세스에 하나이며 `wWinMain`의 `game_log::Session`이 소유합니다. 어느 코드든 `game_log::Write`로 한 줄을 씁니다 |
 | `RecentStatistics` | 1초 표본 120개 고정 배열. 할당하지 않습니다 |
-| `GameDiagnostics` | 엔진의 받는 쪽(`IEngineDiagnosticSink`) 구현. 표본을 받아 보관하고 위 세 경우를 로그에 씁니다 |
+| `GameDiagnostics` | 엔진의 받는 쪽(`IEngineDiagnosticSink`) 구현. 표본을 받아 보관하고 장치 끊김·치명적 오류·멈춤을 로그에 쓰며, 멈춤 때 덤프를 요청하고 치명적 오류 창을 띄웁니다 |
+| `CrashDumpLog` | 덤프 관찰자(`ICrashDumpObserver`) 구현. 덤프가 써지면 이유와 파일 이름 한 줄을, 크래시면 최근 통계까지 로그에 씁니다. 통계는 읽기만 합니다 |
 | `LaunchDiagnostics` | 숨은 실행 인자 읽기 |
 
 - 한 줄은 추가 전용으로 연 파일에 `WriteFile` 한 번으로 씁니다. 그래서 스레드끼리 줄이 섞이지 않고 잠금이 없습니다.
 - 멈춤은 엔진의 감시 스레드가 알립니다. 그 경로(`WritePlain`, `RecentStatistics::WriteToLog`)는 할당하지 않습니다. 멈춘 스레드가 힙을 쥐고 있을 수 있기 때문입니다.
-- `wWinMain`이 로그 → `GameDiagnostics` → `YOUMUGame` 순서로 만들고 반대 순서로 없앱니다. `YOUMUGame`은 `GameDiagnostics`를 빌려 쓰기만 합니다.
+- `wWinMain`이 로그 → `GameDiagnostics` → `CrashDumpLog` → `CrashDumpService` → `YOUMUGame` 순서로 만들고 반대 순서로 없앱니다. `YOUMUGame`은 `GameDiagnostics`를 빌려 쓰기만 합니다.
+- 가리키는 방향은 한쪽입니다: `GameDiagnostics` → `CrashDumpService`(멈춤 덤프 요청) → `CrashDumpLog`(써진 덤프 통지) → 최근 통계(읽기).
+- 크래시 통지(`OnCrashDump`)는 덤프 스레드에서, 죽어 가는 프로세스 안에서 불립니다. 그 경로도 할당하지 않고 미리 연 로그 핸들만 씁니다.
 - `SkinSetSelection`과 `RhythmTestScene`의 저장 실패 문구는 아직 디버그 출력으로만 나갑니다.
