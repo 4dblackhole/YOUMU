@@ -137,6 +137,14 @@ struct NoteAccuracy
     // The grade a finished long note shows: Miss without any progress, otherwise its score
     // rate placed on the timing grades' score boundaries (Max 100%, Perfect 99%, Great 90%).
     [[nodiscard]] JudgementGrade CompletionGrade() const noexcept;
+    // The note judges the timing of its next hit: every hit of a timing note, only the head of a Buzz. Rolls,
+    // balloons and tick rolls never do, so a press before them is neither an early BAD nor a POOR.
+    [[nodiscard]] bool JudgesTiming() const noexcept
+    {
+        if (target.kind == NoteAccuracyKind::TimingHits)
+            return true;
+        return target.kind == NoteAccuracyKind::Hold && acceptedHits == 0;
+    }
 #if defined(_DEBUG)
     [[nodiscard]] std::wstring DebugText() const;
 #endif

@@ -533,6 +533,37 @@ namespace tests
         }
     }
 
+    // BAD is a timing mistake and POOR a wrong action (user decision: "BAD는 타이밍이 맞지않은 처리, POOR은 동작이
+    // 맞지않은 처리를 의미하도록 해주세요"). Rolls and balloons judge no timing, so a press just before them is
+    // neither: no early BAD, no POOR, no word and no red beam.
+    void TestRollHeadPressIsNotJudged()
+    {
+        const auto judged = [](const NoteProcessResult &result) {
+            return std::ranges::any_of(result.events, [](const NoteEvent &event) {
+                return IsPoor(event) || IsEarlyBad(event) || event.judgement.grade == JudgementGrade::Bad;
+            });
+        };
+        for (const auto type : {TaikoNoteType::Roll, TaikoNoteType::BigRoll, TaikoNoteType::Balloon})
+        {
+            auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(type));
+            Require(loaded.Succeeded(), "Roll head fixture must load.");
+            auto &session = *loaded.session;
+            for (const std::int64_t at : {-70'000, -20'000})
+            {
+                const auto early = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{at});
+                static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{at + 5'000}));
+                Require(HasEvent(early, NoteEventType::InputRejected) && !judged(early),
+                        "A press before a roll or balloon head is not graded: no early BAD and no POOR.");
+            }
+            const auto &statistics = session.Statistics();
+            Require(statistics.poorCount == 0 && statistics.judgements[static_cast<std::size_t>(JudgementGrade::Bad)] == 0,
+                    "Presses before a roll or balloon count no POOR and no BAD.");
+            const auto head = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
+            Require(HasEvent(head, NoteEventType::TickAccepted) || HasEvent(head, NoteEventType::HitAccepted),
+                    "The roll or balloon still takes the press on its head.");
+        }
+    }
+
     // The last tick of a tick roll keeps its whole GOOD window, even past the tail (user decision: "맨마지막 틱의
     // 포커스가 끝나기 전 혹은 처리되기 전에 틱롤노트의 처리가 종료되면 안됩니다"). The window comes from the note's
     // judgement profile, never a fixed number, so it follows the judge level.

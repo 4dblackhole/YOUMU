@@ -43,8 +43,10 @@ void DrumRollInputRule::ProcessInput(const NoteRuleContext &context,
 {
     if (!CanAccept(context, input, judgement))
     {
+        // A roll judges no timing: a press outside its body (before the head or after the tail) is not graded, so it
+        // is never a POOR (BAD is timing, POOR is a wrong action; user decision).
         output.events.push_back(MakeEvent(context, NoteEventType::InputRejected, state_, state_,
-                                          judgement, input.time));
+                                          {JudgementGrade::Unjudged, {}, 0.0}, input.time));
         return;
     }
     output.events.push_back(MakeEvent(context, NoteEventType::TickAccepted, state_, state_,
