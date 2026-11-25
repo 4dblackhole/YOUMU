@@ -368,8 +368,9 @@ void GameplayJudgementView::Present(const NoteEvent &event)
         return;
     const bool hasTiming = HasInputTiming(event);
     const bool poor = LaneKeyBeam::IsWrongInput(event);
-    // A note missed after an early BAD already showed its BAD; it shows no further word.
-    const bool miss = event.type == NoteEventType::Missed && !event.leftAtEarlyBad;
+    // A note missed after an early BAD or a POOR already showed that word; it shows no further word.
+    const bool shownBefore = event.leftAtEarlyBad || event.leftAtPoor;
+    const bool miss = event.type == NoteEventType::Missed && !shownBefore;
     if (!hasTiming && !miss && !poor)
         return;
     const std::size_t index = poor   ? PoorImageIndex

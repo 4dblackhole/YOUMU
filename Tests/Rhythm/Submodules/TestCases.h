@@ -75,6 +75,7 @@ namespace tests
     void TestReleaseIsNotEarlyBad();
     void TestWrongColourPoor();
     void TestTickRollLastTickWindow();
+    void TestPoorSettlesNote();
     void TestTickRollFocusAgainstNextNote();
     void TestPoorSingleNoteAccuracy();
     void TestPoorLargeNoteAccuracy();

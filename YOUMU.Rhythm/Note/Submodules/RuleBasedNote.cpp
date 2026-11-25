@@ -107,6 +107,14 @@ NoteProcessResult RuleBasedNote::ProcessInput(const RhythmInputEvent &input)
     const bool retrying = retryAfterEarlyBad_ || retryAfterPoor_;
     // Asked before the rule changes state: a later hit of a large note must not see its own first hit.
     const bool wrongPress = IsWrongPress(input);
+    if (!wrongPress && WaitsForGoodAfterPoor(input, judgement))
+    {
+        // A note with a POOR takes only GOOD or better (user decision); a BAD press is shown but counts nothing.
+        result.events.push_back(MakeEvent(Context(), NoteEventType::InputRejected, State(), State(), judgement,
+                                          input.time));
+        AppendAudioCues(result);
+        return result;
+    }
     rule_->ProcessInput(Context(), input, judgement, result);
     if (wrongPress)
         for (NoteEvent &event : result.events)
@@ -190,9 +198,17 @@ bool RuleBasedNote::IsWrongPress(const RhythmInputEvent &input) const noexcept
     return !rule_->CanAccept(Context(), onTime, {JudgementGrade::Max, RhythmDuration::zero(), 1.0});
 }
 
+bool RuleBasedNote::WaitsForGoodAfterPoor(const RhythmInputEvent &input, const JudgementResult &judgement) const noexcept
+{
+    if (input.edge != InputEdge::Pressed || !poorOnTimingTarget_)
+        return false;
+    return JudgesTiming() && judgement.grade == JudgementGrade::Bad;
+}
+
 void RuleBasedNote::RecordEarlyBad() noexcept
 {
-    if (!JudgesTiming())
+    // A note with a POOR stays a POOR: a BAD press before it neither counts nor changes what it waits for.
+    if (!JudgesTiming() || poorOnTimingTarget_)
         return;
     badOnTimingTarget_ = true;
     retryAfterEarlyBad_ = true;
@@ -246,6 +262,7 @@ void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
                 std::ranges::fill(accuracy_.hitScoreRates, 0.0);
             accuracy_.rejectedTiming = rejected;
             event.leftAtEarlyBad = event.type == NoteEventType::Missed && retryAfterEarlyBad_;
+            event.leftAtPoor = event.type == NoteEventType::Missed && poorOnTimingTarget_;
             accuracy_.finalized = true;
             result.finalizedAccuracies.push_back(accuracy_);
             break;

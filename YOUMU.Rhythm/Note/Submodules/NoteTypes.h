@@ -60,17 +60,21 @@ struct NoteEvent
     std::size_t hitIndex{};
     std::size_t tickIndex{};
     std::optional<NoteAction> inputAction;
-    // BAD recovery: an accepted hit (or Buzz head) that came after an early BAD or a POOR on the same
-    // timing target. It shows its own grade but settles as a BAD.
+    // Recovery: an accepted hit (or Buzz head) that came after an early BAD or a POOR on the same timing target.
+    // It shows its own grade. After an early BAD it settles as a BAD; after a POOR the note's one POOR is its
+    // whole result and the hit adds no count (user decision: POOR is a kind of BAD).
     bool recovery{};
     // A miss of a note last left at an early BAD: it settles as a BAD, not a MISS, with no new word shown.
     bool leftAtEarlyBad{};
+    // A miss of a note that took a POOR: the POOR is its result, so no MISS is counted or shown (user decision).
+    bool leftAtPoor{};
     // A rejected press the note would refuse even on time (a wrong colour), within the BAD window before or
     // after the note: a POOR whatever its timing grade (user decision).
     bool wrongPress{};
 };
 
-// POOR: a rejected press within GOOD, or a wrong colour's press anywhere within BAD. The note keeps waiting.
+// POOR: a rejected press within GOOD, or a wrong colour's press anywhere within BAD. The note keeps waiting and
+// takes only a hit of GOOD or better from then on. Every POOR press shows its word; a note counts one POOR.
 [[nodiscard]] inline bool IsPoor(const NoteEvent &event) noexcept
 {
     if (event.type != NoteEventType::InputRejected)

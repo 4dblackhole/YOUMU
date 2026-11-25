@@ -36,6 +36,9 @@ class RuleBasedNote final : public INote
   private:
     [[nodiscard]] NoteRuleContext Context() const noexcept;
     [[nodiscard]] bool JudgesTiming() const noexcept;
+    // A right-colour press in BAD on a note that already took a POOR: rejected without a count.
+    [[nodiscard]] bool WaitsForGoodAfterPoor(const RhythmInputEvent &input,
+                                             const JudgementResult &judgement) const noexcept;
     void MarkTimingOutcome(NoteProcessResult &result, bool judgedTiming, bool retrying);
     void AppendAudioCues(NoteProcessResult &result) const;
     void AccumulateAccuracy(NoteProcessResult &result);
