@@ -133,6 +133,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.diagnostics.sink = diagnostics_;
     config.diagnostics.graphicsDeviceRemovedData = optionSettings_.Values().deviceRemovedData;
     config.diagnostics.graphics = GraphicsSwitchesForRun(optionSettings_.Values());
+    config.renderRateOverrideHz = RenderRateOverrideForRun(optionSettings_.Values());
     config.diagnostics.mainLoopStallSeconds = GameDiagnostics::MainLoopStallSeconds;
     // The hidden crash tests need more than a smoke run's three frames.
     if (launch_.removeGraphicsDevice)

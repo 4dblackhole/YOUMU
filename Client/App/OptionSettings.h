@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 
+// [Diagnostics] RenderRateOverrideHz accepts 0 or a rate in this range.
+inline constexpr std::uint32_t MinRenderRateOverrideHz = 10;
+inline constexpr std::uint32_t MaxRenderRateOverrideHz = 5000;
+
 // FMOD mixer buffer lengths offered in the options, in samples (four buffers each).
 inline constexpr std::array<std::uint32_t, 4> DspBufferLengths{128, 256, 512, 1024};
 
@@ -74,6 +78,10 @@ struct OptionValues
     // SwapChainBuffers (2/3) and WaitableSwapChain (0/1). The defaults are the engine's normal behaviour. Read at
     // start only, no control in the options panel, and ignored by a build made without them (GraphicsSwitches.h).
     PhantomCore::GraphicsDeviceDiagnosticsConfig graphics;
+    // [Diagnostics] RenderRateOverrideHz, 0 (off) or MinRenderRateOverrideHz..MaxRenderRateOverrideHz: the engine's
+    // base render rate in place of the display refresh rate (RenderRate display draws at it, double at twice it,
+    // unlimited ignores it). A crash experiment switch like the ones above.
+    std::uint32_t renderRateOverrideHz{};
     std::map<std::string, std::map<std::string, std::vector<std::uint16_t>>> modeKeys;
 };
 

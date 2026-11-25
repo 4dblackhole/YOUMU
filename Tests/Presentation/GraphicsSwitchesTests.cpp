@@ -49,7 +49,7 @@ namespace
 
     constexpr std::string_view Experiment = "[Diagnostics]\r\nDeviceRemovedData=1\r\nGraphicsValidation=2\r\n"
                                             "GraphicsAdapter=warp\r\nAllowTearing=0\r\nSwapChainBuffers=3\r\n"
-                                            "WaitableSwapChain=1\r\n";
+                                            "WaitableSwapChain=1\r\nRenderRateOverrideHz=300\r\n";
 
     GraphicsDeviceDiagnosticsConfig ExperimentSwitches()
     {
@@ -66,10 +66,12 @@ namespace
     {
         OptionValues values;
         Check(Load(ini, "[General]\r\nLanguage=en\r\n", values), "A file without [Diagnostics] loads.");
-        Check(SameSwitches(values.graphics, {}), "Missing graphics switches keep the engine defaults.");
+        Check(SameSwitches(values.graphics, {}) && values.renderRateOverrideHz == 0,
+              "Missing graphics switches keep the engine defaults.");
         Check(Load(ini, Experiment, values), "The experiment switches load.");
         Check(SameSwitches(values.graphics, ExperimentSwitches()) && values.deviceRemovedData,
               "Every graphics switch is read, WARP in any case.");
+        Check(values.renderRateOverrideHz == 300, "The render rate override is read.");
 
         Check(Load(ini, "[Diagnostics]\r\nGraphicsAdapter=1\r\n", values), "An adapter number loads.");
         const bool index = values.graphics.adapter == GraphicsAdapterRequest::Index && values.graphics.adapterIndex == 1;
@@ -79,7 +81,8 @@ namespace
         Check(named, "Other text names the adapter by part of its name.");
 
         for (const char *bad : {"[Diagnostics]\r\nGraphicsValidation=3\r\n", "[Diagnostics]\r\nSwapChainBuffers=4\r\n",
-                                "[Diagnostics]\r\nAllowTearing=2\r\n", "[Diagnostics]\r\nWaitableSwapChain=-1\r\n"})
+                                "[Diagnostics]\r\nAllowTearing=2\r\n", "[Diagnostics]\r\nWaitableSwapChain=-1\r\n",
+                                "[Diagnostics]\r\nRenderRateOverrideHz=5\r\n"})
             Check(!Load(ini, bad, values), "An out-of-range graphics switch rejects the file like DeviceRemovedData does.");
     }
 
@@ -95,6 +98,7 @@ namespace
         OptionSettings reread(ini);
         Check(reread.Load(error) && SameSwitches(reread.Values().graphics, values.graphics),
               "Saved switches read back the same.");
+        Check(reread.Values().renderRateOverrideHz == 300, "The saved render rate override reads back the same.");
         values.graphics.adapterName = "123";
         Check(!settings.Save(values, error), "An adapter name that would read back as a number is not saved.");
     }
@@ -107,14 +111,18 @@ namespace
         const auto forRun = GraphicsSwitchesForRun(values);
         const std::string line = DescribeGraphicsSwitches(values);
         const bool saysIgnored = line.find("ignored by this build") != std::string::npos;
-        Check(line.find("validation 2, adapter WARP, tearing 0, buffers 3, waitable 1") != std::string::npos,
+        Check(line.find("validation 2, adapter WARP, tearing 0, buffers 3, waitable 1, render rate override 300") !=
+                  std::string::npos,
               "The log line shows what Option.ini asks for.");
+        const double rate = RenderRateOverrideForRun(values);
         if (expectAllowed)
         {
             Check(SameSwitches(forRun, ExperimentSwitches()) && !saysIgnored, "A normal build passes the switches on.");
+            Check(rate == 300.0, "A normal build passes the render rate override on.");
             return;
         }
         Check(SameSwitches(forRun, {}), "A build without the switches gives the engine its defaults whatever Option.ini says.");
+        Check(rate == 0.0, "A build without the switches keeps the display rate whatever Option.ini says.");
         Check(saysIgnored, "The log line says the build ignores the switches.");
     }
 } // namespace

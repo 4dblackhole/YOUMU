@@ -322,6 +322,10 @@ namespace
         if (!IsValidPauseRewindMeasures(values.pauseRewindMeasures))
             throw std::runtime_error("The Rewind measure count must be 1..65535.");
         ValidateGraphicsSwitches(values.graphics);
+        const bool overrideInRange = values.renderRateOverrideHz >= MinRenderRateOverrideHz &&
+                                     values.renderRateOverrideHz <= MaxRenderRateOverrideHz;
+        if (values.renderRateOverrideHz != 0 && !overrideInRange)
+            throw std::runtime_error("RenderRateOverrideHz must be 0 or 10..5000.");
         static_cast<void>(OutputName(values.audioOutput));
         static_cast<void>(RenderRateName(values.renderRate));
         static_cast<void>(WindowModeName(values.windowMode));
@@ -429,6 +433,8 @@ namespace
         {
             if (key == "DeviceRemovedData")
                 values.deviceRemovedData = ReadFlag(value, "DeviceRemovedData");
+            else if (key == "RenderRateOverrideHz")
+                values.renderRateOverrideHz = ReadInteger<std::uint32_t>(value);
             else
                 static_cast<void>(ReadGraphicsSwitch(values.graphics, key, value));
         }
@@ -573,7 +579,8 @@ bool OptionSettings::Save(const OptionValues &values, std::string &error)
              << "\r\nGraphicsAdapter=" << GraphicsAdapterSetting(values.graphics)
              << "\r\nAllowTearing=" << (values.graphics.allowTearing ? 1 : 0)
              << "\r\nSwapChainBuffers=" << values.graphics.swapChainBuffers
-             << "\r\nWaitableSwapChain=" << (values.graphics.waitableSwapChain ? 1 : 0) << "\r\n";
+             << "\r\nWaitableSwapChain=" << (values.graphics.waitableSwapChain ? 1 : 0)
+             << "\r\nRenderRateOverrideHz=" << values.renderRateOverrideHz << "\r\n";
         for (const auto &[mode, bindings] : values.modeKeys)
         {
             file << "\r\n[Keys." << mode << "]\r\n";
