@@ -116,6 +116,18 @@ namespace tests
             Require(HasEvent(early, NoteEventType::InputRejected) && early.finalizedAccuracies.empty() &&
                         bad(session.Statistics()) == 0,
                     "An early BAD keeps the note and counts nothing until it settles.");
+            const auto &lane = *session.Gear().Lanes().front();
+            Require(lane.CurrentIndex() == 0, "An early BAD keeps the focus on its note.");
+            // More right-colour presses inside the same early BAD window keep the focus too (user decision: "early bad
+            // 일때 올바른색으로 다시 쳤을 경우에 포커스를 그대로 유지해야합니다").
+            for (const std::int64_t at : {-65'000, -60'000, -56'000})
+            {
+                static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{at - 2'000}));
+                static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{at}));
+                Require(lane.CurrentIndex() == 0 && bad(session.Statistics()) == 0,
+                        "Pressing again inside the early BAD window keeps the focus and counts nothing.");
+            }
+            static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{-50'000}));
             const auto recovered = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
             const auto hit = std::ranges::find(recovered.events, NoteEventType::HitAccepted, &NoteEvent::type);
             Require(hit != recovered.events.end() && hit->recovery && hit->judgement.grade == JudgementGrade::Max,
@@ -452,6 +464,8 @@ namespace tests
             static_cast<void>(session->ProcessInput('D', InputEdge::Pressed, RhythmTime{180'000}));
             static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{185'000}));
             Require(counts(session->Statistics(), 1, 0, 0), "A BAD-range press after a POOR counts no BAD.");
+            Require(session->Gear().Lanes().front()->CurrentIndex() == 1,
+                    "That press keeps the focus on the POOR note.");
             const auto answered = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
             const NoteEvent *hit = firstHit(answered);
             Require(hit != nullptr && hit->recovery && hit->judgement.grade == JudgementGrade::Max,
