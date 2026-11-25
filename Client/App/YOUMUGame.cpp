@@ -14,6 +14,7 @@
 #include "App/GameDataPaths.h"
 #include "Diagnostics/GameDiagnostics.h"
 #include "Diagnostics/GameLog.h"
+#include "Diagnostics/GraphicsSwitches.h"
 #include "Records/LocalOffsetStore.h"
 #include "Records/PlayRecordStore.h"
 
@@ -78,6 +79,8 @@ namespace
                         Name(values.audioOutput), values.dspBufferLength, Name(values.language),
                         game_log::ToUtf8(values.skinSet), game_log::ToUtf8(options.SongsRoot().wstring()),
                         values.deviceRemovedData ? "on" : "off"));
+        // What Option.ini asks of the graphics device; the engine's own start record shows what it got.
+        game_log::Write(DescribeGraphicsSwitches(values));
     }
 } // namespace
 
@@ -129,6 +132,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
 
     config.diagnostics.sink = diagnostics_;
     config.diagnostics.graphicsDeviceRemovedData = optionSettings_.Values().deviceRemovedData;
+    config.diagnostics.graphics = GraphicsSwitchesForRun(optionSettings_.Values());
     config.diagnostics.mainLoopStallSeconds = GameDiagnostics::MainLoopStallSeconds;
     // The hidden crash tests need more than a smoke run's three frames.
     if (launch_.removeGraphicsDevice)
