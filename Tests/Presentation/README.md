@@ -93,7 +93,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/Verify/Test.ps1 -Con
 - `Client/Diagnostics`의 오브젝트를 링크해 실행 인자 읽기, 최근 통계의 고리(120개 유지·오래된 것부터), 로그 파일 보관 개수,
   사용자 프로필·게임 폴더 이름 가림, 그래픽 장치 끊김·치명적 오류·멈춤·크래시 줄의 문구를 확인합니다. 표본 하나를 넣는 비용과
   Scene 이름 비교 비용도 출력합니다(통과 조건은 아닙니다).
-- 이어서 게임 exe를 숨김 창으로 다섯 번 실행하고 로그 파일과 덤프 파일을 읽습니다: 정상(`--smoke-lobby`, 종료 코드 0), 그래픽 장치 일부러 제거
+- 감시 모드: `--diagnostics=watch` 읽기와, 감시를 켠 뒤의 표본만 로그에 한 줄씩 적히는지 확인합니다.
+- 이어서 게임 exe를 숨김 창으로 여섯 번 실행하고 로그 파일과 덤프 파일을 읽습니다: 정상(`--smoke-lobby`, 종료 코드 0, `mode: normal`),
+  감시 모드(`--diagnostics=watch`, `mode: watch`와 `device removed data on`), 그래픽 장치 일부러 제거
   (`--crash-test=device`, 종료 코드 1, 장치 끊김·최근 통계·치명적 오류 줄), Update 일부러 멈춤(`--crash-test=stall`, 멈춤·풀림 줄과 `-stall.dmp`),
   예외 던지기(`--crash-test=exception`, 종료 코드 1, 치명적 오류 줄), 일부러 죽기(`--crash-test=crash`, 종료 코드 0xC0000005, 크래시 줄과 `-crash.dmp`).
   덤프는 남겨야 하는 실행에만 하나씩 있고 미니덤프 형식인지 확인합니다.
