@@ -20,3 +20,8 @@ std::filesystem::path GameLogDirectory()
 {
     return GameDataDirectory() / L"Logs";
 }
+
+std::filesystem::path GameCrashDirectory()
+{
+    return GameDataDirectory() / L"Crash";
+}

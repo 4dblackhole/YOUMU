@@ -18,3 +18,6 @@
 
 // <game>/Data/Logs: one log file per run (game_log).
 [[nodiscard]] std::filesystem::path GameLogDirectory();
+
+// <game>/Data/Crash: dump files written when the game dies or its main loop stalls.
+[[nodiscard]] std::filesystem::path GameCrashDirectory();

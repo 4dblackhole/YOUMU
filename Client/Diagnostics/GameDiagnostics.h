@@ -4,11 +4,13 @@
 #include "PhantomCore.h"
 
 #include <atomic>
+#include <string>
 #include <string_view>
 
 // What the game does with the engine's diagnostics: engine records go to the
 // log as they come, and a lost graphics device, a fatal error and a stalled
-// main loop are written with the last two minutes of statistics.
+// main loop are written with the last two minutes of statistics. A stalled
+// loop also gets a dump of where it waits.
 //
 // wWinMain owns one and hands it to the game, which passes it to the engine
 // and feeds it the one-second samples. It must outlive Run.
@@ -24,6 +26,12 @@ class GameDiagnostics final : public PhantomCore::IEngineDiagnosticSink
                    std::string_view scene) noexcept;
     [[nodiscard]] const RecentStatistics &Recent() const noexcept { return recent_; }
 
+    // The service that writes the dump of a stalled loop; it must outlive Run. Null (the default) writes none.
+    void UseDumps(PhantomCore::CrashDumpService *dumps) noexcept { dumps_ = dumps; }
+    // After this the game shows a fatal error itself, with note and the log file under the message; without
+    // it the engine's plain dialog stays. Hidden runs never call it.
+    void ShowFatalErrors(std::wstring note);
+
     void OnEngineRecord(std::string_view line) noexcept override;
     void OnGraphicsDeviceLost(const PhantomCore::GraphicsDeviceLossReport &report) noexcept override;
     [[nodiscard]] PhantomCore::FatalErrorPresentation OnFatalError(std::string_view message) noexcept override;
@@ -37,4 +45,7 @@ class GameDiagnostics final : public PhantomCore::IEngineDiagnosticSink
 
     RecentStatistics recent_;
     std::atomic<bool> recentWritten_{};
+    PhantomCore::CrashDumpService *dumps_{};
+    bool showFatalErrors_{};
+    std::wstring fatalErrorNote_;
 };

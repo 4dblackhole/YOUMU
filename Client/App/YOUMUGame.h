@@ -41,7 +41,7 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     void RestoreSavedAudioDriver(PhantomCore::AudioSystem &audio);
     void SaveDraggedWindowPosition();
     void RecordDiagnostics(const PhantomCore::UpdateContext &context, bool measured);
-    void StallOnceForTest(const PhantomCore::UpdateContext &context);
+    void FailOnceForTest(const PhantomCore::UpdateContext &context);
 
     bool smokeTest_{};
     bool showPerformanceOverlay_{};
@@ -62,5 +62,5 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     GameDiagnostics *diagnostics_{}; // Owned by wWinMain; null when nothing is recorded.
     DiagnosticsLaunchOptions launch_;
     std::string loggedScene_;
-    bool stalledForTest_{};
+    bool failedForTest_{};
 };

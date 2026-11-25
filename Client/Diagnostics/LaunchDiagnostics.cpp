@@ -25,5 +25,18 @@ DiagnosticsLaunchOptions ParseDiagnosticsLaunchOptions(const std::wstring_view c
     options.logDirectory = SwitchValue(commandLine, LogDirectorySwitch);
     options.removeGraphicsDevice = commandLine.find(L"--crash-test=device") != std::wstring_view::npos;
     options.stallMainLoop = commandLine.find(L"--crash-test=stall") != std::wstring_view::npos;
+    options.throwException = commandLine.find(L"--crash-test=exception") != std::wstring_view::npos;
+    options.crash = commandLine.find(L"--crash-test=crash") != std::wstring_view::npos;
     return options;
+}
+
+const char *DiagnosticsLaunchOptions::CrashTestName() const noexcept
+{
+    if (removeGraphicsDevice)
+        return "device";
+    if (stallMainLoop)
+        return "stall";
+    if (throwException)
+        return "exception";
+    return crash ? "crash" : "none";
 }
