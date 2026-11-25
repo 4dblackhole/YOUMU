@@ -81,6 +81,11 @@ msbuild YOUMU.sln /m /t:Rebuild /p:Configuration=Release /p:Platform=x64
 구성별 로직과 GUI smoke의 종료 코드를 확인합니다. GUI EXE의 직접 호출에서는
 `$LASTEXITCODE`가 비어 있을 수 있으므로 `Start-Process -Wait -PassThru`를 사용합니다.
 
+smoke는 실행 중 던진 C++ 예외 수도 확인합니다(정상 실행은 예외를 던지지 않는다는 코드 구조 원칙).
+게임은 smoke 경로에서만 엔진의 `ThrownExceptionWatch`를 켜고, 하나라도 던졌으면 형식·`what()`·스택(모듈+오프셋)을
+로그에 적은 뒤 **종료 코드 3**으로 끝냅니다. `Test.ps1 -Core`는 smoke마다 로그를 검증 로그 폴더(`--log-dir`)에 두고,
+실패하면 그 줄을 보여 줍니다. 스택 오프셋은 그 빌드의 PDB와 cdb의 `ln <모듈>+<오프셋>`으로 함수 이름을 봅니다.
+
 ```powershell
 foreach ($configuration in 'Debug', 'Release') {
     & "./bin/x64/$configuration/YOUMU.Rhythm.Tests.exe" --catalog-root Client/Assets/Songs
