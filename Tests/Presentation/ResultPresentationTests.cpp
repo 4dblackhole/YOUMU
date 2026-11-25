@@ -761,7 +761,7 @@ namespace
         click(*replay);
         Check(view->Update(input, 0.0) == ResultAction::None, "Disabled replay must not emit any action.");
         texts.SetLanguage(Language::English);
-        Check(view->Update(input, 0.0) == ResultAction::None && HasText(*canvas, L"Accuracy by note group"),
+        Check(view->Update(input, 0.0) == ResultAction::None && HasText(*canvas, texts.Get("Result.groupTitle")),
               "Result strings must follow the shared language catalog.");
         // Shared tooltips: Back with its keys, the score, the option chips and the chart creator.
         const auto rest = [&](std::string_view name) -> std::wstring
