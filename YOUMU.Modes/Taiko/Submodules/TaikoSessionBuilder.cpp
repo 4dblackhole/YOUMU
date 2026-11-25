@@ -5,6 +5,7 @@
 #include "Note/Submodules/RuleBasedNote.h"
 #include "Note/Submodules/SequenceInputRule.h"
 #include "Note/Submodules/TapInputRule.h"
+#include "Parsing/LoadCancellation.h"
 #include "Taiko/Results/TaikoResultCollector.h"
 #include "TaikoBuildSupport.h"
 #include "TaikoChartNotes.h"
@@ -13,13 +14,12 @@
 namespace
 {
     std::vector<MeasureLinePresentationInfo> BuildMeasureLines(const MusicalTimeline &timeline,
-                                                               const EffectLookup &effects, std::stop_token stop)
+                                                               const EffectLookup &effects)
     {
         std::vector<MeasureLinePresentationInfo> result;
         result.reserve(timeline.MeasureSpans().size());
         for (const auto &span : timeline.MeasureSpans())
         {
-            CheckChartLoadCancellation(stop);
             if (span.end > span.begin)
                 result.push_back({span.begin, effects.Value(EffectCommandType::NoteSpeed, span.begin)});
         }
@@ -32,7 +32,9 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
                                                   const PlaySessionOptions &options, ModeInputLayout inputLayout,
                                                   std::stop_token stop)
 {
-    CheckChartLoadCancellation(stop);
+    // A cancelled build stops at a stage boundary below (Parsing/LoadCancellation.h) and returns no session.
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
     ModeLoadResult result;
     if (pattern.mode != "Taiko")
     {
@@ -51,16 +53,17 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     auto syncopationRange = std::make_shared<const AccuracyRange>("Taiko.Syncopation", judgeLevel,
         AccuracyRange::DefaultLevel50Bands(), RhythmDuration{10'000});
 
-    MusicalTimeline timeline(pattern, options.globalOffset, stop);
-    ValidateEffectPositions(effects, timeline, stop);
-    auto compiledEffects = timeline.CompileEffects(effects, stop);
+    MusicalTimeline timeline(pattern, options.globalOffset);
+    ValidateEffectPositions(effects, timeline);
+    auto compiledEffects = timeline.CompileEffects(effects);
     if (options.play.ignoreScrollEffects)
-        std::erase_if(compiledEffects, [&stop](const auto &effect) {
-            CheckChartLoadCancellation(stop);
+        std::erase_if(compiledEffects, [](const auto &effect) {
             return effect.command.type == EffectCommandType::NoteSpeed || effect.command.type == EffectCommandType::ScrollSpeed;
         });
-    const EffectLookup effectLookup(compiledEffects, stop);
-    auto compiled = PlayableInSourceOrder(timeline.CompileNotes(pattern, stop), stop);
+    const EffectLookup effectLookup(compiledEffects);
+    auto compiled = PlayableInSourceOrder(timeline.CompileNotes(pattern));
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
     PlayResultSummary summary;
     summary.patternPath = pattern.sourcePath;
     summary.globalOffset = options.globalOffset;
@@ -69,12 +72,11 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     // The session's options, with Accelerate already resolved to this chart's multiplier.
     summary.playOptions = session->Options();
     auto collector = std::make_unique<TaikoResultCollector>(std::move(summary), compiled.size());
-    ConfigureHitSounds(*session, pattern, effects, timeline, result.diagnostics, stop);
+    ConfigureHitSounds(*session, pattern, effects, timeline, result.diagnostics);
     if (!result.diagnostics.empty())
         return result;
     for (auto &note : compiled)
     {
-        CheckChartLoadCancellation(stop);
         if (!note.note.hitSound.empty() && !effects.hitSounds.contains(note.note.hitSound))
         {
             result.diagnostics.push_back({DiagnosticSeverity::Error, note.note.source,
@@ -96,7 +98,6 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
 
     for (const CompiledPatternNote &compiledNote : compiled)
     {
-        CheckChartLoadCancellation(stop);
         PatternNote source = compiledNote.note;
         const auto profile =
             UsesSyncopation(effectLookup, timeline, source.position) ? syncopationRange : defaultRange;
@@ -127,7 +128,7 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
             AddLongNote(*longNoteHead, compiledNote, timeline,
                         UsesSyncopation(effectLookup, timeline, longNoteHead->note.position) ? syncopationRange
                                                                                              : defaultRange,
-                        lane, *session, nextId, result.diagnostics, stop);
+                        lane, *session, nextId, result.diagnostics);
             if (nextId > longNoteId)
             {
                 session->SetNoteScrollMultiplier(longNoteId, longNoteHead->scrollMultiplier);
@@ -193,6 +194,8 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
     if (longNoteHead)
         result.diagnostics.push_back({DiagnosticSeverity::Warning, longNoteHead->note.source,
             "Ignored long-note head without a matching end."});
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
 
     // Max strokes: only each column's first assigned keys play; the key overlay follows the same layout.
     inputLayout = LimitKeysPerBinding(std::move(inputLayout), static_cast<std::size_t>(options.play.maxStrokes));
@@ -207,15 +210,15 @@ ModeLoadResult TaikoSessionBuilder::CreateSession(const PatternDocument &pattern
                              Cue(DonFreeInput, "UserInputFeedback"));
     session->SetFreeInputCue(ActionValue(TaikoAction::Kat),
                              Cue(KatFreeInput, "UserInputFeedback"));
-    session->SetMeasureLines(BuildMeasureLines(timeline, effectLookup, stop));
+    session->SetMeasureLines(BuildMeasureLines(timeline, effectLookup));
     session->SetEffects(std::move(compiledEffects));
     if (options.play.metronome && !timeline.MeasureSpans().empty())
         session->metronomeBeats = CompileQuarterBeats(timeline,
-            static_cast<std::int64_t>(timeline.MeasureSpans().size()) - 1, timeline.MeasureSpans().back().end, stop);
+            static_cast<std::int64_t>(timeline.MeasureSpans().size()) - 1, timeline.MeasureSpans().back().end);
     session->SetTimeline(std::move(timeline));
-    CheckChartLoadCancellation(stop);
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
     session->Gear().Finalize();
-    CheckChartLoadCancellation(stop);
     session->SetResultCollector(std::move(collector));
     result.session = std::move(session);
     return result;

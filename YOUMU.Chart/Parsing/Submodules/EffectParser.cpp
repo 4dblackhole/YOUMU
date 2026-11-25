@@ -166,22 +166,16 @@ if (!flag && !HasRequiredValueOptions(seen, c.endPosition.has_value()))
 return c;
 }
 void ResolveCurves(EffectDocument &document, const CompiledInterpolations &expressions,
-               std::vector<Diagnostic> &diagnostics, const std::filesystem::path &source,
-               const std::stop_token& stop)
+               std::vector<Diagnostic> &diagnostics, const std::filesystem::path &source)
 {
 // Resolve curves after all sections, allowing definitions after uses.
 for (auto &c : document.commands)
 {
-    CheckChartLoadCancellation(stop);
     try
     {
         if (c.endPosition)
             ResolveInterpolation(c, expressions);
-        ValidateEffectCommand(c, stop);
-    }
-    catch (const ChartLoadCancelled&)
-    {
-        throw;
+        ValidateEffectCommand(c);
     }
     catch (const std::exception &error)
     {
@@ -199,9 +193,8 @@ document.sourcePath = std::move(source);
 const auto &sourcePath = result.document.sourcePath;
 CompiledInterpolations expressions;
 std::string section;
-for (const auto &[lineNumber, raw] : EnumerateLines(utf8, stop_))
+for (const auto &[lineNumber, raw] : EnumerateLines(utf8))
 {
-    CheckChartLoadCancellation(stop_);
     const auto line = Trim(raw);
     if (line.empty() || StartsWithInsensitive(line, "//"))
         continue;
@@ -262,22 +255,16 @@ for (const auto &[lineNumber, raw] : EnumerateLines(utf8, stop_))
         else
             throw std::invalid_argument("Expected a YME section.");
     }
-    catch (const ChartLoadCancelled&)
-    {
-        throw;
-    }
     catch (const std::exception &error)
     {
         AddDiagnostic(result.diagnostics, sourcePath, lineNumber, error.what());
     }
 }
-ResolveCurves(document, expressions, result.diagnostics, sourcePath, stop_);
+ResolveCurves(document, expressions, result.diagnostics, sourcePath);
 for (const auto &c : document.hitSoundChanges)
 {
-    CheckChartLoadCancellation(stop_);
     if (!document.hitSounds.contains(c.soundIndex))
         AddDiagnostic(result.diagnostics, sourcePath, c.source.line, "Undefined hit sound table index.");
 }
-CheckChartLoadCancellation(stop_);
 return result;
 }

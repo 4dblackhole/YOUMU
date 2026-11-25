@@ -15,7 +15,7 @@ class TaikoSessionBuilder final
                             const MusicalTimeline &timeline,
                             const std::shared_ptr<const AccuracyRange> &profile,
                             Lane &lane, PlaySession &session, NoteId &nextId,
-                            std::vector<Diagnostic> &diagnostics, std::stop_token stop);
+                            std::vector<Diagnostic> &diagnostics);
     [[nodiscard]] static std::shared_ptr<const INoteSoundPolicy> MakeTapSoundPolicy(
         std::string soundId);
     [[nodiscard]] static std::shared_ptr<const INoteSoundPolicy> MakeBigSoundPolicy(

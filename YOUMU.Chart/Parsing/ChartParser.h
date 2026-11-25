@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Parsing/LoadCancellation.h"
 #include "Model/Submodules/MusicDocument.h"
 #include "Model/Submodules/PatternDocument.h"
 #include "Model/Submodules/EffectDocument.h"
@@ -8,11 +7,11 @@
 #include <filesystem>
 #include <string_view>
 
+// Parses one chart file or text at a time. A load that may be cancelled checks between files (see
+// Parsing/LoadCancellation.h); parsing one file is short and is not interrupted.
 class ChartParser final
 {
 public:
-    explicit ChartParser(std::stop_token stop = {}) : stop_(stop) {}
-
     [[nodiscard]] ParseResult<MusicDocument> ParseMusicFile(
         const std::filesystem::path& path) const;
     [[nodiscard]] ParseResult<PatternDocument> ParsePatternFile(
@@ -29,8 +28,6 @@ public:
     [[nodiscard]] ParseResult<EffectDocument> ParseEffect(
         std::string_view utf8,
         std::filesystem::path source = {}) const;
-private:
-    std::stop_token stop_;
 };
 
 [[nodiscard]] bool TryParseMusicalPosition(

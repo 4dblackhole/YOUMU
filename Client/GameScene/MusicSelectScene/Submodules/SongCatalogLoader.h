@@ -32,7 +32,9 @@ public:
         {
             return cache->Load(root, stop, [progress, stop](SongCatalogEntry entry)
             {
-                CheckChartLoadCancellation(stop);
+                // After a stop nothing more is published; the scan returns a cancelled result at its next stage.
+                if (ChartLoadStopped(stop))
+                    return;
                 {
                     std::scoped_lock lock(progress->mutex);
                     progress->entries.push_back(std::move(entry));
@@ -60,8 +62,14 @@ public:
     }
     std::optional<SongCatalogLoadResult> Poll()
     {
-        try { return job_.Poll(); }
-        catch (const ChartLoadCancelled&) { return {}; }
+        try
+        {
+            auto result = job_.Poll();
+            // A cancelled scan is not a catalog; it is dropped like one that has not finished.
+            if (result && result->cancelled)
+                return {};
+            return result;
+        }
         catch (const std::exception& error)
         {
             SongCatalogLoadResult result;

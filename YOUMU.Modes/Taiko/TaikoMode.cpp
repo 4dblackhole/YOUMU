@@ -1,6 +1,7 @@
 #include "Taiko/TaikoMode.h"
 #include "Automation/EffectValidation.h"
 #include "Parsing/ChartParser.h"
+#include "Parsing/LoadCancellation.h"
 #include "Taiko/Submodules/TaikoInputBinding.h"
 #include "Taiko/Submodules/TaikoSessionBuilder.h"
 #include "Taiko/Results/TaikoResultArchive.h"
@@ -33,16 +34,22 @@ ModeLoadResult TaikoMode::LoadSession(
     const std::filesystem::path &patternPath,
     const std::optional<std::filesystem::path> &effectPath, std::stop_token stop) const
 {
-    CheckChartLoadCancellation(stop);
-    ChartParser parser{stop};
+    // Cancellation is checked between the stages: each file, then the session (Parsing/LoadCancellation.h).
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
+    const ChartParser parser;
     ParseResult<PatternDocument> pattern = parser.ParsePatternFile(patternPath);
     ParseResult<EffectDocument> effect;
     const auto resolvedEffect = effectPath ? *effectPath : pattern.document.effectFile.empty()
         ? std::filesystem::path{} : patternPath.parent_path() / pattern.document.effectFile;
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
     if (!resolvedEffect.empty())
     {
         effect = parser.ParseEffectFile(resolvedEffect);
     }
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
 
     ModeLoadResult result;
     result.diagnostics = std::move(pattern.diagnostics);
@@ -57,6 +64,8 @@ ModeLoadResult TaikoMode::LoadSession(
     }
 
     ModeLoadResult created = CreateSession(pattern.document, effect.document, stop);
+    if (created.cancelled)
+        return created;
     result.session = std::move(created.session);
     result.diagnostics.insert(result.diagnostics.end(),
                               std::make_move_iterator(created.diagnostics.begin()),
@@ -67,18 +76,15 @@ ModeLoadResult TaikoMode::LoadSession(
 ModeLoadResult TaikoMode::CreateSession(const PatternDocument &pattern,
                                         const EffectDocument &effects, std::stop_token stop) const
 {
+    if (ChartLoadStopped(stop))
+        return ModeLoadResult::Cancelled();
     try
     {
-        CheckChartLoadCancellation(stop);
         auto resolved = effects;
-        ResolveEffectInterpolations(resolved, stop);
-        ValidateEffectDocument(resolved, stop);
+        ResolveEffectInterpolations(resolved);
+        ValidateEffectDocument(resolved);
         return TaikoSessionBuilder::CreateSession(pattern, resolved, options_,
                                                   ResolveInputLayout(InputLayout(), options_.inputKeys), stop);
-    }
-    catch (const ChartLoadCancelled&)
-    {
-        throw;
     }
     catch (const std::exception &error)
     {

@@ -11,8 +11,17 @@ struct ModeLoadResult
 {
     std::unique_ptr<PlaySession> session;
     std::vector<Diagnostic> diagnostics;
+    // The load stopped early because it was cancelled (Parsing/LoadCancellation.h): no session and no
+    // diagnostics, and not a fault of the chart. Whoever cancelled it discards it.
+    bool cancelled{};
 
     [[nodiscard]] bool Succeeded() const noexcept;
+    [[nodiscard]] static ModeLoadResult Cancelled()
+    {
+        ModeLoadResult result;
+        result.cancelled = true;
+        return result;
+    }
 };
 
 class IPlayGameMode

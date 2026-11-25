@@ -16,13 +16,11 @@ namespace
     constexpr std::size_t MaximumBytes = 256 * 1024 * 1024;
     constexpr std::uint32_t MaximumItems = 1'000'000;
 
-    std::uint64_t Checksum(std::string_view bytes, std::stop_token stop)
+    std::uint64_t Checksum(std::string_view bytes)
     {
         std::uint64_t value = 14695981039346656037ULL;
-        std::size_t offset{};
         for (const unsigned char byte : bytes)
         {
-            if ((offset++ & 0xffffU) == 0) CheckChartLoadCancellation(stop);
             value = (value ^ byte) * 1099511628211ULL;
         }
         return value;
@@ -30,10 +28,8 @@ namespace
     struct Writer
     {
         std::string bytes;
-        std::stop_token stop;
         template <class T> void Number(T value)
         {
-            CheckChartLoadCancellation(stop);
             static_assert(std::is_arithmetic_v<T>);
             bytes.append(reinterpret_cast<const char *>(&value), sizeof(value));
         }
@@ -45,7 +41,6 @@ namespace
         }
         void Text(std::string_view text)
         {
-            CheckChartLoadCancellation(stop);
             if (text.size() > MaximumBytes)
                 throw std::runtime_error("Catalog cache string is too large.");
             Number(static_cast<std::uint32_t>(text.size()));
@@ -65,10 +60,8 @@ namespace
     struct Reader
     {
         std::string_view bytes;
-        std::stop_token stop;
         template <class T> T Number()
         {
-            CheckChartLoadCancellation(stop);
             static_assert(std::is_arithmetic_v<T>);
             if (bytes.size() < sizeof(T)) throw std::runtime_error("Truncated catalog cache.");
             T value{};
@@ -171,7 +164,6 @@ namespace
         const auto count = in.Count();
         for (std::uint32_t i = 0; i < count; ++i)
         {
-            CheckChartLoadCancellation(in.stop);
             const auto path = in.Path();
             const auto modified = std::filesystem::file_time_type{
                 std::filesystem::file_time_type::duration{in.Number<std::int64_t>()}};
@@ -219,54 +211,49 @@ SongCatalog SongCatalog::MetadataIndex(
     return catalog;
 }
 
-void SongCatalog::ReadIndex(const std::filesystem::path &root, std::stop_token stop) const
+void SongCatalog::ReadIndex(const std::filesystem::path &root) const
 {
     try
     {
-        CheckChartLoadCancellation(stop);
         std::ifstream file(cacheFile_, std::ios::binary | std::ios::ate);
         if (!file || file.tellg() < 24 || file.tellg() > static_cast<std::streamoff>(MaximumBytes)) return;
         std::string bytes(static_cast<std::size_t>(file.tellg()), '\0');
         file.seekg(0);
         for (std::size_t offset = 0; offset < bytes.size();)
         {
-            CheckChartLoadCancellation(stop);
             const auto size = std::min<std::size_t>(64 * 1024, bytes.size() - offset);
             if (!file.read(bytes.data() + offset, static_cast<std::streamsize>(size))) return;
             offset += size;
         }
-        Reader in{bytes, stop};
+        Reader in{bytes};
         if (in.Number<std::uint64_t>() != Magic || in.Number<std::uint32_t>() != SongCatalogCacheSchema ||
             in.Number<std::uint32_t>() != SongCatalogParserRevision) return;
         const auto checksum = in.Number<std::uint64_t>();
-        if (Checksum(in.bytes, stop) != checksum || in.Path() != root) return;
+        if (Checksum(in.bytes) != checksum || in.Path() != root) return;
         // Publish only after the entire file has passed validation.
         decltype(musicCache_) music; decltype(patternCache_) patterns; decltype(effectCache_) effects;
         ReadCache(in, music); ReadCache(in, patterns); ReadCache(in, effects);
         if (!in.bytes.empty()) return;
-        CheckChartLoadCancellation(stop);
         musicCache_ = std::move(music); patternCache_ = std::move(patterns); effectCache_ = std::move(effects);
     }
-    catch (const ChartLoadCancelled&) { throw; }
     catch (...) { /* An optional, disposable index must never prevent source loading. */ }
 }
 
-void SongCatalog::WriteIndex(const std::filesystem::path &root, std::stop_token stop) const
+void SongCatalog::WriteIndex(const std::filesystem::path &root) const
 {
     std::filesystem::path temporary;
     try
     {
-        CheckChartLoadCancellation(stop);
         if (cacheFile_.empty()) return;
         std::error_code statusError;
         const auto status = std::filesystem::symlink_status(cacheFile_, statusError);
         if (!statusError && std::filesystem::exists(status) && !std::filesystem::is_regular_file(status)) return;
-        Writer payload{{}, stop};
+        Writer payload;
         payload.Path(root);
         WriteCache(payload, musicCache_); WriteCache(payload, patternCache_); WriteCache(payload, effectCache_);
-        Writer header{{}, stop};
+        Writer header;
         header.Number(Magic); header.Number(SongCatalogCacheSchema); header.Number(SongCatalogParserRevision);
-        header.Number(Checksum(payload.bytes, stop));
+        header.Number(Checksum(payload.bytes));
         if (payload.bytes.size() + header.bytes.size() > MaximumBytes) return;
         std::filesystem::create_directories(cacheFile_.parent_path());
         static std::atomic<std::uint64_t> sequence{};
@@ -278,7 +265,6 @@ void SongCatalog::WriteIndex(const std::filesystem::path &root, std::stop_token 
             file.write(header.bytes.data(), static_cast<std::streamsize>(header.bytes.size()));
             for (std::size_t offset = 0; offset < payload.bytes.size();)
             {
-                CheckChartLoadCancellation(stop);
                 const auto size = std::min<std::size_t>(64 * 1024, payload.bytes.size() - offset);
                 file.write(payload.bytes.data() + offset, static_cast<std::streamsize>(size));
                 offset += size;
@@ -286,7 +272,6 @@ void SongCatalog::WriteIndex(const std::filesystem::path &root, std::stop_token 
             file.close();
             if (!file) throw std::runtime_error("Could not write catalog cache.");
         }
-        CheckChartLoadCancellation(stop);
         std::error_code error;
         std::filesystem::rename(temporary, cacheFile_, error);
         if (error)
@@ -297,12 +282,6 @@ void SongCatalog::WriteIndex(const std::filesystem::path &root, std::stop_token 
             std::filesystem::rename(temporary, cacheFile_);
         }
         cacheDirty_ = false;
-    }
-    catch (const ChartLoadCancelled&)
-    {
-        std::error_code ignored;
-        if (!temporary.empty()) std::filesystem::remove(temporary, ignored);
-        throw;
     }
     catch (...)
     {

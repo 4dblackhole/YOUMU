@@ -20,9 +20,8 @@ ParseResult<PatternDocument> ChartParser::ParsePattern(const std::string_view ut
     std::int64_t patternMeasure = 0;
     std::size_t sourceOrder = 0;
 
-    for (const auto &[lineNumber, rawLine] : EnumerateLines(utf8, stop_))
+    for (const auto &[lineNumber, rawLine] : EnumerateLines(utf8))
     {
-        CheckChartLoadCancellation(stop_);
         const std::string_view line = Trim(rawLine);
         if (line.empty() || StartsWithInsensitive(line, "//"))
         {
@@ -212,6 +211,5 @@ ParseResult<PatternDocument> ChartParser::ParsePattern(const std::string_view ut
                                  }
                                  return left.sourceOrder < right.sourceOrder;
                              });
-    CheckChartLoadCancellation(stop_);
     return result;
 }
