@@ -418,6 +418,9 @@ RestartKey=192
 [Pause]
 ResumeLeadInMs=500
 RewindMeasures=4
+
+[Diagnostics]
+DeviceRemovedData=0
 ```
 
 - `Language`: 설명 언어 `ko`, `en`, `ja`. 항목명·버튼은 영어를 사용합니다.
@@ -466,6 +469,9 @@ RewindMeasures=4
 - `Output`: `Automatic`, `WASAPI`, `ASIO`.
 - `DriverIndex`: 엔진이 보고한 0부터 시작하는 장치 번호. `-1`은 기본 장치입니다.
   패널의 행 번호와 드라이버 번호가 같다고 가정하지 않습니다.
+- `DeviceRemovedData`: `0` 또는 `1`, 누락 시 `0`. `1`이면 그래픽 장치가 끊겼을 때 GPU가 마지막으로 끝낸 동작을 로그에 남깁니다
+  (D3D12 DRED). 모든 그리기에 비용이 조금 붙으므로 그래픽 문제를 쫓을 때만 켭니다. 엔진은 시작할 때만 읽고, 옵션 창에는 항목이 없습니다.
+  자세한 내용은 [크래시 진단 기록](CrashDiagnostics.md)에 있습니다.
 - `DspBufferLength`: FMOD 믹서 버퍼 길이(샘플), 128·256·512·1024 중 하나이며 버퍼 개수는 4로 고정입니다. 누락 시 256.
   옵션 Audio 섹션의 `Audio buffer` 드롭다운으로 고르면 바로 저장하지만, 엔진은 시작할 때만 읽습니다(클립이 남아 있는 동안
   믹서를 다시 시작할 수 없음). 저장한 값과 실행 중인 값이 다르면 아래 칸에 다시 시작하면 적용된다는 안내를 둡니다.

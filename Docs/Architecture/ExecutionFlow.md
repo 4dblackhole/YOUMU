@@ -41,7 +41,8 @@ Scene 클래스와 수명 정책은 [전체 구조](Overview.md#화면scene), �
 
 ## 시작
 
-1. `wWinMain`이 Debug CRT 누수 검사를 켜고 EXE의 RCDATA 기본 자산 팩을
+1. `wWinMain`이 Debug CRT 누수 검사를 켜고 이번 실행의 로그 파일(`Data/Logs`)을 엽니다. 그 뒤의 실패는 모두 이 파일에 남습니다
+   ([크래시 진단 기록](../Features/CrashDiagnostics.md)). 이어서 EXE의 RCDATA 기본 자산 팩을
    `%LOCALAPPDATA%/YOUMU/BuiltInAssets/<pack hash>`에 준비합니다. 같은 팩의
    유효한 캐시가 있으면 다시 기록하지 않습니다.
 2. 일반 실행과 YOUMU smoke는 `YOUMUGame`을 생성합니다. EXE 옆

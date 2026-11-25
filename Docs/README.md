@@ -64,6 +64,7 @@
 | 표시 이름·번역·글꼴·옵션·키 설정·Option.ini·공용 부품 | [TextManagement](Features/TextManagement.md) |
 | 스킨·Songs 곡 폴더 배치·내장 자산·판정/진행 막대 그림·배포 | [Assets](Features/Assets.md) |
 | Canvas·PNG·입력·Z-order | [Visual2DGuide](Features/Visual2DGuide.md) |
+| 로그 파일·최근 통계·그래픽 장치 끊김과 멈춤 기록·일부러 일으키는 실행 인자 | [CrashDiagnostics](Features/CrashDiagnostics.md) |
 | 노트·GOOD 우선 자동 포커스·정확도·POOR·Buzz 틱 | [Gameplay/Rules](Features/Gameplay/Rules.md) |
 | 노트·Lane·키빔·판정 표시·진행바·콤보·점수·누적 판정 | [Gameplay/Presentation](Features/Gameplay/Presentation.md) |
 | 플레이 옵션 패널·HP gauge 선택·배속·스크롤·Random·로컬 기록·기록 필터 | [Gameplay/PlayOptions](Features/Gameplay/PlayOptions.md) |

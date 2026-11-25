@@ -33,6 +33,7 @@
 | 차트 에디터(Compose·Audio·Metadata, 새 난이도, osu! 가져오기) | [ChartEditor](Features/ChartEditor.md), [EditorSongSelect](Features/EditorSongSelect.md) |
 | 옵션·언어·글꼴·키 설정·키빔 불투명도·배경 밝기 | [TextManagement](Features/TextManagement.md) |
 | 스킨·내장 자산·배포 | [자산·스킨](Features/Assets.md) |
+| 로그 파일(`Data/Logs`)·최근 통계·그래픽 장치 끊김과 멈춤 기록 | [크래시 진단 기록](Features/CrashDiagnostics.md) |
 
 ## 진행 중
 
