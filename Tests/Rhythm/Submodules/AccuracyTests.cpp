@@ -685,7 +685,10 @@ namespace tests
                                         }),
                     "Each TickRoll tick, including head, is binary within inclusive Good.");
         }
-        static_cast<void>(tickRoll.session->Update(RhythmTime{1'000'000}));
+        // The missed tail tick keeps its window past the tail, so the roll settles at that window's late edge.
+        const auto &rollNote = *tickRoll.session->Gear().Lanes().front()->Notes().front();
+        static_cast<void>(tickRoll.session->Update(
+            RhythmTime{1'000'000} + rollNote.Profile().HalfWindow(JudgementGrade::Good)));
         Require(tickRoll.session->AccuracyRate() == AccuracyScore::FromUnits(22'222'222).Rate(),
                 "Two accepted ticks of nine must score 2/9, including the missed tail.");
 

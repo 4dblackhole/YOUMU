@@ -369,6 +369,9 @@ Mode: Taiko
                 Require(view.tickTimes.size() == (buzz ? 8 : 9) && view.tickTimes.back() == view.endTime,
                         "TickRoll/BigTickRoll/Buzz must expose the aligned tail, with Buzz head excluded.");
                 NoteProcessResult log;
+                // A tick roll's missed tail tick keeps its window past the tail; a Buzz ends at its tail.
+                const auto settle = !buzz && missTail ? view.endTime + note.Profile().HalfWindow(JudgementGrade::Good)
+                                                      : view.endTime;
                 if (buzz)
                 {
                     log.Append(session.ProcessInput('C', InputEdge::Pressed, note.Timing()));
@@ -384,7 +387,7 @@ Mode: Taiko
                         log.Append(session.Update(view.tickTimes[i] - RhythmDuration{1}));
                         log.Append(session.ProcessInput('C', InputEdge::Pressed, view.tickTimes[i]));
                     }
-                    log.Append(session.Update(view.endTime));
+                    log.Append(session.Update(settle));
                 }
                 const auto tailEvent = std::ranges::find_if(
                     log.events,
@@ -399,7 +402,7 @@ Mode: Taiko
                         "Tail ticks must be accepted/missed and included in finalized accuracy exactly once.");
                 Require(log.finalizedAccuracies.size() == 1,
                         "Tail ticks must be accepted/missed and included in finalized accuracy exactly once.");
-                Require(session.Update(view.endTime + RhythmDuration{1}).events.empty(),
+                Require(session.Update(settle + RhythmDuration{1}).events.empty(),
                         "An already finalized tail must not emit another tick or completion.");
             }
     }
