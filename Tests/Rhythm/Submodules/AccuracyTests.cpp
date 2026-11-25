@@ -442,6 +442,24 @@ namespace tests
                     "At the late edge of the last tick's window the roll ends and that tick is missed.");
         }
         {
+            // A key released after the tail while the last tick waits takes nothing; the press after it still takes
+            // the last tick.
+            auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"}));
+            Require(loaded.Succeeded(), "Release past the tail fixture must load.");
+            NoteProcessResult log;
+            for (std::int64_t i = 0; i < 8; ++i)
+            {
+                log.Append(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{i * Interval}));
+                log.Append(loaded.session->ProcessInput('C', InputEdge::Released, RhythmTime{i * Interval + 5'000}));
+            }
+            log.Append(loaded.session->ProcessInput('M', InputEdge::Released, RhythmTime{Tail + 10'000}));
+            Require(log.finalizedAccuracies.empty() && loaded.session->Gear().Lanes().front()->CurrentIndex() == 0,
+                    "A release after the tail neither takes the last tick nor ends the roll.");
+            log.Append(loaded.session->ProcessInput('C', InputEdge::Pressed, RhythmTime{Tail + 20'000}));
+            log.Append(loaded.session->Update(RhythmTime{Tail + 30'000}));
+            Require(ticks(log) == 9, "The press after that release still takes the last tick.");
+        }
+        {
             // Every tick taken on time: the roll still ends at its tail, as before.
             auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(TaikoNoteType::TickRoll, {"TickDivision=16"}));
             Require(loaded.Succeeded(), "Clean tick-roll fixture must load.");
