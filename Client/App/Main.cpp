@@ -80,6 +80,10 @@ namespace
 
         game_log::Write(std::format("start: scene {}, smoke test {}, crash test {}", initialScene,
                                     smokeTest ? "yes" : "no", launch.CrashTestName()));
+        // Which of the two ways of starting the game this run is: the launcher file passes --diagnostics=watch.
+        game_log::Write(launch.watch
+                            ? "mode: watch (--diagnostics=watch): device removed data on, statistics every second"
+                            : "mode: normal");
     }
 
     // A normal run throws no C++ exception (Docs/Design/Principles.md); smoke runs check it. A smoke run that

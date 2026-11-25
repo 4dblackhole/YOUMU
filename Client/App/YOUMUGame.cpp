@@ -71,14 +71,14 @@ namespace
     }
 
     // The settings the engine's own start record does not show.
-    void LogOptions(const OptionSettings &options)
+    void LogOptions(const OptionSettings &options, const bool deviceRemovedData)
     {
         const OptionValues &values = options.Values();
         game_log::Write(
             std::format("options: audio {} buffer {}, language {}, skin {}, songs {}, device removed data {}",
                         Name(values.audioOutput), values.dspBufferLength, Name(values.language),
                         game_log::ToUtf8(values.skinSet), game_log::ToUtf8(options.SongsRoot().wstring()),
-                        values.deviceRemovedData ? "on" : "off"));
+                        deviceRemovedData ? "on" : "off"));
         // What Option.ini asks of the graphics device; the engine's own start record shows what it got.
         game_log::Write(DescribeGraphicsSwitches(values));
     }
@@ -96,7 +96,9 @@ YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId, const boo
     // retains the load warning until the user successfully saves new settings.
     if (!optionSettings_.Load(error))
         game_log::Write("Option.ini was not read: " + error);
-    LogOptions(optionSettings_);
+    LogOptions(optionSettings_, DeviceRemovedData());
+    if (diagnostics_ && launch_.watch)
+        diagnostics_->WatchStatistics();
     GameplayLaunchRequest initialRequest;
     initialRequest.songsRoot = optionSettings_.SongsRoot();
     launchRequest_->Set(std::move(initialRequest));
@@ -107,6 +109,12 @@ YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId, const boo
     for (const auto &diagnostic : texts_.Diagnostics())
         game_log::Write("texts: " + diagnostic);
     SkinSetSelection::Instance().Initialize(optionSettings_.Values().skinSet);
+}
+
+// The watch mode only ever turns it on: Option.ini's own 1 stays on in a normal run.
+bool YOUMUGame::DeviceRemovedData() const noexcept
+{
+    return optionSettings_.Values().deviceRemovedData || launch_.watch;
 }
 
 EngineConfig YOUMUGame::GetEngineConfig() const
@@ -131,7 +139,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.autoExitAfterRenderedFrames = smokeTest_ ? 3 : 0;
 
     config.diagnostics.sink = diagnostics_;
-    config.diagnostics.graphicsDeviceRemovedData = optionSettings_.Values().deviceRemovedData;
+    config.diagnostics.graphicsDeviceRemovedData = DeviceRemovedData();
     config.diagnostics.graphics = GraphicsSwitchesForRun(optionSettings_.Values());
     config.renderRateOverrideHz = RenderRateOverrideForRun(optionSettings_.Values());
     config.diagnostics.mainLoopStallSeconds = GameDiagnostics::MainLoopStallSeconds;

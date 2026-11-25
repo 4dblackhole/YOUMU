@@ -42,6 +42,8 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     void SaveDraggedWindowPosition();
     void RecordDiagnostics(const PhantomCore::UpdateContext &context, bool measured);
     void FailOnceForTest(const PhantomCore::UpdateContext &context);
+    // Option.ini's DeviceRemovedData, or on for a watch mode run.
+    [[nodiscard]] bool DeviceRemovedData() const noexcept;
 
     bool smokeTest_{};
     bool showPerformanceOverlay_{};

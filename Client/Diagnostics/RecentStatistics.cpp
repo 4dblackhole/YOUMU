@@ -56,17 +56,23 @@ void RecentStatistics::WriteToLog() const noexcept
         game_log::WriteRaw(line, static_cast<std::size_t>(length));
     for (std::size_t index = 0; index < count; ++index)
     {
-        const StatisticsSample &sample = samples[index];
-        length = std::snprintf(
-            line, sizeof(line),
-            "  %5us fps %4u ups %6u draws %3u/%3u longest %7u us vram %4u/%4u MB memory %5u MB handles %5u %s\r\n",
-            sample.second, sample.framesPerSecond, sample.updatesPerSecond, sample.drawCalls, sample.peakDrawCalls,
-            sample.longestLoopMicroseconds, sample.graphicsMemoryMb, sample.graphicsBudgetMb,
-            sample.processMemoryMb, sample.handles, sample.scene);
-        if (length > 0)
-            game_log::WriteRaw(line, std::min(static_cast<std::size_t>(length), sizeof(line) - 1));
+        const std::size_t written = FormatSample(samples[index], line, sizeof(line));
+        if (written > 0)
+            game_log::WriteRaw(line, written);
     }
     game_log::Flush();
+}
+
+std::size_t FormatSample(const StatisticsSample &sample, char *const line, const std::size_t size) noexcept
+{
+    const int length = std::snprintf(
+        line, size,
+        "  %5us fps %4u ups %6u draws %3u/%3u longest %7u us vram %4u/%4u MB memory %5u MB handles %5u %s\r\n",
+        sample.second, sample.framesPerSecond, sample.updatesPerSecond, sample.drawCalls, sample.peakDrawCalls,
+        sample.longestLoopMicroseconds, sample.graphicsMemoryMb, sample.graphicsBudgetMb, sample.processMemoryMb,
+        sample.handles, sample.scene);
+    const bool fits = length > 0 && static_cast<std::size_t>(length) < size;
+    return fits ? static_cast<std::size_t>(length) : 0;
 }
 
 void SetScene(StatisticsSample &sample, const std::string_view name) noexcept

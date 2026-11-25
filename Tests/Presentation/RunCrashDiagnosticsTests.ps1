@@ -1,6 +1,6 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
 # 크래시 진단 기록: 단위 검사(실행 인자, 최근 통계, 로그 파일 보관·폴더 이름 가림, 장치 끊김·치명적 오류·멈춤·크래시 줄)를 돌린 뒤,
-# 게임 exe를 숨김 창으로 다섯 번 실행해(정상, 그래픽 장치 일부러 제거, Update 일부러 멈춤, 예외 던지기, 일부러 죽기)
+# 게임 exe를 숨김 창으로 여섯 번 실행해(정상, 감시 모드, 그래픽 장치 일부러 제거, Update 일부러 멈춤, 예외 던지기, 일부러 죽기)
 # 로그 파일의 내용과 덤프 파일을 확인합니다.
 # 로그와 덤프는 --log-dir로 build/ 아래 임시 폴더에 쓰므로 게임 폴더의 Data/Logs·Data/Crash를 건드리지 않습니다.
 $ErrorActionPreference = 'Stop'
@@ -45,7 +45,10 @@ try {
     $runs = @(
         @{ Name = 'normal'; Arguments = @('--smoke-lobby'); ExitCode = 0
            Expected = @('YOUMU, built', 'windows ', 'start: scene ', 'engine: graphics adapter: ', 'engine: window: ', 'options: audio ',
-               'scene: ', 'exit code 0') },
+               'scene: ', 'mode: normal', 'exit code 0') },
+        # 감시 모드: Option.ini를 건드리지 않고 이 실행만 DRED를 켭니다(1초 통계 줄은 단위 검사가 봅니다).
+        @{ Name = 'watch'; Arguments = @('--smoke-lobby', '--diagnostics=watch'); ExitCode = 0
+           Expected = @('mode: watch (--diagnostics=watch)', 'device removed data on', 'exit code 0') },
         @{ Name = 'device'; Arguments = @('--smoke-lobby', '--crash-test=device'); ExitCode = 1
            Expected = @('crash test device', 'graphics device lost: ', 'reason DXGI_ERROR_DEVICE_REMOVED', 'recent statistics, ',
                'fatal error: ', 'exit code 1') },

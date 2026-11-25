@@ -3,9 +3,10 @@
 #include <filesystem>
 #include <string_view>
 
-// Hidden command-line switches that make the game fail on purpose, so the
-// records it leaves can be checked. They are for tests and for trying the
-// feature by hand; nothing in the options or the settings file sets them.
+// Command-line switches for the records the game leaves. The crash tests make
+// it fail on purpose, so the records can be checked: they are for tests and
+// for trying the feature by hand. Nothing in the options or the settings file
+// sets any of these.
 struct DiagnosticsLaunchOptions
 {
     // --log-dir=<folder> (quotes allowed): where the log goes instead of
@@ -24,8 +25,15 @@ struct DiagnosticsLaunchOptions
     // real bug would. Nothing catches it: the dump service writes its file
     // and Windows ends the process.
     bool crash{};
+    // --diagnostics=watch: the watch mode, for this run only and without a
+    // change to Option.ini. Device removed data is on and every second of
+    // statistics goes to the log as it comes. It is the one switch here that
+    // players use: the launcher file next to the game passes it.
+    bool watch{};
 
     [[nodiscard]] const char *CrashTestName() const noexcept;
+    // "watch" or "normal", for the log.
+    [[nodiscard]] const char *ModeName() const noexcept { return watch ? "watch" : "normal"; }
 };
 
 [[nodiscard]] DiagnosticsLaunchOptions ParseDiagnosticsLaunchOptions(std::wstring_view commandLine);
