@@ -270,6 +270,129 @@ namespace tests
         }
     }
 
+    // A wrong colour's press is a POOR, never an early BAD, anywhere within the BAD window before or after the
+    // note (user decision: "다른색 키를 쳤으면 POOR입니다 early BAD가 아닙니다"). The note keeps waiting.
+    void TestWrongColourPoor()
+    {
+        constexpr std::size_t Bad = 4, Miss = 5;
+        const auto pattern = [](std::initializer_list<int> keyTypes) {
+            PatternDocument document;
+            document.mode = "Taiko";
+            document.baseBpm = 120.0;
+            std::int64_t i = 0;
+            for (const int keyType : keyTypes)
+            {
+                document.notes.push_back(
+                    {.position = {0, {i, 8}}, .keyType = keyType, .sourceOrder = static_cast<std::size_t>(i)});
+                ++i;
+            }
+            return document;
+        };
+        const auto rejected = [](const NoteProcessResult &result) {
+            const auto event = std::ranges::find(result.events, NoteEventType::InputRejected, &NoteEvent::type);
+            return event == result.events.end() ? NoteEvent{} : *event;
+        };
+        {
+            // Don notes at 0 and 250 ms; a Kat press 70 ms before the second is a POOR on that note.
+            auto loaded = TaikoMode{}.CreateSession(pattern({1, 1}));
+            Require(loaded.Succeeded(), "Early wrong-colour fixture must load.");
+            auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            const auto wrong = rejected(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{180'000}));
+            Require(wrong.wrongPress && IsPoor(wrong) && !IsEarlyBad(wrong),
+                    "A wrong colour inside the early BAD window is a POOR, not an early BAD.");
+            Require(session.Statistics().poorCount == 1 && session.Statistics().judgements[Bad] == 0,
+                    "The early wrong colour counts one POOR at once and no BAD.");
+            const auto answered = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
+            const auto hit = std::ranges::find(answered.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            Require(hit != answered.events.end() && hit->recovery && session.Statistics().judgements[Bad] == 1,
+                    "The right colour after that POOR is a BAD recovery (POOR 1 + BAD 1).");
+            Require(session.Statistics().combo == 0 && session.Statistics().poorCount == 1,
+                    "The POOR note adds no combo.");
+        }
+        {
+            // A Kat press 70 ms after a Don note (late BAD window) is a POOR; leaving the note is a MISS.
+            auto loaded = TaikoMode{}.CreateSession(pattern({1}));
+            Require(loaded.Succeeded(), "Late wrong-colour fixture must load.");
+            auto &session = *loaded.session;
+            const auto wrong = rejected(session.ProcessInput('K', InputEdge::Pressed, RhythmTime{70'000}));
+            Require(wrong.wrongPress && IsPoor(wrong) && session.Statistics().poorCount == 1,
+                    "A wrong colour inside the late BAD window is a POOR.");
+            static_cast<void>(session.Update(RhythmTime{500'000}));
+            Require(session.Statistics().judgements[Miss] == 1 && session.Statistics().judgements[Bad] == 0,
+                    "A note left after a late POOR is a MISS.");
+        }
+        {
+            // The right colour in the late BAD window stays a BAD hit.
+            auto loaded = TaikoMode{}.CreateSession(pattern({1}));
+            Require(loaded.Succeeded(), "Late right-colour fixture must load.");
+            auto &session = *loaded.session;
+            const auto late = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{70'000});
+            Require(HasEvent(late, NoteEventType::HitAccepted) && session.Statistics().judgements[Bad] == 1 &&
+                        session.Statistics().poorCount == 0,
+                    "The right colour inside the late BAD window is still a BAD hit, not a POOR.");
+        }
+        {
+            // A large Don: a Kat press 70 ms early is a POOR, and the two hands after it settle the note at zero.
+            auto loaded = TaikoMode{}.CreateSession(pattern({3}));
+            Require(loaded.Succeeded(), "Large wrong-colour fixture must load.");
+            auto &session = *loaded.session;
+            const auto wrong = rejected(session.ProcessInput('K', InputEdge::Pressed, RhythmTime{-70'000}));
+            Require(IsPoor(wrong) && !IsEarlyBad(wrong) && session.Statistics().poorCount == 1,
+                    "A wrong colour before a large note is a POOR.");
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, {}));
+            Require(session.AccuracyRate() == 0.0 && session.Statistics().combo == 0,
+                    "A large note answered after a POOR settles at zero with no combo.");
+        }
+        {
+            // After a late POOR the focus still moves on: the note expires and the next one takes its own grade.
+            auto loaded = TaikoMode{}.CreateSession(pattern({1, 1}));
+            Require(loaded.Succeeded(), "Late POOR focus fixture must load.");
+            auto &session = *loaded.session;
+            static_cast<void>(session.ProcessInput('K', InputEdge::Pressed, RhythmTime{70'000}));
+            static_cast<void>(session.Update(RhythmTime{200'000}));
+            const auto next = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
+            const auto hit = std::ranges::find(next.events, NoteEventType::HitAccepted, &NoteEvent::type);
+            Require(hit != next.events.end() && !hit->recovery && hit->judgement.grade == JudgementGrade::Max,
+                    "The note after a late POOR keeps its own grade.");
+            Require(session.Statistics().judgements[Miss] == 1 && session.Statistics().poorCount == 1 &&
+                        session.Statistics().combo == 1,
+                    "The late POOR note is a MISS; the next note starts a new combo.");
+        }
+        {
+            // A Buzz head: a wrong colour 70 ms early is a head POOR; the body ticks keep their own rule.
+            auto buzz = MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"});
+            buzz.notes.back().position.fraction = Rational{9, 16};
+            const std::array held{static_cast<PhysicalKey>('C')};
+            auto loaded = TaikoMode{}.CreateSession(buzz);
+            Require(loaded.Succeeded(), "Buzz wrong-colour fixture must load.");
+            auto &session = *loaded.session;
+            const auto wrong = rejected(session.ProcessInput('K', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(session.ProcessInput('K', InputEdge::Released, RhythmTime{-60'000}));
+            Require(IsPoor(wrong) && !IsEarlyBad(wrong) && session.Statistics().poorCount == 1,
+                    "A wrong colour before a Buzz head is a POOR on the head.");
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(session.Update(RhythmTime{1'125'000}, held));
+            const auto rate = session.AccuracyRate();
+            Require(rate && *rate > 0.0 && *rate <= 0.5,
+                    "A POOR Buzz head scores zero while its ticks keep their half.");
+            Require(session.Statistics().poorCount == 1, "Buzz ticks add no POOR.");
+        }
+        {
+            // A wrong colour outside the BAD window stays ignored.
+            auto loaded = TaikoMode{}.CreateSession(pattern({1}));
+            Require(loaded.Succeeded(), "Out-of-window wrong-colour fixture must load.");
+            auto &session = *loaded.session;
+            const auto outside = rejected(session.ProcessInput('D', InputEdge::Pressed, RhythmTime{-150'000}));
+            Require(!IsPoor(outside) && session.Statistics().poorCount == 0,
+                    "A wrong colour outside the BAD window is not judged.");
+            static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
+            Require(session.Statistics().combo == 1 && session.AccuracyRate() == 1.0,
+                    "The note after an out-of-window wrong colour stays clean.");
+        }
+    }
+
     void TestPoorSingleNoteAccuracy()
     {
         auto profile = std::make_shared<AccuracyRange>();

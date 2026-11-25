@@ -91,9 +91,12 @@ NoteProcessResult Lane::ProcessInput(const RhythmInputEvent& input,
     // An early Bad is reported as an attempt, but it deliberately keeps
     // focus on the same note so one premature press cannot start a bad
     // judgement cascade through a dense pattern.
-    if (current->Accuracy().target.kind != NoteAccuracyKind::Ticks &&
-        currentJudgement.grade == JudgementGrade::Bad &&
-        currentJudgement.signedError < RhythmDuration::zero())
+    const bool earlyBadWindow = current->Accuracy().target.kind != NoteAccuracyKind::Ticks &&
+                                currentJudgement.grade == JudgementGrade::Bad &&
+                                currentJudgement.signedError < RhythmDuration::zero();
+    // A wrong colour's press in this window is a POOR, not an early BAD (user decision);
+    // the note's rule rejects it below and the note marks it.
+    if (earlyBadWindow && !current->IsWrongPress(input))
     {
         result.events.push_back(MakeEarlyBadEvent(
             *current,

@@ -407,8 +407,8 @@ MAX/PERFECT/GREAT/GOOD/BAD/MISS/POOR는 판정 글자만 담은 투명 PNG 7종�
 `InGame/Judgements/<판정명>.png`를 세션 진입 때 등록하고 같은 노드를 재사용합니다.
 입력마다 파일을 읽거나 노드를 만들지 않습니다. 판정원 자식이므로 위치·배율을 따르고
 Taiko Lane의 -90° 회전을 되돌려 글자를 똑바로 표시합니다.
-최근 판정 하나를 200ms 선형 페이드로 표시합니다. POOR 조건은 적색 키빔과 동일한
-Good 이내 InputRejected이며 BAD는 기존 조기/늦은 Bad 입력을 표시합니다.
+최근 판정 하나를 200ms 선형 페이드로 표시합니다. POOR 조건은 적색 키빔과 동일한 `IsPoor`(Good 이내 InputRejected,
+또는 BAD 범위 안의 다른 색 누름)이며 BAD는 기존 조기/늦은 Bad 입력을 표시합니다.
 [BAD 복귀](Rules.md#bad-복귀-판정)의 GOOD~MAX 타격은 같은 글자의 아래가 보라로 물든 `Judgements.Recovery.<등급>`
 글자(4종)를 보이고, early BAD 상태로 놓친 노트는 MISS 글자를 새로 띄우지 않습니다(이미 BAD를 보였음).
 Buzz 몸통에서 반대 색을 눌러 처리하지 못한 틱은 POOR 글자·적색 키빔을 보이지 않습니다.

@@ -26,4 +26,6 @@ class INote
     virtual void Reset() noexcept = 0;
     // The lane reports an early BAD on this note's timing target; the note stays in focus and settles as a BAD.
     virtual void RecordEarlyBad() noexcept {}
+    // A press within the timing target's BAD window that the note would refuse even on time (a wrong colour).
+    [[nodiscard]] virtual bool IsWrongPress(const RhythmInputEvent &) const noexcept { return false; }
 };

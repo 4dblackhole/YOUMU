@@ -7,15 +7,6 @@
 #include <stdexcept>
 #include <utility>
 
-namespace
-{
-[[nodiscard]] bool IsRejectedGoodInput(const NoteEvent &event) noexcept
-{
-    return event.type == NoteEventType::InputRejected &&
-           IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good);
-}
-} // namespace
-
 RuleBasedNote::RuleBasedNote(const NoteId id, const RhythmTime timing,
                              std::shared_ptr<const AccuracyRange> profile,
                              std::unique_ptr<INoteRule> rule,
@@ -114,8 +105,13 @@ NoteProcessResult RuleBasedNote::ProcessInput(const RhythmInputEvent &input)
     const JudgementResult judgement = Preview(input);
     const bool judgesTiming = JudgesTiming();
     const bool retrying = retryAfterEarlyBad_ || retryAfterPoor_;
+    // Asked before the rule changes state: a later hit of a large note must not see its own first hit.
+    const bool wrongPress = IsWrongPress(input);
     rule_->ProcessInput(Context(), input, judgement, result);
-    if (judgesTiming && input.edge == InputEdge::Pressed && std::ranges::any_of(result.events, IsRejectedGoodInput))
+    if (wrongPress)
+        for (NoteEvent &event : result.events)
+            event.wrongPress = event.type == NoteEventType::InputRejected;
+    if (judgesTiming && input.edge == InputEdge::Pressed && std::ranges::any_of(result.events, IsPoor))
     {
         poorOnTimingTarget_ = true;
         retryAfterPoor_ = true;
@@ -179,6 +175,19 @@ void RuleBasedNote::MarkTimingOutcome(NoteProcessResult &result, const bool judg
     });
     if (answered)
         retryAfterEarlyBad_ = retryAfterPoor_ = false;
+}
+
+bool RuleBasedNote::IsWrongPress(const RhythmInputEvent &input) const noexcept
+{
+    if (input.edge != InputEdge::Pressed || !JudgesTiming())
+        return false;
+    if (!IsAtLeastAsAccurateAs(Preview(input).grade, JudgementGrade::Bad))
+        return false;
+    // Ask the rule about the same key on the note's exact time, so only the colour (or the hit order of a
+    // purple note) decides; timing alone never makes a POOR here.
+    RhythmInputEvent onTime = input;
+    onTime.time = timing_;
+    return !rule_->CanAccept(Context(), onTime, {JudgementGrade::Max, RhythmDuration::zero(), 1.0});
 }
 
 void RuleBasedNote::RecordEarlyBad() noexcept

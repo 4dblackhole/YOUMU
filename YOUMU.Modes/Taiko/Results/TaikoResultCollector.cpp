@@ -94,8 +94,7 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
                                          AccuracyScore::FromRate(event.judgement.scoreRate)});
         timingErrorSum_ += event.judgement.signedError;
     }
-    else if (keyPressed && event.type == NoteEventType::InputRejected &&
-             IsAtLeastAsAccurateAs(event.judgement.grade, JudgementGrade::Good))
+    else if (keyPressed && IsPoor(event))
     {
         // A POOR counts now; the note's combo settles when it finishes (user decision).
         ++result_->poorCount;

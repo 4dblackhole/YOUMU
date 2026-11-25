@@ -62,6 +62,11 @@ int main()
         Check(Near(tint().red, 0.25F) && Near(tint().blue, 1), "Early Bad purple");
         beam.OnKeyPressed(makeResult(0, false));
         Check(Near(tint().red, 1) && Near(tint().green, 56.0F / 255), "Wrong input red");
+        // A wrong colour within BAD is a POOR too (user decision), so it is red, not the early Bad purple.
+        auto wrongColour = makeResult(70, false);
+        wrongColour.events.back().wrongPress = true;
+        beam.OnKeyPressed(wrongColour);
+        Check(Near(tint().red, 1) && Near(tint().green, 56.0F / 255), "Wrong colour within BAD red");
         beam.OnKeyPressed(makeResult(500, false));
         Check(Near(tint().red, 1) && Near(tint().green, 1), "Out of range white");
         auto rollover = makeResult(0, true);

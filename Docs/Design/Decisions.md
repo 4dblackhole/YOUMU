@@ -217,6 +217,8 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
 - 큰 노트는 개별 입력의 기본 가중치가 1/2이어도 POOR 패널티는 **노트 전체 0**입니다.
   POOR 뒤 두 타격 모두 MAX여도 최종 0입니다. RPG의 기존 1/2 패널티를 복사하지 않습니다.
 - Buzz 헤드 POOR는 헤드만 0입니다. 몸통을 모두 성공하면 최종 50%입니다.
+- POOR는 Good 이내에서 거부된 Press와, BAD 범위(노트 앞·뒤) 안에서 다른 색 키를 누른 입력입니다(사용자 결정:
+  "다른색 키를 쳤으면 POOR입니다 early BAD가 아닙니다", early·늦은 BAD 구간 모두 POOR). 다른 색 누름은 early BAD가 아닙니다.
 - 키 해제(InputEdge::Released)·판정 범위 밖 입력을 이 패널티로 취급하지 않습니다.
   이 키 해제는 Release 빌드라는 뜻이 아니며 판정 규칙은 Debug/Release 공통입니다.
 - HP 설계에서는 POOR 발생 즉시 감소하지 않고 대상 판정이 확정될 때 감소를 반영합니다.

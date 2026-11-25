@@ -73,6 +73,7 @@ namespace tests
     void TestTimingAccuracyAndSessionAggregation();
     void TestBadRecovery();
     void TestReleaseIsNotEarlyBad();
+    void TestWrongColourPoor();
     void TestPoorSingleNoteAccuracy();
     void TestPoorLargeNoteAccuracy();
     void TestBuzzTickColorFocus();
