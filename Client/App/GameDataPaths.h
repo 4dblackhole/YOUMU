@@ -15,3 +15,6 @@
 
 // <game>/Data/LocalOffsets.txt: per-pattern local offsets (LocalOffsetStore).
 [[nodiscard]] std::filesystem::path LocalOffsetFilePath();
+
+// <game>/Data/Logs: one log file per run (game_log).
+[[nodiscard]] std::filesystem::path GameLogDirectory();

@@ -15,3 +15,8 @@ std::filesystem::path LocalOffsetFilePath()
 {
     return GameDataDirectory() / L"LocalOffsets.txt";
 }
+
+std::filesystem::path GameLogDirectory()
+{
+    return GameDataDirectory() / L"Logs";
+}

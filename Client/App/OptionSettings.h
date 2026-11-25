@@ -65,6 +65,10 @@ struct OptionValues
     // A missing or out-of-range entry reads as the default without failing the rest of the file.
     int pauseResumeLeadInMs{DefaultPauseResumeLeadInMs};
     int pauseRewindMeasures{DefaultPauseRewindMeasures};
+    // [Diagnostics] DeviceRemovedData, 0 or 1. On, the graphics backend remembers which operation the GPU
+    // finished last (D3D12 DRED), which costs a little on every draw; it is for chasing a lost device. The
+    // engine reads it when it starts. It has no control in the options panel.
+    bool deviceRemovedData{};
     std::map<std::string, std::map<std::string, std::vector<std::uint16_t>>> modeKeys;
 };
 
