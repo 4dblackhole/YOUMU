@@ -91,8 +91,6 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     if (event.type == NoteEventType::Completed || event.type == NoteEventType::Missed)
         result_->notes[found->second].finalState = event.stateAfter;
     const bool big = CountsOnceAtSettle(result_->notes[found->second].type);
-    // Normal and big notes count the first of a POOR and a BAD they take (user decisions); long notes do not.
-    const bool shortNote = ResultGroup(result_->notes[found->second].type) != TaikoResultGroup::Roll;
     if (event.type == NoteEventType::Missed && event.leftAtEarlyBad)
     {
         settlesAsBad_[found->second] = true;
@@ -114,7 +112,11 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
         else if (poorCounted_[found->second])
             comboEligible_[found->second] = false;
         else
+        {
             ++result_->judgements[bad ? static_cast<std::size_t>(JudgementGrade::Bad) : grade];
+            if (bad) // A Buzz goes on after its head: a later POOR must not become a second count.
+                noteFaults_[found->second] = NoteFault::CountedBad;
+        }
         result_->timingErrors.push_back({event.noteId, event.hitIndex, event.eventTime, event.judgement.signedError,
                                          event.judgement.grade,
                                          AccuracyScore::FromRate(event.judgement.scoreRate)});
@@ -123,10 +125,9 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     else if (keyPressed && IsPoor(event))
     {
         // A POOR counts now, once per note however many wrong presses follow; the note's combo settles when
-        // it finishes (user decisions). A normal or big note counts it only when no BAD came before it.
-        const bool countsPoor =
-            shortNote ? MarkNoteFault(found->second, NoteFault::Poor) : !poorCounted_[found->second];
-        if (countsPoor)
+        // it finishes (user decisions). It counts only when no BAD came before it on that note: of a POOR and a
+        // BAD the one judged first is the note's result, for normal and big notes and a Buzz head alike.
+        if (MarkNoteFault(found->second, NoteFault::Poor))
             ++result_->poorCount;
         poorCounted_[found->second] = true;
         comboEligible_[found->second] = false;
@@ -134,8 +135,7 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     else if (keyPressed && IsEarlyBad(event))
     {
         comboEligible_[found->second] = false; // An early BAD counts once the note settles.
-        if (shortNote)
-            static_cast<void>(MarkNoteFault(found->second, NoteFault::EarlyBad));
+        static_cast<void>(MarkNoteFault(found->second, NoteFault::EarlyBad));
     }
     else if (event.type == NoteEventType::TickAccepted && CountsAcceptedTicks(result_->notes[found->second].type))
         ++result_->acceptedTicks;
@@ -185,10 +185,10 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
         CountOnceAtSettle(accuracy, found->second, retired);
     else if (note.finalState == NoteState::Missed && settlesAsBad_[found->second])
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Bad)];
-    else if (longNote && HeadAlreadyCountedBad(accuracy, retired))
-        return; // A Buzz head BAD or recovery already counted as its BAD.
     else if (poorCounted_[found->second] && noteFaults_[found->second] == NoteFault::Bad)
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Bad)]; // An early BAD came before its POOR.
+    else if (longNote && HeadAlreadyCountedBad(accuracy, retired))
+        return; // A Buzz head BAD or recovery already counted as its BAD.
     else if (poorCounted_[found->second])
         return; // A note that took a POOR and was not hit after it ends as that POOR, not a MISS (user decision).
     else if (note.finalState == NoteState::Missed || longNote)
@@ -214,6 +214,8 @@ bool TaikoResultCollector::MarkNoteFault(std::size_t index, NoteFault fault)
     // The first of a POOR and a BAD is the note's result (user decision).
     // A POOR or a BAD hit after an early BAD confirms that BAD; anything after a POOR changes nothing.
     NoteFault &current = noteFaults_[index];
+    if (current == NoteFault::CountedBad)
+        return false;
     if (current == NoteFault::None)
         current = fault;
     else if (current == NoteFault::EarlyBad && fault != NoteFault::EarlyBad)
