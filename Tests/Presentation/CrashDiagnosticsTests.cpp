@@ -82,11 +82,10 @@ namespace
         const bool modes = std::string_view(watched.ModeName()) == "watch" &&
                            std::string_view(plain.ModeName()) == "normal";
         Check(modes, "Each mode has its name for the log.");
-        const bool limits = GameDiagnostics::StallSeconds(false) == GameDiagnostics::MainLoopStallSeconds &&
-                            GameDiagnostics::StallSeconds(true) == GameDiagnostics::WatchedMainLoopStallSeconds;
-        Check(limits, "Each mode has its own main loop limit.");
-        Check(GameDiagnostics::WatchedMainLoopStallSeconds < GameDiagnostics::MainLoopStallSeconds,
-              "The watch mode reports a stalled main loop sooner than a normal run.");
+        // The limits are constants, so the compiler checks them: each mode has its own, the watch mode's shorter.
+        static_assert(GameDiagnostics::StallSeconds(false) == GameDiagnostics::MainLoopStallSeconds);
+        static_assert(GameDiagnostics::StallSeconds(true) == GameDiagnostics::WatchedMainLoopStallSeconds);
+        static_assert(GameDiagnostics::WatchedMainLoopStallSeconds < GameDiagnostics::MainLoopStallSeconds);
     }
 
     void TestRecentStatistics()
