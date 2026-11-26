@@ -500,12 +500,32 @@ namespace tests
             Require(session->AccuracyRate() == 0.0, "A note with a POOR keeps zero accuracy, like a BAD.");
         }
         {
-            // An early BAD, then a POOR on the same note: the note ends as the POOR alone.
+            // An early BAD, then a POOR on the same note: the one judged first, the BAD, is the note's result (user
+            // decision). The POOR still shows its word but counts nothing; left alone, answered or retired alike.
             auto session = load({1});
             static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
-            static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{-60'000}));
+            const auto poor = session->ProcessInput('K', InputEdge::Pressed, RhythmTime{-60'000});
+            Require(std::ranges::any_of(poor.events, IsPoor) && counts(session->Statistics(), 0, 0, 0),
+                    "A POOR after an early BAD shows but counts nothing yet.");
             static_cast<void>(session->Update(RhythmTime{500'000}));
-            Require(counts(session->Statistics(), 1, 0, 0), "An early BAD followed by a POOR settles as one POOR.");
+            Require(counts(session->Statistics(), 0, 1, 0) && session->Statistics().combo == 0,
+                    "An early BAD followed by a POOR settles as one BAD.");
+            auto answered = load({1});
+            static_cast<void>(answered->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(answered->ProcessInput('K', InputEdge::Pressed, RhythmTime{-60'000}));
+            static_cast<void>(answered->ProcessInput('C', InputEdge::Released, RhythmTime{-50'000}));
+            static_cast<void>(answered->ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            Require(counts(answered->Statistics(), 0, 1, 0) && answered->Statistics().judgements[0] == 0,
+                    "Answering that note on time still counts only its BAD.");
+            auto retired = load({1});
+            static_cast<void>(retired->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(retired->ProcessInput('K', InputEdge::Pressed, RhythmTime{-60'000}));
+            retired->RetireRemaining(RhythmTime{-50'000});
+            Require(counts(retired->Statistics(), 0, 1, 0), "Retired after an early BAD and a POOR, it counts one BAD.");
+            auto earlyOnly = load({1});
+            static_cast<void>(earlyOnly->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            earlyOnly->RetireRemaining(RhythmTime{-50'000});
+            Require(counts(earlyOnly->Statistics(), 0, 0, 1), "Retired with only an early BAD, it stays a MISS.");
         }
         {
             // A note right behind (1/16, 125 ms): after a late POOR the focus moves on as usual and the next note
