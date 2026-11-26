@@ -108,6 +108,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestWrongColourPoor", TestWrongColourPoor},
         {"TestTickRollLastTickWindow", TestTickRollLastTickWindow},
         {"TestPoorSettlesNote", TestPoorSettlesNote},
+        {"TestLateBadSettlesNote", TestLateBadSettlesNote},
         {"TestRollHeadPressIsNotJudged", TestRollHeadPressIsNotJudged},
         {"TestTickRollFocusAgainstNextNote", TestTickRollFocusAgainstNextNote},
         {"TestPoorSingleNoteAccuracy", TestPoorSingleNoteAccuracy},

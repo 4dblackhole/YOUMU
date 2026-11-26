@@ -132,9 +132,10 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
         poorCounted_[found->second] = true;
         comboEligible_[found->second] = false;
     }
-    else if (keyPressed && IsEarlyBad(event))
+    else if (keyPressed && IsRejectedBad(event))
     {
-        comboEligible_[found->second] = false; // An early BAD counts once the note settles.
+        // An early BAD, or a late one on a note that only takes GOOD or better, counts once the note settles.
+        comboEligible_[found->second] = false;
         static_cast<void>(MarkNoteFault(found->second, NoteFault::EarlyBad));
     }
     else if (event.type == NoteEventType::TickAccepted && CountsAcceptedTicks(result_->notes[found->second].type))

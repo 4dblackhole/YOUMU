@@ -603,6 +603,85 @@ namespace tests
         }
     }
 
+    // A note that only takes GOOD or better (big and purple notes, a Buzz head) does not take a right colour pressed
+    // within BAD after it. That press is still a timing mistake: the note is a BAD from then on and ends as one BAD
+    // when it is missed, like an early BAD (user decision on the late BAD of these notes: "1").
+    void TestLateBadSettlesNote()
+    {
+        constexpr std::size_t Bad = 4, Miss = 5;
+        const auto load = [](const int keyType) {
+            PatternDocument document;
+            document.mode = "Taiko";
+            document.baseBpm = 120.0;
+            document.notes.push_back({.position = {0, {0, 8}}, .keyType = keyType, .sourceOrder = 0});
+            auto loaded = TaikoMode{}.CreateSession(document);
+            Require(loaded.Succeeded(), "Late BAD fixture must load.");
+            return std::move(loaded.session);
+        };
+        const auto counts = [](const PlayStatistics &statistics, std::size_t poor, std::size_t bad, std::size_t miss) {
+            const bool counted = statistics.poorCount == poor && statistics.judgements[Bad] == bad;
+            return counted && statistics.judgements[Miss] == miss;
+        };
+        for (const int keyType : {static_cast<int>(TaikoNoteType::BigDon), static_cast<int>(TaikoNoteType::Purple)})
+        {
+            // Nothing but a late press: shown as a BAD, counted when the note is missed, and not a MISS.
+            auto session = load(keyType);
+            const auto late = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{70'000});
+            Require(std::ranges::any_of(late.events, IsLateBad) && counts(session->Statistics(), 0, 0, 0),
+                    "A right colour 70 ms late on a big note is a late BAD that counts nothing yet.");
+            static_cast<void>(session->Update(RhythmTime{500'000}));
+            Require(counts(session->Statistics(), 0, 1, 0) && session->Statistics().combo == 0,
+                    "A big note left after its late BAD ends as one BAD, not a MISS.");
+            Require(session->AccuracyRate() == 0.0, "That note scores zero, like any BAD.");
+        }
+        {
+            // One side on time, the other too late: one BAD for the note.
+            auto session = load(static_cast<int>(TaikoNoteType::BigDon));
+            static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{0}));
+            const auto late = session->ProcessInput('V', InputEdge::Pressed, RhythmTime{70'000});
+            Require(std::ranges::any_of(late.events, IsLateBad), "The second side 70 ms late is a late BAD.");
+            static_cast<void>(session->Update(RhythmTime{500'000}));
+            Require(counts(session->Statistics(), 0, 1, 0), "A big note whose second side came too late is one BAD.");
+        }
+        {
+            // The late BAD came first, so a wrong colour after it is shown but not counted (the first of the two).
+            auto session = load(static_cast<int>(TaikoNoteType::BigDon));
+            static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{60'000}));
+            const auto poor = session->ProcessInput('K', InputEdge::Pressed, RhythmTime{70'000});
+            Require(std::ranges::any_of(poor.events, IsPoor), "A wrong colour after the late BAD still shows a POOR.");
+            static_cast<void>(session->Update(RhythmTime{500'000}));
+            Require(counts(session->Statistics(), 0, 1, 0), "A late BAD followed by a POOR is one BAD.");
+        }
+        {
+            // A POOR first stays the POOR: the late right colour after it counts nothing.
+            auto session = load(static_cast<int>(TaikoNoteType::BigDon));
+            static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{60'000}));
+            static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{70'000}));
+            static_cast<void>(session->Update(RhythmTime{500'000}));
+            Require(counts(session->Statistics(), 1, 0, 0), "A POOR followed by a late BAD stays one POOR.");
+        }
+        {
+            // A Buzz head pressed too late: the Buzz ends as one BAD.
+            auto buzz = MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"});
+            buzz.notes.back().position.fraction = Rational{9, 16};
+            auto loaded = TaikoMode{}.CreateSession(buzz);
+            Require(loaded.Succeeded(), "Buzz late BAD fixture must load.");
+            auto &session = *loaded.session;
+            const auto late = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{70'000});
+            Require(std::ranges::any_of(late.events, IsLateBad), "A Buzz head pressed 70 ms late is a late BAD.");
+            static_cast<void>(session.Update(RhythmTime{1'125'000}));
+            Require(counts(session.Statistics(), 0, 1, 0) && session.Statistics().okCount == 0,
+                    "A Buzz whose head was pressed too late ends as one BAD.");
+        }
+        {
+            // A normal note is unchanged: its late BAD is a hit and one BAD at once.
+            auto session = load(static_cast<int>(TaikoNoteType::Don));
+            const auto late = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{70'000});
+            Require(!std::ranges::any_of(late.events, IsLateBad) && counts(session->Statistics(), 0, 1, 0),
+                    "A normal note takes its late BAD as a hit.");
+        }
+    }
+
     // BAD is a timing mistake and POOR a wrong action (user decision: "BAD는 타이밍이 맞지않은 처리, POOR은 동작이
     // 맞지않은 처리를 의미하도록 해주세요"). Rolls and balloons judge no timing, so a press just before them is
     // neither: no early BAD, no POOR, no word and no red beam.
@@ -899,7 +978,8 @@ namespace tests
         Require(!session.AccuracyRate() && !session.LastNoteAccuracy(),
                 "Reset must clear totals and the last-note details.");
         static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
-        const auto partial = session.Update(RhythmTime{60'000});
+        // A big note waits through the BAD window before it is missed, like a normal note (user decision).
+        const auto partial = session.Update(RhythmTime{profile->HalfWindow(JudgementGrade::Bad).count() + 1});
         Require(partial.finalizedAccuracies.size() == 1 &&
                     partial.finalizedAccuracies.front().ScoreRate() == 0.0 &&
                     partial.finalizedAccuracies.front().hitScoreRates[0] == 0.0,
