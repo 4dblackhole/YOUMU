@@ -248,7 +248,8 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
   - 일반·큰·보라 노트 하나에 POOR와 BAD가 둘 다 있으면 먼저 판정된 쪽 하나만 셉니다(사용자 결정: 큰 노트에 "POOR/BAD중 먼저 판정된
     쪽으로 해주세요", 일반 노트도 같은 기준으로 바꾸는지에 "1입니다"). early BAD 뒤 POOR는 BAD 하나입니다. 그 POOR는 글자와 적색 키빔만
     보이고 세지 않으며, 노트가 끝나거나 Retire될 때 BAD를 셉니다. POOR가 먼저면 위대로 POOR 하나입니다. early BAD만 있고 Retire되면 MISS입니다.
-    Buzz 머리는 이 범위 밖이며 지금처럼 POOR를 셉니다.
+    Buzz 머리도 같은 기준입니다(사용자 결정: Buzz 머리도 먼저 판정된 쪽으로 바꾸는지에 "1입니다"). 머리의 early BAD 뒤 POOR는 BAD 하나이고,
+    그 BAD는 머리를 복귀 타격으로 받을 때가 아니라 Buzz가 끝나거나 Retire될 때 셉니다.
   - POOR는 그 순간 콤보를 바꾸지 않고 노트가 끝날 때 0이 됩니다.
 
 상세: [Rules](../Features/Gameplay/Rules.md), [HP 설계](../Formats/Ymp.md#hp-게이지).
