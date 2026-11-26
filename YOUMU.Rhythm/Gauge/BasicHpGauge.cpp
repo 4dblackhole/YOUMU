@@ -97,8 +97,9 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
     const bool hold = target.kind == NoteAccuracyKind::Hold;
     const double headWeight = target.ticks == 0 ? 1.0 : .5;
     const bool judgesTiming = timing || (hold && !state.headSettled);
-    // A POOR or an early BAD (a rejected press within BAD) waits for the note to settle, then decreases.
-    const bool rejectedInput = IsPoor(event) || IsEarlyBad(event);
+    // A POOR or a BAD the note did not take (a rejected press within BAD) waits for the note to settle, then
+    // decreases.
+    const bool rejectedInput = IsPoor(event) || IsRejectedBad(event);
     if (judgesTiming && keyPressed && rejectedInput)
         state.rejected = true;
     const bool badHit = event.type == NoteEventType::HitAccepted &&

@@ -126,6 +126,10 @@ NoteProcessResult RuleBasedNote::ProcessInput(const RhythmInputEvent &input)
         retryAfterEarlyBad_ = false;
     }
     MarkTimingOutcome(result, judgesTiming, retrying);
+    // A right colour too late for a note that only takes GOOD or better is a timing mistake like an early BAD
+    // (user decision): the note is a BAD from here on, also when nothing else reaches it and it is missed.
+    if (input.edge == InputEdge::Pressed && std::ranges::any_of(result.events, IsLateBad))
+        RecordEarlyBad();
     for (NoteEvent &event : result.events)
     {
         if (event.type == NoteEventType::HitAccepted ||

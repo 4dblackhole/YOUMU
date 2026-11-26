@@ -88,7 +88,10 @@ void CountedHitInputRule::MarkMissed(const NoteRuleContext &context, const Rhyth
     MarkRuleMissed(context, time, state_, output, acceptedHitCount_);
 }
 
+// The note waits through the BAD window like a single-hit note, though it only takes maximumGrade_ or better
+// (user decision: a big note is handled like a normal note). A right colour pressed in that late part is
+// rejected with a BAD grade, which the note records, and the lane moves on early when the next note is within GOOD.
 RhythmTime CountedHitInputRule::ExpireTime(const NoteRuleContext &context) const noexcept
 {
-    return context.noteTime + context.judgementProfile.HalfWindow(maximumGrade_);
+    return context.noteTime + context.judgementProfile.HalfWindow(JudgementGrade::Bad);
 }

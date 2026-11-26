@@ -91,6 +91,21 @@ struct NoteEvent
     return !event.wrongPress && event.judgement.signedError < RhythmDuration::zero();
 }
 
+// A right-colour press within BAD after the note that the note did not take. Only a note that takes GOOD or
+// better has one (big and purple notes, a Buzz head); a normal note takes that press as its BAD hit.
+[[nodiscard]] inline bool IsLateBad(const NoteEvent &event) noexcept
+{
+    if (event.type != NoteEventType::InputRejected || event.judgement.grade != JudgementGrade::Bad)
+        return false;
+    return !event.wrongPress && event.judgement.signedError > RhythmDuration::zero();
+}
+
+// A BAD the note did not take as a hit, before or after it: the note is a BAD from then on.
+[[nodiscard]] inline bool IsRejectedBad(const NoteEvent &event) noexcept
+{
+    return IsEarlyBad(event) || IsLateBad(event);
+}
+
 struct AudioCueRequest
 {
     SoundId sound;
