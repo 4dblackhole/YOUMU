@@ -20,6 +20,14 @@ class GameDiagnostics final : public PhantomCore::IEngineDiagnosticSink
     // How long the main loop may stand still before the engine reports it.
     // Loading a song takes a fraction of this; a hang never ends.
     static constexpr double MainLoopStallSeconds = 10.0;
+    // The watch mode reports sooner: a graphics driver that hangs is reset by Windows after about ten
+    // seconds, which a ten second limit just misses, and the dump of where the loop waits is the point of
+    // that mode. No pass of a healthy run comes near this.
+    static constexpr double WatchedMainLoopStallSeconds = 3.0;
+    [[nodiscard]] static constexpr double StallSeconds(const bool watch) noexcept
+    {
+        return watch ? WatchedMainLoopStallSeconds : MainLoopStallSeconds;
+    }
 
     // Once per performance sample, from the game loop.
     void AddSample(const PhantomCore::PerformanceStatistics &performance, double totalSeconds,

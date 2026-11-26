@@ -48,7 +48,8 @@ try {
                'scene: ', 'mode: normal', 'exit code 0') },
         # 감시 모드: Option.ini를 건드리지 않고 이 실행만 DRED를 켭니다(1초 통계 줄은 단위 검사가 봅니다).
         @{ Name = 'watch'; Arguments = @('--smoke-lobby', '--diagnostics=watch'); ExitCode = 0
-           Expected = @('mode: watch (--diagnostics=watch)', 'device removed data on', 'exit code 0') },
+           Expected = @('mode: watch (--diagnostics=watch)', 'device removed data on', 'main loop watched at 3 s',
+                        'exit code 0') },
         @{ Name = 'device'; Arguments = @('--smoke-lobby', '--crash-test=device'); ExitCode = 1
            Expected = @('crash test device', 'graphics device lost: ', 'reason DXGI_ERROR_DEVICE_REMOVED', 'recent statistics, ',
                'fatal error: ', 'exit code 1') },
