@@ -116,6 +116,18 @@ namespace tests
             Require(HasEvent(early, NoteEventType::InputRejected) && early.finalizedAccuracies.empty() &&
                         bad(session.Statistics()) == 0,
                     "An early BAD keeps the note and counts nothing until it settles.");
+            const auto &lane = *session.Gear().Lanes().front();
+            Require(lane.CurrentIndex() == 0, "An early BAD keeps the focus on its note.");
+            // More right-colour presses inside the same early BAD window keep the focus too (user decision: "early bad
+            // 일때 올바른색으로 다시 쳤을 경우에 포커스를 그대로 유지해야합니다").
+            for (const std::int64_t at : {-65'000, -60'000, -56'000})
+            {
+                static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{at - 2'000}));
+                static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, RhythmTime{at}));
+                Require(lane.CurrentIndex() == 0 && bad(session.Statistics()) == 0,
+                        "Pressing again inside the early BAD window keeps the focus and counts nothing.");
+            }
+            static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{-50'000}));
             const auto recovered = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
             const auto hit = std::ranges::find(recovered.events, NoteEventType::HitAccepted, &NoteEvent::type);
             Require(hit != recovered.events.end() && hit->recovery && hit->judgement.grade == JudgementGrade::Max,
@@ -452,6 +464,8 @@ namespace tests
             static_cast<void>(session->ProcessInput('D', InputEdge::Pressed, RhythmTime{180'000}));
             static_cast<void>(session->ProcessInput('C', InputEdge::Pressed, RhythmTime{185'000}));
             Require(counts(session->Statistics(), 1, 0, 0), "A BAD-range press after a POOR counts no BAD.");
+            Require(session->Gear().Lanes().front()->CurrentIndex() == 1,
+                    "That press keeps the focus on the POOR note.");
             const auto answered = session->ProcessInput('C', InputEdge::Pressed, RhythmTime{250'000});
             const NoteEvent *hit = firstHit(answered);
             Require(hit != nullptr && hit->recovery && hit->judgement.grade == JudgementGrade::Max,
@@ -516,6 +530,37 @@ namespace tests
                     "The same colour twice on a purple note is one POOR however often it repeats.");
             static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{10'000}));
             Require(counts(session->Statistics(), 1, 0, 0), "The purple note completed after its POOR adds no count.");
+        }
+    }
+
+    // BAD is a timing mistake and POOR a wrong action (user decision: "BAD는 타이밍이 맞지않은 처리, POOR은 동작이
+    // 맞지않은 처리를 의미하도록 해주세요"). Rolls and balloons judge no timing, so a press just before them is
+    // neither: no early BAD, no POOR, no word and no red beam.
+    void TestRollHeadPressIsNotJudged()
+    {
+        const auto judged = [](const NoteProcessResult &result) {
+            return std::ranges::any_of(result.events, [](const NoteEvent &event) {
+                return IsPoor(event) || IsEarlyBad(event) || event.judgement.grade == JudgementGrade::Bad;
+            });
+        };
+        for (const auto type : {TaikoNoteType::Roll, TaikoNoteType::BigRoll, TaikoNoteType::Balloon})
+        {
+            auto loaded = TaikoMode{}.CreateSession(MakeLongPattern(type));
+            Require(loaded.Succeeded(), "Roll head fixture must load.");
+            auto &session = *loaded.session;
+            for (const std::int64_t at : {-70'000, -20'000})
+            {
+                const auto early = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{at});
+                static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{at + 5'000}));
+                Require(HasEvent(early, NoteEventType::InputRejected) && !judged(early),
+                        "A press before a roll or balloon head is not graded: no early BAD and no POOR.");
+            }
+            const auto &statistics = session.Statistics();
+            Require(statistics.poorCount == 0 && statistics.judgements[static_cast<std::size_t>(JudgementGrade::Bad)] == 0,
+                    "Presses before a roll or balloon count no POOR and no BAD.");
+            const auto head = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{0});
+            Require(HasEvent(head, NoteEventType::TickAccepted) || HasEvent(head, NoteEventType::HitAccepted),
+                    "The roll or balloon still takes the press on its head.");
         }
     }
 

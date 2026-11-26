@@ -159,9 +159,7 @@ NoteProcessResult RuleBasedNote::MarkMissed(const RhythmTime time)
 
 bool RuleBasedNote::JudgesTiming() const noexcept
 {
-    // Timing notes judge every hit; a Buzz judges only its head.
-    return accuracy_.target.kind == NoteAccuracyKind::TimingHits ||
-           (accuracy_.target.kind == NoteAccuracyKind::Hold && accuracy_.acceptedHits == 0);
+    return accuracy_.JudgesTiming();
 }
 
 void RuleBasedNote::MarkTimingOutcome(NoteProcessResult &result, const bool judgedTiming, const bool retrying)
