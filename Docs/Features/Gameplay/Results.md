@@ -53,7 +53,7 @@ Ticks의 `처리한 틱/전체 틱`을 보여 줍니다(사용자 결정: 퍼센
 - MAX/PERFECT/GREAT/GOOD/BAD: 실제 `HitAccepted`의 타이밍 판정 개수입니다. [BAD 복귀](Rules.md#bad-복귀-판정) 타격은 자기 등급이
   아니라 BAD로 세고, early BAD 상태로 놓친 노트도 MISS가 아니라 BAD로 셉니다.
   큰 노트(BigDon/BigKat/Purple)는 노트가 끝날 때 하나만 셉니다([GAME-02](../../Design/Decisions.md#game-02-판정과-정확도)): 두 타격 평균 점수의 등급,
-  BAD가 있으면 BAD, POOR가 있으면 POOR만(POOR는 누를 때 셈), 한쪽을 놓치거나 Retire로 끝나면 MISS(정확도 0)입니다. 두 타격은 각각
+  BAD가 있으면 BAD, POOR가 있으면 POOR만(둘 다 있으면 먼저 판정된 쪽, POOR는 누를 때 셈), 한쪽을 놓치거나 Retire로 끝나면 MISS(정확도 0)입니다. 두 타격은 각각
   타이밍 표본이라 표본 수가 판정 개수보다 많을 수 있습니다. Buzz의 `HoldStarted`는 중복 집계하지 않습니다.
 - OK: 롤 계열 중 타격·틱을 하나라도 처리하고 끝난 노트입니다(사용자 결정: 조금이라도 처리하면 OK, 콤보 유지). 정확도는 처리 비율 그대로입니다.
 - MISS: 실패로 확정된 논리 노트입니다. 롤 계열은 타격·틱을 하나도 처리하지 못했거나 Retire로 끝난 경우입니다. POOR가 된 노트는 놓치거나 Retire로 끝나도 MISS로 세지 않습니다.
