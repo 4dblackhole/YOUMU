@@ -21,6 +21,10 @@ struct StatisticsSample
     std::uint32_t graphicsBudgetMb{};
     std::uint32_t processMemoryMb{};
     std::uint32_t handles{};
+    // Screen text: glyph atlas pages, and the glyphs rasterized and pages emptied for reuse in that second.
+    std::uint32_t textAtlasPages{};
+    std::uint32_t textGlyphRasterizations{};
+    std::uint32_t textAtlasEvictions{};
     // The Scene on screen, cut to fit and always terminated.
     char scene[24]{};
 };

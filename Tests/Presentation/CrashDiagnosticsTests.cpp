@@ -224,6 +224,9 @@ namespace
         PerformanceStatistics performance;
         performance.framesPerSecond = 360;
         performance.updatesPerSecond = 14000;
+        performance.textAtlasPages = 16;
+        performance.textGlyphRasterizations = 37;
+        performance.textAtlasEvictions = 2;
         performance.longestLoopSeconds = 0.0021;
         diagnostics->AddSample(performance, 12.0, "Lobby");
         diagnostics->OnEngineRecord("window: 1920x1080 Windowed, display 360 Hz, render rate Display");
@@ -259,6 +262,8 @@ namespace
         Check(Count(text, "recent statistics, 1 seconds") == 2, "The statistics follow each ending once.");
         Check(text.find("fps  360 ups  14000") != std::string::npos, "A statistics line carries the sample.");
         Check(text.find("longest    2100 us") != std::string::npos, "The longest loop pass is in microseconds.");
+        Check(text.find("text 16 pages   37 new  2 evicted") != std::string::npos,
+              "A statistics line carries the glyph atlas counters.");
         Check(text.find("main loop stalled: no pass for 10.5 s (thread 77, 123456 passes before)") != std::string::npos,
               "A stall is written with its length, thread and passes.");
         Check(text.find("main loop resumed after 14.5 s") != std::string::npos, "The end of a stall is written.");
