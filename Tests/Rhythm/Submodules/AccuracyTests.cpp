@@ -551,6 +551,56 @@ namespace tests
             static_cast<void>(session->ProcessInput('K', InputEdge::Pressed, RhythmTime{10'000}));
             Require(counts(session->Statistics(), 1, 0, 0), "The purple note completed after its POOR adds no count.");
         }
+        {
+            // A Buzz head follows the same rule (user decision): an early BAD, then a POOR, is one BAD and no POOR,
+            // whether the head is then answered, left alone or retired. A POOR that comes first stays the one POOR.
+            auto buzz = MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"});
+            buzz.notes.back().position.fraction = Rational{9, 16};
+            const std::array held{static_cast<PhysicalKey>('C')};
+            const auto start = [&] {
+                auto loaded = TaikoMode{}.CreateSession(buzz);
+                Require(loaded.Succeeded(), "Buzz first-fault fixture must load.");
+                return std::move(loaded.session);
+            };
+            const auto earlyBadThenPoor = [&](auto &session) {
+                const auto early = session.ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000});
+                Require(std::ranges::any_of(early.events, IsEarlyBad), "The right colour 70 ms early is an early BAD.");
+                static_cast<void>(session.ProcessInput('C', InputEdge::Released, RhythmTime{-65'000}));
+                const auto poor = session.ProcessInput('K', InputEdge::Pressed, RhythmTime{-60'000});
+                Require(std::ranges::any_of(poor.events, IsPoor) && counts(session.Statistics(), 0, 0, 0),
+                        "A POOR after a Buzz head's early BAD shows but counts nothing yet.");
+                static_cast<void>(session.ProcessInput('K', InputEdge::Released, RhythmTime{-55'000}));
+            };
+            auto answered = start();
+            earlyBadThenPoor(*answered);
+            static_cast<void>(answered->ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(answered->Update(RhythmTime{1'125'000}, held));
+            Require(counts(answered->Statistics(), 0, 1, 0) && answered->Statistics().okCount == 0,
+                    "A Buzz head answered after an early BAD and a POOR counts one BAD.");
+            auto left = start();
+            earlyBadThenPoor(*left);
+            static_cast<void>(left->Update(RhythmTime{1'125'000}));
+            Require(counts(left->Statistics(), 0, 1, 0), "Left alone after an early BAD and a POOR, the Buzz counts one BAD.");
+            auto retired = start();
+            earlyBadThenPoor(*retired);
+            retired->RetireRemaining(RhythmTime{-50'000});
+            Require(counts(retired->Statistics(), 0, 1, 0),
+                    "Retired after an early BAD and a POOR, the Buzz counts one BAD.");
+            auto poorFirst = start();
+            static_cast<void>(poorFirst->ProcessInput('K', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(poorFirst->ProcessInput('K', InputEdge::Released, RhythmTime{-65'000}));
+            static_cast<void>(poorFirst->ProcessInput('C', InputEdge::Pressed, RhythmTime{-60'000}));
+            static_cast<void>(poorFirst->ProcessInput('C', InputEdge::Released, RhythmTime{-55'000}));
+            static_cast<void>(poorFirst->ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(poorFirst->Update(RhythmTime{1'125'000}, held));
+            Require(counts(poorFirst->Statistics(), 1, 0, 0), "A Buzz head whose POOR came first stays that one POOR.");
+            auto badOnly = start();
+            static_cast<void>(badOnly->ProcessInput('C', InputEdge::Pressed, RhythmTime{-70'000}));
+            static_cast<void>(badOnly->ProcessInput('C', InputEdge::Released, RhythmTime{-60'000}));
+            static_cast<void>(badOnly->ProcessInput('C', InputEdge::Pressed, {}));
+            static_cast<void>(badOnly->Update(RhythmTime{1'125'000}, held));
+            Require(counts(badOnly->Statistics(), 0, 1, 0), "A Buzz head answered after an early BAD alone is one BAD.");
+        }
     }
 
     // BAD is a timing mistake and POOR a wrong action (user decision: "BAD는 타이밍이 맞지않은 처리, POOR은 동작이
