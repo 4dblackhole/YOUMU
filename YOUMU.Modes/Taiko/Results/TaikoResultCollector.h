@@ -23,17 +23,28 @@ class TaikoResultCollector final : public IPlayResultCollector
                                           std::optional<std::vector<HpHistoryPoint>> hpHistory = std::nullopt) override;
 
   private:
+    // The first BAD or POOR a big note took; an early BAD is pending until something confirms it or the note ends.
+    enum class NoteFault : std::uint8_t
+    {
+        None,
+        EarlyBad,
+        Bad,
+        Poor,
+    };
     void ConsumeEvent(const NoteEvent &event, bool keyPressed);
     void FinalizeNote(const NoteAccuracy &accuracy, bool retired = false);
     void CountOnceAtSettle(const NoteAccuracy &accuracy, std::size_t index, bool retired);
+    // Records a big note's BAD or POOR; true when this POOR press is the one to count.
+    [[nodiscard]] bool MarkBigNoteFault(std::size_t index, NoteFault fault);
     void Summarize();
     std::unique_ptr<TaikoPlayResult> result_;
     std::unordered_map<NoteId, std::size_t> noteIndices_;
     std::vector<bool> comboEligible_;
-    // Notes that settle as a BAD: missed while left at an early BAD, or a big note that took a BAD hit.
+    // Notes missed while left at an early BAD settle as a BAD.
     std::vector<bool> settlesAsBad_;
-    // The note already counted its one POOR.
+    // The note already counted its one POOR (a big note: it took a POOR press).
     std::vector<bool> poorCounted_;
+    std::vector<NoteFault> bigNoteFaults_;
     std::size_t combo_{};
     RhythmDuration timingErrorSum_{}; // Running sum of result_->timingErrors.
 };

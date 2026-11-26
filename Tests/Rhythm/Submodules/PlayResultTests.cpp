@@ -135,7 +135,7 @@ namespace tests
     }
 
     // A big note counts one judgement (user decisions): the grade of its two hits' average score, or only its POOR
-    // or BAD with no average; a POOR wins over a BAD on the same note (GAME-03). A purple note is a kind of big note.
+    // or BAD with no average; of a POOR and a BAD the one judged first. A purple note is a kind of big note.
     // One hit with the other missing makes the note a MISS with zero accuracy.
     void TestBigNoteCountsOnce()
     {
@@ -184,8 +184,15 @@ namespace tests
                 "A BAD with the other hand missing counts only its BAD.");
         statistics = play(BigDon, {{'D', -20'000}, {'C', 0}, {'M', 0}})->Statistics();
         Require(statistics.poorCount == 1 && counted(statistics) == 1, "A POOR answered on both hands counts only its POOR.");
+        // Of a POOR and a BAD on one big note, the one judged first counts (user decision).
         statistics = play(BigDon, {{'C', -70'000}, {'D', -60'000}, {'C', 0}, {'M', 0}})->Statistics();
-        Require(statistics.poorCount == 1 && counted(statistics) == 1, "A POOR after an early BAD counts only the POOR.");
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "An early BAD before a POOR counts only the BAD.");
+        statistics = play(BigDon, {{'D', -80'000}, {'C', -65'000}, {'C', 0}, {'M', 0}})->Statistics();
+        Require(statistics.poorCount == 1 && counted(statistics) == 1, "A POOR before an early BAD counts only the POOR.");
+        statistics = play(BigDon, {{'C', -70'000}, {'D', -60'000}})->Statistics();
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "An early BAD before a POOR, then left alone, counts only the BAD.");
 
         const auto oneSide = play(BigDon, {{'C', 0}});
         statistics = oneSide->Statistics();
@@ -211,6 +218,23 @@ namespace tests
         statistics = retired->Statistics();
         Require(statistics.judgements[Miss] == 1 && counted(statistics) == 1,
                 "A big note retired after one hit counts one MISS.");
+        const auto retire = [&](std::initializer_list<std::pair<char, std::int64_t>> presses)
+        {
+            auto session = load(BigDon);
+            for (const auto &[key, at] : presses)
+                static_cast<void>(session->ProcessInput(key, InputEdge::Pressed, RhythmTime{at}));
+            session->RetireRemaining(RhythmTime{-50'000});
+            return session->Statistics();
+        };
+        statistics = retire({{'C', -70'000}});
+        Require(statistics.judgements[Miss] == 1 && counted(statistics) == 1,
+                "A big note retired with only an early BAD counts one MISS, as a normal note does.");
+        statistics = retire({{'C', -70'000}, {'D', -60'000}});
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "A big note retired after an early BAD and then a POOR counts only the BAD.");
+        statistics = retire({{'D', -80'000}, {'C', -65'000}});
+        Require(statistics.poorCount == 1 && counted(statistics) == 1,
+                "A big note retired after a POOR and then an early BAD counts only the POOR.");
     }
 
     void TestAccuracySixDecimalPrecision()
