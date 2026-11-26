@@ -141,15 +141,18 @@ Completed/Missed에서 `NoteProcessResult::finalizedAccuracies`로 한 번만 �
 | 노트 | 최종 정확도 |
 | --- | --- |
 | Don/Kat | 기존 선형 보간 타이밍 정확도 |
-| BigDon/BigKat/Purple | `(1타 정확도 + 2타 정확도) / 2`, 미입력 항목은 0 |
+| BigDon/BigKat/Purple | `(1타 정확도 + 2타 정확도) / 2`; 한쪽을 놓치면 MISS로 전체 0 |
 | Roll/BigRoll/Balloon/DengDeng | `min(타격수 / 목표 타격수, 1)`; 시간 초과에도 부분 점수 보존 |
 | TickRoll/BigTickRoll | `성공 틱 / 전체 틱`; 시작점도 틱, Good 이내면 1, 나머지는 0 |
 | Buzz | `시작 정확도 × 0.5 + 시작점 이후 유지 틱 비율 × 0.5` |
 
 Don/Kat 및 BigDon/BigKat/Purple에서 Good 이내의 잘못된 Press 또는 BAD 범위(노트 앞·뒤) 안의 다른 색 Press가 POOR로 거부되거나, 타격이 BAD(늦은 BAD,
 early BAD, [BAD 복귀](#bad-복귀-판정))이면 노트는 BAD로 처리됩니다: 논리 노트 전체의 최종 정확도는 0이고
-콤보를 더하지 않습니다. 큰 노트에서 한 타격만 BAD·POOR여도 노트 전체가 0입니다(사용자 결정). 판정 개수는 지금처럼
-타격마다 셉니다. 키 해제(`InputEdge::Released`)와 판정 범위 밖의 입력은 이 처리를 만들지 않습니다. Reset/되감기는
+콤보를 더하지 않습니다. 큰 노트에서 한 타격만 BAD·POOR여도 노트 전체가 0입니다(사용자 결정). 판정 개수는 타격마다 세고,
+큰 노트(BigDon/BigKat과 그 한 종류인 Purple)만 노트가 끝날 때 하나를 셉니다(사용자 결정,
+[GAME-02](../../Design/Decisions.md#game-02-판정과-정확도)): POOR가 있으면 POOR, 아니면 BAD가 있으면 BAD, 아니면 두 타격 평균
+점수의 등급(`NoteAccuracy::averageGrade`)입니다. 한쪽만 치고 다른 쪽을 놓치면 MISS 하나, 정확도 0, HP는 MISS 감소이며
+(사용자 결정), Retire로 끝나도 MISS입니다. 키 해제(`InputEdge::Released`)와 판정 범위 밖의 입력은 이 처리를 만들지 않습니다. Reset/되감기는
 해당 입력 이력에 맞춰 이 상태를 초기화하거나 재구성합니다.
 
 Buzz 헤드가 BAD·POOR(복귀 포함)이면 헤드의 정확도만 0으로 확정하며 몸통의 1/2 가중치는 보존합니다(사용자 결정).
@@ -164,7 +167,7 @@ Buzz 헤드가 BAD·POOR(복귀 포함)이면 헤드의 정확도만 0으로 확
 BAD는 타이밍이 맞지 않은 처리, POOR는 동작이 맞지 않은 처리입니다(사용자 결정, [GAME-03](../../Design/Decisions.md#game-03-poor)).
 맞는 동작이 BAD 범위에 들어오면 BAD(early BAD·늦은 BAD), 판정 범위 안에서 동작이 틀리면 POOR입니다. 타이밍을 판정하는 노트
 (`NoteAccuracy::JudgesTiming`: 일반·큰·보라 노트, 머리를 치기 전의 Buzz)만 early BAD가 있습니다. 롤·풍선·뎅뎅·틱롤 머리 앞의
-누름은 등급 없이 거부해 BAD·POOR·글자·적색 키빔이 없습니다. 큰 노트·보라·Buzz 머리의 늦은 BAD 범위 누름과 큰 노트의 타격별 집계는
+누름은 등급 없이 거부해 BAD·POOR·글자·적색 키빔이 없습니다. 큰 노트·보라·Buzz 머리의 늦은 BAD 범위 누름은
 사용자 확인 중인 예외입니다([GAME-03](../../Design/Decisions.md#game-03-poor)).
 
 사용자 결정입니다. early BAD는 배드말림을 막으려고 포커스를 유지할 뿐 기본적으로 BAD 처리입니다. POOR는 BAD의 한 종류이며
