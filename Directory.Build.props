@@ -12,6 +12,10 @@
     <FmodRoot Condition="'$(FmodRoot)' == '' and Exists('C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\core\inc\fmod.hpp')">C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows</FmodRoot>
     <FmodIncludeDir>$(FmodRoot)\api\core\inc</FmodIncludeDir>
     <FmodLibraryDir>$(FmodRoot)\api\core\lib\x64</FmodLibraryDir>
+
+    <!-- NVIDIA Nsight Aftermath, only for a build made with /p:PhantomCoreAftermath=true. The SDK folder is
+         outside the repository, as in the engine's own Directory.Build.props. -->
+    <AftermathRoot Condition="'$(AftermathRoot)' == '' and '$(NSIGHT_AFTERMATH_SDK)' != ''">$(NSIGHT_AFTERMATH_SDK)</AftermathRoot>
   </PropertyGroup>
 
   <!-- Release links the C/C++ runtime statically (/MT) so the binaries run without the Visual C++

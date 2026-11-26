@@ -44,6 +44,9 @@ class YOUMUGame final : public PhantomCore::SceneGameClient
     void FailOnceForTest(const PhantomCore::UpdateContext &context);
     // Option.ini's DeviceRemovedData, or on for a watch mode run.
     [[nodiscard]] bool DeviceRemovedData() const noexcept;
+    // The graphics driver's own crash dumps: asked for in a watch mode run, unless Option.ini's
+    // DeviceRemovedData=1 chose the device removed data instead (the two are not used together).
+    [[nodiscard]] bool GpuCrashDumps() const noexcept;
 
     bool smokeTest_{};
     bool showPerformanceOverlay_{};

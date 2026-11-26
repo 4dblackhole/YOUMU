@@ -6,6 +6,7 @@
 #include <Psapi.h>
 
 #include <cstdio>
+#include <fstream>
 
 using namespace PhantomCore;
 
@@ -114,12 +115,38 @@ void GameDiagnostics::OnGraphicsDeviceLost(const GraphicsDeviceLossReport &repor
             game_log::Write("  device removed data was off (Option.ini [Diagnostics] DeviceRemovedData=1 turns it on)");
         for (const std::string &line : report.extendedData)
             game_log::Write("  " + line);
+        if (!report.gpuCrashDumpStatus.empty())
+            game_log::Write("  gpu crash dump: " + report.gpuCrashDumpStatus);
+        WriteGpuCrashDump(report);
     }
     catch (...)
     {
     }
     BackgroundWorkLog::WriteRunning();
     WriteRecentOnce();
+}
+
+// The driver's dump as it came, for NVIDIA's tools, and the same dump as text, which needs no tool.
+void GameDiagnostics::WriteGpuCrashDump(const GraphicsDeviceLossReport &report) const
+{
+    if (report.gpuCrashDump.empty() || gpuDumpDirectory_.empty())
+        return;
+    SYSTEMTIME now{};
+    GetLocalTime(&now);
+    const std::wstring name = std::format(L"youmu-{:04}{:02}{:02}-{:02}{:02}{:02}-gpu.nv-gpudmp", now.wYear, now.wMonth,
+                                          now.wDay, now.wHour, now.wMinute, now.wSecond);
+    std::error_code ignored;
+    std::filesystem::create_directories(gpuDumpDirectory_, ignored);
+    const std::filesystem::path dumpPath = gpuDumpDirectory_ / name;
+    std::ofstream dump(dumpPath, std::ios::binary);
+    dump.write(reinterpret_cast<const char *>(report.gpuCrashDump.data()),
+               static_cast<std::streamsize>(report.gpuCrashDump.size()));
+    game_log::Write(dump ? "  gpu crash dump file: " + dumpPath.filename().string()
+                         : std::string("  gpu crash dump file could not be written"));
+    if (report.gpuCrashDumpJson.empty())
+        return;
+    std::ofstream text(dumpPath.wstring() + L".json", std::ios::binary);
+    text.write(report.gpuCrashDumpJson.data(), static_cast<std::streamsize>(report.gpuCrashDumpJson.size()));
 }
 
 FatalErrorPresentation GameDiagnostics::OnFatalError(const std::string_view message) noexcept
