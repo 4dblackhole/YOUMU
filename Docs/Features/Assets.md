@@ -65,7 +65,7 @@ msbuild YOUMU.sln /m /p:Configuration=Release /p:Platform=x64
 ```
 
 게임 실행에 필요한 직접 배포 파일은 bin/x64/Release의 Y's Orchestral Unison - Melodic Ultimatum.exe와 fmod.dll입니다.
-같은 폴더의 `감시 모드로 실행.bat`도 함께 넣습니다(원본은 `Client/Launch`, 빌드가 출력 폴더에 복사). 이 파일로 띄운 실행만
+같은 폴더의 `Run in watch mode.bat`도 함께 넣습니다(원본은 `Client/Launch`, 빌드가 출력 폴더에 복사). 이 파일로 띄운 실행만
 [감시 모드](CrashDiagnostics.md#일반-실행과-감시-모드)이고 실행 파일을 그대로 띄우면 일반 실행이므로, 배포본은 하나입니다.
 bat 파일은 실행 파일 이름을 그대로 적고 있으므로 `Client/Texts/GameIdentity.props`의 게임 이름을 바꾸면 함께 고칩니다.
 PhantomCore 등 정적 라이브러리는 이미 EXE에 링크되므로 .lib/.pdb/테스트 EXE/fmodL.dll은 제외합니다.
@@ -81,7 +81,7 @@ PhantomCore 등 정적 라이브러리는 이미 EXE에 링크되므로 .lib/.pd
 demo/
   Y's Orchestral Unison - Melodic Ultimatum.exe
   fmod.dll
-  감시 모드로 실행.bat        이것으로 띄운 실행만 감시 모드
+  Run in watch mode.bat      이것으로 띄운 실행만 감시 모드
   Option.ini                 처음 실행 시 기본값으로 자동 생성 가능
   README.txt
   Asset/                     Assets가 아닌 단수 Asset

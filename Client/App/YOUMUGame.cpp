@@ -121,6 +121,9 @@ EngineConfig YOUMUGame::GetEngineConfig() const
 {
     EngineConfig config;
     config.windowTitle = GameName;
+    // A watch mode run says so in its title, so the player sees which way the game was started.
+    if (launch_.watch)
+        config.windowTitle += L" [" + std::wstring(texts_.Get("Startup.watchTitle")) + L"]";
     config.windowWidth = optionSettings_.Values().windowWidth;
     config.windowHeight = optionSettings_.Values().windowHeight;
     config.windowMode = optionSettings_.Values().windowMode;
@@ -142,7 +145,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     config.diagnostics.graphicsDeviceRemovedData = DeviceRemovedData();
     config.diagnostics.graphics = GraphicsSwitchesForRun(optionSettings_.Values());
     config.renderRateOverrideHz = RenderRateOverrideForRun(optionSettings_.Values());
-    config.diagnostics.mainLoopStallSeconds = GameDiagnostics::MainLoopStallSeconds;
+    config.diagnostics.mainLoopStallSeconds = GameDiagnostics::StallSeconds(launch_.watch);
     // The hidden crash tests need more than a smoke run's three frames.
     if (launch_.removeGraphicsDevice)
     {

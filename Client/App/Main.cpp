@@ -82,7 +82,8 @@ namespace
                                     smokeTest ? "yes" : "no", launch.CrashTestName()));
         // Which of the two ways of starting the game this run is: the launcher file passes --diagnostics=watch.
         game_log::Write(launch.watch
-                            ? "mode: watch (--diagnostics=watch): device removed data on, statistics every second"
+                            ? "mode: watch (--diagnostics=watch): device removed data on, statistics every second, "
+                              "main loop watched at 3 s"
                             : "mode: normal");
     }
 
