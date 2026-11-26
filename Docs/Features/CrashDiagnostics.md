@@ -13,6 +13,7 @@
 | --- | --- | --- |
 | `<게임 폴더>/Data/Logs/youmu-YYYYMMDD-HHMMSS.log` | 실행 한 번의 로그(UTF-8 텍스트) | 최근 10개. 시작할 때 오래된 것부터 지웁니다 |
 | `<게임 폴더>/Data/Crash/youmu-YYYYMMDD-HHMMSS-<사유>.dmp` | 죽거나 멈춘 순간의 덤프(모든 스레드의 호출 스택) | 최근 5개 |
+| `<게임 폴더>/Data/Crash/youmu-YYYYMMDD-HHMMSS-gpu.nv-gpudmp`와 같은 이름의 `.json` | 그래픽 장치가 끊겼을 때 드라이버가 남긴 [GPU 크래시 덤프](#gpu-크래시-덤프nvidia-aftermath). 그 기능이 든 빌드의 감시 모드에서만 | 지우지 않습니다(드물게 생깁니다) |
 
 게임 폴더는 실행 파일이 있는 폴더입니다. 폴더에 쓸 수 없으면 로그나 덤프 없이 실행합니다(게임은 그대로 켜집니다).
 문제가 생겼을 때는 두 폴더에서 이름의 시각이 가장 늦은 파일을 보면 됩니다. 게임을 다시 켜도 지난 실행의 파일은 남아 있습니다.
@@ -200,6 +201,30 @@ cdb -z youmu-20261125-101010-crash.dmp -y <exe와 PDB를 보관한 폴더> -c ".
 켜면 그래픽 장치가 끊겼을 때 명령 목록마다 GPU가 마지막으로 끝낸 동작이 `graphics device lost` 아래에 한 줄씩 붙습니다.
 모든 그리기에 비용이 조금 붙으므로 그래픽 문제를 쫓을 때만 켭니다. 엔진은 시작할 때만 읽습니다.
 
+## GPU 크래시 덤프(NVIDIA Aftermath)
+
+DRED는 "어느 그리기에서 멈췄나"까지만 말합니다. NVIDIA 드라이버가 직접 남기는 덤프는 드라이버가 본 장치 상태,
+그때 돌던 셰이더, 프레임 안의 위치(엔진이 남기는 표시)를 담습니다. 엔진 쪽 설명은
+[엔진 진단 기록](../../Dependencies/PhantomCore/Docs/EngineDiagnostics.md)의 "GPU 크래시 덤프"에 있습니다.
+
+- **켜지는 조건**: `/p:PhantomCoreAftermath=true`로 만든 빌드를 [감시 모드](#일반-실행과-감시-모드)로 띄우고, 실행 파일 옆에
+  `GFSDK_Aftermath_Lib.x64.dll`이 있고, 그래픽 카드가 NVIDIA일 때입니다. 하나라도 아니면 지금까지처럼 DRED를 씁니다.
+  로그의 `engine: gpu crash dumps: on (NVIDIA Aftermath)` 또는 `off (이유)` 줄이 어느 쪽인지 말합니다.
+- **DRED와는 함께 쓰지 않습니다.** 덤프가 켜진 실행은 DRED를 켜지 않습니다. `Option.ini`의 `DeviceRemovedData=1`은
+  "DRED를 쓰겠다"는 뜻으로 보아, 그 값이 1이면 감시 모드에서도 덤프를 요청하지 않습니다. 두 방식을 번갈아 볼 때 씁니다.
+- **기본 빌드에는 없습니다.** 속성의 기본값은 `false`이고, 그 빌드에는 호출 자체가 없으며 DLL도 복사하지 않습니다.
+  검증 스크립트와 러너는 기본 빌드를 씁니다.
+- **빌드**: NVIDIA Nsight Aftermath SDK를 저장소 밖에 풀고 그 폴더를 `NSIGHT_AFTERMATH_SDK` 환경 변수나
+  `/p:AftermathRoot=`로 가리킵니다(예: `msbuild YOUMU.sln /p:Configuration=Release /p:Platform=x64
+  /p:PhantomCoreAftermath=true /p:AftermathRoot=D:\SDK\NsightAftermath`). Client 프로젝트가 DLL과 NVIDIA 라이선스
+  (`ThirdPartyNotices/NsightAftermath/LICENSE.txt`)를 실행 파일 옆에 복사합니다. SDK의 헤더와 `.lib`는 NVIDIA 라이선스상
+  배포할 수 없으므로 저장소에 넣지 않습니다. DLL은 게임에 넣어 배포할 수 있습니다.
+- **남는 것**: 장치가 끊기면 로그에 `gpu crash dump: dump finished, … bytes, device now: …` 한 줄과 파일 이름이 붙고,
+  `Data/Crash`에 `.nv-gpudmp`(NVIDIA Nsight Graphics로 여는 원본)와 `.nv-gpudmp.json`(같은 내용을 글로 푼 것)이 생깁니다.
+  드라이버가 덤프를 끝낼 때까지 최대 8초 기다립니다.
+- GTX 10 세대(Pascal)에서는 NVIDIA 문서상 "제한된 정보"만 남습니다.
+- NVIDIA의 사용 지침에 따라 진단용 실행(감시 모드)에서만 켭니다. 일반 실행은 DLL을 열지 않습니다.
+
 ## 그래픽 장치 시험 설정
 
 그래픽 장치가 멈추는 원인을 가르는 시험용 스위치입니다. `Option.ini`의 `[Diagnostics]`에 적고, 게임을 켤 때만 읽습니다.
@@ -245,6 +270,7 @@ MSBuild 속성 `YoumuGraphicsSwitches`를 `false`로 빌드하면(`msbuild YOUMU
 | 인자 | 하는 일 |
 | --- | --- |
 | `--crash-test=device` | 600프레임을 그린 뒤 엔진이 그래픽 장치를 일부러 제거합니다. 게임은 장치 끊김으로 끝납니다(종료 코드 1) |
+| `--crash-test=gpu-hang` | 600프레임을 그린 뒤 엔진이 GPU가 끝내지 못하는 그리기 하나를 넣습니다. 약 2초 뒤 Windows가 그래픽 드라이버를 되살리고 게임은 장치 끊김(`DXGI_ERROR_DEVICE_HUNG`)으로 끝납니다. **화면이 잠깐 꺼지고 GPU를 쓰는 다른 프로그램도 장치를 잃을 수 있습니다.** GPU 크래시 덤프가 실제로 남는지 볼 때만, 사람이 직접 띄웁니다. 자동 테스트는 쓰지 않습니다 |
 | `--crash-test=stall` | 시작 0.5초 뒤 Update 한 번이 3초 동안 돌아오지 않습니다. 이때만 멈춤 한도를 1초로 줄입니다 |
 | `--crash-test=exception` | 시작 0.5초 뒤 Update가 예외를 던집니다. 엔진이 잡아 치명적 오류로 끝납니다(로그, 오류 창, 종료 코드 1). 덤프는 없습니다 |
 | `--crash-test=crash` | 시작 0.5초 뒤 Update가 접근 위반을 일으킵니다. 아무도 잡지 않으므로 `-crash.dmp`가 남고 Windows가 프로세스를 끝냅니다(종료 코드 0xC0000005) |
