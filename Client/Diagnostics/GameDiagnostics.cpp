@@ -126,18 +126,23 @@ void GameDiagnostics::OnGraphicsDeviceLost(const GraphicsDeviceLossReport &repor
     WriteRecentOnce();
 }
 
-// The driver's dump as it came, for NVIDIA's tools, and the same dump as text, which needs no tool.
+// The driver's dump as it came, for NVIDIA's tools, and the same dump as text, which needs no tool. Beside them the
+// engine's record of what the last frames drew (-gpu-frames.txt) and the instance bytes those draws read (.bin).
 void GameDiagnostics::WriteGpuCrashDump(const GraphicsDeviceLossReport &report) const
 {
-    if (report.gpuCrashDump.empty() || gpuDumpDirectory_.empty())
+    const bool nothing = report.gpuCrashDump.empty() && report.frameDraws.empty();
+    if (nothing || gpuDumpDirectory_.empty())
         return;
     SYSTEMTIME now{};
     GetLocalTime(&now);
-    const std::wstring name = std::format(L"youmu-{:04}{:02}{:02}-{:02}{:02}{:02}-gpu.nv-gpudmp", now.wYear, now.wMonth,
-                                          now.wDay, now.wHour, now.wMinute, now.wSecond);
+    const std::wstring stem = std::format(L"youmu-{:04}{:02}{:02}-{:02}{:02}{:02}-gpu", now.wYear, now.wMonth, now.wDay,
+                                          now.wHour, now.wMinute, now.wSecond);
     std::error_code ignored;
     std::filesystem::create_directories(gpuDumpDirectory_, ignored);
-    const std::filesystem::path dumpPath = gpuDumpDirectory_ / name;
+    WriteFrameDraws(report, gpuDumpDirectory_ / (stem + L"-frames"));
+    if (report.gpuCrashDump.empty())
+        return;
+    const std::filesystem::path dumpPath = gpuDumpDirectory_ / (stem + L".nv-gpudmp");
     std::ofstream dump(dumpPath, std::ios::binary);
     dump.write(reinterpret_cast<const char *>(report.gpuCrashDump.data()),
                static_cast<std::streamsize>(report.gpuCrashDump.size()));
@@ -147,6 +152,20 @@ void GameDiagnostics::WriteGpuCrashDump(const GraphicsDeviceLossReport &report) 
         return;
     std::ofstream text(dumpPath.wstring() + L".json", std::ios::binary);
     text.write(report.gpuCrashDumpJson.data(), static_cast<std::streamsize>(report.gpuCrashDumpJson.size()));
+}
+
+void GameDiagnostics::WriteFrameDraws(const GraphicsDeviceLossReport &report, const std::filesystem::path &stem) const
+{
+    if (report.frameDraws.empty())
+        return;
+    std::ofstream text(stem.wstring() + L".txt", std::ios::binary);
+    for (const std::string &line : report.frameDraws)
+        text << line << "\r\n";
+    std::ofstream data(stem.wstring() + L".bin", std::ios::binary);
+    data.write(reinterpret_cast<const char *>(report.frameDrawData.data()),
+               static_cast<std::streamsize>(report.frameDrawData.size()));
+    game_log::Write(std::format("  frame draws file: {}.txt ({} lines, {} bytes of instance data)",
+                                stem.filename().string(), report.frameDraws.size(), report.frameDrawData.size()));
 }
 
 FatalErrorPresentation GameDiagnostics::OnFatalError(const std::string_view message) noexcept

@@ -67,6 +67,7 @@ class GameDiagnostics final : public PhantomCore::IEngineDiagnosticSink
     void WriteRecentOnce() noexcept;
     void WriteWatched(const StatisticsSample &sample) noexcept;
     void WriteGpuCrashDump(const PhantomCore::GraphicsDeviceLossReport &report) const;
+    void WriteFrameDraws(const PhantomCore::GraphicsDeviceLossReport &report, const std::filesystem::path &stem) const;
 
     RecentStatistics recent_;
     std::atomic<bool> recentWritten_{};
