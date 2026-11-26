@@ -70,6 +70,7 @@ int main(const int argumentCount, char *arguments[])
         {"TestPlayResultCollection", TestPlayResultCollection},
         {"TestLivePlayStatistics", TestLivePlayStatistics},
         {"TestComboEventOrder", TestComboEventOrder},
+        {"TestBigNoteCountsOnce", TestBigNoteCountsOnce},
         {"TestLongResultCompletionAndReset", TestLongResultCompletionAndReset},
         {"TestPartialLongNotesCountAsOk", TestPartialLongNotesCountAsOk},
         {"TestLongNoteCompletionGrade", TestLongNoteCompletionGrade},

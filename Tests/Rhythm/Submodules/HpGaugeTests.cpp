@@ -140,6 +140,16 @@ namespace tests
 
     void TestHpCompositeSettlements()
     {
+        {
+            // A big note hit on one side only is a MISS (user decision: "정확는 0 HP도 MISS감소").
+            BasicHpGauge oneSide(1, Definitions({NoteAccuracyKind::TimingHits, 2, 0}));
+            Feed(oneSide, {Event(1, NoteEventType::HitAccepted), Event(1, NoteEventType::HitAccepted, JudgementGrade::Max, 0, 1),
+                           Event(1, NoteEventType::Completed)});
+            Require(Near(oneSide.State().percent, 60), "A big note hit on both sides recovers fully.");
+            Feed(oneSide, {Event(2, NoteEventType::HitAccepted)});
+            Feed(oneSide, {Event(2, NoteEventType::Missed, JudgementGrade::Miss)});
+            Require(Near(oneSide.State().percent, 0), "A big note missed on one side decreases by a whole MISS.");
+        }
         BasicHpGauge pair(1, Definitions({NoteAccuracyKind::TimingHits, 2, 0}));
         Feed(pair, {Event(1, NoteEventType::HitAccepted)});
         Require(Near(pair.State().percent, 0), "A big note waits until completion.");

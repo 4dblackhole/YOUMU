@@ -37,11 +37,12 @@ namespace tests
         auto statistics = session.Statistics();
         Require(statistics.combo == 3 && statistics.maximumCombo == 3 && statistics.okCount == 1,
                 "A successful roll adds one OK/combo; live counts share the result collector.");
-        Require(statistics.judgements[0] == 3 && session.Accuracy()->Units() == 100'000'000 &&
+        Require(statistics.judgements[0] == 2 && session.Accuracy()->Units() == 100'000'000 &&
                 session.Score() == 50'000'000,
                 "A successful roll adds one OK/combo; live counts share the result collector.");
+        // The big note counts one MAX for its two hits, which are both timing samples.
         const auto gradedHits = [](const PlayStatistics &live)
-        { return live.judgements[0] + live.judgements[1] + live.judgements[2] + live.judgements[3] + live.judgements[4]; };
+        { return live.judgements[0] + live.judgements[1] + live.judgements[2] + live.judgements[3] + live.judgements[4] + 1; };
         Require(session.Statistics().timingErrorSum == RhythmDuration{} &&
                     session.Statistics().timingErrorCount == gradedHits(session.Statistics()),
                 "On-time graded hits add zero error; every graded hit is one timing sample.");
@@ -57,7 +58,7 @@ namespace tests
         hit('C', 3'000'000);
         Require(session.Statistics().combo == 0 && session.Statistics().maximumCombo == 3,
                 "The MAX that answers a POOR is a recovery: it breaks the combo and keeps the maximum.");
-        Require(session.Statistics().judgements[0] == 4 && session.Statistics().judgements[4] == 1 &&
+        Require(session.Statistics().judgements[0] == 3 && session.Statistics().judgements[4] == 1 &&
                     session.Statistics().poorCount == 1,
                 "The hit that answers a POOR adds no count: the note's one POOR is its result.");
         session.RewindJudgements(RhythmTime{2'000'000});
@@ -133,6 +134,109 @@ namespace tests
         Require(collector.Statistics().combo == 0, "A terminal event cannot turn a BAD hit into a successful combo.");
     }
 
+    // A big note counts one judgement (user decisions): the grade of its two hits' average score, or only its POOR
+    // or BAD with no average; of a POOR and a BAD the one judged first. A purple note is a kind of big note.
+    // One hit with the other missing makes the note a MISS with zero accuracy.
+    void TestBigNoteCountsOnce()
+    {
+        constexpr int BigDon = 3, Purple = 5;
+        constexpr std::size_t Max = 0, Perfect = 1, Good = 3, Bad = 4, Miss = 5;
+        const auto load = [](int keyType)
+        {
+            PatternDocument pattern;
+            pattern.mode = "Taiko";
+            pattern.notes.push_back(PatternNote{.keyType = keyType});
+            auto loaded = TaikoMode{}.CreateSession(pattern);
+            Require(loaded.Succeeded(), "Big note fixture must load.");
+            return std::move(loaded.session);
+        };
+        const auto play = [&](int keyType, std::initializer_list<std::pair<char, std::int64_t>> presses)
+        {
+            auto session = load(keyType);
+            for (const auto &[key, at] : presses)
+                static_cast<void>(session->ProcessInput(key, InputEdge::Pressed, RhythmTime{at}));
+            static_cast<void>(session->Update(RhythmTime{500'000}));
+            return session;
+        };
+        const auto counted = [](const PlayStatistics &statistics)
+        {
+            std::size_t total = statistics.poorCount;
+            for (const auto count : statistics.judgements)
+                total += count;
+            return total;
+        };
+
+        auto statistics = play(BigDon, {{'C', 0}, {'M', 0}})->Statistics();
+        Require(statistics.judgements[Max] == 1 && counted(statistics) == 1 && statistics.combo == 1,
+                "Two MAX hits count one MAX.");
+        statistics = play(BigDon, {{'C', 0}, {'M', 10'000}})->Statistics();
+        Require(statistics.judgements[Perfect] == 1 && counted(statistics) == 1 && statistics.timingErrorCount == 2,
+                "A MAX and a GREAT count the one grade of their average score; both hits stay timing samples.");
+        statistics = play(BigDon, {{'C', -30'000}, {'M', 30'000}})->Statistics();
+        Require(statistics.judgements[Good] == 1 && counted(statistics) == 1 &&
+                    statistics.timingErrorSum == RhythmDuration{},
+                "The average is of the hits' scores, not of their signed errors, which cancel here.");
+        statistics = play(BigDon, {{'C', -70'000}, {'C', 0}, {'M', 0}})->Statistics();
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "An early BAD answered on both hands counts only its BAD.");
+        statistics = play(BigDon, {{'C', -70'000}, {'C', 0}})->Statistics();
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "A BAD with the other hand missing counts only its BAD.");
+        statistics = play(BigDon, {{'D', -20'000}, {'C', 0}, {'M', 0}})->Statistics();
+        Require(statistics.poorCount == 1 && counted(statistics) == 1, "A POOR answered on both hands counts only its POOR.");
+        // Of a POOR and a BAD on one big note, the one judged first counts (user decision).
+        statistics = play(BigDon, {{'C', -70'000}, {'D', -60'000}, {'C', 0}, {'M', 0}})->Statistics();
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "An early BAD before a POOR counts only the BAD.");
+        statistics = play(BigDon, {{'D', -80'000}, {'C', -65'000}, {'C', 0}, {'M', 0}})->Statistics();
+        Require(statistics.poorCount == 1 && counted(statistics) == 1, "A POOR before an early BAD counts only the POOR.");
+        statistics = play(BigDon, {{'C', -70'000}, {'D', -60'000}})->Statistics();
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "An early BAD before a POOR, then left alone, counts only the BAD.");
+
+        const auto oneSide = play(BigDon, {{'C', 0}});
+        statistics = oneSide->Statistics();
+        Require(statistics.judgements[Miss] == 1 && counted(statistics) == 1 && statistics.combo == 0,
+                "One clean hit with the other hand missing counts one MISS.");
+        Require(oneSide->AccuracyRate() == 0.0 && oneSide->Score() == 0,
+                "A big note missed on one side scores zero, not half (user decision).");
+
+        statistics = play(Purple, {{'C', 0}, {'D', 10'000}})->Statistics();
+        Require(statistics.judgements[Perfect] == 1 && counted(statistics) == 1,
+                "A purple note counts one grade for its two hits, like a big note.");
+        statistics = play(Purple, {{'C', 0}, {'C', 5'000}})->Statistics();
+        Require(statistics.poorCount == 1 && counted(statistics) == 1,
+                "A purple note with a POOR after a clean hit counts only the POOR.");
+        const auto purpleOneSide = play(Purple, {{'C', 0}});
+        Require(purpleOneSide->Statistics().judgements[Miss] == 1 && counted(purpleOneSide->Statistics()) == 1,
+                "A purple note hit on one side only counts one MISS.");
+        Require(purpleOneSide->AccuracyRate() == 0.0, "A purple note hit on one side only scores zero.");
+
+        auto retired = load(BigDon);
+        static_cast<void>(retired->ProcessInput('C', InputEdge::Pressed, {}));
+        retired->RetireRemaining(RhythmTime{10'000});
+        statistics = retired->Statistics();
+        Require(statistics.judgements[Miss] == 1 && counted(statistics) == 1,
+                "A big note retired after one hit counts one MISS.");
+        const auto retire = [&](std::initializer_list<std::pair<char, std::int64_t>> presses)
+        {
+            auto session = load(BigDon);
+            for (const auto &[key, at] : presses)
+                static_cast<void>(session->ProcessInput(key, InputEdge::Pressed, RhythmTime{at}));
+            session->RetireRemaining(RhythmTime{-50'000});
+            return session->Statistics();
+        };
+        statistics = retire({{'C', -70'000}});
+        Require(statistics.judgements[Miss] == 1 && counted(statistics) == 1,
+                "A big note retired with only an early BAD counts one MISS, as a normal note does.");
+        statistics = retire({{'C', -70'000}, {'D', -60'000}});
+        Require(statistics.judgements[Bad] == 1 && counted(statistics) == 1,
+                "A big note retired after an early BAD and then a POOR counts only the BAD.");
+        statistics = retire({{'D', -80'000}, {'C', -65'000}});
+        Require(statistics.poorCount == 1 && counted(statistics) == 1,
+                "A big note retired after a POOR and then an early BAD counts only the POOR.");
+    }
+
     void TestAccuracySixDecimalPrecision()
     {
 
@@ -191,8 +295,9 @@ namespace tests
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
         Require(taiko->summary.accuracy.Units() == expectedSum / 4,
                 "A long tail is not another logical note; interrupted accuracy uses the whole chart.");
-        Require(taiko->judgements[0] == 1 && taiko->judgements[2] == 1 && taiko->judgements[5] == 0,
-                "Count graded inputs once; releases and blanks are never POOR.");
+        Require(taiko->judgements[0] == 0 && taiko->judgements[1] == 1 && taiko->judgements[2] == 0,
+                "The big note's MAX and GREAT count one PERFECT, their average.");
+        Require(taiko->judgements[5] == 0, "Releases and blanks are never POOR or MISS.");
         Require(taiko->judgements[static_cast<std::size_t>(JudgementGrade::Bad)] == 0,
                 "The GREAT that answers the first note's POOR adds no count: that note is its one POOR.");
         Require(taiko->poorCount == 1 && taiko->okCount == 1,
