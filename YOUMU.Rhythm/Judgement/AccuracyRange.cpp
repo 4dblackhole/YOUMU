@@ -106,6 +106,18 @@ const JudgementResult result = Evaluate(noteTime, inputTime);
 return IsAtLeastAsAccurateAs(result.grade, outerGrade);
 }
 
+JudgementGrade AccuracyRange::GradeForScore(const AccuracyScore score) const noexcept
+{
+for (const JudgementBand &band : scaledBands_)
+{
+    if (band.grade == JudgementGrade::Good)
+        break;
+    if (score.Units() >= AccuracyScore::FromRate(band.boundaryScoreRate).Units())
+        return band.grade;
+}
+return JudgementGrade::Good;
+}
+
 std::array<JudgementBand, AccuracyRange::BandCount> AccuracyRange::DefaultLevel50Bands() noexcept
 {
 return {{

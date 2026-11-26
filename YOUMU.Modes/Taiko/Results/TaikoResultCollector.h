@@ -25,11 +25,12 @@ class TaikoResultCollector final : public IPlayResultCollector
   private:
     void ConsumeEvent(const NoteEvent &event, bool keyPressed);
     void FinalizeNote(const NoteAccuracy &accuracy, bool retired = false);
+    void CountOnceAtSettle(const NoteAccuracy &accuracy, std::size_t index, bool retired);
     void Summarize();
     std::unique_ptr<TaikoPlayResult> result_;
     std::unordered_map<NoteId, std::size_t> noteIndices_;
     std::vector<bool> comboEligible_;
-    // Notes missed while left at an early BAD settle as a BAD.
+    // Notes that settle as a BAD: missed while left at an early BAD, or a big note that took a BAD hit.
     std::vector<bool> settlesAsBad_;
     // The note already counted its one POOR.
     std::vector<bool> poorCounted_;

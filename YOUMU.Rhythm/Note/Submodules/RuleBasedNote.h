@@ -36,6 +36,8 @@ class RuleBasedNote final : public INote
   private:
     [[nodiscard]] NoteRuleContext Context() const noexcept;
     [[nodiscard]] bool JudgesTiming() const noexcept;
+    // A timing note that took all its hits without a BAD or POOR: it has an average grade.
+    [[nodiscard]] bool TookEveryHit(bool rejected) const noexcept;
     // A right-colour press in BAD on a note that already took a POOR: rejected without a count.
     [[nodiscard]] bool WaitsForGoodAfterPoor(const RhythmInputEvent &input,
                                              const JudgementResult &judgement) const noexcept;

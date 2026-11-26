@@ -137,8 +137,10 @@ void BasicHpGauge::ConsumeEvent(NoteStateData &state, const NoteEvent &event, bo
 
     // Timing pairs and count rolls settle once at logical completion. Ticks
     // already settled above retain their original order, including saturation.
+    // A missed timing note decreases like a MISS, a big note hit on one side only too (user decision).
+    const bool decreases = state.rejected || event.type == NoteEventType::Missed;
     if (timing)
-        Apply(state.rejected       ? -level_.Value()
+        Apply(decreases            ? -level_.Value()
               : state.hits.empty() ? 0
                                    : std::accumulate(state.hits.begin(), state.hits.end(), 0.0) /
                                          static_cast<double>(state.hits.size()));

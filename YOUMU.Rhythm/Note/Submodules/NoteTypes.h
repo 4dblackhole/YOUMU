@@ -129,6 +129,9 @@ struct NoteAccuracy
     bool finalized{};
     // The timing target (all hits, or a Buzz head) took a BAD, an early BAD or a POOR; its hit scores are zero.
     bool rejectedTiming{};
+    // A settled timing note that took every hit with no BAD or POOR: the grade its average hit score reaches on
+    // the note's profile. A big note counts this one grade (user decision). Unjudged otherwise.
+    JudgementGrade averageGrade{JudgementGrade::Unjudged};
 
     [[nodiscard]] AccuracyScore Score() const noexcept;
     [[nodiscard]] double ScoreRate() const noexcept { return Score().Rate(); }

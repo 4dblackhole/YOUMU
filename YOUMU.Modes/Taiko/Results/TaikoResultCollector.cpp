@@ -17,6 +17,12 @@ namespace
         return true;
     return accuracy.target.ticks != 0 && accuracy.acceptedTicks == 0;
 }
+// A big note takes two hits but counts one judgement when it settles. A purple note is a kind of big note (user
+// decisions).
+[[nodiscard]] bool CountsOnceAtSettle(TaikoNoteType type) noexcept
+{
+    return ResultGroup(type) == TaikoResultGroup::Big;
+}
 [[nodiscard]] bool HeadAlreadyCountedBad(const NoteAccuracy &accuracy, bool retired) noexcept
 {
     return !retired && accuracy.rejectedTiming && accuracy.acceptedHits != 0;
@@ -93,6 +99,8 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
             comboEligible_[found->second] = false;
         if (poorCounted_[found->second])
             comboEligible_[found->second] = false;
+        else if (CountsOnceAtSettle(result_->notes[found->second].type))
+            settlesAsBad_[found->second] = settlesAsBad_[found->second] || bad; // Counted when the note settles.
         else
             ++result_->judgements[bad ? static_cast<std::size_t>(JudgementGrade::Bad) : grade];
         result_->timingErrors.push_back({event.noteId, event.hitIndex, event.eventTime, event.judgement.signedError,
@@ -155,6 +163,8 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
         combo_ = 0;
     if (longNote && success)
         ++result_->okCount;
+    else if (CountsOnceAtSettle(note.type))
+        CountOnceAtSettle(accuracy, found->second, retired);
     else if (note.finalState == NoteState::Missed && settlesAsBad_[found->second])
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Bad)];
     else if (longNote && HeadAlreadyCountedBad(accuracy, retired))
@@ -163,6 +173,19 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
         return; // A note that took a POOR and was not hit after it ends as that POOR, not a MISS (user decision).
     else if (note.finalState == NoteState::Missed || longNote)
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Miss)];
+}
+void TaikoResultCollector::CountOnceAtSettle(const NoteAccuracy &accuracy, std::size_t index, bool retired)
+{
+    // One count for the note (user decision): a POOR or a BAD counts only that, with no average, and a POOR wins over a
+    // BAD (GAME-03). Otherwise the grade of the average hit score, or a MISS for a note it did not finish.
+    if (poorCounted_[index])
+        return; // Counted when it was pressed.
+    auto grade = JudgementGrade::Miss;
+    if (settlesAsBad_[index])
+        grade = JudgementGrade::Bad;
+    else if (!retired && accuracy.averageGrade != JudgementGrade::Unjudged)
+        grade = accuracy.averageGrade;
+    ++result_->judgements[static_cast<std::size_t>(grade)];
 }
 void TaikoResultCollector::Consume(const NoteProcessResult &result, bool keyPressed)
 {

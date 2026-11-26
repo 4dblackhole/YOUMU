@@ -38,6 +38,7 @@ namespace tests
     void TestPlayResultCollection();
     void TestLivePlayStatistics();
     void TestComboEventOrder();
+    void TestBigNoteCountsOnce();
     void TestLongResultCompletionAndReset();
     void TestPartialLongNotesCountAsOk();
     void TestLongNoteCompletionGrade();

@@ -165,8 +165,8 @@ namespace tests
             static_cast<void>(session.ProcessInput('M', InputEdge::Pressed, {}));
             Require(session.AccuracyRate() == 0.0 && session.Statistics().combo == 0,
                     "An early BAD answered on one hand settles the whole large note as a BAD with no combo.");
-            Require(session.Statistics().judgements[0] == 1 && bad(session.Statistics()) == 1,
-                    "Large-note inputs still count one by one.");
+            Require(session.Statistics().judgements[0] == 0 && bad(session.Statistics()) == 1,
+                    "A large note counts one BAD, not each of its hits (user decision).");
         }
         {
             auto pattern = MakeLongPattern(TaikoNoteType::Buzz, {"Action=Don", "TickDivision=16"});
@@ -831,9 +831,9 @@ namespace tests
         static_cast<void>(session.ProcessInput('C', InputEdge::Pressed, {}));
         const auto partial = session.Update(RhythmTime{60'000});
         Require(partial.finalizedAccuracies.size() == 1 &&
-                    partial.finalizedAccuracies.front().ScoreRate() == 0.5 &&
-                    partial.finalizedAccuracies.front().hitScoreRates[1] == 0.0,
-                "An unfilled second hit must count as zero, not discard the first hit.");
+                    partial.finalizedAccuracies.front().ScoreRate() == 0.0 &&
+                    partial.finalizedAccuracies.front().hitScoreRates[0] == 0.0,
+                "A note missed with its second hit unfilled is a MISS: zero, not half (user decision).");
 #if defined(_DEBUG)
         const auto &partialAccuracy = session.LastNoteAccuracy();
         Require(partialAccuracy && partialAccuracy->DebugText().find(L"Hit2=0.000000%") != std::wstring::npos,

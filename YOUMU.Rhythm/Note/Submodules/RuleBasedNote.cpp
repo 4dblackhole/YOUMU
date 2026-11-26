@@ -221,6 +221,7 @@ void RuleBasedNote::Reset() noexcept
     accuracy_.acceptedTicks = 0;
     accuracy_.finalized = false;
     accuracy_.rejectedTiming = false;
+    accuracy_.averageGrade = JudgementGrade::Unjudged;
     poorOnTimingTarget_ = badOnTimingTarget_ = false;
     retryAfterEarlyBad_ = retryAfterPoor_ = false;
 }
@@ -255,10 +256,15 @@ void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
         }
         else if (event.type == NoteEventType::Completed || event.type == NoteEventType::Missed)
         {
-            // A BAD, early BAD or POOR settles the timing target (every hit, or only a Buzz head) at zero.
-            if (rejected)
+            // A BAD, early BAD or POOR settles the timing target (every hit, or only a Buzz head) at zero. So does a
+            // timing note missed with a hit untaken, such as a big note hit on one side only (user decision: MISS).
+            const bool missedTimingNote =
+                event.type == NoteEventType::Missed && accuracy_.target.kind == NoteAccuracyKind::TimingHits;
+            if (rejected || missedTimingNote)
                 std::ranges::fill(accuracy_.hitScoreRates, 0.0);
             accuracy_.rejectedTiming = rejected;
+            accuracy_.averageGrade = TookEveryHit(rejected) ? profile_->GradeForScore(accuracy_.Score())
+                                                            : JudgementGrade::Unjudged;
             event.leftAtEarlyBad = event.type == NoteEventType::Missed && retryAfterEarlyBad_;
             event.leftAtPoor = event.type == NoteEventType::Missed && poorOnTimingTarget_;
             accuracy_.finalized = true;
@@ -266,6 +272,13 @@ void RuleBasedNote::AccumulateAccuracy(NoteProcessResult &result)
             break;
         }
     }
+}
+
+bool RuleBasedNote::TookEveryHit(const bool rejected) const noexcept
+{
+    if (rejected || accuracy_.target.kind != NoteAccuracyKind::TimingHits)
+        return false;
+    return accuracy_.acceptedHits >= accuracy_.target.hits;
 }
 
 NoteRuleContext RuleBasedNote::Context() const noexcept

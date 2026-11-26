@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/RhythmTypes.h"
+#include "Judgement/AccuracyScore.h"
 #include "Judgement/JudgeLevel.h"
 
 #include <array>
@@ -50,6 +51,9 @@ void SetLevel(JudgeLevel level);
 [[nodiscard]] RhythmDuration HalfWindow(JudgementGrade grade) const noexcept;
 [[nodiscard]] JudgementResult Evaluate(RhythmTime noteTime, RhythmTime inputTime) const noexcept;
 [[nodiscard]] bool IsWithin(JudgementGrade outerGrade, RhythmTime noteTime, RhythmTime inputTime) const noexcept;
+// The timing grade a score on this profile reaches: the most accurate of MAX, PERFECT and GREAT whose boundary
+// score it reaches, otherwise GOOD. A big note's two hits use it for their average (user decision).
+[[nodiscard]] JudgementGrade GradeForScore(AccuracyScore score) const noexcept;
 
 [[nodiscard]] static std::array<JudgementBand, BandCount> DefaultLevel50Bands() noexcept;
 
