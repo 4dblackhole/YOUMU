@@ -130,21 +130,10 @@ namespace
         float PixelScale() const noexcept override { return deviceScale; }
         EditorModeAreas areas;
         EditorModeAreas Areas() const noexcept override { return areas; }
-        struct BackgroundCall
-        {
-            Rect rect;
-            Point offset;
-            Size screen;
-        };
-        std::vector<BackgroundCall> backgrounds;
         std::vector<Rect> contained;
         void ContainedImage(Rect r, const std::filesystem::path &, Color) override
         {
             contained.push_back(r);
-        }
-        void ChartBackground(Rect r, const std::filesystem::path &, Point offset, Size screen) override
-        {
-            backgrounds.push_back({r, offset, screen});
         }
         std::vector<std::function<void()>> actions;
         std::vector<std::filesystem::path> images;
@@ -1646,7 +1635,7 @@ namespace
               "A partial view must show the play screen's centre without stretching the image.");
     }
 
-    // Preview and the Metadata thumbnail both ask for the play screen's BG with the chart's offset.
+    // Preview and the Metadata thumbnail both show the whole BG inside their area, without the chart's offset.
     void TestChartBackgroundPreviews(TextCatalog &texts)
     {
         PatternDocument pattern;
@@ -1658,7 +1647,7 @@ namespace
         state.SetPreview();
         state.Mode().DrawChart(preview, state, texts);
         const auto score = preview.areas.score;
-        Check(preview.contained.size() == 1 && preview.backgrounds.empty(),
+        Check(preview.contained.size() == 1,
               "Preview must draw the whole BG once inside its area.");
         Check(std::ranges::none_of(preview.images, [](const auto &image) { return image == "Chart BG.png"; }),
               "Preview must not stretch the BG over its area.");
@@ -1668,12 +1657,12 @@ namespace
         RecordingCanvas metadata;
         metadata.areas.background = "Chart BG.png";
         state.Mode().DrawMetadata(metadata, state, texts);
-        Check(metadata.backgrounds.size() == 1, "The Metadata thumbnail must draw the BG once.");
-        const auto &thumbnail = metadata.backgrounds.front();
-        Check(NearAll({thumbnail.rect.width, thumbnail.rect.height}, {128, 72}),
-              "The Metadata thumbnail must draw the BG once in its 128x72 box.");
-        Check(NearAll({thumbnail.screen.width, thumbnail.screen.height, thumbnail.offset.x}, {1280, 720, 30}),
-              "The Metadata thumbnail must show a 1280x720 play screen with the chart's BG offset.");
+        Check(metadata.contained.size() == 1, "The Metadata thumbnail must draw the whole BG once.");
+        const auto &thumbnail = metadata.contained.front();
+        Check(NearAll({thumbnail.width, thumbnail.height}, {128, 72}),
+              "The Metadata thumbnail must fit the BG inside its 128x72 box.");
+        Check(std::ranges::none_of(metadata.images, [](const auto &image) { return image == "Chart BG.png"; }),
+              "The Metadata thumbnail must not stretch the BG over its box.");
     }
 } // namespace
 
