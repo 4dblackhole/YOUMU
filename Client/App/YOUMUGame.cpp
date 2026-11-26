@@ -117,6 +117,11 @@ bool YOUMUGame::DeviceRemovedData() const noexcept
     return optionSettings_.Values().deviceRemovedData || launch_.watch;
 }
 
+bool YOUMUGame::GpuCrashDumps() const noexcept
+{
+    return launch_.watch && !optionSettings_.Values().deviceRemovedData;
+}
+
 EngineConfig YOUMUGame::GetEngineConfig() const
 {
     EngineConfig config;
@@ -143,6 +148,7 @@ EngineConfig YOUMUGame::GetEngineConfig() const
 
     config.diagnostics.sink = diagnostics_;
     config.diagnostics.graphicsDeviceRemovedData = DeviceRemovedData();
+    config.diagnostics.gpuCrashDumps = GpuCrashDumps();
     config.diagnostics.graphics = GraphicsSwitchesForRun(optionSettings_.Values());
     config.renderRateOverrideHz = RenderRateOverrideForRun(optionSettings_.Values());
     config.diagnostics.mainLoopStallSeconds = GameDiagnostics::StallSeconds(launch_.watch);
@@ -150,6 +156,11 @@ EngineConfig YOUMUGame::GetEngineConfig() const
     if (launch_.removeGraphicsDevice)
     {
         config.diagnostics.removeGraphicsDeviceAfterRenderedFrames = DeviceTestFrames;
+        config.autoExitAfterRenderedFrames = 0;
+    }
+    if (launch_.hangGraphicsDevice)
+    {
+        config.diagnostics.hangGraphicsDeviceAfterRenderedFrames = DeviceTestFrames;
         config.autoExitAfterRenderedFrames = 0;
     }
     if (launch_.stallMainLoop)

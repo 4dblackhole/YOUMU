@@ -24,6 +24,7 @@ DiagnosticsLaunchOptions ParseDiagnosticsLaunchOptions(const std::wstring_view c
     DiagnosticsLaunchOptions options;
     options.logDirectory = SwitchValue(commandLine, LogDirectorySwitch);
     options.removeGraphicsDevice = commandLine.find(L"--crash-test=device") != std::wstring_view::npos;
+    options.hangGraphicsDevice = commandLine.find(L"--crash-test=gpu-hang") != std::wstring_view::npos;
     options.stallMainLoop = commandLine.find(L"--crash-test=stall") != std::wstring_view::npos;
     options.throwException = commandLine.find(L"--crash-test=exception") != std::wstring_view::npos;
     options.crash = commandLine.find(L"--crash-test=crash") != std::wstring_view::npos;
@@ -35,6 +36,8 @@ const char *DiagnosticsLaunchOptions::CrashTestName() const noexcept
 {
     if (removeGraphicsDevice)
         return "device";
+    if (hangGraphicsDevice)
+        return "gpu-hang";
     if (stallMainLoop)
         return "stall";
     if (throwException)

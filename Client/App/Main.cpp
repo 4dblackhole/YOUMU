@@ -215,6 +215,8 @@ int WINAPI wWinMain(
         dumps.emplace(launch.logDirectory.empty() ? GameCrashDirectory() : launch.logDirectory / L"Crash", L"youmu",
                       KeptCrashDumps, &dumpLog);
         diagnostics.UseDumps(&*dumps);
+        diagnostics.UseGpuDumpDirectory(launch.logDirectory.empty() ? GameCrashDirectory()
+                                                                    : launch.logDirectory / L"Crash");
     }
     catch (const std::exception &error)
     {

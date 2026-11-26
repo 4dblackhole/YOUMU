@@ -5,6 +5,7 @@
 #include "PhantomCore.h"
 
 #include <atomic>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -39,6 +40,9 @@ class GameDiagnostics final : public PhantomCore::IEngineDiagnosticSink
 
     // The service that writes the dump of a stalled loop; it must outlive Run. Null (the default) writes none.
     void UseDumps(PhantomCore::CrashDumpService *dumps) noexcept { dumps_ = dumps; }
+    // Where the graphics driver's crash dump goes when the device is lost: <folder>/youmu-<time>-gpu.nv-gpudmp
+    // and the same dump as text beside it (.json). Empty (the default) writes none.
+    void UseGpuDumpDirectory(std::filesystem::path directory) { gpuDumpDirectory_ = std::move(directory); }
     // After this the game shows a fatal error itself, with note and the log file under the message; without
     // it the engine's plain dialog stays. Hidden runs never call it.
     void ShowFatalErrors(std::wstring note);
@@ -62,10 +66,12 @@ class GameDiagnostics final : public PhantomCore::IEngineDiagnosticSink
     // fatal error it causes, which must not print them a second time.
     void WriteRecentOnce() noexcept;
     void WriteWatched(const StatisticsSample &sample) noexcept;
+    void WriteGpuCrashDump(const PhantomCore::GraphicsDeviceLossReport &report) const;
 
     RecentStatistics recent_;
     std::atomic<bool> recentWritten_{};
     PhantomCore::CrashDumpService *dumps_{};
+    std::filesystem::path gpuDumpDirectory_;
     bool watch_{};
     std::optional<BackgroundWorkLog> workLog_;
     std::size_t watchedBytes_{};

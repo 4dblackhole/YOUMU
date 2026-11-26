@@ -16,6 +16,12 @@ struct DiagnosticsLaunchOptions
     // --crash-test=device: the engine removes the graphics device after a
     // few seconds' worth of frames.
     bool removeGraphicsDevice{};
+    // --crash-test=gpu-hang: the engine draws one frame the GPU never finishes.
+    // Windows resets the graphics driver about two seconds later: the screen
+    // goes dark for a moment and other programs may lose their graphics
+    // devices. It is the only way to see a real GPU crash dump on purpose,
+    // and nothing but a person typing the switch runs it.
+    bool hangGraphicsDevice{};
     // --crash-test=stall: one Update sleeps past a shortened stall limit.
     bool stallMainLoop{};
     // --crash-test=exception: one Update throws. The engine catches it and
