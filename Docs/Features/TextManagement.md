@@ -479,6 +479,8 @@ RenderRateOverrideHz=0
   `unlimited`는 Update 한 번마다 한 번 그립니다. 누락 시 `display`, 다른 값은 오류입니다. 고르면 바로 저장하고
   `YOUMUGame`이 다음 Update에서 엔진의 `IRenderRateControl`에 넘깁니다. 판정은 입력의 QPC 시각을 쓰므로 그리는 빈도와
   무관하지만, `unlimited`에서는 루프마다 그리기가 들어가 입력 시각의 오차가 프레임 한 장의 시간까지 늘 수 있습니다.
+  다른 프로그램의 창이 앞에 있으면 어느 값이든 엔진이 초당 30회 이하로만 그립니다(사용자 결정 A22, 옵션 없음).
+  Update·입력·오디오는 그대로 돌고, 다시 앞에 오면 바로 원래 빈도로 돌아갑니다(엔진 `RenderSchedule`).
 - `Controls/RestartKey`: 0.5초 길게 눌러 재시작하는 키의 십진 Virtual-Key. 누락 시 192(백틱).
   설치된 모드의 연주 키나 ESC/Space/F7이면 오류입니다.
 - `Pause/ResumeLeadInMs`, `Pause/RewindMeasures`: 일시정지 메뉴에서 마지막으로 고른 Resume 되감기(0~3000 ms, 500 ms 단위)와

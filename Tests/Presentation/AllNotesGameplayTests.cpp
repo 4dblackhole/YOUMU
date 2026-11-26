@@ -55,6 +55,8 @@ namespace
             config.showWindow = fullResult_;
             if (fullResult_) { config.windowWidth = 1920; config.windowHeight = 1080; }
             config.renderRateOverrideHz = 60;
+            // A shown full-result run keeps its 60 frames a second behind another window.
+            config.backgroundRenderRateHz = 0.0;
             config.audio.allowNoSoundFallback = false;
             return config;
         }
