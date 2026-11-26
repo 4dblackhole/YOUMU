@@ -54,8 +54,9 @@ void ResultScene::StartRecordWrite()
 {
     recordError_.clear();
     recordWrite_ = std::async(std::launch::async, [path = recordPath_, record = PlayRecord::From(*result_)] {
+        PhantomCore::BackgroundWork work("save record");
         try { PlayRecordStore(path).Save(record); return std::string{}; }
-        catch (const std::exception &error) { return std::string(error.what()); }
+        catch (const std::exception &error) { work.Failed(); return std::string(error.what()); }
     });
 }
 void ResultScene::Initialize(const EngineServices &services)

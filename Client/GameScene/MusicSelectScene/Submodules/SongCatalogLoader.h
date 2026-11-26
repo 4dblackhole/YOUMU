@@ -2,6 +2,7 @@
 #include "Catalog/SongCatalog.h"
 #include "GameFlow/ChartLoadJob.h"
 #include "Mode/PlayGameModeFactory.h"
+#include "PhantomCore.h"
 #include <atomic>
 #include <cstdlib>
 #include <cwctype>
@@ -30,7 +31,8 @@ public:
         const auto progress = progress_;
         job_ = StartChartLoad([cache, progress, root](std::stop_token stop)
         {
-            return cache->Load(root, stop, [progress, stop](SongCatalogEntry entry)
+            PhantomCore::BackgroundWork work("read song list");
+            auto result = cache->Load(root, stop, [progress, stop](SongCatalogEntry entry)
             {
                 // After a stop nothing more is published; the scan returns a cancelled result at its next stage.
                 if (ChartLoadStopped(stop))
@@ -41,6 +43,9 @@ public:
                 }
                 progress->pending.store(true, std::memory_order_release);
             });
+            if (result.cancelled)
+                work.Cancelled();
+            return result;
         });
         return true;
     }

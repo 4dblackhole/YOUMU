@@ -98,7 +98,7 @@ YOUMUGame::YOUMUGame(const bool smokeTest, std::string initialSceneId, const boo
         game_log::Write("Option.ini was not read: " + error);
     LogOptions(optionSettings_, DeviceRemovedData());
     if (diagnostics_ && launch_.watch)
-        diagnostics_->WatchStatistics();
+        diagnostics_->Watch();
     GameplayLaunchRequest initialRequest;
     initialRequest.songsRoot = optionSettings_.SongsRoot();
     launchRequest_->Set(std::move(initialRequest));

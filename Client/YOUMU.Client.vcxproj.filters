@@ -49,6 +49,8 @@
     <ClInclude Include="Diagnostics\RecentStatistics.h"><Filter>Diagnostics</Filter></ClInclude>
     <ClCompile Include="Diagnostics\CrashDumpLog.cpp"><Filter>Diagnostics</Filter></ClCompile>
     <ClInclude Include="Diagnostics\CrashDumpLog.h"><Filter>Diagnostics</Filter></ClInclude>
+    <ClCompile Include="Diagnostics\BackgroundWorkLog.cpp"><Filter>Diagnostics</Filter></ClCompile>
+    <ClInclude Include="Diagnostics\BackgroundWorkLog.h"><Filter>Diagnostics</Filter></ClInclude>
     <ClCompile Include="Diagnostics\GameDiagnostics.cpp"><Filter>Diagnostics</Filter></ClCompile>
     <ClInclude Include="Diagnostics\GameDiagnostics.h"><Filter>Diagnostics</Filter></ClInclude>
     <ClCompile Include="Diagnostics\LaunchDiagnostics.cpp"><Filter>Diagnostics</Filter></ClCompile>

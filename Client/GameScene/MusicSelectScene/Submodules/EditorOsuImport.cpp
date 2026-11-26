@@ -250,12 +250,16 @@ namespace
     }
     OsuImportScan Scan(EditorOsuImport::Session &session, const fs::path &folder)
     {
+        PhantomCore::BackgroundWork work("convert osu! folder");
         try
         {
             const auto exe = ConverterPath();
             const auto maps = OsuFiles(folder);
             if (maps.empty())
+            {
+                work.Failed();
                 return {false, "The folder holds no .osu file: " + Utf8(folder), {}};
+            }
             OsuImportScan scan{true, {}, {}};
             for (const auto &map : maps)
                 scan.difficulties.push_back(ConvertDifficulty(session, exe, map));
@@ -263,11 +267,13 @@ namespace
         }
         catch (const std::exception &error)
         {
+            work.Failed();
             return {false, error.what(), {}};
         }
     }
     EditorOsuImportResult Place(const EditorOsuImport::Session &session, const std::vector<std::size_t> &chosen)
     {
+        PhantomCore::BackgroundWork work("place converted charts");
         EditorOsuImportResult result{true, false, {}};
         for (const auto index : chosen)
         {
@@ -283,6 +289,8 @@ namespace
                 result.message += label + ": " + error.what() + "\n";
             }
         }
+        if (!result.success)
+            work.Failed();
         return result;
     }
 } // namespace
