@@ -167,8 +167,11 @@ Buzz 헤드가 BAD·POOR(복귀 포함)이면 헤드의 정확도만 0으로 확
 BAD는 타이밍이 맞지 않은 처리, POOR는 동작이 맞지 않은 처리입니다(사용자 결정, [GAME-03](../../Design/Decisions.md#game-03-poor)).
 맞는 동작이 BAD 범위에 들어오면 BAD(early BAD·늦은 BAD), 판정 범위 안에서 동작이 틀리면 POOR입니다. 타이밍을 판정하는 노트
 (`NoteAccuracy::JudgesTiming`: 일반·큰·보라 노트, 머리를 치기 전의 Buzz)만 early BAD가 있습니다. 롤·풍선·뎅뎅·틱롤 머리 앞의
-누름은 등급 없이 거부해 BAD·POOR·글자·적색 키빔이 없습니다. 큰 노트·보라·Buzz 머리의 늦은 BAD 범위 누름은
-사용자 확인 중인 예외입니다([GAME-03](../../Design/Decisions.md#game-03-poor)).
+누름은 등급 없이 거부해 BAD·POOR·글자·적색 키빔이 없습니다. 큰 노트·보라 노트도 일반 노트처럼 BAD 범위 끝까지 기다린 뒤 놓치며,
+늦은 BAD 구간에서 바로 뒤 노트가 GOOD 범위 안이면 입력 없이도 그 노트로 넘어갑니다(사용자 결정: "큰노트도 동일하게 일반노트처럼 처리하도록해주세요
+처리못해도 late BAD에 있고 바로뒤 노트가 GOOD범위내에있으면 바로 다음노트로 넘어가주세요"). 큰 노트·보라·Buzz 머리는 GOOD 이상만 받으므로 늦은 BAD 범위의
+맞는 색 누름을 타격으로 받지 않습니다. 그 누름은 early BAD처럼 기록되어(`IsLateBad`, `RuleBasedNote`가 `RecordEarlyBad`로 기억)
+노트는 그때부터 BAD이고, 더 받지 못하고 놓쳐도 MISS가 아니라 BAD 하나로 끝납니다(사용자 결정, [GAME-03](../../Design/Decisions.md#game-03-poor)).
 
 사용자 결정입니다. early BAD는 배드말림을 막으려고 포커스를 유지할 뿐 기본적으로 BAD 처리입니다. POOR는 BAD의 한 종류이며
 (사용자 결정: "POOR는 BAD의 아종인것으로 해주세요") POOR가 된 노트의 결과는 POOR 하나입니다. 다만 early BAD가 먼저 판정된 노트는
