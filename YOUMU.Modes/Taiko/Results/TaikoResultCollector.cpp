@@ -48,7 +48,7 @@ TaikoResultCollector::TaikoResultCollector(PlayResultSummary summary, std::size_
     comboEligible_.reserve(reserveNotes);
     settlesAsBad_.reserve(reserveNotes);
     poorCounted_.reserve(reserveNotes);
-    bigNoteFaults_.reserve(reserveNotes);
+    noteFaults_.reserve(reserveNotes);
 }
 void TaikoResultCollector::RegisterNote(NoteId id, TaikoNoteType type, RhythmTime time)
 {
@@ -58,7 +58,7 @@ void TaikoResultCollector::RegisterNote(NoteId id, TaikoNoteType type, RhythmTim
     comboEligible_.push_back(true);
     settlesAsBad_.push_back(false);
     poorCounted_.push_back(false);
-    bigNoteFaults_.push_back(NoteFault::None);
+    noteFaults_.push_back(NoteFault::None);
 }
 void TaikoResultCollector::RecordInput(const RhythmInputEvent &input)
 {
@@ -91,11 +91,13 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     if (event.type == NoteEventType::Completed || event.type == NoteEventType::Missed)
         result_->notes[found->second].finalState = event.stateAfter;
     const bool big = CountsOnceAtSettle(result_->notes[found->second].type);
+    // Normal and big notes count the first of a POOR and a BAD they take (user decisions); long notes do not.
+    const bool shortNote = ResultGroup(result_->notes[found->second].type) != TaikoResultGroup::Roll;
     if (event.type == NoteEventType::Missed && event.leftAtEarlyBad)
     {
         settlesAsBad_[found->second] = true;
         if (big)
-            static_cast<void>(MarkBigNoteFault(found->second, NoteFault::Bad));
+            static_cast<void>(MarkNoteFault(found->second, NoteFault::Bad));
     }
     if (event.type == NoteEventType::HitAccepted && grade < 5)
     {
@@ -107,7 +109,7 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
         if (big)
         {
             if (bad) // Counted when the note settles.
-                static_cast<void>(MarkBigNoteFault(found->second, NoteFault::Bad));
+                static_cast<void>(MarkNoteFault(found->second, NoteFault::Bad));
         }
         else if (poorCounted_[found->second])
             comboEligible_[found->second] = false;
@@ -121,9 +123,9 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     else if (keyPressed && IsPoor(event))
     {
         // A POOR counts now, once per note however many wrong presses follow; the note's combo settles when
-        // it finishes (user decisions). A big note counts it only when no BAD came before it.
+        // it finishes (user decisions). A normal or big note counts it only when no BAD came before it.
         const bool countsPoor =
-            big ? MarkBigNoteFault(found->second, NoteFault::Poor) : !poorCounted_[found->second];
+            shortNote ? MarkNoteFault(found->second, NoteFault::Poor) : !poorCounted_[found->second];
         if (countsPoor)
             ++result_->poorCount;
         poorCounted_[found->second] = true;
@@ -132,8 +134,8 @@ void TaikoResultCollector::ConsumeEvent(const NoteEvent &event, bool keyPressed)
     else if (keyPressed && IsEarlyBad(event))
     {
         comboEligible_[found->second] = false; // An early BAD counts once the note settles.
-        if (big)
-            static_cast<void>(MarkBigNoteFault(found->second, NoteFault::EarlyBad));
+        if (shortNote)
+            static_cast<void>(MarkNoteFault(found->second, NoteFault::EarlyBad));
     }
     else if (event.type == NoteEventType::TickAccepted && CountsAcceptedTicks(result_->notes[found->second].type))
         ++result_->acceptedTicks;
@@ -185,6 +187,8 @@ void TaikoResultCollector::FinalizeNote(const NoteAccuracy &accuracy, bool retir
         ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Bad)];
     else if (longNote && HeadAlreadyCountedBad(accuracy, retired))
         return; // A Buzz head BAD or recovery already counted as its BAD.
+    else if (poorCounted_[found->second] && noteFaults_[found->second] == NoteFault::Bad)
+        ++result_->judgements[static_cast<std::size_t>(JudgementGrade::Bad)]; // An early BAD came before its POOR.
     else if (poorCounted_[found->second])
         return; // A note that took a POOR and was not hit after it ends as that POOR, not a MISS (user decision).
     else if (note.finalState == NoteState::Missed || longNote)
@@ -194,7 +198,7 @@ void TaikoResultCollector::CountOnceAtSettle(const NoteAccuracy &accuracy, std::
 {
     // One count for the note (user decisions): a POOR or a BAD counts only that, with no average, and of the two the one
     // judged first. Otherwise the grade of the average hit score, or a MISS for a note it did not finish.
-    const NoteFault fault = bigNoteFaults_[index];
+    const NoteFault fault = noteFaults_[index];
     if (fault == NoteFault::Poor)
         return; // Counted when it was pressed.
     // An early BAD with nothing after it is still pending, so a retired note is a MISS as a normal note is.
@@ -205,11 +209,11 @@ void TaikoResultCollector::CountOnceAtSettle(const NoteAccuracy &accuracy, std::
         grade = accuracy.averageGrade;
     ++result_->judgements[static_cast<std::size_t>(grade)];
 }
-bool TaikoResultCollector::MarkBigNoteFault(std::size_t index, NoteFault fault)
+bool TaikoResultCollector::MarkNoteFault(std::size_t index, NoteFault fault)
 {
     // The first of a POOR and a BAD is the note's result (user decision).
     // A POOR or a BAD hit after an early BAD confirms that BAD; anything after a POOR changes nothing.
-    NoteFault &current = bigNoteFaults_[index];
+    NoteFault &current = noteFaults_[index];
     if (current == NoteFault::None)
         current = fault;
     else if (current == NoteFault::EarlyBad && fault != NoteFault::EarlyBad)
@@ -276,7 +280,7 @@ void TaikoResultCollector::ResetJudgements() noexcept
     std::fill(comboEligible_.begin(), comboEligible_.end(), true);
     std::fill(settlesAsBad_.begin(), settlesAsBad_.end(), false);
     std::fill(poorCounted_.begin(), poorCounted_.end(), false);
-    std::fill(bigNoteFaults_.begin(), bigNoteFaults_.end(), NoteFault::None);
+    std::fill(noteFaults_.begin(), noteFaults_.end(), NoteFault::None);
 }
 PlayStatistics TaikoResultCollector::Statistics() const noexcept
 {

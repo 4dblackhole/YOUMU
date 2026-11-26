@@ -151,7 +151,7 @@ early BAD, [BAD 복귀](#bad-복귀-판정))이면 노트는 BAD로 처리됩니
 콤보를 더하지 않습니다. 큰 노트에서 한 타격만 BAD·POOR여도 노트 전체가 0입니다(사용자 결정). 판정 개수는 타격마다 세고,
 큰 노트(BigDon/BigKat과 그 한 종류인 Purple)만 노트가 끝날 때 하나를 셉니다(사용자 결정,
 [GAME-02](../../Design/Decisions.md#game-02-판정과-정확도)): POOR와 BAD 중 먼저 판정된 쪽(early BAD 뒤 POOR는 BAD), 둘 다 없으면
-두 타격 평균 점수의 등급(`NoteAccuracy::averageGrade`)입니다. 일반 노트는 지금처럼 POOR가 이깁니다. 한쪽만 치고 다른 쪽을 놓치면 MISS 하나, 정확도 0, HP는 MISS 감소이며
+두 타격 평균 점수의 등급(`NoteAccuracy::averageGrade`)입니다. 일반 노트도 POOR와 BAD 중 먼저 판정된 쪽입니다. 한쪽만 치고 다른 쪽을 놓치면 MISS 하나, 정확도 0, HP는 MISS 감소이며
 (사용자 결정), Retire로 끝나도 MISS입니다. 키 해제(`InputEdge::Released`)와 판정 범위 밖의 입력은 이 처리를 만들지 않습니다. Reset/되감기는
 해당 입력 이력에 맞춰 이 상태를 초기화하거나 재구성합니다.
 
@@ -171,7 +171,8 @@ BAD는 타이밍이 맞지 않은 처리, POOR는 동작이 맞지 않은 처리
 사용자 확인 중인 예외입니다([GAME-03](../../Design/Decisions.md#game-03-poor)).
 
 사용자 결정입니다. early BAD는 배드말림을 막으려고 포커스를 유지할 뿐 기본적으로 BAD 처리입니다. POOR는 BAD의 한 종류이며
-(사용자 결정: "POOR는 BAD의 아종인것으로 해주세요") POOR가 된 노트의 결과는 POOR 하나입니다. 콤보는 노트 처리가 완전히 끝났을 때
+(사용자 결정: "POOR는 BAD의 아종인것으로 해주세요") POOR가 된 노트의 결과는 POOR 하나입니다. 다만 early BAD가 먼저 판정된 노트는
+뒤에 POOR가 나도 BAD 하나입니다(사용자 결정: POOR와 BAD 중 먼저 판정된 쪽, [GAME-03](../../Design/Decisions.md#game-03-poor)). 콤보는 노트 처리가 완전히 끝났을 때
 계산합니다.
 
 | 상황 | 판정 글자 | 판정 개수 | 정확도·점수 | HP | 콤보 |
@@ -180,6 +181,7 @@ BAD는 타이밍이 맞지 않은 처리, POOR는 동작이 맞지 않은 처리
 | 그 노트를 다시 쳐 GOOD~MAX(BAD 복귀) | 등급 글자 + 아래가 보라로 물든 판정 글자 | BAD 1 | 노트 0 | BAD 감소 | 0 |
 | early BAD 상태로 놓침 | 추가 글자 없음 | BAD 1(MISS 아님) | 0 | 감소 | 0 |
 | POOR 입력 | 누를 때마다 POOR(적색 키빔) | 노트당 POOR 1(연타해도 1) | 미확정 | 변화 없음 | 끝날 때 0 |
+| early BAD 뒤 POOR 입력 | 누를 때마다 POOR(적색 키빔) | 안 셈, 노트가 끝나거나 Retire되면 BAD 1 | 0 | 감소 | 0 |
 | POOR 뒤 맞는 색을 BAD 범위로 누름 | BAD | 안 셈(노트는 계속 기다림) | 미확정 | 변화 없음 | 끝날 때 0 |
 | POOR 뒤 놓침 | 추가 글자 없음 | POOR 1만(MISS 아님) | 0 | 감소 | 0 |
 | POOR 뒤 다시 쳐 GOOD~MAX(POOR 복귀) | 등급 + 보라 | POOR 1만(더 세지 않음) | 0 | 감소 | 0 |
@@ -193,7 +195,7 @@ GOOD 이상의 정확도로 쳐야하는것으로 하겠습니다"). 그 노트 
 받지 않고 거부합니다(`RuleBasedNote::WaitsForGoodAfterPoor`). 둘 다 판정 글자만 보이고 아무것도 세지 않습니다. 결과 수집기는
 노트마다 POOR를 한 번만 세고(사용자 결정: "다른 색상을 마구 연타하더라도 POOR카운트는 1개만 오르도록 해주세요 대신 적색 키빔이랑
 판정글자는 그대로 표시해주세요"), 그 노트의 뒤 타격과 놓침은 세지 않습니다(사용자 결정: "POOR를 치고 그대로 놓칠경우 MISS가 아니라
-POOR로 하겠습니다"). early BAD 뒤 POOR가 나면 그 노트도 POOR 하나로 끝납니다(큰·보라 노트는 먼저 판정된 BAD 하나, 사용자 결정). HP는 노트가 끝날 때 한 번만 감소합니다.
+POOR로 하겠습니다"). early BAD 뒤 POOR가 나면 그 노트는 먼저 판정된 BAD 하나로 끝납니다(사용자 결정). 그 POOR는 세지 않습니다. HP는 노트가 끝날 때 한 번만 감소합니다.
 early BAD는 누르는 입력만입니다. 앞 노트를 친 키를 떼는 시각은 다음 노트의 early BAD 구간에 자주 들어가므로, Lane은 떼는 입력에
 `RecordEarlyBad`를 부르지 않습니다. 떼는 입력의 early BAD 이벤트(`InputRejected`)는 예전처럼 남지만, 결과 수집기·HP·판정 글자·키빔은
 누르는 입력(`keyPressed`)이 아닌 이벤트를 읽지 않으므로 아무것도 바뀌지 않습니다. 큰 노트의 두 키, 주 키와 보조 키를 번갈아 쓰는 경우,

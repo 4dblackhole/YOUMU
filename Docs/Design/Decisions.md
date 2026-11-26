@@ -211,7 +211,7 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
   노트 정확도와 같은 값). BAD가 있으면 BAD 하나, POOR가 있으면 POOR 하나만 셉니다. 한 노트에 둘 다 있으면 먼저 판정된 쪽 하나입니다
   (사용자 결정: "POOR/BAD중 먼저 판정된 쪽으로 해주세요"). early BAD 뒤 POOR는 BAD, POOR 뒤의 BAD 범위 누름은 세지 않으므로 POOR입니다.
   Retire도 같습니다. 다만 early BAD만 있고 그 뒤에 아무것도 없는 큰 노트는 일반 노트처럼 MISS입니다.
-  일반 노트는 이 결정의 범위 밖이라 GAME-03대로 POOR가 이깁니다(early BAD 뒤 POOR는 POOR).
+  일반 노트도 같은 기준입니다([GAME-03](#game-03-poor)).
   보라 노트는 큰 노트의 한 종류입니다(사용자 결정: "보라노트는 큰노트의 일종인거로해주세요").
   한쪽만 치고 다른 쪽을 놓친 큰 노트는 MISS입니다(사용자 결정: "해당 노트를 MISS처리한거로 해주세요 정확는 0 HP도 MISS감소"):
   MISS 하나, 노트 정확도 0, HP는 MISS만큼 감소. 점수·HP·콤보는 노트가 끝날 때 한 번만 반영하므로 먼저 친 쪽이 미리 얻은 것은
@@ -245,6 +245,10 @@ YOUMU의 적용 코드는 [Lane](../../YOUMU.Rhythm/Lane/Lane.cpp)의 ResolveFoc
   - POOR가 된 노트는 GOOD 이상으로만 처리됩니다(POOR 복귀). BAD 범위의 맞는 색 누름은 BAD를 세지 않고 노트는 계속 기다립니다(사용자 결정).
   - POOR 복귀는 등급 글자(보라)를 보이지만 더 세지 않습니다. 정확도 0, HP 감소, 콤보 0은 BAD 복귀와 같습니다.
   - POOR 뒤 놓치면 MISS가 아니라 POOR입니다(사용자 결정: "POOR를 치고 그대로 놓칠경우 MISS가 아니라 POOR로 하겠습니다").
+  - 일반·큰·보라 노트 하나에 POOR와 BAD가 둘 다 있으면 먼저 판정된 쪽 하나만 셉니다(사용자 결정: 큰 노트에 "POOR/BAD중 먼저 판정된
+    쪽으로 해주세요", 일반 노트도 같은 기준으로 바꾸는지에 "1입니다"). early BAD 뒤 POOR는 BAD 하나입니다. 그 POOR는 글자와 적색 키빔만
+    보이고 세지 않으며, 노트가 끝나거나 Retire될 때 BAD를 셉니다. POOR가 먼저면 위대로 POOR 하나입니다. early BAD만 있고 Retire되면 MISS입니다.
+    Buzz 머리는 이 범위 밖이며 지금처럼 POOR를 셉니다.
   - POOR는 그 순간 콤보를 바꾸지 않고 노트가 끝날 때 0이 됩니다.
 
 상세: [Rules](../Features/Gameplay/Rules.md), [HP 설계](../Formats/Ymp.md#hp-게이지).
