@@ -149,6 +149,8 @@
     <ClInclude Include="Diagnostics\RecentStatistics.h" />
     <ClCompile Include="Diagnostics\CrashDumpLog.cpp" />
     <ClInclude Include="Diagnostics\CrashDumpLog.h" />
+    <ClCompile Include="Diagnostics\BackgroundWorkLog.cpp" />
+    <ClInclude Include="Diagnostics\BackgroundWorkLog.h" />
     <ClCompile Include="Diagnostics\GameDiagnostics.cpp" />
     <ClInclude Include="Diagnostics\GameDiagnostics.h" />
     <ClCompile Include="Diagnostics\LaunchDiagnostics.cpp" />

@@ -160,9 +160,17 @@ bool EditorAnalysisController::Update(const IEditorDocument &document, const IEd
             }
             auto next = std::make_shared<EditorAnalysisJob>();
             AudioAnalysisWorker::Instance().Enqueue([next, files] {
-                try { AnalyzeFiles(next, files); }
+                BackgroundWork work("analyze editor sounds");
+                try
+                {
+                    AnalyzeFiles(next, files);
+                    // A cancelled analysis returns without a result.
+                    if (!next->ready.load(std::memory_order_acquire))
+                        work.Cancelled();
+                }
                 catch (...)
                 {
+                    work.Failed();
                     next->failure = std::current_exception();
                     next->ready.store(true, std::memory_order_release);
                 }
@@ -261,6 +269,7 @@ void EditorAnalysisController::StartSpectrumJob(const EditorSpectrumRequest &req
     AudioAnalysisWorker::Instance().Enqueue([job, request, data = analysis_, markers = spectrumMarkers_] {
         const auto stop = job->cancellation.get_token();
         if (stop.stop_requested()) return;
+        BackgroundWork work("draw editor spectrum");
         try
         {
             auto result = std::make_shared<SpectrumTile>();
@@ -286,10 +295,18 @@ void EditorAnalysisController::StartSpectrumJob(const EditorSpectrumRequest &req
                     if (const auto sound = data->sounds.find(marker->sound); sound != data->sounds.end())
                         accumulate(sound->second, marker->seconds);
             }
-            if (stop.stop_requested()) return;
+            if (stop.stop_requested())
+            {
+                work.Cancelled();
+                return;
+            }
             job->result = std::move(result);
         }
-        catch (...) { job->failure = std::current_exception(); }
+        catch (...)
+        {
+            work.Failed();
+            job->failure = std::current_exception();
+        }
         job->ready.store(true, std::memory_order_release);
     });
     spectrumJobs_.emplace(request, std::move(job));

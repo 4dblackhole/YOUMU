@@ -416,6 +416,7 @@ void MusicSelectScene::OpenRecord()
                              [database = PlayRecordDatabasePath(), record = std::move(*record),
                               name = std::move(patternName)]() mutable
                              {
+                                 const PhantomCore::BackgroundWork work("open record");
                                  record.detail = PlayRecordStore(database).LoadDetail(record.id);
                                  return record.LoadResult(std::move(name));
                              });

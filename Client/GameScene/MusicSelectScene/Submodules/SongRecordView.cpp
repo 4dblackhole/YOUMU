@@ -289,6 +289,7 @@ void SongRecordView::Update(const SongCatalogPattern* selected)
         job_ = std::async(std::launch::async,
                                 [database, pattern, mode, condition = query_, offset = offset_, deleteId]
                                 {
+                                    const PhantomCore::BackgroundWork work("read records");
                                     const PlayRecordStore store(database.empty() ? PlayRecordDatabasePath() : database);
                                     Page page;
                                     // The delete runs before the page is read again, on this worker, so the page

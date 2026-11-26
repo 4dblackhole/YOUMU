@@ -58,6 +58,12 @@ void GameDiagnostics::AddSample(const PerformanceStatistics &performance, const 
         WriteWatched(sample);
 }
 
+void GameDiagnostics::Watch()
+{
+    watch_ = true;
+    workLog_.emplace();
+}
+
 void GameDiagnostics::WriteWatched(const StatisticsSample &sample) noexcept
 {
     if (watchedBytes_ >= WatchLogBytes)
@@ -112,6 +118,7 @@ void GameDiagnostics::OnGraphicsDeviceLost(const GraphicsDeviceLossReport &repor
     catch (...)
     {
     }
+    BackgroundWorkLog::WriteRunning();
     WriteRecentOnce();
 }
 
@@ -163,6 +170,7 @@ void GameDiagnostics::OnMainLoopStalled(const MainLoopStallReport &report) noexc
     // No allocation here: the stuck thread may be holding the heap.
     if (length > 0)
         game_log::WritePlain(std::string_view(line, std::min(static_cast<std::size_t>(length), sizeof(line) - 1)));
+    BackgroundWorkLog::WriteRunning();
     recent_.WriteToLog();
     // Every thread's call stack, while the loop is still stuck. The service's observer notes the file.
     if (dumps_)

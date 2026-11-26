@@ -14,6 +14,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 using namespace PhantomCore;
@@ -120,7 +121,7 @@ namespace
             PhantomCore::PerformanceStatistics performance;
             performance.framesPerSecond = 361;
             diagnostics->AddSample(performance, 1.0, "Quiet.Scene");
-            diagnostics->WatchStatistics();
+            diagnostics->Watch();
             performance.framesPerSecond = 722;
             diagnostics->AddSample(performance, 2.0, "Watched.Scene");
         }
@@ -130,6 +131,46 @@ namespace
         const bool written = text.find("fps  722") != std::string::npos &&
                              text.find("Watched.Scene\r\n") != std::string::npos;
         Check(written, "A watched run writes each sample as one line.");
+    }
+
+    // Work outside the game loop: a normal run writes nothing about it; a watched run writes a line when a
+    // piece starts and a line when it ends, with the worker's thread and how it ended.
+    void TestWatchedWork(const std::filesystem::path &folder)
+    {
+        std::filesystem::path file;
+        std::uint32_t worker = 0;
+        {
+            const game_log::Session session(folder, 10);
+            file = session.File();
+            const auto diagnostics = std::make_unique<GameDiagnostics>();
+            {
+                const BackgroundWork quiet("quiet work");
+            }
+            diagnostics->Watch();
+            std::jthread([&worker] {
+                worker = GetCurrentThreadId();
+                BackgroundWork watched("watched work");
+                watched.Cancelled();
+            }).join();
+            {
+                const BackgroundWork done("finished work");
+            }
+        }
+        // The observation ended with the diagnostics: nothing more is written, and nothing is called.
+        {
+            const BackgroundWork late("late work");
+        }
+        const std::string text = ReadAll(file);
+        const bool quiet = text.find("quiet work") == std::string::npos && text.find("late work") == std::string::npos;
+        Check(quiet, "Only a watched run writes the work outside the game loop.");
+        Check(text.find(std::format("work started: watched work (thread {})\r\n", worker)) != std::string::npos,
+              "A watched piece of work starts with a line that names its thread.");
+        const std::size_t ended = text.find("work ended: watched work, cancelled after ");
+        Check(ended != std::string::npos, "A watched piece of work ends with a line that says how.");
+        Check(text.find(std::format(" ms (thread {})\r\n", worker), ended) != std::string::npos,
+              "The ending line carries the time and the thread.");
+        Check(text.find("work ended: finished work, succeeded after ") != std::string::npos,
+              "A piece that just ends is written as succeeded.");
     }
 
     // Twelve old logs and a file that is not a log: opening a session that keeps ten leaves the nine newest
@@ -199,7 +240,11 @@ namespace
         Check(diagnostics->OnFatalError("IDXGISwapChain4::Present failed with HRESULT 0x887A0005.") ==
                   FatalErrorPresentation::EngineDialog,
               "The engine keeps showing its own error dialog.");
-        diagnostics->OnMainLoopStalled({10.5, 77, 123456});
+        {
+            // Held open over the stall, as a worker that is still reading would be.
+            const BackgroundWork held("held work");
+            diagnostics->OnMainLoopStalled({10.5, 77, 123456});
+        }
         diagnostics->OnMainLoopResumed(14.5);
 
         const std::string text = ReadAll(session.File());
@@ -217,6 +262,12 @@ namespace
         Check(text.find("main loop stalled: no pass for 10.5 s (thread 77, 123456 passes before)") != std::string::npos,
               "A stall is written with its length, thread and passes.");
         Check(text.find("main loop resumed after 14.5 s") != std::string::npos, "The end of a stall is written.");
+        // The work outside the loop at each of those moments: none at the lost device, one piece at the stall.
+        Check(Count(text, "work in progress: none\r\n") == 1, "A lost device says that no work was in progress.");
+        const std::size_t stalled = text.find("main loop stalled: ");
+        const std::string held = std::format("work in progress: held work (thread {}, ", GetCurrentThreadId());
+        Check(text.find(held, stalled) != std::string::npos, "A stall names the work in progress and its thread.");
+        Check(Count(text, "work in progress:") == 2, "The work in progress is written once per ending.");
 
         // A crash: the dump thread tells the observer. The folder of the dump (it may hold a user name) is
         // not written, only the file name; and the statistics follow, since nothing wrote them for this ending.
@@ -257,9 +308,16 @@ namespace
         for (int index = 0; index < compares; ++index)
             same += std::string_view(current[index & 1]) == logged ? 1 : 0;
         const std::chrono::duration<double, std::nano> compareTime = std::chrono::steady_clock::now() - compareStart;
+        // A piece of work in a run that is not watched: taking and giving back its place in the table.
+        constexpr int pieces = 200'000;
+        const auto workStart = std::chrono::steady_clock::now();
+        for (int index = 0; index < pieces; ++index)
+            const BackgroundWork work("measured work");
+        const std::chrono::duration<double, std::nano> workTime = std::chrono::steady_clock::now() - workStart;
         std::cout << "Costs: one sample " << sampleTime.count() / samples
                   << " us (once a second), one Scene name check " << compareTime.count() / compares
-                  << " ns (every Update, " << same << " equal).\n";
+                  << " ns (every Update, " << same << " equal), one unwatched piece of work "
+                  << workTime.count() / pieces << " ns (once per piece).\n";
     }
 } // namespace
 
@@ -287,9 +345,13 @@ int wmain(int argc, wchar_t *argv[])
             const ScopedTestFolder watched(argv[1], L"watched");
             TestWatchedStatistics(watched.Path());
         }
+        {
+            const ScopedTestFolder work(argv[1], L"work");
+            TestWatchedWork(work.Path());
+        }
         PrintCosts();
         std::cout << "Crash diagnostics passed: launch switches, statistics history, kept log files, hidden folder "
-                     "names, lost device, fatal error, stall and crash lines, watched statistics.\n";
+                     "names, lost device, fatal error, stall and crash lines, work in progress, watched statistics and work.\n";
         return 0;
     }
     catch (const std::exception &error)

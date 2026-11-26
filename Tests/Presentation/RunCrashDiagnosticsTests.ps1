@@ -1,5 +1,6 @@
 param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
-# 크래시 진단 기록: 단위 검사(실행 인자, 최근 통계, 로그 파일 보관·폴더 이름 가림, 장치 끊김·치명적 오류·멈춤·크래시 줄)를 돌린 뒤,
+# 크래시 진단 기록: 단위 검사(실행 인자, 최근 통계, 로그 파일 보관·폴더 이름 가림, 장치 끊김·치명적 오류·멈춤·크래시 줄,
+# 진행 중인 작업 줄, 감시 모드의 작업 시작·끝 줄)를 돌린 뒤,
 # 게임 exe를 숨김 창으로 여섯 번 실행해(정상, 감시 모드, 그래픽 장치 일부러 제거, Update 일부러 멈춤, 예외 던지기, 일부러 죽기)
 # 로그 파일의 내용과 덤프 파일을 확인합니다.
 # 로그와 덤프는 --log-dir로 build/ 아래 임시 폴더에 쓰므로 게임 폴더의 Data/Logs·Data/Crash를 건드리지 않습니다.
@@ -9,17 +10,20 @@ $testRoot = Join-Path $repoRoot ('build/crash-diagnostics-tests/' + $Configurati
 $objects = Join-Path $testRoot 'obj'
 New-Item -ItemType Directory -Path $objects -Force | Out-Null
 $runtime = if ($Configuration -eq 'Debug') { @('/MDd', '/D_DEBUG') } else { @('/MT', '/DNDEBUG') }
-$units = @('Pch', 'GameLog', 'RecentStatistics', 'GameDiagnostics', 'CrashDumpLog', 'LaunchDiagnostics')
+$units = @('Pch', 'GameLog', 'RecentStatistics', 'BackgroundWorkLog', 'GameDiagnostics', 'CrashDumpLog', 'LaunchDiagnostics')
 $clientObjects = $units | ForEach-Object { "build/obj/YOUMU.Client/x64/$Configuration/$_.obj" }
 $testExe = Join-Path $testRoot 'CrashDiagnosticsTests.exe'
 
 # 로그 한 개를 읽어, 있어야 할 줄과 없어야 할 글자를 확인합니다.
-function Test-GameLog([string]$Name, [string]$Folder, [string[]]$Expected) {
+function Test-GameLog([string]$Name, [string]$Folder, [string[]]$Expected, [string[]]$Absent) {
     $logs = @(Get-ChildItem -LiteralPath $Folder -Filter 'youmu-*.log' -ErrorAction SilentlyContinue)
     if ($logs.Count -ne 1) { throw "${Name}: expected one log file in $Folder, found $($logs.Count)." }
     $text = [IO.File]::ReadAllText($logs[0].FullName)
     foreach ($part in $Expected) {
         if (-not $text.Contains($part)) { throw "${Name}: the log has no '$part'.`n$text" }
+    }
+    foreach ($part in $Absent) {
+        if ($text.Contains($part)) { throw "${Name}: the log has '$part'.`n$text" }
     }
     # 사용자 이름이 든 프로필 폴더가 로그에 그대로 남으면 안 됩니다(게임 폴더는 <game>으로 바뀝니다).
     if ($env:USERPROFILE -and $text.Contains($env:USERPROFILE)) { throw "${Name}: the log shows the profile folder.`n$text" }
@@ -45,16 +49,20 @@ try {
     $runs = @(
         @{ Name = 'normal'; Arguments = @('--smoke-lobby'); ExitCode = 0
            Expected = @('YOUMU, built', 'windows ', 'start: scene ', 'engine: graphics adapter: ', 'engine: window: ', 'options: audio ',
-               'scene: ', 'mode: normal', 'exit code 0') },
+               'scene: ', 'mode: normal', 'exit code 0')
+           # 메인 루프 밖 작업의 시작·끝 줄은 감시 모드에서만 씁니다.
+           Absent = @('work started: ', 'work ended: ') },
         # 감시 모드: Option.ini를 건드리지 않고 이 실행만 DRED를 켭니다(1초 통계 줄은 단위 검사가 봅니다).
         @{ Name = 'watch'; Arguments = @('--smoke-lobby', '--diagnostics=watch'); ExitCode = 0
            Expected = @('mode: watch (--diagnostics=watch)', 'device removed data on', 'main loop watched at 3 s',
-                        'exit code 0') },
+                        'work started: read song list (thread ', 'work ended: read song list, ', 'exit code 0') },
         @{ Name = 'device'; Arguments = @('--smoke-lobby', '--crash-test=device'); ExitCode = 1
-           Expected = @('crash test device', 'graphics device lost: ', 'reason DXGI_ERROR_DEVICE_REMOVED', 'recent statistics, ',
+           Expected = @('crash test device', 'graphics device lost: ', 'reason DXGI_ERROR_DEVICE_REMOVED', 'work in progress:',
+               'recent statistics, ',
                'fatal error: ', 'exit code 1') },
         @{ Name = 'stall'; Arguments = @('--smoke-lobby', '--crash-test=stall'); ExitCode = 0; Dump = 'stall'
-           Expected = @('crash test stall', 'crash test: holding one Update', 'main loop stalled: no pass for ', 'recent statistics, ',
+           Expected = @('crash test stall', 'crash test: holding one Update', 'main loop stalled: no pass for ', 'work in progress:',
+               'recent statistics, ',
                'dump requested, ', 'dump written: youmu-', 'main loop resumed after ', 'exit code 0') },
         @{ Name = 'exception'; Arguments = @('--smoke-lobby', '--crash-test=exception'); ExitCode = 1
            Expected = @('crash test exception', 'crash test: throwing from Update',
@@ -68,7 +76,7 @@ try {
         $arguments = $run.Arguments + ('--log-dir="' + $logFolder + '"')
         $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden -Wait -PassThru
         if ($process.ExitCode -ne $run.ExitCode) { throw "$($run.Name): exit code $($process.ExitCode), expected $($run.ExitCode)." }
-        $text = Test-GameLog $run.Name $logFolder $run.Expected
+        $text = Test-GameLog $run.Name $logFolder $run.Expected $run.Absent
         # 덤프는 덤프를 남겨야 하는 실행에만, 이름에 사유가 든 파일 하나가 있어야 합니다. 미니덤프는 'MDMP'로 시작합니다.
         $dumps = @(Get-ChildItem -LiteralPath (Join-Path $logFolder 'Crash') -Filter 'youmu-*.dmp' -ErrorAction SilentlyContinue)
         $wanted = if ($run.Dump) { 1 } else { 0 }
