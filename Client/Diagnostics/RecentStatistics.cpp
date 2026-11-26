@@ -67,10 +67,12 @@ std::size_t FormatSample(const StatisticsSample &sample, char *const line, const
 {
     const int length = std::snprintf(
         line, size,
-        "  %5us fps %4u ups %6u draws %3u/%3u longest %7u us vram %4u/%4u MB memory %5u MB handles %5u %s\r\n",
+        "  %5us fps %4u ups %6u draws %3u/%3u longest %7u us vram %4u/%4u MB memory %5u MB handles %5u "
+        "text %2u pages %4u new %2u evicted %s\r\n",
         sample.second, sample.framesPerSecond, sample.updatesPerSecond, sample.drawCalls, sample.peakDrawCalls,
         sample.longestLoopMicroseconds, sample.graphicsMemoryMb, sample.graphicsBudgetMb, sample.processMemoryMb,
-        sample.handles, sample.scene);
+        sample.handles, sample.textAtlasPages, sample.textGlyphRasterizations, sample.textAtlasEvictions,
+        sample.scene);
     const bool fits = length > 0 && static_cast<std::size_t>(length) < size;
     return fits ? static_cast<std::size_t>(length) : 0;
 }

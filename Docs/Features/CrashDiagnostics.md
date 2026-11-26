@@ -97,7 +97,7 @@
 [09:21:38.016]   graphics memory 50 of 2520 MB, 30 MB in system memory
 [09:21:38.016]   device removed data was off (Option.ini [Diagnostics] DeviceRemovedData=1 turns it on)
 recent statistics, 1 seconds, oldest first:
-      1s fps  315 ups   1787 draws  54/ 54 longest   69261 us vram   50/2520 MB memory   135 MB handles   463 YOUMU.Lobby
+      1s fps  315 ups   1787 draws  54/ 54 longest   69261 us vram   50/2520 MB memory   135 MB handles   463 text  3 pages    0 new  0 evicted YOUMU.Lobby
 [09:21:38.117] fatal error: IDXGISwapChain4::Present failed with HRESULT 0x887A0005.
 [09:21:38.119] exit code 1
 ```
@@ -119,6 +119,7 @@ recent statistics, 1 seconds, oldest first:
 | `longest … us` | 그 1초에서 가장 길었던 메인 루프 한 바퀴(마이크로초). 한 번의 끊김이 여기에 보입니다 |
 | `vram 50/2520 MB` | 게임이 쓰는 그래픽 메모리 / Windows가 허용하는 예산 |
 | `memory`, `handles` | 프로세스가 잡은 메모리와 커널 핸들 수. 계속 늘면 해제되지 않는 것이 있다는 뜻입니다 |
+| `text 3 pages 0 new 0 evicted` | 화면 글자 아틀라스의 장 수(한도 16), 그 1초에 새로 구운 글자 수, 다시 쓰려고 비운 장 수. 화면이 그대로인데 `new`·`evicted`가 계속 나오면 아틀라스가 모자라 글자를 되풀이해 굽는 것입니다 |
 | 마지막 칸 | 그때의 Scene ID |
 
 멈춤은 창을 끌거나 크기를 바꾸는 동안, 메뉴·대화 상자, 디버거 중단에는 알리지 않습니다(엔진이 구분합니다).

@@ -52,6 +52,9 @@ void GameDiagnostics::AddSample(const PerformanceStatistics &performance, const 
         Clamped(static_cast<std::uint64_t>(std::max(performance.longestLoopSeconds, 0.0) * 1'000'000.0));
     sample.graphicsMemoryMb = Megabytes(performance.graphicsMemoryUsageBytes);
     sample.graphicsBudgetMb = Megabytes(performance.graphicsMemoryBudgetBytes);
+    sample.textAtlasPages = Clamped(performance.textAtlasPages);
+    sample.textGlyphRasterizations = Clamped(performance.textGlyphRasterizations);
+    sample.textAtlasEvictions = Clamped(performance.textAtlasEvictions);
     ReadProcess(sample);
     SetScene(sample, scene);
     recent_.Add(sample);
