@@ -174,25 +174,6 @@ void EditorView::ContainedImage(Rect r, const std::filesystem::path &image, Colo
     Image(ContainedImageBounds(r, visuals.GetImageSize(handle)), image, tint);
 }
 
-void EditorView::ChartBackground(Rect r, const std::filesystem::path &image, Point offset, Size screen)
-{
-    // r shows the centre of the play screen at one scale; the texture is cropped instead of stretched.
-    const float scale = screen.width > 0 ? r.width / screen.width : 1;
-    const Size shown{r.width / scale, r.height / scale};
-    DrawPacket packet{};
-    packet.type = DrawPacketType::Image;
-    packet.bounds = ToNode(r);
-    packet.image = visuals.RegisterImage(image);
-    if (packet.image.value == 0)
-        throw std::runtime_error("The chart background image could not be loaded.");
-    const auto crop = ChartBackgroundCrop(screen, {-shown.width / 2, -shown.height / 2, shown.width, shown.height},
-                                          visuals.GetImageSize(packet.image), offset);
-    packet.uvOffset = {crop.x, crop.y};
-    packet.uvScale = {crop.width, crop.height};
-    packet.color = {1, 1, 1, 1};
-    visual->AddPacket(std::move(packet));
-}
-
 void EditorView::Icon(Rect r, std::wstring_view name, Color tint)
 {
     Image(r, Common(L"Icons." + std::wstring(name)), tint);

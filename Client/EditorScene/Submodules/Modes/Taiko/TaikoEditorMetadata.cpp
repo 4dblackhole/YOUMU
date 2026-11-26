@@ -1,7 +1,6 @@
 #include "../../EditorSupport.h"
 #include "TaikoEditorMode.h"
 #include "Parsing/ChartParser.h"
-#include "Presentation/BackgroundLayout.h"
 #include <algorithm>
 #include <format>
 #include <sstream>
@@ -167,21 +166,15 @@ void TaikoEditorMode::DrawMetadata(IEditorModeCanvas &canvas, IEditorContext &st
     canvas.Text({x1, y + 26, w1, 22}, p.effectFile.empty() ? std::wstring(L"—") : p.effectFile.wstring(), 14,
                 ui_colors::theme::InkSoft);
     y += 62;
-    // BG: a preview of the image beside its path and x/y offset.
+    // BG: the whole image beside its path and x/y offset. It shows which image the chart uses, so the
+    // offset does not move it; Preview and the play screen show where the offset puts it.
     const auto preview = canvas.Areas().background;
     const PhantomCore::Rect thumbnail{x1, y + 20, 128, 72};
+    canvas.Box(thumbnail, ui_colors::Rgb(0xDCE7F5));
     if (preview.empty())
-    {
-        canvas.Box(thumbnail, ui_colors::Rgb(0xDCE7F5));
         canvas.Text({thumbnail.x + 34, thumbnail.y + 28, 80, 16}, L"NO IMAGE", 11, ui_colors::theme::Caption);
-    }
     else
-    {
-        // A 1280x720 play screen at a tenth of its size, with the offset as typed below.
-        canvas.ChartBackground(thumbnail, preview,
-                               {static_cast<float>(p.backgroundOffsetX), static_cast<float>(p.backgroundOffsetY)},
-                               {ChartBackgroundReferenceHeight * 16 / 9, ChartBackgroundReferenceHeight});
-    }
+        canvas.ContainedImage(thumbnail, preview, {1, 1, 1, 1});
     const float bgLeft = x1 + 140, bgWidth = w1 - 140;
     field({bgLeft, y, bgWidth, 52}, std::wstring(catalog.Get("Editor.backgroundFile")), Utf8(p.backgroundFile.wstring()),
           [](auto &d, const auto &value) { d.backgroundFile = std::filesystem::path(Wide(value)); });

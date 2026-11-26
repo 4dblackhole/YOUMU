@@ -49,16 +49,6 @@ class IEditorModeCanvas
     {
         Image(r, image, tint);
     }
-    // The chart BG as the play screen shows it (Presentation/BackgroundLayout.h): `screen` is the play
-    // viewport in play units (720 high) and r shows its centre at r.width / screen.width scale, so the
-    // image keeps its ratio and the authored offset. A canvas without image sizes stretches it over r.
-    virtual void ChartBackground(PhantomCore::Rect r, const std::filesystem::path &image, PhantomCore::Point offset,
-                                 PhantomCore::Size screen)
-    {
-        static_cast<void>(offset);
-        static_cast<void>(screen);
-        Image(r, image, {1, 1, 1, 1});
-    }
     virtual void Button(PhantomCore::Rect, std::wstring, std::function<void()>, bool selected = false) = 0;
     // A labelled single-line field; `commit` receives the typed text (UTF-8) and may throw to reject it.
     virtual void TextField(PhantomCore::Rect r, std::wstring label, std::wstring text,
