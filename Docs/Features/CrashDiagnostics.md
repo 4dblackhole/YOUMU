@@ -25,7 +25,7 @@
 | 띄우는 방법 | 모드 | 남는 것 |
 | --- | --- | --- |
 | 실행 파일을 그대로 실행 | 일반 | 이 문서의 기본 기록: 로그, 덤프, 문제가 났을 때의 최근 2분 통계, 오류 창 |
-| 게임 폴더의 `Run in watch mode.bat` | 감시 | 일반 기록에 더해 [장치 제거 추가 정보](#장치-제거-추가-정보dred)를 켜고, 1초 통계를 로그에 계속 적고, 메인 루프 멈춤을 10초가 아니라 3초에 알립니다 |
+| 게임 폴더의 `Run in watch mode.bat` | 감시 | 일반 기록에 더해 [장치 제거 추가 정보](#장치-제거-추가-정보dred)를 켜고, 1초 통계와 [메인 루프 밖 작업](#메인-루프-밖의-작업)의 시작·끝을 로그에 계속 적고, 메인 루프 멈춤을 10초가 아니라 3초에 알립니다 |
 
 - 감시 모드는 실행 인자 `--diagnostics=watch`입니다. bat 파일은 같은 폴더의 실행 파일을 이 인자로 띄우는 한 줄입니다.
 - 로그 첫머리의 `mode:` 줄이 어느 쪽인지 보여 줍니다(`mode: normal` 또는 `mode: watch (--diagnostics=watch): …`).
@@ -41,7 +41,7 @@
   프로세스가 밖에서 끝나 아무 줄도 남기지 못한 실행에서도 마지막 1초까지의 상태가 남습니다.
   디스크에 닿을 때까지 기다리지는 않습니다(1초마다 게임 루프가 그만큼 서게 됩니다). 그래서 PC가 통째로 꺼지면 마지막 몇 초는 없을 수 있습니다.
 - 통계 줄은 실행 한 번에 16MB(약 하루치)까지만 적고 그 뒤로는 그칩니다. 사건 줄은 계속 적습니다. 로그 파일 보관 개수는 일반 실행과 같습니다.
-- 일반 실행은 1초마다 파일에 쓰지 않습니다.
+- 일반 실행은 1초마다 파일에 쓰지 않고, 작업의 시작·끝 줄도 적지 않습니다.
 
 ## 로그에 적히는 것
 
@@ -103,9 +103,9 @@ recent statistics, 1 seconds, oldest first:
 
 | 경우 | 줄 | 함께 적히는 것 |
 | --- | --- | --- |
-| 그래픽 장치가 끊김 | `graphics device lost: …` | 실패한 호출과 결과, 제거 사유, 마지막 프레임 번호·화면 크기·draw 수, 그래픽 메모리, DRED 내용(켰을 때), 최근 통계 |
+| 그래픽 장치가 끊김 | `graphics device lost: …` | 실패한 호출과 결과, 제거 사유, 마지막 프레임 번호·화면 크기·draw 수, 그래픽 메모리, DRED 내용(켰을 때), 진행 중인 작업, 최근 통계 |
 | 실행을 끝낸 예외 | `fatal error: …` | 예외 문구. 장치 끊김 뒤에 이어 오면 최근 통계를 다시 적지 않습니다 |
-| 메인 루프가 10초(감시 모드는 3초) 동안 한 바퀴도 못 돎 | `main loop stalled: …` | 멈춘 시간, 메인 스레드 ID, 그 전까지 돈 횟수, 최근 통계, 덤프(`…-stall.dmp`). 풀리면 `main loop resumed after … s` |
+| 메인 루프가 10초(감시 모드는 3초) 동안 한 바퀴도 못 돎 | `main loop stalled: …` | 멈춘 시간, 메인 스레드 ID, 그 전까지 돈 횟수, 진행 중인 작업, 최근 통계, 덤프(`…-stall.dmp`). 풀리면 `main loop resumed after … s` |
 | 게임이 죽음(잡히지 않은 예외) | `crash: …` | 사유, 예외 코드와 주소, 스레드 ID, 덤프 파일 이름, 최근 통계 |
 
 최근 통계 한 줄은 1초이고 오래된 것부터 적습니다.
@@ -122,6 +122,37 @@ recent statistics, 1 seconds, oldest first:
 
 멈춤은 창을 끌거나 크기를 바꾸는 동안, 메뉴·대화 상자, 디버거 중단에는 알리지 않습니다(엔진이 구분합니다).
 한도 10초는 곡 로딩 같은 정상 지연보다 넉넉히 길게 잡은 값입니다(`GameDiagnostics::MainLoopStallSeconds`). 감시 모드는 3초입니다.
+
+## 메인 루프 밖의 작업
+
+게임 루프가 아닌 스레드에서 도는 일입니다. 장치가 끊기거나 루프가 멈춘 순간에 무엇이 돌고 있었는지 로그만으로 알 수 있게 합니다.
+표시는 엔진의 `BackgroundWork`로 하고(엔진 문서의 "메인 루프 밖의 작업 표시"), 로그에 적는 것은 `Client/Diagnostics/BackgroundWorkLog`입니다.
+
+| 이름 | 하는 일 | 표시하는 곳 |
+| --- | --- | --- |
+| `read song list` | Songs 폴더를 읽어 곡 목록을 만듦 | SongCatalogLoader |
+| `load chart` | 고른 채보를 읽고 플레이 세션을 만듦 | PlaySessionLoader |
+| `read records` | 곡 선택의 기록 목록 조회(삭제 포함) | SongRecordView |
+| `open record` | 기록 하나를 열어 결과 화면을 준비 | MusicSelectScene |
+| `save record` | 결과 화면에서 기록 저장 | ResultScene |
+| `convert osu! folder`, `place converted charts` | osu! 폴더 변환과 Songs로 옮기기 | EditorOsuImport |
+| `analyze editor sounds`, `draw editor spectrum` | 편집기의 소리 분석과 스펙트럼 조각 | EditorAnalysisController |
+| `prepare images`, `read sound`, `stretch sound` | 그림 디코딩, 소리 파일 읽기, 속도 변환 | 엔진 |
+
+- 장치 끊김과 멈춤 기록에는 모드와 상관없이 한 줄이 들어갑니다: `work in progress: read sound (thread 1234, 15 ms); …`
+  또는 `work in progress: none`. 괄호 안은 그 작업의 스레드 ID와 시작한 뒤 지난 시간입니다. 덤프의 같은 스레드 ID와 맞춰 볼 수 있습니다.
+- 감시 모드는 작업마다 두 줄을 더 적습니다. 작업 스레드가 직접 쓰고, 1초 통계처럼 디스크에 닿을 때까지 기다리지 않습니다.
+
+```text
+[09:21:33.512] work started: read song list (thread 9120)
+[09:21:33.640] work ended: read song list, succeeded after 127.6 ms (thread 9120)
+```
+
+- 끝난 모습은 `succeeded`, `failed`(예외가 났거나 실패 결과를 돌려줌), `cancelled`(중간에 그만두라는 요청을 받음)입니다.
+- 이름에는 파일 경로를 넣지 않습니다(로그에 사용자 이름이 든 경로가 남지 않게).
+- 동기 로드 모드의 소리 읽기는 게임 루프 스레드에서 돌고 그 스레드 번호로 적힙니다.
+- 엔진의 표는 동시에 32개까지 담습니다. 일반 실행에서 작업 하나의 비용은 표에 올리고 내리는 atomic 쓰기 몇 번입니다.
+- FMOD 자신의 스레드처럼 게임·엔진 코드가 만들지 않은 스레드의 일은 여기에 나오지 않습니다(덤프에는 나옵니다).
 
 ## 덤프 파일
 
