@@ -5,6 +5,10 @@
 
 #include <Psapi.h>
 
+#include <DbgHelp.h>
+
+#pragma comment(lib, "dbghelp.lib")
+
 #include <cstdio>
 #include <fstream>
 
@@ -36,6 +40,23 @@ namespace
         DWORD handles = 0;
         if (GetProcessHandleCount(GetCurrentProcess(), &handles))
             sample.handles = handles;
+    }
+
+    // Everything the process has in memory, so the state of the renderer at a device loss can be read later with
+    // the symbols of the build. Hundreds of megabytes; written for a device loss only. Returns the bytes written.
+    [[nodiscard]] std::uint64_t WriteProcessMemory(const std::filesystem::path &path) noexcept
+    {
+        const HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE)
+            return 0;
+        const auto type = static_cast<MINIDUMP_TYPE>(MiniDumpWithFullMemory | MiniDumpWithHandleData |
+                                                     MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules);
+        const BOOL written =
+            MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, type, nullptr, nullptr, nullptr);
+        LARGE_INTEGER size{};
+        const BOOL sized = GetFileSizeEx(file, &size);
+        CloseHandle(file);
+        return written && sized ? static_cast<std::uint64_t>(size.QuadPart) : 0;
     }
 } // namespace
 
@@ -143,6 +164,11 @@ void GameDiagnostics::WriteGpuCrashDump(const GraphicsDeviceLossReport &report) 
     std::error_code ignored;
     std::filesystem::create_directories(gpuDumpDirectory_, ignored);
     WriteFrameDraws(report, gpuDumpDirectory_ / (stem + L"-frames"));
+    const std::filesystem::path memoryPath = gpuDumpDirectory_ / (stem + L"-process.dmp");
+    const std::uint64_t memoryBytes = WriteProcessMemory(memoryPath);
+    game_log::Write(memoryBytes != 0 ? std::format("  process memory file: {} ({} MB)", memoryPath.filename().string(),
+                                                   Megabytes(memoryBytes))
+                                     : std::string("  process memory file could not be written"));
     if (report.gpuCrashDump.empty())
         return;
     const std::filesystem::path dumpPath = gpuDumpDirectory_ / (stem + L".nv-gpudmp");
