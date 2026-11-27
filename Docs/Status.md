@@ -8,8 +8,8 @@
 
 | 저장소 | main | 비고 |
 | --- | --- | --- |
-| YOUMU | `1c7006a` (#183) | 게임 |
-| PhantomCore | `53a6dde` (#46) | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
+| YOUMU | `1e327cf` (#184) | 게임 |
+| PhantomCore | `207dae0` (#47) | YOUMU의 `Dependencies/PhantomCore` gitlink와 같음 |
 | OsuTaikoConverter | `a8c2c2e` (#11) | YOUMU 솔루션이 형제 폴더로 참조 |
 
 ## 한눈에
